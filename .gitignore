@@ -1,4 +1,8 @@
 .idea/
 
 **/obj
+**/bin
 **/local.settings.json
+
+venv
+**/__pycache__

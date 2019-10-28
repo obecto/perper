@@ -8,7 +8,25 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perper.WebJobs.Extensions",
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5EB01B9B-538D-4FC8-8FBC-90409087ED75}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNet.FunctionApp", "samples\DotNet.FunctionApp\DotNet.FunctionApp.csproj", "{01C27A77-8357-4CF0-92FD-EBE688B714AB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perper.Cluster", "src\Perper.Cluster\Perper.Cluster.csproj", "{D9027F37-D2E8-4667-ADF8-A37EC507EB4F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNet.FunctionApp", "samples\DotNet.FunctionApp\DotNet.FunctionApp.csproj", "{76B3F8CB-9BB7-43F1-84E4-B421E76E7EDF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Python.FunctionApp", "samples\Python.FunctionApp\Python.FunctionApp.csproj", "{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "python-binding", "python-binding", "{143D0949-8EB2-481A-A7C0-287192D24967}"
+ProjectSection(SolutionItems) = preProject
+	python-binding\setup.py = python-binding\setup.py
+	python-binding\README.md = python-binding\README.md
+EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "azure_functions", "azure_functions", "{03FFA02F-A21C-4751-BAA6-3E0637C07C2A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "perper", "perper", "{694FED80-7F4D-4263-AB8E-D5C8DE9F658B}"
+ProjectSection(SolutionItems) = preProject
+	python-binding\azure_functions\perper\__init__.py = python-binding\azure_functions\perper\__init__.py
+	python-binding\azure_functions\perper\perper.py = python-binding\azure_functions\perper\perper.py
+EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -18,7 +36,11 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{9F638F93-E40A-4E3A-9D0F-36906BAE0FA3} = {0C1B132E-1677-46B6-9EF5-B306558045E8}
 		{9D6B115C-3B6D-4E41-92B0-69AE3EB7926C} = {0C1B132E-1677-46B6-9EF5-B306558045E8}
-		{01C27A77-8357-4CF0-92FD-EBE688B714AB} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
+		{D9027F37-D2E8-4667-ADF8-A37EC507EB4F} = {0C1B132E-1677-46B6-9EF5-B306558045E8}
+		{76B3F8CB-9BB7-43F1-84E4-B421E76E7EDF} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
+		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
+		{03FFA02F-A21C-4751-BAA6-3E0637C07C2A} = {143D0949-8EB2-481A-A7C0-287192D24967}
+		{694FED80-7F4D-4263-AB8E-D5C8DE9F658B} = {03FFA02F-A21C-4751-BAA6-3E0637C07C2A}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{9F638F93-E40A-4E3A-9D0F-36906BAE0FA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -29,9 +51,17 @@ Global
 		{9D6B115C-3B6D-4E41-92B0-69AE3EB7926C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9D6B115C-3B6D-4E41-92B0-69AE3EB7926C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9D6B115C-3B6D-4E41-92B0-69AE3EB7926C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{01C27A77-8357-4CF0-92FD-EBE688B714AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{01C27A77-8357-4CF0-92FD-EBE688B714AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{01C27A77-8357-4CF0-92FD-EBE688B714AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{01C27A77-8357-4CF0-92FD-EBE688B714AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D9027F37-D2E8-4667-ADF8-A37EC507EB4F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9027F37-D2E8-4667-ADF8-A37EC507EB4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9027F37-D2E8-4667-ADF8-A37EC507EB4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9027F37-D2E8-4667-ADF8-A37EC507EB4F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{76B3F8CB-9BB7-43F1-84E4-B421E76E7EDF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{76B3F8CB-9BB7-43F1-84E4-B421E76E7EDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{76B3F8CB-9BB7-43F1-84E4-B421E76E7EDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{76B3F8CB-9BB7-43F1-84E4-B421E76E7EDF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

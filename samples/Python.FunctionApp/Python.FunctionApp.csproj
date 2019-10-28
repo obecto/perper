@@ -4,6 +4,7 @@
         <AzureFunctionsVersion></AzureFunctionsVersion>
     </PropertyGroup>
     <ItemGroup>
+        <PackageReference Include="Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator" Version="1.1.2" />
         <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.29" />
     </ItemGroup>
     <ItemGroup>
@@ -14,8 +15,24 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <CopyToPublishDirectory>Never</CopyToPublishDirectory>
         </None>
+        <None Update="requirements.txt">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Launcher\__init__.py">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Launcher\function.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Remove="Launcher\__pycache__\**" />
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\..\src\Perper.WebJobs.Extensions\Perper.WebJobs.Extensions.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+      <Compile Remove="Launcher\__pycache__\**" />
+    </ItemGroup>
+    <ItemGroup>
+      <EmbeddedResource Remove="Launcher\__pycache__\**" />
     </ItemGroup>
 </Project>
