@@ -1,10 +1,11 @@
 # Perper
+*(This project is under active development)*
 
 Stream-based, horizontally scalable framework for asynchronous data processing, built on top of [Apache Ignite](https://ignite.apache.org/) and [Azure Functions](https://azure.microsoft.com/en-us/services/functions/).
 
 ## Overview
 
-Perper consists of two building blocks: **Perper Cluster** and **Perper Functions**. Perper Cluster is built on top of Ignite, utilising its data grid, compute grid and clustering capabilities to provide orchestration layer for Perper Functions. Perper Functions is built on top of Azure Functions as Azure Functions Extension and serves as main programming environment in Perper.    
+Perper consists of two building blocks: Perper Cluster and Perper Functions. Perper Cluster is built on top of Ignite, utilising its data grid, compute grid and clustering capabilities to provide orchestration layer for Perper Functions. Perper Functions is built on top of Azure Functions as Azure Functions Extension and serves as main programming environment in Perper.    
 
 ## Getting started
 
