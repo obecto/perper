@@ -8,7 +8,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perper.WebJobs.Extensions",
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5EB01B9B-538D-4FC8-8FBC-90409087ED75}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perper.Cluster", "src\Perper.Cluster\Perper.Cluster.csproj", "{D9027F37-D2E8-4667-ADF8-A37EC507EB4F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perper.Fabric", "src\Perper.Fabric\Perper.Fabric.csproj", "{D9027F37-D2E8-4667-ADF8-A37EC507EB4F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNet.FunctionApp", "samples\DotNet.FunctionApp\DotNet.FunctionApp.csproj", "{76B3F8CB-9BB7-43F1-84E4-B421E76E7EDF}"
 EndProject

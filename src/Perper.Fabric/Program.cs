@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Apache.Ignite.Core;
 
-namespace Perper.Cluster
+namespace Perper.Fabric
 {
     static class Program
     {
