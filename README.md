@@ -49,8 +49,6 @@ The way to declare a function and its bindings varies, depending on your project
 
 #### C#
 
-In case of C#, both function source code and binding are declared in a single .cs file.
-
 ```csharp
 using Microsoft.Azure.WebJobs;
 using Perper.WebJobs.Extensions.Bindings;
@@ -73,13 +71,14 @@ namespace PerperFunctionApp
 
 #### Python
 
-Before declaring the function, we have to include Python language bindings for Perper in requirements.txt.
+Before declaring the function, we have to include Python language bindings for Perper in *requirements.txt*:
 
 ```
 azure-functions
 git+git://github.com/obecto/perper.git#subdirectory=python-binding
 ```
-
+---
+*ProcessData/\_\_init\_\_.py*
 ```python
 import logging
 
@@ -91,7 +90,8 @@ def main(context: perper.StreamContex, data: int):
     return data * 10
 
 ```
-
+---
+*ProcessData/function.json*
 ```json
 {
   "scriptFile": "__init__.py",
