@@ -71,14 +71,16 @@ namespace PerperFunctionApp
 
 #### Python
 
-Before declaring the function, we have to include Python language bindings for Perper in *requirements.txt*:
+Before declaring the function, we have to include Python language bindings for Perper in requirements.txt:
 
 ```
 azure-functions
 git+git://github.com/obecto/perper.git#subdirectory=python-binding
 ```
----
-*ProcessData/\_\_init\_\_.py*
+
+
+Function source (ProcessData/\_\_init\_\_.py):
+
 ```python
 import logging
 
@@ -86,12 +88,13 @@ import azure.functions as func
 import perper.functions as perper
 
 
-def main(context: perper.StreamContex, data: int):
+def main(context: perper.StreamContext, data: int):
     return data * 10
 
 ```
----
-*ProcessData/function.json*
+
+
+Function bindings (ProcessData/function.json):
 ```json
 {
   "scriptFile": "__init__.py",
