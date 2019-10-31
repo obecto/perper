@@ -19,16 +19,16 @@ namespace Perper.WebJobs.Extensions.Config
 
         public void Initialize(ExtensionConfigContext context)
         {
-            var bindingAttributeBindingRule = context.AddBindingRule<StreamAttribute>();
-            bindingAttributeBindingRule.BindToValueProvider(delegate(StreamAttribute attribute, Type type)
+            var bindingAttributeBindingRule = context.AddBindingRule<PerperStreamAttribute>();
+            bindingAttributeBindingRule.BindToValueProvider(delegate(PerperStreamAttribute attribute, Type type)
             {
-                var valueBinderType = typeof(StreamValueBinder<>).MakeGenericType(type);
+                var valueBinderType = typeof(PerperStreamValueBinder<>).MakeGenericType(type);
                 var valueBinder = (IValueBinder) Activator.CreateInstance(valueBinderType, attribute);
                 return Task.FromResult(valueBinder);
             });
 
-            var triggerAttributeBindingRule = context.AddBindingRule<StreamTriggerAttribute>();
-            triggerAttributeBindingRule.BindToTrigger<StreamContext>(new StreamTriggerBindingProvider());
+            var triggerAttributeBindingRule = context.AddBindingRule<PerperStreamTriggerAttribute>();
+            triggerAttributeBindingRule.BindToTrigger<IPerperStreamContext<object>>(new PerperStreamTriggerBindingProvider());
         }
     }
 }

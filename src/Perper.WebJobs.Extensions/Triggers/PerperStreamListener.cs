@@ -5,11 +5,11 @@ using Microsoft.Azure.WebJobs.Host.Listeners;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
-    public class StreamListener : IListener
+    public class PerperStreamListener : IListener
     {
         private ITriggeredFunctionExecutor _executor;
 
-        public StreamListener(ITriggeredFunctionExecutor executor)
+        public PerperStreamListener(ITriggeredFunctionExecutor executor)
         {
             _executor = executor;
         }

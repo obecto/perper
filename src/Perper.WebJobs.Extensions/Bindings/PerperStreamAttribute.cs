@@ -5,7 +5,10 @@ namespace Perper.WebJobs.Extensions.Bindings
 {
     [Binding]
     [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue)]
-    public class StreamAttribute : Attribute
+    public class PerperStreamAttribute : Attribute
     {
+        public PerperStreamAttribute(string parameterName = default)
+        {
+        }
     }
 }

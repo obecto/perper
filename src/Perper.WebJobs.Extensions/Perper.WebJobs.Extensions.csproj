@@ -7,11 +7,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Perper.Core\Perper.Core.csproj" />
+      <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.14" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.14" />
+      <ProjectReference Include="..\Ignite.Extensions\Ignite.Extensions.csproj" />
     </ItemGroup>
 
 </Project>

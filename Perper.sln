@@ -2,8 +2,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0C1B132E-1677-46B6-9EF5-B306558045E8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perper.Core", "src\Perper.Core\Perper.Core.csproj", "{9F638F93-E40A-4E3A-9D0F-36906BAE0FA3}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perper.WebJobs.Extensions", "src\Perper.WebJobs.Extensions\Perper.WebJobs.Extensions.csproj", "{9D6B115C-3B6D-4E41-92B0-69AE3EB7926C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5EB01B9B-538D-4FC8-8FBC-90409087ED75}"
@@ -28,25 +26,23 @@ ProjectSection(SolutionItems) = preProject
 	python-binding\azure_functions\perper\perper.py = python-binding\azure_functions\perper\perper.py
 EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ignite.Extensions", "src\Ignite.Extensions\Ignite.Extensions.csproj", "{4F999EBD-26F4-4EF7-B492-7D85583291C5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{9F638F93-E40A-4E3A-9D0F-36906BAE0FA3} = {0C1B132E-1677-46B6-9EF5-B306558045E8}
 		{9D6B115C-3B6D-4E41-92B0-69AE3EB7926C} = {0C1B132E-1677-46B6-9EF5-B306558045E8}
 		{D9027F37-D2E8-4667-ADF8-A37EC507EB4F} = {0C1B132E-1677-46B6-9EF5-B306558045E8}
 		{76B3F8CB-9BB7-43F1-84E4-B421E76E7EDF} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
 		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
 		{03FFA02F-A21C-4751-BAA6-3E0637C07C2A} = {143D0949-8EB2-481A-A7C0-287192D24967}
 		{694FED80-7F4D-4263-AB8E-D5C8DE9F658B} = {03FFA02F-A21C-4751-BAA6-3E0637C07C2A}
+		{4F999EBD-26F4-4EF7-B492-7D85583291C5} = {0C1B132E-1677-46B6-9EF5-B306558045E8}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{9F638F93-E40A-4E3A-9D0F-36906BAE0FA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9F638F93-E40A-4E3A-9D0F-36906BAE0FA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9F638F93-E40A-4E3A-9D0F-36906BAE0FA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9F638F93-E40A-4E3A-9D0F-36906BAE0FA3}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9D6B115C-3B6D-4E41-92B0-69AE3EB7926C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9D6B115C-3B6D-4E41-92B0-69AE3EB7926C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9D6B115C-3B6D-4E41-92B0-69AE3EB7926C}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -63,5 +59,9 @@ Global
 		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

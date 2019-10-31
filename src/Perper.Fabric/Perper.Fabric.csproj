@@ -3,10 +3,15 @@
     <PropertyGroup>
         <TargetFramework>netcoreapp3.0</TargetFramework>
         <OutputType>Exe</OutputType>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Perper.Core\Perper.Core.csproj" />
+      <PackageReference Include="System.IO.Pipelines" Version="4.7.0-preview1.19504.10" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Ignite.Extensions\Ignite.Extensions.csproj" />
     </ItemGroup>
 
 </Project>

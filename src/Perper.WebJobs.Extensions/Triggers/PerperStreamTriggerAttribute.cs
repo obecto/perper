@@ -5,7 +5,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 {
     [Binding]
     [AttributeUsage(AttributeTargets.Parameter)]
-    public class StreamTriggerAttribute : Attribute
+    public class PerperStreamTriggerAttribute : Attribute
     {
         
     }

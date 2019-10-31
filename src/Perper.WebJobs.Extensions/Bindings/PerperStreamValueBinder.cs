@@ -5,13 +5,13 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 
 namespace Perper.WebJobs.Extensions.Bindings
 {
-    public class StreamValueBinder<T> : IValueBinder where T : class
+    public class PerperStreamValueBinder<T> : IValueBinder where T : class
     {
         public Type Type => typeof(T);
 
-        public StreamValueBinder(StreamAttribute attribute)
+        public PerperStreamValueBinder(PerperStreamAttribute attribute)
         {
-
+            
         }
 
         public Task<object> GetValueAsync()

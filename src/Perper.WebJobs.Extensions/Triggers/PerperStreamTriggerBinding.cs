@@ -9,7 +9,7 @@ using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
-    public class StreamTriggerBinding : ITriggerBinding
+    public class PerperStreamTriggerBinding : ITriggerBinding
     {
         public Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
@@ -18,7 +18,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public Task<IListener> CreateListenerAsync(ListenerFactoryContext context)
         {
-            return Task.FromResult<IListener>(new StreamListener(context.Executor));
+            return Task.FromResult<IListener>(new PerperStreamListener(context.Executor));
         }
 
         public ParameterDescriptor ToParameterDescriptor()
@@ -26,7 +26,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             return new ParameterDescriptor();
         }
 
-        public Type TriggerValueType => typeof(StreamContext);
+        public Type TriggerValueType => typeof(IPerperStreamContext<object>);
         public IReadOnlyDictionary<string, Type> BindingDataContract { get; } = new Dictionary<string, Type>();
     }
 }
