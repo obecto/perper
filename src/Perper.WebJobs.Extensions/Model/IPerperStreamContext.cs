@@ -1,10 +1,10 @@
+using System.Threading.Tasks;
+
 namespace Perper.WebJobs.Extensions.Model
 {
-    public interface IPerperStreamContext<out TState>
+    public interface IPerperStreamContext
     {
-        TState State { get; }
-
-        IPerperStream<TOut> CallStreamFunction<TOut>(string funcName, object parameters);
-        IPerperStream<TOut> CallStreamFunction<TOut>(string funcName, object parameters, IPerperStream<object> affinity);
+        Task CallStreamAction(string funcName, object parameters);
+        Task<IPerperStreamHandle> CallStreamFunction(string funcName, object parameters);
     }
 }

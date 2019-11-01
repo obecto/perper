@@ -7,6 +7,5 @@ namespace Perper.WebJobs.Extensions.Triggers
     [AttributeUsage(AttributeTargets.Parameter)]
     public class PerperStreamTriggerAttribute : Attribute
     {
-        
     }
 }

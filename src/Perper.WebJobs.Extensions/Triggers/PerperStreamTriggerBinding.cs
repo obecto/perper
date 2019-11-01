@@ -18,7 +18,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public Task<IListener> CreateListenerAsync(ListenerFactoryContext context)
         {
-            return Task.FromResult<IListener>(new PerperStreamListener(context.Executor));
+            return Task.FromResult<IListener>(new PerperStreamListener(context.Descriptor.ShortName, context.Executor));
         }
 
         public ParameterDescriptor ToParameterDescriptor()
@@ -26,7 +26,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             return new ParameterDescriptor();
         }
 
-        public Type TriggerValueType => typeof(IPerperStreamContext<object>);
+        public Type TriggerValueType => typeof(IPerperStreamContext);
         public IReadOnlyDictionary<string, Type> BindingDataContract { get; } = new Dictionary<string, Type>();
     }
 }

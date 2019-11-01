@@ -28,14 +28,16 @@ namespace Perper.Fabric.Services
 
         private readonly string _functionName;
         private readonly IEnumerable<Stream> _inputs;
+        private readonly IBinaryObject _parameters;
         
         private PipeReader _pipeReader;
         private PipeWriter _pipeWriter;
 
-        public StreamService(string functionName, IEnumerable<Stream> inputs)
+        public StreamService(string functionName, IEnumerable<Stream> inputs, IBinaryObject parameters)
         {
             _functionName = functionName;
             _inputs = inputs;
+            _parameters = parameters;
         }
 
         public void Init(IServiceContext context)
@@ -50,13 +52,20 @@ namespace Perper.Fabric.Services
 
         public void Execute(IServiceContext context)
         {
-            Task.WhenAll(_inputs.Select(Engage).Union(new[] {ProcessResult()}));
+            Task.WhenAll(new[] {Invoke(), ProcessResult()}.Union(_inputs.Select(Engage)));
         }
 
         public void Cancel(IServiceContext context)
         {
         }
 
+        private async Task Invoke()
+        {
+            var data = _ignite.GetBinary().GetBytesFromBinaryObject(_parameters);
+            await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(data));
+        }
+        
+        
         private async Task Engage(Stream stream)
         {
             await foreach (var items in stream.Listen())

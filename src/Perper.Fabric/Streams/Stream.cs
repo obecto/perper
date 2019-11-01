@@ -8,6 +8,7 @@ using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Cache.Event;
 using Apache.Ignite.Core.Cache.Query.Continuous;
+using Apache.Ignite.Core.Client;
 using Perper.Fabric.Services;
 
 namespace Perper.Fabric.Streams
@@ -44,7 +45,7 @@ namespace Perper.Fabric.Streams
                         inputs.Add(_streamsCache.GetStream(field));
                     }
                 }
-                
+
                 _streamService = new StreamService(_name, inputs);
                 _ignite.GetServices().DeployNodeSingleton(_name, _streamService);
             }

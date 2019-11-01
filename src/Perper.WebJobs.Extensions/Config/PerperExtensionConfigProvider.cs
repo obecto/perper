@@ -28,7 +28,7 @@ namespace Perper.WebJobs.Extensions.Config
             });
 
             var triggerAttributeBindingRule = context.AddBindingRule<PerperStreamTriggerAttribute>();
-            triggerAttributeBindingRule.BindToTrigger<IPerperStreamContext<object>>(new PerperStreamTriggerBindingProvider());
+            triggerAttributeBindingRule.BindToTrigger<IPerperStreamContext>(new PerperStreamTriggerBindingProvider());
         }
     }
 }

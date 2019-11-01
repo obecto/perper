@@ -1,8 +1,4 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
-using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Triggers;
 
@@ -11,17 +7,11 @@ namespace DotNet.FunctionApp
     public static class Launcher
     {
         [FunctionName("Launcher")]
-        public static async Task Launch([PerperStreamTrigger] IPerperStreamContext<string> context, CancellationToken cancellationToken = default)
+        public static void Run([PerperStreamTrigger] IPerperStreamContext context)
         {
-            await Task.Delay(1, cancellationToken);
-        }
-
-        [FunctionName("GenerateData")]
-        public static async Task GenerateData([PerperStreamTrigger] IPerperStreamContext<string> context, 
-            [PerperStream("data")] IPerperStream<string> data,
-            [PerperStream] IAsyncCollector<string> output)
-        {
-            await output.AddAsync("Hello");
+            var generator = context.CallStreamFunction("Generator", new {count = 100});
+            var processor = context.CallStreamFunction("Processor", new {generator, multiplier = 10});
+            context.CallStreamAction("Consumer", new {processor});
         }
     }
 }
