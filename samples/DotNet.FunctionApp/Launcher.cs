@@ -9,8 +9,8 @@ namespace DotNet.FunctionApp
         [FunctionName("Launcher")]
         public static void Run([PerperStreamTrigger] IPerperStreamContext context)
         {
-            var generator = context.CallStreamFunction("Generator", new {count = 100});
-            var processor = context.CallStreamFunction("Processor", new {generator, multiplier = 10});
+            var generator = context.CallStreamFunction<int>("Generator", new {count = 100});
+            var processor = context.CallStreamFunction<int>("Processor", new {generator, multiplier = 10});
             context.CallStreamAction("Consumer", new {processor});
         }
     }

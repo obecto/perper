@@ -1,63 +1,56 @@
 using System;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
-using Microsoft.Azure.WebJobs;
+using Ignite.Extensions;
 using Perper.WebJobs.Extensions.Model;
+using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
     public class PerperStreamContext : IPerperStreamContext
     {
-        private readonly IAsyncCollector<IBinaryObject> _output;
+        private readonly PerperFabricOutput _output;
         private readonly IBinary _binary;
 
-        public PerperStreamContext(IAsyncCollector<IBinaryObject> output, IBinary binary)
+        public PerperStreamContext(PerperFabricOutput output, IBinary binary)
         {
             _output = output;
             _binary = binary;
         }
 
-        public async Task CallStreamAction(string funcName, object parameters)
+        public async Task CallStreamAction(string actionName, object parameters)
         {
-            await _output.AddAsync(CreateStreamBinaryObject(funcName, parameters, "action"));
+            await _output.AddAsync(CreateBinaryObject(actionName, parameters));
         }
 
-        public async Task<IPerperStreamHandle> CallStreamFunction(string funcName, object parameters)
+        public async Task<IPerperStreamHandle> CallStreamFunction<T>(string functionName, object parameters)
         {
-            await _output.AddAsync(CreateStreamBinaryObject(funcName, parameters, "function"));
-            return new PerperStreamHandleImpl(funcName);
+            await _output.AddAsync(CreateBinaryObject(functionName, parameters));
+            return new PerperStreamHandle(functionName, typeof(T));
         }
 
-        private IBinaryObject CreateStreamBinaryObject(string funcName, object parameters, string type)
+        private IBinaryObject CreateBinaryObject(string cacheName, object parameters, Type cacheType = default)
         {
-            var builder = _binary.GetBuilder("Perper.Stream");
-            builder.SetStringField("funcName", funcName);
-            builder.SetStringField("type", type);
+            var cacheObjectBuilder = cacheType == default
+                ? _binary.GetCacheObjectBuilder(cacheName)
+                : _binary.GetCacheObjectBuilder(cacheName, cacheType);
 
             var properties = parameters.GetType().GetProperties();
             foreach (var propertyInfo in properties)
             {
-                if (propertyInfo.PropertyType == typeof(IPerperStreamHandle))
+                var propertyValue = propertyInfo.GetValue(properties);
+                if (propertyValue is PerperStreamHandle streamHandle)
                 {
-                    var (streamReferenceName) = (PerperStreamHandleImpl) propertyInfo.GetValue(parameters);
-                    var streamReferenceBuilder = _binary.GetBuilder("Perper.StreamReference");
-                    streamReferenceBuilder.SetStringField("funcName", streamReferenceName);
-                    builder.SetField(propertyInfo.Name, streamReferenceBuilder.Build());
+                    cacheObjectBuilder.SetField(propertyInfo.Name,
+                        _binary.GetCacheObjectBuilder(streamHandle.CacheName, streamHandle.CacheType).Build());
                 }
                 else
                 {
-                    builder.SetField(propertyInfo.Name, propertyInfo.PropertyType);
+                    cacheObjectBuilder.SetField(propertyInfo.Name, propertyValue);
                 }
             }
 
-            return builder.Build();
-        }
-
-        private class PerperStreamHandleImpl : Tuple<string>, IPerperStreamHandle
-        {
-            public PerperStreamHandleImpl(string funcName) : base(funcName)
-            {
-            }
+            return cacheObjectBuilder.Build();
         }
     }
 }

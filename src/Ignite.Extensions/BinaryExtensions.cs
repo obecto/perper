@@ -18,5 +18,23 @@ namespace Ignite.Extensions
             //TODO: handle incomplete bytes chunks
             throw new NotImplementedException();
         }
+
+        public static IBinaryObjectBuilder GetCacheObjectBuilder(this IBinary binary, string cacheName)
+        {
+            
+            return binary.GetBuilder($"Ignite.Extensions.Cache.{cacheName}");
+        }
+        
+        public static IBinaryObjectBuilder GetCacheObjectBuilder(this IBinary binary, string cacheName,
+            Type cacheType)
+        {
+            
+            return binary.GetBuilder($"Ignite.Extensions.Cache.{cacheName}<{cacheType}>");
+        }
+
+        public static bool TryParseCacheObjectTypeName(this IBinaryObject binaryObject, out string cacheName, out Type cacheType)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

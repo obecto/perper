@@ -46,7 +46,7 @@ namespace Perper.Fabric.Streams
                     }
                 }
 
-                _streamService = new StreamService(_name, inputs);
+                _streamService = new StreamService(_name, inputs, _parameters);
                 _ignite.GetServices().DeployNodeSingleton(_name, _streamService);
             }
 

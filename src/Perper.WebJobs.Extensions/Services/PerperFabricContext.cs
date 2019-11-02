@@ -8,12 +8,17 @@ namespace Perper.WebJobs.Extensions.Services
 {
     public class PerperFabricContext
     {
-        public PerperFabricOutput GetOutput(string funcName)
+        public IBinaryObject GetBinaryObject(string cacheName)
         {
-            throw  new NotImplementedException();
+            throw new NotImplementedException();
+        }
+        
+        public PerperFabricOutput GetOutput(string cacheName)
+        {
+            throw new NotImplementedException();
         }
 
-        public PerperFabricInput GetInput(string funcName)
+        public PerperFabricInput GetInput(string cacheName)
         {
             throw new NotImplementedException();
         }

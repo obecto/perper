@@ -9,7 +9,7 @@ namespace DotNet.FunctionApp
     public static class Processor
     {
         [FunctionName("Processor")]
-        public static async Task Run([PerperStreamTrigger] object state,
+        public static async Task Run([PerperStreamTrigger] IPerperStreamContext context,
             [PerperStream("generator")] IPerperStream<int> generator,
             [PerperStream("multiplier")] int multiplier,
             [PerperStream] IAsyncCollector<int> output

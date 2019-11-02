@@ -8,8 +8,8 @@ namespace Perper.WebJobs.Extensions.Bindings
 {
     public class PerperStreamAsyncCollector<T> : IAsyncCollector<T>
     {
-        private PerperFabricOutput _output;
-        private IBinary _binary;
+        private readonly PerperFabricOutput _output;
+        private readonly IBinary _binary;
 
         public PerperStreamAsyncCollector(PerperFabricOutput output, IBinary binary)
         {

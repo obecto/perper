@@ -8,7 +8,7 @@ namespace DotNet.FunctionApp
     public static class Consumer
     {
         [FunctionName("Consumer")]
-        public static void Run([PerperStreamTrigger] object state,
+        public static void Run([PerperStreamTrigger] IPerperStreamContext context,
             [PerperStream("processor")] IPerperStream<int> processor)
         {
         }
