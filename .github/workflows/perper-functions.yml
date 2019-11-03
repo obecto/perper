@@ -3,7 +3,7 @@ name: Perper Functions
 on:
   push:
     paths: 
-      - './src/Perper.WebJobs.Extensions/**/*.*'
+      - 'src/Perper.WebJobs.Extensions/**/*.*'
 
 jobs:
   build:
