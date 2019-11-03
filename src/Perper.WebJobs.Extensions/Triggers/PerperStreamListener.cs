@@ -8,6 +8,7 @@ using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
+    //TODO: Improve cancellation token handling
     public class PerperStreamListener : IListener
     {
         private readonly string _cacheName;
