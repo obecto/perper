@@ -25,32 +25,38 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public async Task<IPerperStreamHandle> CallStreamFunction<T>(string functionName, object parameters)
         {
-            await _output.AddAsync(CreateBinaryObject(functionName, parameters));
+            await _output.AddAsync(CreateBinaryObject(functionName, parameters, typeof(T)));
             return new PerperStreamHandle(functionName, typeof(T));
         }
 
-        private IBinaryObject CreateBinaryObject(string cacheName, object parameters, Type cacheType = default)
+        private IBinaryObject CreateBinaryObject(string cacheName, object parameters)
         {
-            var cacheObjectBuilder = cacheType == default
-                ? _binary.GetCacheObjectBuilder(cacheName)
-                : _binary.GetCacheObjectBuilder(cacheName, cacheType);
+            return CreateBinaryObject(_binary.GetCacheObjectBuilder(cacheName), parameters);
+        }
 
+        private IBinaryObject CreateBinaryObject(string cacheName, object parameters, Type cacheType)
+        {
+            return CreateBinaryObject(_binary.GetCacheObjectBuilder(cacheName, cacheType), parameters);
+        }
+
+        private IBinaryObject CreateBinaryObject(IBinaryObjectBuilder builder, object parameters)
+        {
             var properties = parameters.GetType().GetProperties();
             foreach (var propertyInfo in properties)
             {
                 var propertyValue = propertyInfo.GetValue(properties);
                 if (propertyValue is PerperStreamHandle streamHandle)
                 {
-                    cacheObjectBuilder.SetField(propertyInfo.Name,
+                    builder.SetField(propertyInfo.Name,
                         _binary.GetCacheObjectBuilder(streamHandle.CacheName, streamHandle.CacheType).Build());
                 }
                 else
                 {
-                    cacheObjectBuilder.SetField(propertyInfo.Name, propertyValue);
+                    builder.SetField(propertyInfo.Name, propertyValue);
                 }
             }
 
-            return cacheObjectBuilder.Build();
+            return builder.Build();
         }
     }
 }

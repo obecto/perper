@@ -21,15 +21,12 @@ namespace Perper.Fabric.Services
     [Serializable]
     public class StreamService : IService
     {
-        
-#pragma warning disable 649
         [InstanceResource] private readonly IIgnite _ignite;
-#pragma warning restore 649
 
         private readonly string _functionName;
         private readonly IEnumerable<Stream> _inputs;
         private readonly IBinaryObject _parameters;
-        
+
         private PipeReader _pipeReader;
         private PipeWriter _pipeWriter;
 
@@ -64,8 +61,8 @@ namespace Perper.Fabric.Services
             var data = _ignite.GetBinary().GetBytesFromBinaryObject(_parameters);
             await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(data));
         }
-        
-        
+
+
         private async Task Engage(Stream stream)
         {
             await foreach (var items in stream.Listen())
@@ -81,7 +78,7 @@ namespace Perper.Fabric.Services
         private async Task ProcessResult(CancellationToken cancellationToken = default)
         {
             using var outputStreamer = _ignite.GetDataStreamer<long, IBinaryObject>(_functionName);
-         
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 var result = await _pipeReader.ReadAsync(cancellationToken);

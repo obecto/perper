@@ -30,7 +30,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            var input = _context.GetInput(_cacheName);
+            var input = await _context.GetInput(_cacheName);
             await input.Listen(
                 async o =>
                 {
@@ -38,6 +38,7 @@ namespace Perper.WebJobs.Extensions.Triggers
                         new TriggeredFunctionData
                             {TriggerValue = new PerperStreamContext(_context.GetOutput(_cacheName), _binary)},
                         CancellationToken.None);
+                    //TODO: Handle function execution completion
                 }, cancellationToken);
         }
 

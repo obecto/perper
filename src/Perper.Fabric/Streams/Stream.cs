@@ -8,7 +8,6 @@ using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Cache.Event;
 using Apache.Ignite.Core.Cache.Query.Continuous;
-using Apache.Ignite.Core.Client;
 using Perper.Fabric.Services;
 
 namespace Perper.Fabric.Streams

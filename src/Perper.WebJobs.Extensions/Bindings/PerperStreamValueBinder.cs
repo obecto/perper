@@ -22,20 +22,21 @@ namespace Perper.WebJobs.Extensions.Bindings
             Type = type;
         }
 
-        public Task<object> GetValueAsync()
+        public async Task<object> GetValueAsync()
         {
+            var input = await _context.GetInput(_attribute.FunctionName);
+
             var taskCompletionSource = new TaskCompletionSource<object>();
             if (Type == typeof(IPerperStream<>))
             {
                 var perperStreamType = typeof(PerperStream<>).MakeGenericType(Type.GenericTypeArguments[0]);
-                var perperStream = Activator.CreateInstance(perperStreamType,
-                    _context.GetInput(_attribute.FunctionName), _attribute.ParameterName);
+                var perperStream = Activator.CreateInstance(perperStreamType, input, _attribute.ParameterName);
                 taskCompletionSource.SetResult(perperStream);
             }
             else
             {
-                var binaryObject = _context.GetBinaryObject(_attribute.FunctionName);
-                taskCompletionSource.SetResult(binaryObject.GetField<object>(_attribute.ParameterName));
+                var activationObject = input.GetActivationObject();
+                taskCompletionSource.SetResult(activationObject.GetField<object>(_attribute.ParameterName));
             }
 
             return taskCompletionSource.Task;
@@ -43,6 +44,7 @@ namespace Perper.WebJobs.Extensions.Bindings
 
         public Task SetValueAsync(object value, CancellationToken cancellationToken)
         {
+            //TODO: Handle return value?
             throw new NotImplementedException();
         }
         
