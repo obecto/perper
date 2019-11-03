@@ -1,4 +1,4 @@
-name: .NET Core
+name: Perper Functions
 
 on:
   push:
