@@ -11,6 +11,7 @@ using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
+    //TODO: Add support for binding parameters to reduce repetition across attributes (function name)
     public class PerperStreamTriggerBinding : ITriggerBinding
     {
         private readonly PerperFabricContext _fabricContext;
