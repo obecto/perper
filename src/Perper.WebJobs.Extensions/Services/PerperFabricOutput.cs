@@ -1,3 +1,4 @@
+using System.IO;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -11,9 +12,9 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly PipeWriter _writer;
         private readonly IBinary _binary;
         
-        public PerperFabricOutput(NetworkStream networkStream, IBinary binary)
+        public PerperFabricOutput(Stream stream, IBinary binary)
         {
-            _writer = PipeWriter.Create(networkStream);
+            _writer = PipeWriter.Create(stream);
             _binary = binary;
         }
 

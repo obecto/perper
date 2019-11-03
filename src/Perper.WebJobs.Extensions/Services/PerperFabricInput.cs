@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.IO;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Threading;
@@ -16,9 +17,9 @@ namespace Perper.WebJobs.Extensions.Services
 
         private IBinaryObject _activationObject;
 
-        public PerperFabricInput(NetworkStream networkStream, IBinary binary)
+        public PerperFabricInput(Stream stream, IBinary binary)
         {
-            _reader = PipeReader.Create(networkStream);
+            _reader = PipeReader.Create(stream);
             _binary = binary;
         }
 
