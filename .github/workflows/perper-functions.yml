@@ -7,15 +7,21 @@ on:
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
-
+    runs-on: windows-latest
+    
     steps:
-    - uses: actions/checkout@v1
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: 2.2.108
-    - name: Build with dotnet
-      working-directory: ./src/Perper.WebJobs.Extensions
-      run: dotnet build --configuration Release
+      - uses: actions/checkout@v1
+
+      - name: Build with dotnet
+        working-directory: ./src/Perper.WebJobs.Extensions
+        run: dotnet build --configuration Release  
+
+      - name: Install NuGet client
+        uses: warrenbuckley/Setup-Nuget@v1
+
+      - name: Add private GitHub registry to NuGet
+        run: nuget source Add -Name "GitHub" -Source "https://nuget.pkg.github.com/obecto/index.json" -Username obecto -Password ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push generated package to GitHub registry
+        working-directory: ./src/Perper.WebJobs.Extensions/bin/Release
+        run: nuget push *.nupkg -Source "GitHub" -SkipDuplicate
