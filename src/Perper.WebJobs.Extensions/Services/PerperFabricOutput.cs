@@ -1,6 +1,5 @@
 using System.IO;
 using System.IO.Pipelines;
-using System.Net.Sockets;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
 using Ignite.Extensions;
