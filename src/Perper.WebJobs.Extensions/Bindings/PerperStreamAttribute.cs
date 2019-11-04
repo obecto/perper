@@ -10,7 +10,7 @@ namespace Perper.WebJobs.Extensions.Bindings
         public string FunctionName { get; }
         public string ParameterName { get; }
 
-        public PerperStreamAttribute(string functionName = default, string parameterName = "output")
+        public PerperStreamAttribute(string functionName = "", string parameterName = "output")
         {
             FunctionName = functionName;
             ParameterName = parameterName;

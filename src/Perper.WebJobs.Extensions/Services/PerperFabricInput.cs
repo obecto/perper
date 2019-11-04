@@ -23,7 +23,7 @@ namespace Perper.WebJobs.Extensions.Services
             _binary = binary;
         }
 
-        public async Task Listen(Func<IBinaryObject, Task> listener, CancellationToken cancellationToken = default)
+        public async Task Listen(Func<IBinaryObject, Task> listener, CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {

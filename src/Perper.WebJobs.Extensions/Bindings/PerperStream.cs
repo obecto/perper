@@ -18,7 +18,7 @@ namespace Perper.WebJobs.Extensions.Bindings
             _parameterName = parameterName;
         }
 
-        public async Task Listen(Action<T> listener, CancellationToken cancellationToken = default)
+        public async Task Listen(Action<T> listener, CancellationToken cancellationToken)
         {
             await _input.Listen(o =>
                 {

@@ -6,6 +6,6 @@ namespace Perper.WebJobs.Extensions.Model
 {
     public interface IPerperStream<out T>
     {
-        Task Listen(Action<T> listener, CancellationToken cancellationToken = default);
+        Task Listen(Action<T> listener, CancellationToken cancellationToken);
     }
 }
