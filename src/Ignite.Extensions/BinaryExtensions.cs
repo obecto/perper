@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -13,14 +14,15 @@ namespace Ignite.Extensions
             Enum.Parse(typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryMode"), "ForceBinary");
 
         private static readonly PropertyInfo MarshallerProperty =
-            typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.Binary").GetProperty("Marshaller")!;
+            typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.Binary").GetProperty("Marshaller");
 
+        [SuppressMessage("ReSharper", "PossibleNullReferenceException")] 
         private static readonly MethodInfo UnmarshalMethod =
             typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.Marshaller").GetMethod("Unmarshal")
-                ?.MakeGenericMethod(typeof(IBinaryObject))!;
+                .MakeGenericMethod(typeof(IBinaryObject));
 
         private static readonly PropertyInfo DataProperty =
-            typeof(IBinaryObject).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryObject").GetProperty("Data")!;
+            typeof(IBinaryObject).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryObject").GetProperty("Data");
 
         private const string CacheObjectTypeNamePrefix = "Ignite.Extensions.Cache.";
 
