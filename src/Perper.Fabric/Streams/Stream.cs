@@ -8,56 +8,69 @@ using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Cache.Event;
 using Apache.Ignite.Core.Cache.Query.Continuous;
-using Perper.Fabric.Services;
+using Ignite.Extensions;
 
 namespace Perper.Fabric.Streams
 {
+    //TODO: Change CacheObject to be Lazy type (Stream instances can be instantiated many times / simultaneously)
     public class Stream
     {
-        private readonly string _name;
+        public string CacheName { get; }
+        public string CacheType { get; }
+        public IBinaryObject CacheObject { get; }
+
         private readonly IIgnite _ignite;
-        private readonly StreamsCache _streamsCache;
-        
-        private readonly IBinaryObject _parameters;
-        private StreamService _streamService;
-        
-        public Stream(string name, IIgnite ignite, StreamsCache streamsCache)
+
+        public Stream(string cacheName, string cacheType, IBinaryObject cacheObject, IIgnite ignite)
         {
-            _name = name;
-            _ignite = ignite;
-            _streamsCache = streamsCache;
+            CacheName = cacheName;
+            CacheType = cacheType;
+            CacheObject = cacheObject;
             
-            var cache = ignite.GetCache<string, IBinaryObject>("streams");
-            _parameters = cache[name];
+            _ignite = ignite;
         }
 
-        public async IAsyncEnumerable<IEnumerable<IBinaryObject>> Listen([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public Stream CreateChildStream(IBinaryObject childCacheObject)
         {
-            var streamCache = _ignite.GetOrCreateCache<long, IBinaryObject>(_name);
-            if (_streamService == null)
-            {
-                var inputs = new List<Stream>();
-                foreach (var field in _parameters.GetBinaryType().Fields)
-                {
-                    if (_parameters.GetBinaryType().GetFieldTypeName(field).Contains("IPerperStream"))
-                    {
-                        inputs.Add(_streamsCache.GetStream(field));
-                    }
-                }
+            var (childCacheName, childCacheType) = childCacheObject.ParseCacheObjectTypeName();
+            
+            var cacheObjects = _ignite.GetCache<string, IBinaryObject>("cacheObjects");
+            cacheObjects[childCacheName] = childCacheObject;
+            
+            return new Stream(childCacheName, childCacheType, childCacheObject, _ignite);
+        }
 
-                _streamService = new StreamService(_name, inputs, _parameters);
-                _ignite.GetServices().DeployNodeSingleton(_name, _streamService);
+        public IEnumerable<Tuple<string, Stream>> GetInputStreams()
+        {
+            var cacheObjects = _ignite.GetCache<string, IBinaryObject>("cacheObjects");
+            foreach (var (refCacheParam, refCacheName, refCacheType) in CacheObject.SelectReferencedCacheObjects())
+            {
+                yield return Tuple.Create(refCacheParam,
+                    new Stream(refCacheName, refCacheType, cacheObjects[refCacheName], _ignite));
+            }
+        }
+
+        public async IAsyncEnumerable<IEnumerable<IBinaryObject>> Listen(
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var service = _ignite.GetServices().GetService<StreamService>(CacheName);
+            if (service == null)
+            {
+                service = new StreamService(this, _ignite);
+                _ignite.GetServices().DeployNodeSingleton(CacheName, service);
             }
 
-            //TODO: Optimize the use of query handles
+            var cache = _ignite.GetOrCreateCache<long, IBinaryObject>(CacheName);
             while (!cancellationToken.IsCancellationRequested)
             {
                 var queryTask = new TaskCompletionSource<IEnumerable<IBinaryObject>>();
                 var listener = new LocalListener(events => queryTask.SetResult(events.Select(e => e.Value)));
-                using (streamCache.QueryContinuous(new ContinuousQuery<long, IBinaryObject>(listener)))
+
+                //TODO: Optimize the use of query handles
+                using (cache.QueryContinuous(new ContinuousQuery<long, IBinaryObject>(listener)))
                 {
                     yield return await queryTask.Task;
-                }    
+                }
             }
         }
 
@@ -69,7 +82,7 @@ namespace Perper.Fabric.Streams
             {
                 _callback = callback;
             }
-            
+
             public void OnEvent(IEnumerable<ICacheEntryEvent<long, IBinaryObject>> events)
             {
                 _callback(events);

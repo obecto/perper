@@ -28,8 +28,8 @@ namespace Perper.WebJobs.Extensions.Services
         {
             if (_inputs.TryGetValue(cacheName, out var result)) return result;
 
-            var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            listenSocket.Bind(new UnixEndPoint(cacheName));
+            var listenSocket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
+            listenSocket.Bind(new UnixDomainSocketEndPoint($"/tmp/{cacheName}.sock"));
             listenSocket.Listen(120);
 
             var socket = await listenSocket.AcceptAsync();
@@ -50,11 +50,11 @@ namespace Perper.WebJobs.Extensions.Services
             return result;
         }
 
-        private class UnixEndPoint : EndPoint
+        private class UnixDomainSocketEndPoint : EndPoint
         {
             private readonly string _filename;
 
-            public UnixEndPoint(string filename)
+            public UnixDomainSocketEndPoint(string filename)
             {
                 _filename = filename;
             }
@@ -77,7 +77,7 @@ namespace Perper.WebJobs.Extensions.Services
                 }
 
                 var name = Encoding.UTF8.GetString(bytes, 0, size);
-                return new UnixEndPoint(name);
+                return new UnixDomainSocketEndPoint(name);
             }
 
             public override SocketAddress Serialize()
@@ -106,7 +106,7 @@ namespace Perper.WebJobs.Extensions.Services
 
             public override bool Equals(object o)
             {
-                if (!(o is UnixEndPoint other))
+                if (!(o is UnixDomainSocketEndPoint other))
                     return false;
 
                 return other._filename == _filename;

@@ -1,40 +1,79 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text.RegularExpressions;
 using Apache.Ignite.Core.Binary;
 
 namespace Ignite.Extensions
 {
     public static class BinaryExtensions
     {
+        private static readonly object ForceBinaryMode =
+            Enum.Parse(typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryMode"), "ForceBinary");
+
+        private static readonly PropertyInfo MarshallerProperty =
+            typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.Binary").GetProperty("Marshaller")!;
+
+        private static readonly MethodInfo UnmarshalMethod =
+            typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.Marshaller").GetMethod("Unmarshal")
+                ?.MakeGenericMethod(typeof(IBinaryObject))!;
+
+        private static readonly PropertyInfo DataProperty =
+            typeof(IBinaryObject).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryObject").GetProperty("Data")!;
+
+        private const string CacheObjectTypeNamePrefix = "Ignite.Extensions.Cache.";
+
         public static IBinaryObject GetBinaryObjectFromBytes(this IBinary binary, byte[] value)
         {
             //TODO: message size delimited and change to return type to IEnumerable
             //TODO: handle incomplete bytes chunks
-            throw new NotImplementedException();
+
+            return (IBinaryObject) UnmarshalMethod.Invoke(MarshallerProperty.GetValue(binary),
+                new[] {value, ForceBinaryMode});
         }
-        
+
         public static byte[] GetBytesFromBinaryObject(this IBinary binary, IBinaryObject value)
         {
             //TODO: message size delimited and change the input type to IEnumerable
-            //TODO: handle incomplete bytes chunks
-            throw new NotImplementedException();
+            return (byte[]) DataProperty.GetValue(value);
         }
 
         public static IBinaryObjectBuilder GetCacheObjectBuilder(this IBinary binary, string cacheName)
         {
-            
-            return binary.GetBuilder($"Ignite.Extensions.Cache.{cacheName}");
+            return binary.GetBuilder($"{CacheObjectTypeNamePrefix}{cacheName}");
         }
-        
+
         public static IBinaryObjectBuilder GetCacheObjectBuilder(this IBinary binary, string cacheName,
             Type cacheType)
         {
-            
-            return binary.GetBuilder($"Ignite.Extensions.Cache.{cacheName}<{cacheType}>");
+            return binary.GetBuilder($"{CacheObjectTypeNamePrefix}{cacheName}<{cacheType}>");
         }
 
-        public static bool TryParseCacheObjectTypeName(this IBinaryObject binaryObject, out string cacheName, out Type cacheType)
+        public static Tuple<string, string> ParseCacheObjectTypeName(this IBinaryObject binaryObject)
         {
-            throw new NotImplementedException();
+            var regex = new Regex($@"{CacheObjectTypeNamePrefix}(.*)(<.*>)?");
+            var match = regex.Match(binaryObject.GetBinaryType().TypeName);
+            var cacheName = match.Groups[0].Value;
+            var cacheType = match.Groups.Count > 1 ? match.Groups[1].Value : null;
+            return Tuple.Create(cacheName, cacheType);
+        }
+
+        public static IEnumerable<Tuple<string, string, string>> SelectReferencedCacheObjects(
+            this IBinaryObject binaryObject)
+        {
+            var cacheObjectReference =
+                new Func<string, Tuple<string, string, string>>(cacheParam =>
+                {
+                    var (cacheName, cacheType) =
+                        binaryObject.GetField<IBinaryObject>(cacheParam).ParseCacheObjectTypeName();
+                    return Tuple.Create(cacheParam, cacheName, cacheType);
+                });
+
+            return
+                from field in binaryObject.GetBinaryType().Fields
+                where binaryObject.GetBinaryType().GetFieldTypeName(field).StartsWith(CacheObjectTypeNamePrefix)
+                select cacheObjectReference(field);
         }
     }
 }

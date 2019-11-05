@@ -1,9 +1,7 @@
 using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Linq;
-using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,35 +10,30 @@ using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Resource;
 using Apache.Ignite.Core.Services;
 using Ignite.Extensions;
-using Perper.Fabric.Streams;
 
-namespace Perper.Fabric.Services
+namespace Perper.Fabric.Streams
 {
     //TODO: Add cancellation tokens
     //TODO: Check binary mode consistency and performance
     [Serializable]
     public class StreamService : IService
     {
-        [InstanceResource] private readonly IIgnite _ignite;
-
-        private readonly string _functionName;
-        private readonly IEnumerable<Stream> _inputs;
-        private readonly IBinaryObject _parameters;
-
+        private readonly Stream _stream;
+        private readonly IIgnite _ignite;
+        
         private PipeReader _pipeReader;
         private PipeWriter _pipeWriter;
-
-        public StreamService(string functionName, IEnumerable<Stream> inputs, IBinaryObject parameters)
+        
+        public StreamService(Stream stream, IIgnite ignite)
         {
-            _functionName = functionName;
-            _inputs = inputs;
-            _parameters = parameters;
+            _stream = stream;
+            _ignite = ignite;
         }
 
         public void Init(IServiceContext context)
         {
-            var clientSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            clientSocket.Connect(new IPEndPoint(IPAddress.Loopback, int.Parse(_functionName)));
+            var clientSocket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
+            clientSocket.Connect(new UnixDomainSocketEndPoint($"/tmp/{_stream.CacheName}.sock"));
 
             var networkStream = new NetworkStream(clientSocket);
             _pipeReader = PipeReader.Create(networkStream);
@@ -49,7 +42,7 @@ namespace Perper.Fabric.Services
 
         public void Execute(IServiceContext context)
         {
-            Task.WhenAll(new[] {Invoke(), ProcessResult()}.Union(_inputs.Select(Engage)));
+            Task.WhenAll(new[] {Invoke(), ProcessResult()}.Union(_stream.GetInputStreams().Select(Engage)));
         }
 
         public void Cancel(IServiceContext context)
@@ -58,18 +51,21 @@ namespace Perper.Fabric.Services
 
         private async Task Invoke()
         {
-            var data = _ignite.GetBinary().GetBytesFromBinaryObject(_parameters);
+            var data = _ignite.GetBinary().GetBytesFromBinaryObject(_stream.CacheObject);
             await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(data));
         }
 
 
-        private async Task Engage(Stream stream)
+        private async Task Engage(Tuple<string, Stream> inputStream)
         {
+            var (parameterName, stream) = inputStream;
             await foreach (var items in stream.Listen())
             {
                 foreach (var item in items)
                 {
-                    var data = _ignite.GetBinary().GetBytesFromBinaryObject(item);
+                    var builder = _ignite.GetBinary().GetBuilder(_stream.CacheObject.GetBinaryType().TypeName);
+                    builder.SetField(parameterName, item);
+                    var data = _ignite.GetBinary().GetBytesFromBinaryObject(builder.Build());
                     await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(data));
                 }
             }
@@ -77,13 +73,25 @@ namespace Perper.Fabric.Services
 
         private async Task ProcessResult(CancellationToken cancellationToken = default)
         {
-            using var outputStreamer = _ignite.GetDataStreamer<long, IBinaryObject>(_functionName);
+            using var outputStreamer = _ignite.GetDataStreamer<long, IBinaryObject>(_stream.CacheName);
 
             while (!cancellationToken.IsCancellationRequested)
             {
                 var result = await _pipeReader.ReadAsync(cancellationToken);
                 var item = _ignite.GetBinary().GetBinaryObjectFromBytes(result.Buffer.ToArray());
-                await outputStreamer.AddData(DateTime.Now.Millisecond, item);
+                if (item.GetBinaryType().TypeName == _stream.CacheType)
+                {
+                    await outputStreamer.AddData(DateTime.Now.Millisecond, item);
+                }
+                else
+                {
+                    var childStream = _stream.CreateChildStream(item);
+                    if (childStream.CacheType != null) continue;
+                    await foreach (var unused in childStream.Listen(cancellationToken))
+                    {
+                        //TODO: Shouldn't enter, consider throwing an exception
+                    }
+                }
             }
         }
     }
