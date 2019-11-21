@@ -22,10 +22,10 @@ namespace Perper.WebJobs.Extensions.Triggers
             _fabricContext = fabricContext;
             _binary = binary;
         }
-        
+
         public Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
-            throw new NotImplementedException();
+            return Task.FromResult<ITriggerData>(new TriggerData(null, new Dictionary<string, object>()));
         }
 
         public Task<IListener> CreateListenerAsync(ListenerFactoryContext context)

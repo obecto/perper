@@ -7,11 +7,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="System.IO.Pipelines" Version="4.7.0-preview1.19504.10" />
+      <ProjectReference Include="..\Ignite.Extensions\Ignite.Extensions.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Ignite.Extensions\Ignite.Extensions.csproj" />
+      <PackageReference Include="System.IO.Pipelines" Version="4.6.0" />
     </ItemGroup>
 
 </Project>

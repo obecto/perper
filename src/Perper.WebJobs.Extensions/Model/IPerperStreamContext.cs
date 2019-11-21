@@ -6,5 +6,6 @@ namespace Perper.WebJobs.Extensions.Model
     {
         Task CallStreamAction(string actionName, object parameters);
         Task<IPerperStreamHandle> CallStreamFunction<T>(string functionName, object parameters);
+        
     }
 }

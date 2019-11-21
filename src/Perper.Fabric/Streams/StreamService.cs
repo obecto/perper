@@ -19,6 +19,8 @@ namespace Perper.Fabric.Streams
     public class StreamService : IService
     {
         private readonly Stream _stream;
+        
+        [InstanceResource]
         private readonly IIgnite _ignite;
         
         private PipeReader _pipeReader;
@@ -33,7 +35,7 @@ namespace Perper.Fabric.Streams
         public void Init(IServiceContext context)
         {
             var clientSocket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
-            clientSocket.Connect(new UnixDomainSocketEndPoint($"/tmp/{_stream.CacheName}.sock"));
+            clientSocket.Connect(new UnixDomainSocketEndPoint($"/tmp/perper_{_stream.CacheName}.sock"));
 
             var networkStream = new NetworkStream(clientSocket);
             _pipeReader = PipeReader.Create(networkStream);

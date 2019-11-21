@@ -10,21 +10,33 @@ namespace Ignite.Extensions
 {
     public static class BinaryExtensions
     {
-        private static readonly object ForceBinaryMode =
-            Enum.Parse(typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryMode"), "ForceBinary");
-
-        private static readonly PropertyInfo MarshallerProperty =
-            typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.Binary").GetProperty("Marshaller");
-
-        [SuppressMessage("ReSharper", "PossibleNullReferenceException")] 
-        private static readonly MethodInfo UnmarshalMethod =
-            typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.Marshaller").GetMethod("Unmarshal")
-                .MakeGenericMethod(typeof(IBinaryObject));
-
-        private static readonly PropertyInfo DataProperty =
-            typeof(IBinaryObject).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryObject").GetProperty("Data");
+        private static readonly object ForceBinaryMode;
+        private static readonly PropertyInfo MarshallerProperty;
+        private static readonly MethodInfo UnmarshalMethod;
+        private static readonly PropertyInfo DataProperty;
 
         private const string CacheObjectTypeNamePrefix = "Ignite.Extensions.Cache.";
+
+        static BinaryExtensions()
+        {
+            ForceBinaryMode =
+                Enum.Parse(typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryMode"),
+                    "ForceBinary");
+            MarshallerProperty =
+                typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.Binary")
+                    .GetProperty("Marshaller", BindingFlags.Instance | BindingFlags.NonPublic);
+            
+            // ReSharper disable once PossibleNullReferenceException
+            UnmarshalMethod = typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.Marshaller").GetMethod(
+                "Unmarshal",
+                new Type[]
+                {
+                    typeof(byte[]), typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryMode")
+                }).MakeGenericMethod(typeof(IBinaryObject));
+            
+            DataProperty = typeof(IBinaryObject).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryObject")
+                .GetProperty("Data");
+        }
 
         public static IBinaryObject GetBinaryObjectFromBytes(this IBinary binary, byte[] value)
         {

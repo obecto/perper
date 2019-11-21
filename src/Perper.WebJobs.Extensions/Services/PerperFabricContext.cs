@@ -29,7 +29,7 @@ namespace Perper.WebJobs.Extensions.Services
             if (_inputs.TryGetValue(cacheName, out var result)) return result;
 
             var listenSocket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
-            listenSocket.Bind(new UnixDomainSocketEndPoint($"/tmp/{cacheName}.sock"));
+            listenSocket.Bind(new UnixDomainSocketEndPoint($"/tmp/perper_{cacheName}.sock"));
             listenSocket.Listen(120);
 
             var socket = await listenSocket.AcceptAsync();

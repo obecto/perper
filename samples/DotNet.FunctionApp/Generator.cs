@@ -9,9 +9,10 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("Generator")]
         public static void Run([PerperStreamTrigger] IPerperStreamContext context,
-            [PerperStream("count")] int count,
+            [PerperStream("count")] IPerperStream<int> countStream,
             [PerperStream] IAsyncCollector<int> output)
         {
+            
         }
     }
 }
