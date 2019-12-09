@@ -1,7 +1,6 @@
-using System;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
-using Ignite.Extensions;
+using Perper.Protocol.Header;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
 
@@ -18,37 +17,29 @@ namespace Perper.WebJobs.Extensions.Triggers
             _binary = binary;
         }
 
-        public async Task CallStreamAction(string actionName, object parameters)
+        public async Task CallStreamAction(string name, object parameters)
         {
-            await _output.AddAsync(CreateBinaryObject(actionName, parameters));
+            await _output.AddAsync(CreateStreamObject(new StreamHeader(name, StreamKind.Sink), parameters));
         }
 
-        public async Task<IPerperStreamHandle> CallStreamFunction<T>(string functionName, object parameters)
+        public async Task<IPerperStreamHandle> CallStreamFunction<T>(string name, object parameters)
         {
-            await _output.AddAsync(CreateBinaryObject(functionName, parameters, typeof(T)));
-            return new PerperStreamHandle(functionName, typeof(T));
+            var header = new StreamHeader(name, StreamKind.Pipe);
+            await _output.AddAsync(CreateStreamObject(header, parameters));
+            return new PerperStreamHandle(header);
         }
 
-        private IBinaryObject CreateBinaryObject(string cacheName, object parameters)
+        private IBinaryObject CreateStreamObject(StreamHeader header, object parameters)
         {
-            return CreateBinaryObject(_binary.GetCacheObjectBuilder(cacheName), parameters);
-        }
+            var builder = _binary.GetBuilder(header.ToString());
 
-        private IBinaryObject CreateBinaryObject(string cacheName, object parameters, Type cacheType)
-        {
-            return CreateBinaryObject(_binary.GetCacheObjectBuilder(cacheName, cacheType), parameters);
-        }
-
-        private IBinaryObject CreateBinaryObject(IBinaryObjectBuilder builder, object parameters)
-        {
             var properties = parameters.GetType().GetProperties();
             foreach (var propertyInfo in properties)
             {
                 var propertyValue = propertyInfo.GetValue(properties);
                 if (propertyValue is PerperStreamHandle streamHandle)
                 {
-                    builder.SetField(propertyInfo.Name,
-                        _binary.GetCacheObjectBuilder(streamHandle.CacheName, streamHandle.CacheType).Build());
+                    builder.SetField(propertyInfo.Name, _binary.GetBuilder(streamHandle.Header.ToString()).Build());
                 }
                 else
                 {

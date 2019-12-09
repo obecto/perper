@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.Azure.WebJobs;
 using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Model;
@@ -9,7 +10,7 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("Consumer")]
         public static void Run([PerperStreamTrigger] IPerperStreamContext context,
-            [PerperStream("processor")] IPerperStream<int> processor)
+            [PerperStream("processor")] IAsyncEnumerable<int> processor)
         {
         }
     }

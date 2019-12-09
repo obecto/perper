@@ -2,16 +2,17 @@
 
     <PropertyGroup>
         <TargetFramework>netcoreapp3.0</TargetFramework>
-        <OutputType>Exe</OutputType>
         <Nullable>enable</Nullable>
+        <OutputType>Exe</OutputType>
+        <LangVersion>8</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Ignite.Extensions\Ignite.Extensions.csproj" />
+      <PackageReference Include="System.IO.Pipelines" Version="4.6.0" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="System.IO.Pipelines" Version="4.6.0" />
+      <ProjectReference Include="..\Perper.Protocol\Perper.Protocol.csproj" />
     </ItemGroup>
 
 </Project>

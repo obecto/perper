@@ -26,7 +26,7 @@ ProjectSection(SolutionItems) = preProject
 	python-binding\azure_functions\perper\perper.py = python-binding\azure_functions\perper\perper.py
 EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ignite.Extensions", "src\Ignite.Extensions\Ignite.Extensions.csproj", "{4F999EBD-26F4-4EF7-B492-7D85583291C5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perper.Protocol", "src\Perper.Protocol\Perper.Protocol.csproj", "{4F999EBD-26F4-4EF7-B492-7D85583291C5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

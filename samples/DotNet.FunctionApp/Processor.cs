@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Perper.WebJobs.Extensions.Bindings;
@@ -10,11 +11,12 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("Processor")]
         public static async Task Run([PerperStreamTrigger] IPerperStreamContext context,
-            [PerperStream("generator")] IPerperStream<int> generator,
+            [PerperStream("generator")] IAsyncEnumerable<int> generator,
             [PerperStream("multiplier")] int multiplier,
             [PerperStream] IAsyncCollector<int> output
         )
         {
+            
             await Task.Delay(1);
         }
     }

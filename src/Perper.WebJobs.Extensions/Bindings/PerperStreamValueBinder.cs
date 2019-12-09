@@ -1,8 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Bindings
@@ -18,7 +18,7 @@ namespace Perper.WebJobs.Extensions.Bindings
         {
             _context = context;
             _attribute = attribute;
-            
+
             Type = type;
         }
 
@@ -26,20 +26,16 @@ namespace Perper.WebJobs.Extensions.Bindings
         {
             var input = await _context.GetInput(_attribute.FunctionName);
 
-            var taskCompletionSource = new TaskCompletionSource<object>();
-            if (Type == typeof(IPerperStream<>))
+            if (Type == typeof(IAsyncEnumerable<>))
             {
-                var perperStreamType = typeof(PerperStream<>).MakeGenericType(Type.GenericTypeArguments[0]);
-                var perperStream = Activator.CreateInstance(perperStreamType, input, _attribute.ParameterName);
-                taskCompletionSource.SetResult(perperStream);
-            }
-            else
-            {
-                var activationObject = input.GetActivationObject();
-                taskCompletionSource.SetResult(activationObject.GetField<object>(_attribute.ParameterName));
+                var streamGeneratorMethod = typeof(PerperFabricInput).GetMethod(nameof(input.GetStream));
+                var streamGenerator = streamGeneratorMethod?.MakeGenericMethod(Type.GenericTypeArguments[0]);
+                var stream = streamGenerator?.Invoke(input, new object[] {_attribute.ParameterName});
+                return stream;
             }
 
-            return taskCompletionSource.Task;
+            var streamObject = await input.GetStreamObject(default);
+            return streamObject.GetField<object>(_attribute.ParameterName);
         }
 
         public Task SetValueAsync(object value, CancellationToken cancellationToken)
@@ -47,7 +43,7 @@ namespace Perper.WebJobs.Extensions.Bindings
             //TODO: Handle return value?
             throw new NotImplementedException();
         }
-        
+
         public string ToInvokeString()
         {
             //TODO: Research usage?

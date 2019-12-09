@@ -2,7 +2,7 @@ using System.IO;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
-using Ignite.Extensions;
+using Perper.Protocol;
 
 namespace Perper.WebJobs.Extensions.Services
 {
@@ -10,7 +10,7 @@ namespace Perper.WebJobs.Extensions.Services
     {
         private readonly PipeWriter _writer;
         private readonly IBinary _binary;
-        
+
         public PerperFabricOutput(Stream stream, IBinary binary)
         {
             _writer = PipeWriter.Create(stream);

@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Model;
@@ -9,10 +12,20 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("Generator")]
         public static void Run([PerperStreamTrigger] IPerperStreamContext context,
-            [PerperStream("count")] IPerperStream<int> countStream,
-            [PerperStream] IAsyncCollector<int> output)
+            [PerperStream("count")] IAsyncEnumerable<int> countStream)
         {
-            
+           
+        }
+
+        static async IAsyncEnumerable<int> Test()
+        {
+            await Task.Delay(1);
+            yield return 1;
+        }
+
+        private static Task<IEnumerable<T>> Range<T>(this IAsyncEnumerable<T> collection, Range range)
+        {
+            return Task.FromResult((IEnumerable<T>) new List<T>());
         }
     }
 }
