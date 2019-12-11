@@ -10,26 +10,28 @@ namespace DotNet.FunctionApp
     public static class Processor
     {
         [FunctionName("Processor")]
-        public static async Task Run([Perper(Stream = "Processor")] IPerperStreamContext context,
+        public static async Task Run([PerperTrigger("Processor")] IPerperStreamContext context,
             [Perper("generator")] IAsyncEnumerable<int> generator,
             [Perper("multiplier")] int multiplier,
             [Perper("output")] IAsyncCollector<int> output)
         {
+            var state = context.GetState<List<int>>();
             await foreach (var value in generator)
             {
-                await output.AddAsync(await context.CallWorkerFunction<int>(new {value, multiplier}));
+                var result = await context.CallWorkerFunction<int>(new {state, value, multiplier});
+                state.Add(result);
+                await context.SaveState();
+                await output.AddAsync(result);
             }
         }
 
-        [FunctionName("Processor_Worker")]
-        public static void Worker([Perper(Stream = "Processor")] IPerperWorkerContext context,
+        [FunctionName("Worker")]
+        [return: Perper]
+        public static int Worker([PerperTrigger("Processor", "state")] IEnumerable<int> state,
             [Perper("value")] int value,
-            [Perper("multiplier")] int multiplier,
-            [Perper("state", State = true)] List<int> state,
-            [Perper("output")] out int output)
+            [Perper("multiplier")] int multiplier)
         {
-            output = state.Last() + value * multiplier;
-            state.Add(output);
+            return state.Last() + value * multiplier;
         }
     }
 }

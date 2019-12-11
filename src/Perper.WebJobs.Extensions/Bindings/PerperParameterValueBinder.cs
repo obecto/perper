@@ -30,12 +30,7 @@ namespace Perper.WebJobs.Extensions.Bindings
         {
             var input = await _context.GetInput(_attribute.Stream);
             var streamObject = await input.GetStreamObjectAsync(default);
-            if (streamObject.HasField(_attribute.Parameter))
-            {
-                return streamObject.GetField<object>(_attribute.Parameter);
-            }
-
-            return Activator.CreateInstance(Type);
+            return streamObject.GetField<object>(_attribute.Parameter);
         }
 
         public async Task SetValueAsync(object value, CancellationToken cancellationToken)
@@ -43,16 +38,7 @@ namespace Perper.WebJobs.Extensions.Bindings
             var input = await _context.GetInput(_attribute.Stream);
             var streamObject = await input.GetStreamObjectAsync(default);
 
-            object header;
-            if (streamObject.HasField(_attribute.Parameter))
-            {
-                header = new StateHeader(_attribute.Parameter);
-            }
-            else
-            {
-                header = new WorkerHeader(true);
-            }
-
+            var header = new WorkerHeader(true);
             var builder = _binary.GetBuilder(header.ToString());
             builder.SetField(_attribute.Parameter, value);
             var binaryObject = builder.Build();

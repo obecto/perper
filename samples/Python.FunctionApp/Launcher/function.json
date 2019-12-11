@@ -5,6 +5,11 @@
       "name": "context",
       "type": "streamTrigger",
       "direction": "in"
+    },
+    {
+      "name": "state",
+      "type": "perper",
+      "direction": "inout"
     }
   ]
 }

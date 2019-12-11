@@ -8,7 +8,7 @@ namespace DotNet.FunctionApp
     public static class Generator
     {
         [FunctionName("Generator")]
-        public static void Run([Perper(Stream = "Generator")] IPerperStreamContext context,
+        public static void Run([PerperTrigger("Generator")] IPerperStreamContext context,
             [Perper("count")] int count)
         {
         }

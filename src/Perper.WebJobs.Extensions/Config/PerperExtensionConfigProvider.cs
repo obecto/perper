@@ -35,12 +35,13 @@ namespace Perper.WebJobs.Extensions.Config
             bindingAttributeBindingRule.BindToCollector(a =>
                 new PerperStreamAsyncCollector<OpenType>(_fabricContext.GetOutput(a.Stream), _binary));
 
-            bindingAttributeBindingRule.BindToTrigger<IPerperStreamContext>(
+            var triggerAttributeBindingRule = context.AddBindingRule<PerperTriggerAttribute>();
+            triggerAttributeBindingRule.BindToTrigger<IPerperStreamContext>(
                 new PerperTriggerBindingProvider(_fabricContext, _binary,
-                    (s, f, b, e) => new PerperStreamListener(s, f, b, e)));
-            bindingAttributeBindingRule.BindToTrigger<IPerperWorkerContext>(
+                    (s, p, f, b, e) => new PerperStreamListener(s, p, f, b, e)));
+            triggerAttributeBindingRule.BindToTrigger(
                 new PerperTriggerBindingProvider(_fabricContext, _binary,
-                    (s, f, b, e) => new PerperWorkerListener(s, f, b, e)));
+                    (s, p, f, b, e) => new PerperWorkerListener(s, p, f, b, e)));
         }
     }
 }

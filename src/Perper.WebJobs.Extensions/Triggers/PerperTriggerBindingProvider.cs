@@ -14,10 +14,12 @@ namespace Perper.WebJobs.Extensions.Triggers
     {
         private readonly PerperFabricContext _fabricContext;
         private readonly IBinary _binary;
-        private readonly Func<string, PerperFabricContext, IBinary, ITriggeredFunctionExecutor, IListener> _listenerFactory;
+
+        private readonly Func<string, string, PerperFabricContext, IBinary, ITriggeredFunctionExecutor, IListener>
+            _listenerFactory;
 
         public PerperTriggerBindingProvider(PerperFabricContext fabricContext, IBinary binary,
-            Func<string, PerperFabricContext, IBinary, ITriggeredFunctionExecutor, IListener> listenerFactory)
+            Func<string, string, PerperFabricContext, IBinary, ITriggeredFunctionExecutor, IListener> listenerFactory)
         {
             _fabricContext = fabricContext;
             _binary = binary;
@@ -26,13 +28,14 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
-            var triggerAttribute = context.Parameter.GetCustomAttribute<PerperAttribute>(inherit: false);
+            var triggerAttribute = context.Parameter.GetCustomAttribute<PerperTriggerAttribute>(inherit: false);
             if (triggerAttribute == null)
             {
                 return Task.FromResult<ITriggerBinding>(null);
             }
 
-            return Task.FromResult<ITriggerBinding>(new PerperStreamTriggerBinding(_fabricContext, _binary, _listenerFactory));
+            return Task.FromResult<ITriggerBinding>(new PerperStreamTriggerBinding(triggerAttribute, _fabricContext,
+                _binary, _listenerFactory));
         }
     }
 }

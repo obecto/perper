@@ -1,20 +1,22 @@
-using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
 using Perper.Protocol.Header;
 using Perper.WebJobs.Extensions.Services;
-using Perper.WebJobs.Extensions.Triggers;
 
 namespace Perper.WebJobs.Extensions.Model
 {
     public class PerperStreamContext : IPerperStreamContext
     {
+        private readonly string _parameterName;
         private readonly PerperFabricInput _input;
         private readonly PerperFabricOutput _output;
         private readonly IBinary _binary;
 
-        public PerperStreamContext(PerperFabricInput input, PerperFabricOutput output, IBinary binary)
+        private object _state;
+
+        public PerperStreamContext(string parameterName, PerperFabricInput input, PerperFabricOutput output, IBinary binary)
         {
+            _parameterName = parameterName;
             _input = input;
             _output = output;
             _binary = binary;
@@ -32,24 +34,23 @@ namespace Perper.WebJobs.Extensions.Model
             return new PerperStreamHandle(header);
         }
 
-        public T GetState<T>(string name)
+        public T GetState<T>() where T : new()
         {
             var streamObject = _input.GetStreamObject();
-            return streamObject.GetField<T>(name);
+            var state = streamObject.HasField(_parameterName) ? streamObject.GetField<T>(_parameterName) : new T();
+            _state = state;
+            return state;
         }
 
-        public async Task SaveState<T>(string name, T state)
+        public async Task SaveState()
         {
-            var streamObject = _input.GetStreamObject();
-            _input.UpdateStreamObject(name, state);
-
-            var header = new StateHeader(name);
-            
+            var header = new StateHeader(_parameterName);
             var builder = _binary.GetBuilder(header.ToString());
-            builder.SetField(name, state);
+            builder.SetField(_parameterName, _state);
             var binaryObject = builder.Build();
-
             await _output.AddAsync(binaryObject);
+
+            _input.UpdateStreamObject(_parameterName, _state);
         }
 
         public async Task<T> CallWorkerFunction<T>(object parameters)

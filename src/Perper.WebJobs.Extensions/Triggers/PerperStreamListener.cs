@@ -13,13 +13,15 @@ namespace Perper.WebJobs.Extensions.Triggers
     public class PerperStreamListener : IListener
     {
         private readonly string _streamName;
+        private readonly string _parameterName;
         private readonly PerperFabricContext _context;
         private readonly IBinary _binary;
         private readonly ITriggeredFunctionExecutor _executor;
         
-        public PerperStreamListener(string streamName, PerperFabricContext context, IBinary binary, ITriggeredFunctionExecutor executor)
+        public PerperStreamListener(string streamName, string parameterName, PerperFabricContext context, IBinary binary, ITriggeredFunctionExecutor executor)
         {
             _streamName = streamName;
+            _parameterName = parameterName;
             _context = context;
             _binary = binary;
             _executor = executor;
@@ -35,7 +37,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             var input = await _context.GetInput(_streamName);
             await input.GetStreamObjectAsync(cancellationToken);
             await _executor.TryExecuteAsync(
-                new TriggeredFunctionData {TriggerValue = new PerperStreamContext(input, _context.GetOutput(_streamName), _binary)},
+                new TriggeredFunctionData {TriggerValue = new PerperStreamContext(_parameterName, input, _context.GetOutput(_streamName), _binary)},
                 CancellationToken.None);
             //TODO: Handle function execution completion
         }

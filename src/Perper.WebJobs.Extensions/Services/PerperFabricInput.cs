@@ -72,7 +72,7 @@ namespace Perper.WebJobs.Extensions.Services
             return item;
         }
 
-        public void UpdateStreamObject<T>(string name, T state)
+        public void UpdateStreamObject(string name, object state)
         {
             var streamObjectBuilder = _streamObject.ToBuilder();
             streamObjectBuilder.SetField(name, state);
