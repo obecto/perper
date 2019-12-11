@@ -11,27 +11,18 @@ namespace Perper.Protocol
         private static readonly MethodInfo UnmarshalMethod;
         private static readonly PropertyInfo DataProperty;
 
-        private const string CacheObjectTypeNamePrefix = "Ignite.Extensions.Cache.";
-
         static BinaryExtensions()
         {
-            ForceBinaryMode =
-                Enum.Parse(typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryMode"),
-                    "ForceBinary");
-            MarshallerProperty =
-                typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.Binary")
-                    .GetProperty("Marshaller", BindingFlags.Instance | BindingFlags.NonPublic);
+            var assembly = typeof(IBinary).Assembly;
+            var binary = assembly.GetType("Apache.Ignite.Core.Impl.Binary.Binary");
+            var binaryMode = assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryMode");
+            var binaryObject = assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryObject");
+            var marshaller = assembly.GetType("Apache.Ignite.Core.Impl.Binary.Marshaller");
 
-            UnmarshalMethod = typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.Marshaller").GetMethod(
-                    "Unmarshal",
-                    new[]
- {
-                        typeof(byte[]), typeof(IBinary).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryMode")
-                    })
-                ?.MakeGenericMethod(typeof(IBinaryObject));
-
-            DataProperty = typeof(IBinaryObject).Assembly.GetType("Apache.Ignite.Core.Impl.Binary.BinaryObject")
-                .GetProperty("Data");
+            ForceBinaryMode = Enum.Parse(binaryMode, "ForceBinary");
+            MarshallerProperty = binary.GetProperty("Marshaller", BindingFlags.Instance | BindingFlags.NonPublic);
+            UnmarshalMethod = marshaller.GetMethod("Unmarshal", new[] {typeof(byte[]), binaryMode})?.MakeGenericMethod(typeof(IBinaryObject));
+            DataProperty = binaryObject.GetProperty("Data");
         }
 
         public static IBinaryObject GetBinaryObjectFromBytes(this IBinary binary, byte[] value)

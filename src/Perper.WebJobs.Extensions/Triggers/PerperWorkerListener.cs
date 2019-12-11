@@ -1,4 +1,3 @@
-using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
@@ -9,15 +8,14 @@ using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
-    //TODO: Improve cancellation token handling
-    public class PerperStreamListener : IListener
+    public class PerperWorkerListener : IListener
     {
         private readonly string _streamName;
         private readonly PerperFabricContext _context;
         private readonly IBinary _binary;
         private readonly ITriggeredFunctionExecutor _executor;
         
-        public PerperStreamListener(string streamName, PerperFabricContext context, IBinary binary, ITriggeredFunctionExecutor executor)
+        public PerperWorkerListener(string streamName, PerperFabricContext context, IBinary binary, ITriggeredFunctionExecutor executor)
         {
             _streamName = streamName;
             _context = context;
@@ -33,9 +31,9 @@ namespace Perper.WebJobs.Extensions.Triggers
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             var input = await _context.GetInput(_streamName);
-            await input.GetStreamObject(cancellationToken);
+            await input.GetWorkerObject(default);
             await _executor.TryExecuteAsync(
-                new TriggeredFunctionData {TriggerValue = new PerperStreamContext(input, _context.GetOutput(_streamName), _binary)},
+                new TriggeredFunctionData {TriggerValue = new PerperWorkerContext()},
                 CancellationToken.None);
             //TODO: Handle function execution completion
         }

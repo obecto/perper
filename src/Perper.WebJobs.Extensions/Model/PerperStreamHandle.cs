@@ -1,7 +1,6 @@
 using Perper.Protocol.Header;
-using Perper.WebJobs.Extensions.Model;
 
-namespace Perper.WebJobs.Extensions.Triggers
+namespace Perper.WebJobs.Extensions.Model
 {
     public class PerperStreamHandle : IPerperStreamHandle
     {

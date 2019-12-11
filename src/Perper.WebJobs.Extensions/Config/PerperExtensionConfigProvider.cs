@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
 using Microsoft.Azure.WebJobs.Description;
@@ -24,15 +25,22 @@ namespace Perper.WebJobs.Extensions.Config
 
         public void Initialize(ExtensionConfigContext context)
         {
-            var bindingAttributeBindingRule = context.AddBindingRule<PerperStreamAttribute>();
-            bindingAttributeBindingRule.BindToValueProvider((attribute, type) =>
-                Task.FromResult<IValueBinder>(new PerperStreamValueBinder(_fabricContext, attribute, type)));
-            bindingAttributeBindingRule.BindToCollector(attribute =>
-                new PerperStreamAsyncCollector<OpenType>(_fabricContext.GetOutput(attribute.FunctionName), _binary));
+            var bindingAttributeBindingRule = context.AddBindingRule<PerperAttribute>();
 
-            var triggerAttributeBindingRule = context.AddBindingRule<PerperStreamTriggerAttribute>();
-            triggerAttributeBindingRule.BindToTrigger<IPerperStreamContext>(
-                new PerperStreamTriggerBindingProvider(_fabricContext, _binary));
+            bindingAttributeBindingRule.BindToValueProvider((a, t) =>
+                Task.FromResult<IValueBinder>(new PerperParameterValueBinder(_fabricContext, a, t, _binary)));
+            bindingAttributeBindingRule.BindToValueProvider<IAsyncEnumerable<OpenType>>((a, t) =>
+                Task.FromResult<IValueBinder>(new PerperStreamValueBinder(_fabricContext, a, t)));
+
+            bindingAttributeBindingRule.BindToCollector(a =>
+                new PerperStreamAsyncCollector<OpenType>(_fabricContext.GetOutput(a.Stream), _binary));
+
+            bindingAttributeBindingRule.BindToTrigger<IPerperStreamContext>(
+                new PerperTriggerBindingProvider(_fabricContext, _binary,
+                    (s, f, b, e) => new PerperStreamListener(s, f, b, e)));
+            bindingAttributeBindingRule.BindToTrigger<IPerperWorkerContext>(
+                new PerperTriggerBindingProvider(_fabricContext, _binary,
+                    (s, f, b, e) => new PerperWorkerListener(s, f, b, e)));
         }
     }
 }

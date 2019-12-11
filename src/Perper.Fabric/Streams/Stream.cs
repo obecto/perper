@@ -15,22 +15,36 @@ namespace Perper.Fabric.Streams
     //TODO: Change StreamObject to be Lazy type (Stream instances can be instantiated many times / simultaneously)
     public class Stream
     {
-        public StreamHeader StreamHeader { get; }
-        public IBinaryObject StreamObject { get; }
+        public StreamHeader Header { get; }
+        public IBinaryObject StreamObject { get; private set; }
 
         private readonly IIgnite _ignite;
 
-        public Stream(StreamHeader streamHeader, IBinaryObject streamObject, IIgnite ignite)
+        public Stream(StreamHeader header, IBinaryObject streamObject, IIgnite ignite)
         {
-            StreamHeader = streamHeader;
+            Header = header;
             StreamObject = streamObject;
             
             _ignite = ignite;
         }
 
+        public void UpdateStreamObject(IBinaryObject item)
+        {
+            var streamObjectBuilder = StreamObject.ToBuilder();
+            foreach (var field in item.GetBinaryType().Fields)
+            {
+                streamObjectBuilder.SetField(field, item.GetField<IBinaryObject>(field));
+            }
+
+            StreamObject = streamObjectBuilder.Build();
+
+            var streamsObjects = _ignite.GetCache<string, IBinaryObject>("streamsObjects");
+            streamsObjects[Header.Name] = StreamObject;
+        }
+
         public Stream CreateChildStream(IBinaryObject childStreamObject)
         {
-            var childStreamHeader = new StreamHeader(childStreamObject.GetBinaryType().TypeName);
+            var childStreamHeader = StreamHeader.Parse(childStreamObject.GetBinaryType().TypeName);
             
             var streamsObjects = _ignite.GetCache<string, IBinaryObject>("streamsObjects");
             streamsObjects[childStreamHeader.Name] = childStreamObject;
@@ -42,28 +56,28 @@ namespace Perper.Fabric.Streams
         {
             var newStream = new Func<string, Stream>(field =>
             {
-                var header = new StreamHeader(StreamObject.GetField<IBinaryObject>(field).GetBinaryType().TypeName);
+                var header = StreamHeader.Parse(StreamObject.GetField<IBinaryObject>(field).GetBinaryType().TypeName);
                 return new Stream(header,
                     _ignite.GetCache<string, IBinaryObject>("streamsObjects")[header.Name], _ignite);
             });
 
             return
                 from field in StreamObject.GetBinaryType().Fields
-                where StreamObject.GetBinaryType().GetFieldTypeName(field).StartsWith(nameof(StreamHeader))
+                where StreamObject.GetBinaryType().GetFieldTypeName(field).StartsWith(nameof(Header))
                 select Tuple.Create(field, newStream(field));
         }
 
         public async IAsyncEnumerable<IEnumerable<IBinaryObject>> Listen(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var service = _ignite.GetServices().GetService<StreamService>(StreamHeader.Name);
+            var service = _ignite.GetServices().GetService<StreamService>(Header.Name);
             if (service == null)
             {
                 service = new StreamService(this, _ignite);
-                _ignite.GetServices().DeployNodeSingleton(StreamHeader.Name, service);
+                _ignite.GetServices().DeployNodeSingleton(Header.Name, service);
             }
 
-            var cache = _ignite.GetOrCreateCache<long, IBinaryObject>(StreamHeader.Name);
+            var cache = _ignite.GetOrCreateCache<long, IBinaryObject>(Header.Name);
             while (!cancellationToken.IsCancellationRequested)
             {
                 var queryTask = new TaskCompletionSource<IEnumerable<IBinaryObject>>();
@@ -91,5 +105,7 @@ namespace Perper.Fabric.Streams
                 _callback(events);
             }
         }
+
+        
     }
 }

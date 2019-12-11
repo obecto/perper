@@ -1,17 +1,19 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
+using Perper.WebJobs.Extensions.Config;
 using Perper.WebJobs.Extensions.Model;
-using Perper.WebJobs.Extensions.Triggers;
 
 namespace DotNet.FunctionApp
 {
     public static class Launcher
     {
         [FunctionName("Launcher")]
-        public static void Run([PerperStreamTrigger] IPerperStreamContext context)
+        public static async Task Run([Perper(Stream = "Launcher")] IPerperStreamContext context)
         {
-            var generator = context.CallStreamFunction<int>("Generator", new {count = 100});
-            var processor = context.CallStreamFunction<int>("Processor", new {generator, multiplier = 10});
-            context.CallStreamAction("Consumer", new {processor});
+            var generator = await context.CallStreamFunction("Generator", new {count = 100});
+            var processor = await context.CallStreamFunction("Processor", new {generator, multiplier = 10});
+            await context.CallStreamAction("Consumer", new {processor});
         }
     }
 }

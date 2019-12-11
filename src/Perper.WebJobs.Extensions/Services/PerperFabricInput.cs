@@ -16,6 +16,7 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly IBinary _binary;
 
         private IBinaryObject _streamObject;
+        private IBinaryObject _workerObject;
 
         public PerperFabricInput(Stream stream, IBinary binary)
         {
@@ -33,6 +34,17 @@ namespace Perper.WebJobs.Extensions.Services
             _streamObject = _binary.GetBinaryObjectFromBytes(streamObjectBytes.Buffer.ToArray());
             return _streamObject;
         }
+        
+        public async Task<IBinaryObject> GetWorkerObject(CancellationToken cancellationToken)
+        {
+            if (_workerObject != null)
+            {
+                return _workerObject;
+            }
+            var workerObjectBytes = await _reader.ReadAsync(cancellationToken);
+            _workerObject = _binary.GetBinaryObjectFromBytes(workerObjectBytes.Buffer.ToArray());
+            return _workerObject;
+        }
 
         public async IAsyncEnumerable<T> GetStream<T>(string parameterName,
             [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -43,6 +55,13 @@ namespace Perper.WebJobs.Extensions.Services
                 var item = _binary.GetBinaryObjectFromBytes(result.Buffer.ToArray());
                 yield return item.GetField<IBinaryObject>(parameterName).Deserialize<T>();
             }
+        }
+
+        public async Task<IBinaryObject> GetWorkerResult()
+        {
+            var result = await _reader.ReadAsync();
+            var item = _binary.GetBinaryObjectFromBytes(result.Buffer.ToArray());
+            return item;
         }
     }
 }

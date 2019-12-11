@@ -35,7 +35,7 @@ namespace Perper.Fabric.Streams
         public void Init(IServiceContext context)
         {
             var clientSocket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
-            clientSocket.Connect(new UnixDomainSocketEndPoint($"/tmp/perper_{_stream.StreamHeader.Name}.sock"));
+            clientSocket.Connect(new UnixDomainSocketEndPoint($"/tmp/perper_{_stream.Header.Name}.sock"));
 
             var networkStream = new NetworkStream(clientSocket);
             _pipeReader = PipeReader.Create(networkStream);
@@ -75,7 +75,7 @@ namespace Perper.Fabric.Streams
 
         private async Task ProcessResult(CancellationToken cancellationToken = default)
         {
-            using var outputStreamer = _ignite.GetDataStreamer<long, IBinaryObject>(_stream.StreamHeader.Name);
+            using var outputStreamer = _ignite.GetDataStreamer<long, IBinaryObject>(_stream.Header.Name);
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -84,13 +84,22 @@ namespace Perper.Fabric.Streams
                 if (item.GetBinaryType().TypeName.StartsWith(nameof(StreamHeader)))
                 {
                     var childStream = _stream.CreateChildStream(item);
-                    if (childStream.StreamHeader.Kind == StreamKind.Pipe) continue;
+                    if (childStream.Header.Kind == StreamKind.Pipe) continue;
                     await foreach (var unused in childStream.Listen(cancellationToken))
                     {
                         //TODO: Shouldn't enter, consider throwing an exception
                     }
                 }
-                else
+                else if (item.GetBinaryType().TypeName.StartsWith(nameof(StateHeader)))
+                {
+                    _stream.UpdateStreamObject(item);
+                }
+                else if (item.GetBinaryType().TypeName.StartsWith(nameof(WorkerHeader)))
+                {
+                    var data = _ignite.GetBinary().GetBytesFromBinaryObject(item);
+                    await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(data), cancellationToken);
+                }
+                else 
                 {
                     await outputStreamer.AddData(DateTime.Now.Millisecond, item);
                 }
