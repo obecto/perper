@@ -29,7 +29,7 @@ namespace Perper.WebJobs.Extensions.Bindings
         public async Task<object> GetValueAsync()
         {
             var input = await _context.GetInput(_attribute.Stream);
-            var streamObject = await input.GetStreamObject(default);
+            var streamObject = await input.GetStreamObjectAsync(default);
             if (streamObject.HasField(_attribute.Parameter))
             {
                 return streamObject.GetField<object>(_attribute.Parameter);
@@ -41,7 +41,7 @@ namespace Perper.WebJobs.Extensions.Bindings
         public async Task SetValueAsync(object value, CancellationToken cancellationToken)
         {
             var input = await _context.GetInput(_attribute.Stream);
-            var streamObject = await input.GetStreamObject(default);
+            var streamObject = await input.GetStreamObjectAsync(default);
 
             object header;
             if (streamObject.HasField(_attribute.Parameter))

@@ -24,23 +24,31 @@ namespace Perper.WebJobs.Extensions.Services
             _binary = binary;
         }
 
-        public async Task<IBinaryObject> GetStreamObject(CancellationToken cancellationToken)
+        //TODO: Refactor to Lazy Property
+        public IBinaryObject GetStreamObject()
+        {
+            return _streamObject;
+        }
+
+        public async Task<IBinaryObject> GetStreamObjectAsync(CancellationToken cancellationToken)
         {
             if (_streamObject != null)
             {
                 return _streamObject;
             }
+
             var streamObjectBytes = await _reader.ReadAsync(cancellationToken);
             _streamObject = _binary.GetBinaryObjectFromBytes(streamObjectBytes.Buffer.ToArray());
             return _streamObject;
         }
-        
-        public async Task<IBinaryObject> GetWorkerObject(CancellationToken cancellationToken)
+
+        public async Task<IBinaryObject> GetWorkerObjectAsync(CancellationToken cancellationToken)
         {
             if (_workerObject != null)
             {
                 return _workerObject;
             }
+
             var workerObjectBytes = await _reader.ReadAsync(cancellationToken);
             _workerObject = _binary.GetBinaryObjectFromBytes(workerObjectBytes.Buffer.ToArray());
             return _workerObject;
@@ -62,6 +70,14 @@ namespace Perper.WebJobs.Extensions.Services
             var result = await _reader.ReadAsync();
             var item = _binary.GetBinaryObjectFromBytes(result.Buffer.ToArray());
             return item;
+        }
+
+        public void UpdateStreamObject<T>(string name, T state)
+        {
+            var streamObjectBuilder = _streamObject.ToBuilder();
+            streamObjectBuilder.SetField(name, state);
+
+            _streamObject = streamObjectBuilder.Build();
         }
     }
 }

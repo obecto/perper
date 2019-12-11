@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
 using Perper.Protocol.Header;
@@ -29,6 +30,26 @@ namespace Perper.WebJobs.Extensions.Model
             var header = new StreamHeader(name, StreamKind.Pipe);
             await _output.AddAsync(CreateProtocolObject(header, parameters));
             return new PerperStreamHandle(header);
+        }
+
+        public T GetState<T>(string name)
+        {
+            var streamObject = _input.GetStreamObject();
+            return streamObject.GetField<T>(name);
+        }
+
+        public async Task SaveState<T>(string name, T state)
+        {
+            var streamObject = _input.GetStreamObject();
+            _input.UpdateStreamObject(name, state);
+
+            var header = new StateHeader(name);
+            
+            var builder = _binary.GetBuilder(header.ToString());
+            builder.SetField(name, state);
+            var binaryObject = builder.Build();
+
+            await _output.AddAsync(binaryObject);
         }
 
         public async Task<T> CallWorkerFunction<T>(object parameters)
