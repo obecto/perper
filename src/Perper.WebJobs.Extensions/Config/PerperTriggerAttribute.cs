@@ -1,16 +1,11 @@
 using System;
+using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Config
 {
-    public class PerperTriggerAttribute : Attribute
+    public abstract class PerperTriggerAttribute : Attribute
     {
-        public string Stream { get; }
-        public string Parameter { get; }
-
-        public PerperTriggerAttribute(string stream, string parameter = "context")
-        {
-            Stream = stream;
-            Parameter = parameter;
-        } 
+        public string Stream { get; protected set; }
+        public PerperFunctionType FunctionType { get; protected set; }
     }
 }

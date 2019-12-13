@@ -8,7 +8,7 @@ namespace DotNet.FunctionApp
     public static class Consumer
     {
         [FunctionName("Consumer")]
-        public static void Run([PerperTrigger("Consumer")] IPerperStreamContext context,
+        public static void Run([PerperStream("Consumer")] IPerperStreamContext context,
             [Perper("processor")] IAsyncEnumerable<int> processor)
         {
         }

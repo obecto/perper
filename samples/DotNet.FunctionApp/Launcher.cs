@@ -9,7 +9,7 @@ namespace DotNet.FunctionApp
     public static class Launcher
     {
         [FunctionName("Launcher")]
-        public static async Task Run([PerperTrigger("Launcher")] IPerperStreamContext context)
+        public static async Task Run([PerperStream("Launcher")] IPerperStreamContext context)
         {
             var generator = await context.CallStreamFunction("Generator", new {count = 100});
             var processor = await context.CallStreamFunction("Processor", new {generator, multiplier = 10});

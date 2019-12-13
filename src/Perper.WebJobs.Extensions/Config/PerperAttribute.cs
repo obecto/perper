@@ -7,12 +7,13 @@ namespace Perper.WebJobs.Extensions.Config
     [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue)]
     public class PerperAttribute : Attribute
     {
-        public string Stream { get; }
+        [AutoResolve] public string Stream { get; } = "{stream}";
+        [AutoResolve] public string FunctionType { get; } = "{functionType}";
         public string Parameter { get; }
 
-        public PerperAttribute(string parameter = "$return")
+        public PerperAttribute(string parameter)
         {
             Parameter = parameter;
-        } 
+        }
     }
 }

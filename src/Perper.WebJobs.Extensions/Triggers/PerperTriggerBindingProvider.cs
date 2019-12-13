@@ -34,7 +34,8 @@ namespace Perper.WebJobs.Extensions.Triggers
                 return Task.FromResult<ITriggerBinding>(null);
             }
 
-            return Task.FromResult<ITriggerBinding>(new PerperStreamTriggerBinding(triggerAttribute, _fabricContext,
+            return Task.FromResult<ITriggerBinding>(new PerperTriggerBinding(triggerAttribute.FunctionType,
+                triggerAttribute.Stream, context.Parameter.Name, context.Parameter.ParameterType, _fabricContext,
                 _binary, _listenerFactory));
         }
     }

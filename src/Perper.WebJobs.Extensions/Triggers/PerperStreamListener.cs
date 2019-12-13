@@ -35,7 +35,6 @@ namespace Perper.WebJobs.Extensions.Triggers
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             var input = await _context.GetInput(_streamName);
-            await input.GetStreamObjectAsync(cancellationToken);
             await _executor.TryExecuteAsync(
                 new TriggeredFunctionData {TriggerValue = new PerperStreamContext(_parameterName, input, _context.GetOutput(_streamName), _binary)},
                 CancellationToken.None);
