@@ -1,51 +1,148 @@
+using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.IO.Pipelines;
 using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
-using Apache.Ignite.Core.Binary;
+using Apache.Ignite.Core;
+using Apache.Ignite.Core.Client;
+using Perper.Protocol.Notifications;
 
 namespace Perper.WebJobs.Extensions.Services
 {
-    public class PerperFabricContext
+    public class PerperFabricContext : IPerperFabricContext, IAsyncDisposable
     {
-        private readonly IBinary _binary;
+        private readonly IIgniteClient _igniteClient;
 
-        private readonly Dictionary<string, NetworkStream> _networkStreams;
-        private readonly Dictionary<string, PerperFabricInput> _inputs;
-        private readonly Dictionary<string, PerperFabricOutput> _outputs;
+        private readonly Dictionary<string, Task> _listeners;
+        private readonly CancellationTokenSource _listenersCancellationTokenSource;
+        
+        private readonly Dictionary<string, Dictionary<(Type, Type, string), object>> _channels;
+        
+        private readonly Dictionary<string, PerperFabricNotifications> _notificationsCache;
+        private readonly Dictionary<string, PerperFabricData> _dataCache;
 
-        public PerperFabricContext(IBinary binary)
+        public PerperFabricContext()
         {
-            _binary = binary;
+            _igniteClient = Ignition.StartClient(new IgniteClientConfiguration
+            {
+                Endpoints = new List<string> {"127.0.0.1"}
+            });
 
-            _networkStreams = new Dictionary<string, NetworkStream>();
-            _inputs = new Dictionary<string, PerperFabricInput>();
-            _outputs = new Dictionary<string, PerperFabricOutput>();
+            _listeners = new Dictionary<string, Task>();
+            _listenersCancellationTokenSource = new CancellationTokenSource();
+            
+            _channels = new Dictionary<string, Dictionary<(Type, Type, string), object>>();
+            
+            _notificationsCache = new Dictionary<string, PerperFabricNotifications>();
+            _dataCache = new Dictionary<string, PerperFabricData>();
         }
 
-        public async Task<PerperFabricInput> GetInput(string cacheName)
+        public void StartListen(string streamName)
         {
-            if (_inputs.TryGetValue(cacheName, out var result)) return result;
+            if (_listeners.ContainsKey(streamName)) return;
 
-            var listenSocket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
-            listenSocket.Bind(new UnixDomainSocketEndPoint($"/tmp/perper_{cacheName}.sock"));
-            listenSocket.Listen(120);
+            var cancellationToken = _listenersCancellationTokenSource.Token;
+            _listeners[streamName] = Task.Run(async () =>
+            {
+                using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
+                socket.Bind(new UnixDomainSocketEndPoint($"/tmp/perper_{streamName}.sock"));
+                socket.Listen(120);
 
-            var socket = await listenSocket.AcceptAsync();
-            var networkStream = new NetworkStream(socket, true);
-            _networkStreams[cacheName] = networkStream;
+                using var acceptedSocket = await socket.AcceptAsync().WithCancellation(cancellationToken);
 
-            result = new PerperFabricInput(networkStream, _binary);
-            _inputs[cacheName] = result;
+                await using var networkStream = new NetworkStream(acceptedSocket, true);
+                var reader = PipeReader.Create(networkStream);
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    var buffer = await reader.ReadSequenceAsync(cancellationToken);
+                    var messageSize = buffer.Slice(0, 1).ToArray()[0];
+                    if (buffer.Length > messageSize)
+                    {
+                        var message = buffer.Slice(1, messageSize).ToAsciiString();
+                        await RouteMessage(streamName, message);
+                        reader.AdvanceTo(buffer.GetPosition(messageSize + 1));
+                    }
+                    else
+                    {
+                        reader.AdvanceTo(buffer.Start);
+                    }
+                }
+            }, cancellationToken);
+            _channels[streamName] = new Dictionary<(Type, Type, string), object>();
+        }
+
+        public PerperFabricNotifications GetNotifications(string streamName)
+        {
+            if (_notificationsCache.TryGetValue(streamName, out var result)) return result;
+
+            result = new PerperFabricNotifications(streamName, this);
+            _notificationsCache[streamName] = result;
             return result;
         }
 
-        public PerperFabricOutput GetOutput(string cacheName)
+        public PerperFabricData GetData(string streamName)
         {
-            if (_outputs.TryGetValue(cacheName, out var result)) return result;
+            if (_dataCache.TryGetValue(streamName, out var result)) return result;
 
-            result = new PerperFabricOutput(_networkStreams[cacheName], _binary);
-            _outputs[cacheName] = result;
+            result = new PerperFabricData(streamName, _igniteClient);
+            _dataCache[streamName] = result;
             return result;
+        }
+
+        public Channel<T> CreateChannel<T>(string streamName, Type parameterType = default,
+            string parameterName = default)
+        {
+            var result = Channel.CreateUnbounded<T>();
+            _channels[streamName][(typeof(T), parameterType, parameterName)] = result;
+            return result;
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            try
+            {
+                _listenersCancellationTokenSource.Cancel();
+                await Task.WhenAll(_listeners.Values);
+            }
+            finally
+            {
+                _listenersCancellationTokenSource.Dispose();
+            }
+        }
+
+        private async ValueTask RouteMessage(string streamName, string message)
+        {
+            if (message.StartsWith(nameof(StreamTriggerNotification)))
+            {
+                await WriteNotificationToChannel(StreamTriggerNotification.Parse(message), streamName);
+            }
+            else if (message.StartsWith(nameof(StreamParameterItemUpdateNotification)))
+            {
+                var notification = StreamParameterItemUpdateNotification.Parse(message);
+                await WriteNotificationToChannel(notification, streamName, Type.GetType(notification.ParameterType),
+                    notification.ParameterName);
+            }
+            else if (message.StartsWith(nameof(WorkerTriggerNotification)))
+            {
+                await WriteNotificationToChannel(WorkerTriggerNotification.Parse(message), streamName);
+            }
+            else if (message.StartsWith(nameof(WorkerResultSubmitNotification)))
+            {
+                await WriteNotificationToChannel(WorkerResultSubmitNotification.Parse(message), streamName);
+            }
+        }
+
+        private async ValueTask WriteNotificationToChannel<T>(T notification, string streamName,
+            Type parameterType = default, string parameterName = default)
+        {
+            var streamChannels = _channels[streamName];
+            if (streamChannels.TryGetValue((typeof(T), parameterType, parameterName), out var channel))
+            {
+                await ((Channel<T>) channel).Writer.WriteAsync(notification, _listenersCancellationTokenSource.Token);
+            }
         }
     }
 }

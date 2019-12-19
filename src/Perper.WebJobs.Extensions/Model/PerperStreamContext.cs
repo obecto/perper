@@ -1,89 +1,57 @@
+using System;
 using System.Threading.Tasks;
-using Apache.Ignite.Core.Binary;
-using Perper.Protocol.Header;
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Model
 {
     public class PerperStreamContext : IPerperStreamContext
     {
-        private object _state;
-        private readonly string _stateParameterName;
-        
-        private readonly PerperFabricInput _input;
-        private readonly PerperFabricOutput _output;
-        private readonly IBinary _binary;
+        private readonly IPerperFabricContext _context;
+        private readonly string _streamName;
+        private readonly string _name;
 
-        public PerperStreamContext(string stateParameterName, PerperFabricInput input, PerperFabricOutput output, IBinary binary)
+        public PerperStreamContext(IPerperFabricContext context, string streamName, string name)
         {
-            _stateParameterName = stateParameterName;
-            _input = input;
-            _output = output;
-            _binary = binary;
+            _context = context;
+            _streamName = streamName;
+            _name = name;
         }
 
-        public async Task CallStreamAction(string name, object parameters)
+        public async Task<IAsyncDisposable> StreamActionAsync(string name, object parameters)
         {
-            await _output.AddAsync(CreateProtocolObject(new StreamHeader(name, StreamKind.Sink), parameters));
+            var data = _context.GetData(_streamName);
+            return await data.StreamActionAsync(name, parameters);
         }
 
-        public async Task<IPerperStreamHandle> CallStreamFunction(string name, object parameters)
+        public async Task<IAsyncDisposable> StreamFunctionAsync(string name, object parameters)
         {
-            var header = new StreamHeader(name, StreamKind.Pipe);
-            await _output.AddAsync(CreateProtocolObject(header, parameters));
-            return new PerperStreamHandle(header);
+            var data = _context.GetData(_streamName);
+            return await data.StreamFunctionAsync(name, parameters);
         }
 
-        public T GetState<T>() where T : new()
+        public Task<T> FetchStateAsync<T>()
         {
-            if (_state != null)
+            var data = _context.GetData(_streamName);
+            return data.FetchStreamParameter<T>(_name);
+        }
+
+        public async Task UpdateStateAsync<T>(T state)
+        {
+            var data = _context.GetData(_streamName);
+            await data.UpdateStreamParameterAsync(_name, state);
+        }
+
+        public async Task<T> CallWorkerAsync<T>(object parameters)
+        {
+            var data = _context.GetData(_streamName);
+            await data.InvokeWorkerAsync(parameters);
+            var notifications = _context.GetNotifications(_streamName);
+            await foreach (var _ in notifications.WorkerResultSubmissions())
             {
-                return (T) _state;
+                return await data.ReceiveWorkerResultAsync<T>();
             }
 
-            var streamObject = _input.GetStreamObject();
-            var state = streamObject.HasField(_stateParameterName) ? streamObject.GetField<T>(_stateParameterName) : new T();
-            _state = state;
-            return state;
-        }
-
-        public async Task SaveState()
-        {
-            var builder = _binary.GetBuilder(new StateHeader(_stateParameterName).ToString());
-            builder.SetField(_stateParameterName, _state);
-            var binaryObject = builder.Build();
-            await _output.AddAsync(binaryObject);
-
-            _input.UpdateStreamObject(_stateParameterName, _state);
-        }
-
-        public async Task<T> CallWorkerFunction<T>(object parameters)
-        {
-            await _output.AddAsync(CreateProtocolObject(new WorkerHeader(false), parameters));
-            var resultBinary = await _input.GetWorkerResult();
-            var result = resultBinary.Deserialize<T>();
-            return result;
-        }
-
-        private IBinaryObject CreateProtocolObject(object header, object parameters)
-        {
-            var builder = _binary.GetBuilder(header.ToString());
-
-            var properties = parameters.GetType().GetProperties();
-            foreach (var propertyInfo in properties)
-            {
-                var propertyValue = propertyInfo.GetValue(properties);
-                if (propertyValue is PerperStreamHandle streamHandle)
-                {
-                    builder.SetField(propertyInfo.Name, _binary.GetBuilder(streamHandle.Header.ToString()).Build());
-                }
-                else
-                {
-                    builder.SetField(propertyInfo.Name, propertyValue);
-                }
-            }
-            
-            return builder.Build();
+            throw new TimeoutException();
         }
     }
 }

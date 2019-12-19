@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -9,12 +10,12 @@ namespace Perper.WebJobs.Extensions.Bindings
 {
     public class PerperStreamValueBinder : IValueBinder
     {
-        private readonly PerperFabricContext _context;
+        private readonly IPerperFabricContext _context;
         private readonly PerperAttribute _attribute;
 
         public Type Type { get; }
 
-        public PerperStreamValueBinder(PerperFabricContext context, PerperAttribute attribute, Type type)
+        public PerperStreamValueBinder(IPerperFabricContext context, PerperAttribute attribute, Type type)
         {
             _context = context;
             _attribute = attribute;
@@ -22,14 +23,11 @@ namespace Perper.WebJobs.Extensions.Bindings
             Type = type;
         }
 
-        public async Task<object> GetValueAsync()
+        public Task<object> GetValueAsync()
         {
-            var input = await _context.GetInput(_attribute.Stream);
-
-            var streamGeneratorMethod = typeof(PerperFabricInput).GetMethod(nameof(input.GetStream));
-            var streamGenerator = streamGeneratorMethod?.MakeGenericMethod(Type.GenericTypeArguments[0]);
-            var stream = streamGenerator?.Invoke(input, new object[] {_attribute.Parameter});
-            return stream;
+            var streamType = typeof(PerperStreamAsyncEnumerable<>).MakeGenericType(Type);
+            var stream = Activator.CreateInstance(streamType, _context, _attribute.Stream, _attribute.Parameter);
+            return Task.FromResult(stream);
         }
 
         public Task SetValueAsync(object value, CancellationToken cancellationToken)
@@ -39,8 +37,7 @@ namespace Perper.WebJobs.Extensions.Bindings
 
         public string ToInvokeString()
         {
-            //TODO: Research usage?
-            return string.Empty;
+            return $"{_attribute.Stream}/{_attribute.Parameter}";
         }
     }
 }

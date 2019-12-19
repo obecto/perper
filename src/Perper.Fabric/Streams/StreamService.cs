@@ -1,21 +1,22 @@
 using System;
-using System.Buffers;
+using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
+using Apache.Ignite.Core.Cache.Event;
+using Apache.Ignite.Core.Cache.Query.Continuous;
 using Apache.Ignite.Core.Resource;
 using Apache.Ignite.Core.Services;
-using Perper.Protocol;
-using Perper.Protocol.Header;
+using Perper.Fabric.Utils;
+using Perper.Protocol.Notifications;
 
 namespace Perper.Fabric.Streams
 {
-    //TODO: Add cancellation tokens
-    //TODO: Check binary mode consistency and performance
     [Serializable]
     public class StreamService : IService
     {
@@ -23,8 +24,10 @@ namespace Perper.Fabric.Streams
 
         [InstanceResource] private readonly IIgnite _ignite;
 
-        private PipeReader _pipeReader;
         private PipeWriter _pipeWriter;
+
+        private Task _task;
+        private CancellationTokenSource _cancellationTokenSource;
 
         public StreamService(Stream stream, IIgnite ignite)
         {
@@ -35,75 +38,78 @@ namespace Perper.Fabric.Streams
         public void Init(IServiceContext context)
         {
             var clientSocket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
-            clientSocket.Connect(new UnixDomainSocketEndPoint($"/tmp/perper_{_stream.Header.Name}.sock"));
+            clientSocket.Connect(
+                new UnixDomainSocketEndPoint($"/tmp/perper_{_stream.StreamObjectTypeName.DelegateName}.sock"));
 
             var networkStream = new NetworkStream(clientSocket);
-            _pipeReader = PipeReader.Create(networkStream);
             _pipeWriter = PipeWriter.Create(networkStream);
         }
 
         public void Execute(IServiceContext context)
         {
-            Task.WhenAll(new[] {Invoke(), ProcessResult()}.Union(_stream.GetInputStreams().Select(Engage)));
+            _cancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = _cancellationTokenSource.Token;
+            _task = Task.Run(async () =>
+            {
+                await Invoke();
+                await Task.WhenAll(_stream.GetInputStreams().Select(Engage));
+            }, cancellationToken);
         }
 
         public void Cancel(IServiceContext context)
         {
+            _cancellationTokenSource.Cancel();
+            _task.Wait();
         }
 
-        private async Task Invoke()
+        private async ValueTask Invoke()
         {
-            var data = _ignite.GetBinary().GetBytesFromBinaryObject(_stream.StreamObject);
-            await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(data));
+            await SendNotification(new StreamTriggerNotification());
         }
 
+        private async Task InvokeWorker(CancellationToken cancellationToken)
+        {
+            var cache = _ignite.GetOrCreateCache<string, IBinaryObject>("workers");
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var taskCompletionSource = new TaskCompletionSource<IEnumerable<string>>();
+                var listener =
+                    new ActionListener<string>(events => taskCompletionSource.SetResult(events.Select(e => e.Key)));
+
+                using (cache.QueryContinuous(new ContinuousQuery<string, IBinaryObject>(listener)))
+                {
+                    if ((await taskCompletionSource.Task).Contains(_stream.StreamObjectTypeName.DelegateName))
+                    {
+                        await SendNotification(new WorkerTriggerNotification());
+                    }
+                }
+            }
+        }
 
         private async Task Engage(Tuple<string, Stream> inputStream)
         {
-            var (parameterName, stream) = inputStream;
-            await foreach (var items in stream.Listen())
+            var (parameterName, parameterStream) = inputStream;
+            var parameterStreamObjectTypeName = parameterStream.StreamObjectTypeName;
+            await foreach (var items in parameterStream.Listen())
             {
                 foreach (var item in items)
                 {
-                    var builder = _ignite.GetBinary().GetBuilder(_stream.StreamObject.GetBinaryType().TypeName);
-                    builder.SetField(parameterName, item);
-                    var data = _ignite.GetBinary().GetBytesFromBinaryObject(builder.Build());
-                    await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(data));
+                    await SendNotification(new StreamParameterItemUpdateNotification(
+                        parameterName,
+                        parameterStreamObjectTypeName.DelegateType.ToString(),
+                        parameterStreamObjectTypeName.DelegateName,
+                        item));
                 }
             }
         }
 
-        private async Task ProcessResult(CancellationToken cancellationToken = default)
+        private async ValueTask SendNotification(object notification)
         {
-            using var outputStreamer = _ignite.GetDataStreamer<long, IBinaryObject>(_stream.Header.Name);
-
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                var result = await _pipeReader.ReadAsync(cancellationToken);
-                var item = _ignite.GetBinary().GetBinaryObjectFromBytes(result.Buffer.ToArray());
-                if (item.GetBinaryType().TypeName.StartsWith(nameof(StreamHeader)))
-                {
-                    var childStream = _stream.CreateChildStream(item);
-                    if (childStream.Header.Kind == StreamKind.Pipe) continue;
-                    await foreach (var unused in childStream.Listen(cancellationToken))
-                    {
-                        //TODO: Shouldn't enter, consider throwing an exception
-                    }
-                }
-                else if (item.GetBinaryType().TypeName.StartsWith(nameof(StateHeader)))
-                {
-                    _stream.UpdateStreamObject(item);
-                }
-                else if (item.GetBinaryType().TypeName.StartsWith(nameof(WorkerHeader)))
-                {
-                    var data = _ignite.GetBinary().GetBytesFromBinaryObject(item);
-                    await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(data), cancellationToken);
-                }
-                else 
-                {
-                    await outputStreamer.AddData(DateTime.Now.Millisecond, item);
-                }
-            }
+            var message = notification.ToString();
+            var messageBytes = new byte[message.Length + 1];
+            messageBytes[0] = (byte) message.Length;
+            Encoding.Default.GetBytes(message, 0, message.Length, messageBytes, 1);
+            await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(messageBytes));
         }
     }
 }

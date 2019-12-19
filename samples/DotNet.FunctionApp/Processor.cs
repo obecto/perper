@@ -15,12 +15,12 @@ namespace DotNet.FunctionApp
             [Perper("multiplier")] int multiplier,
             [Perper("output")] IAsyncCollector<int> output)
         {
-            var state = context.GetState<List<int>>();
+            var state = await context.FetchStateAsync<List<int>>();
             await foreach (var value in generator)
             {
-                var result = await context.CallWorkerFunction<int>(new {value, multiplier, state});
+                var result = await context.CallWorkerAsync<int>(new {value, multiplier, state});
                 state.Add(result);
-                await context.SaveState();
+                await context.UpdateStateAsync(state);
                 await output.AddAsync(result);
             }
         }

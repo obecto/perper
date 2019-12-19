@@ -8,104 +8,68 @@ using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Cache.Event;
 using Apache.Ignite.Core.Cache.Query.Continuous;
-using Perper.Protocol.Header;
+using Perper.Fabric.Utils;
+using Perper.Protocol.Cache;
 
 namespace Perper.Fabric.Streams
 {
-    //TODO: Change StreamObject to be Lazy type (Stream instances can be instantiated many times / simultaneously)
     public class Stream
     {
-        public StreamHeader Header { get; }
-        public IBinaryObject StreamObject { get; private set; }
-
+        public StreamBinaryTypeName StreamObjectTypeName { get; }
         private readonly IIgnite _ignite;
 
-        public Stream(StreamHeader header, IBinaryObject streamObject, IIgnite ignite)
+        public Stream(StreamBinaryTypeName streamObjectTypeName, IIgnite ignite)
         {
-            Header = header;
-            StreamObject = streamObject;
-            
+            StreamObjectTypeName = streamObjectTypeName;
+
             _ignite = ignite;
-        }
-
-        public void UpdateStreamObject(IBinaryObject item)
-        {
-            var streamObjectBuilder = StreamObject.ToBuilder();
-            foreach (var field in item.GetBinaryType().Fields)
-            {
-                streamObjectBuilder.SetField(field, item.GetField<IBinaryObject>(field));
-            }
-
-            StreamObject = streamObjectBuilder.Build();
-
-            var streamsObjects = _ignite.GetCache<string, IBinaryObject>("streamsObjects");
-            streamsObjects[Header.Name] = StreamObject;
-        }
-
-        public Stream CreateChildStream(IBinaryObject childStreamObject)
-        {
-            var childStreamHeader = StreamHeader.Parse(childStreamObject.GetBinaryType().TypeName);
-            
-            var streamsObjects = _ignite.GetCache<string, IBinaryObject>("streamsObjects");
-            streamsObjects[childStreamHeader.Name] = childStreamObject;
-            
-            return new Stream(childStreamHeader, childStreamObject, _ignite);
         }
 
         public IEnumerable<Tuple<string, Stream>> GetInputStreams()
         {
+            var streamObject = _ignite.GetCache<string, IBinaryObject>("streams")[StreamObjectTypeName.DelegateName];
+
             var newStream = new Func<string, Stream>(field =>
             {
-                var header = StreamHeader.Parse(StreamObject.GetField<IBinaryObject>(field).GetBinaryType().TypeName);
-                return new Stream(header,
-                    _ignite.GetCache<string, IBinaryObject>("streamsObjects")[header.Name], _ignite);
+                var typeName =
+                    StreamBinaryTypeName.Parse(streamObject.GetField<IBinaryObject>(field).GetBinaryType().TypeName);
+                return new Stream(typeName, _ignite);
             });
 
             return
-                from field in StreamObject.GetBinaryType().Fields
-                where StreamObject.GetBinaryType().GetFieldTypeName(field).StartsWith(nameof(Header))
+                from field in streamObject.GetBinaryType().Fields
+                where streamObject.GetBinaryType().GetFieldTypeName(field).StartsWith(nameof(StreamObjectTypeName))
                 select Tuple.Create(field, newStream(field));
         }
 
-        public async IAsyncEnumerable<IEnumerable<IBinaryObject>> Listen(
+        public async IAsyncEnumerable<IEnumerable<long>> Listen(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var service = _ignite.GetServices().GetService<StreamService>(Header.Name);
-            if (service == null)
-            {
-                service = new StreamService(this, _ignite);
-                _ignite.GetServices().DeployNodeSingleton(Header.Name, service);
-            }
+            await Activate(cancellationToken);
 
-            var cache = _ignite.GetOrCreateCache<long, IBinaryObject>(Header.Name);
+            var cache = _ignite.GetOrCreateCache<long, IBinaryObject>(StreamObjectTypeName.DelegateName);
             while (!cancellationToken.IsCancellationRequested)
             {
-                var queryTask = new TaskCompletionSource<IEnumerable<IBinaryObject>>();
-                var listener = new LocalListener(events => queryTask.SetResult(events.Select(e => e.Value)));
+                var taskCompletionSource = new TaskCompletionSource<IEnumerable<long>>();
+                var listener =
+                    new ActionListener<long>(events => taskCompletionSource.SetResult(events.Select(e => e.Key)));
 
-                //TODO: Optimize the use of query handles
                 using (cache.QueryContinuous(new ContinuousQuery<long, IBinaryObject>(listener)))
                 {
-                    yield return await queryTask.Task;
+                    yield return await taskCompletionSource.Task;
                 }
             }
         }
 
-        private class LocalListener : ICacheEntryEventListener<long, IBinaryObject>
+        public Task Activate(CancellationToken cancellationToken)
         {
-            private readonly Action<IEnumerable<ICacheEntryEvent<long, IBinaryObject>>> _callback;
-
-            public LocalListener(Action<IEnumerable<ICacheEntryEvent<long, IBinaryObject>>> callback)
+            var service = _ignite.GetServices().GetService<StreamService>(StreamObjectTypeName.DelegateName);
+            if (service == null)
             {
-                _callback = callback;
+                service = new StreamService(this, _ignite);
+                _ignite.GetServices().DeployNodeSingleton(StreamObjectTypeName.DelegateName, service);
             }
-
-            public void OnEvent(IEnumerable<ICacheEntryEvent<long, IBinaryObject>> events)
-            {
-                _callback(events);
-            }
-        }
-
-        
+            return Task.CompletedTask;
+        } 
     }
 }

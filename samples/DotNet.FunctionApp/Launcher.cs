@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Perper.WebJobs.Extensions.Config;
@@ -11,9 +10,10 @@ namespace DotNet.FunctionApp
         [FunctionName("Launcher")]
         public static async Task Run([PerperStream("Launcher")] IPerperStreamContext context)
         {
-            var generator = await context.CallStreamFunction("Generator", new {count = 100});
-            var processor = await context.CallStreamFunction("Processor", new {generator, multiplier = 10});
-            await context.CallStreamAction("Consumer", new {processor});
+            await using var generator = await context.StreamFunctionAsync("Generator", new {count = 100});
+            await using var processor =
+                await context.StreamFunctionAsync("Processor", new {generator, multiplier = 10});
+            await using var consumer = await context.StreamActionAsync("Consumer", new {processor});
         }
     }
 }

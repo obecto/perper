@@ -1,14 +1,15 @@
+using System;
 using System.Threading.Tasks;
 
 namespace Perper.WebJobs.Extensions.Model
 {
     public interface IPerperStreamContext
     {
-        T GetState<T>() where T : new();
-        Task SaveState();
-        Task<T> CallWorkerFunction<T>(object parameters);
+        Task<T> FetchStateAsync<T>();
+        Task UpdateStateAsync<T>(T state);
+        Task<T> CallWorkerAsync<T>(object parameters);
 
-        Task CallStreamAction(string name, object parameters);
-        Task<IPerperStreamHandle> CallStreamFunction(string name, object parameters);
+        Task<IAsyncDisposable> StreamActionAsync(string name, object parameters);
+        Task<IAsyncDisposable> StreamFunctionAsync(string name, object parameters);
     }
 }

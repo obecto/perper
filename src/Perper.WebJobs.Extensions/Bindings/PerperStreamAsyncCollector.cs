@@ -1,6 +1,5 @@
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Ignite.Core.Binary;
 using Microsoft.Azure.WebJobs;
 using Perper.WebJobs.Extensions.Services;
 
@@ -8,18 +7,19 @@ namespace Perper.WebJobs.Extensions.Bindings
 {
     public class PerperStreamAsyncCollector<T> : IAsyncCollector<T>
     {
-        private readonly PerperFabricOutput _output;
-        private readonly IBinary _binary;
+        private readonly IPerperFabricContext _context;
+        private readonly string _streamName;
 
-        public PerperStreamAsyncCollector(PerperFabricOutput output, IBinary binary)
+        public PerperStreamAsyncCollector(IPerperFabricContext context, string streamName)
         {
-            _output = output;
-            _binary = binary;
+            _context = context;
+            _streamName = streamName;
         }
-        
+
         public async Task AddAsync(T item, CancellationToken cancellationToken = new CancellationToken())
         {
-            await _output.AddAsync(_binary.ToBinary<IBinaryObject>(item));
+            var data = _context.GetData(_streamName);
+            await data.AddStreamItemAsync(item);
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = new CancellationToken())

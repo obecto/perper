@@ -8,7 +8,7 @@ namespace Perper.WebJobs.Extensions.Config
     public class PerperAttribute : Attribute
     {
         [AutoResolve] public string Stream { get; } = "{stream}";
-        [AutoResolve] public string FunctionType { get; } = "{functionType}";
+        [AutoResolve] public string TriggerAttribute { get; } = "{triggerAttribute}";
         public string Parameter { get; }
 
         public PerperAttribute(string parameter)
