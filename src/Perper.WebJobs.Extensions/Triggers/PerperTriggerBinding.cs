@@ -5,6 +5,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Config;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
@@ -32,8 +33,8 @@ namespace Perper.WebJobs.Extensions.Triggers
         {
             return Task.FromResult<IListener>(_attribute switch
             {
-                PerperStreamAttribute streamAttribute => new PerperStreamListener(_fabricContext, streamAttribute, _name, context.Executor),
-                PerperWorkerAttribute workerAttribute => new PerperWorkerListener(_fabricContext, workerAttribute, _name, context.Executor),
+                PerperStreamTriggerAttribute streamAttribute => new PerperStreamListener(_fabricContext, streamAttribute, _name, context.Executor),
+                PerperWorkerTriggerAttribute workerAttribute => new PerperWorkerListener(_fabricContext, workerAttribute, _name, context.Executor),
                 _ => throw new ArgumentException()
             });
         }
@@ -41,13 +42,15 @@ namespace Perper.WebJobs.Extensions.Triggers
         public Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
             var (stream, triggerAttribute) = GetAttributeData();
-            return Task.FromResult<ITriggerData>(new TriggerData(new Dictionary<string, object>
-            {
-                {"stream", stream},
-                {"triggerAttribute", triggerAttribute}
-            }));
+            return Task.FromResult<ITriggerData>(new TriggerData(
+                new PerperStreamContextValueProvider(value),
+                new Dictionary<string, object>
+                {
+                    {"stream", stream},
+                    {"triggerAttribute", triggerAttribute}
+                }));
         }
-        
+
         public IReadOnlyDictionary<string, Type> BindingDataContract { get; } = new Dictionary<string, Type>
         {
             {"stream", typeof(string)},
@@ -63,8 +66,8 @@ namespace Perper.WebJobs.Extensions.Triggers
         {
             return _attribute switch
             {
-                PerperStreamAttribute _ => typeof(IPerperStreamContext),
-                PerperWorkerAttribute _ => typeof(IPerperWorkerContext),
+                PerperStreamTriggerAttribute _ => typeof(IPerperStreamContext),
+                PerperWorkerTriggerAttribute _ => typeof(IPerperWorkerContext),
                 _ => throw new ArgumentException()
             };
         }
@@ -73,8 +76,8 @@ namespace Perper.WebJobs.Extensions.Triggers
         {
             return _attribute switch
             {
-                PerperStreamAttribute streamAttribute => (streamAttribute.Stream, nameof(PerperStreamAttribute)),
-                PerperWorkerAttribute workerAttribute => (workerAttribute.Stream, nameof(PerperWorkerAttribute)),
+                PerperStreamTriggerAttribute streamAttribute => (streamAttribute.Stream, nameof(PerperStreamTriggerAttribute)),
+                PerperWorkerTriggerAttribute workerAttribute => (workerAttribute.Stream, nameof(PerperWorkerTriggerAttribute)),
                 _ => throw new ArgumentException()
             };
         }

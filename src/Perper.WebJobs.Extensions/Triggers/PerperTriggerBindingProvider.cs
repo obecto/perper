@@ -6,7 +6,7 @@ using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
-    public class PerperTriggerBindingProvider : ITriggerBindingProvider
+    public class PerperTriggerBindingProvider<TAttribute> : ITriggerBindingProvider where TAttribute : Attribute
     {
         private readonly IPerperFabricContext _fabricContext;
 
@@ -17,7 +17,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
-            var attribute = context.Parameter.GetCustomAttribute<Attribute>(inherit: false);
+            var attribute = context.Parameter.GetCustomAttribute<TAttribute>(inherit: false);
             return Task.FromResult<ITriggerBinding>(attribute == null
                 ? null
                 : new PerperTriggerBinding(_fabricContext, attribute, context.Parameter.Name));

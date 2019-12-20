@@ -28,11 +28,11 @@ namespace Perper.WebJobs.Extensions.Config
                 Task.FromResult<IValueBinder>(new PerperStreamValueBinder(_fabricContext, a, t)));
             bindingRule.BindToCollector<OpenType>(typeof(PerperStreamConverter<>), _fabricContext);
 
-            var streamBindingRule = context.AddBindingRule<PerperStreamAttribute>();
-            streamBindingRule.BindToTrigger(new PerperTriggerBindingProvider(_fabricContext));
+            var streamBindingRule = context.AddBindingRule<PerperStreamTriggerAttribute>();
+            streamBindingRule.BindToTrigger(new PerperTriggerBindingProvider<PerperStreamTriggerAttribute>(_fabricContext));
 
-            var workerBindingRule = context.AddBindingRule<PerperWorkerAttribute>();
-            workerBindingRule.BindToTrigger(new PerperTriggerBindingProvider(_fabricContext));
+            var workerBindingRule = context.AddBindingRule<PerperWorkerTriggerAttribute>();
+            workerBindingRule.BindToTrigger(new PerperTriggerBindingProvider<PerperStreamTriggerAttribute>(_fabricContext));
         }
     }
 }

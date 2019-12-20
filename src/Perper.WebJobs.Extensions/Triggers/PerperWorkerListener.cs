@@ -11,7 +11,7 @@ namespace Perper.WebJobs.Extensions.Triggers
     public class PerperWorkerListener : IListener
     {
         private readonly IPerperFabricContext _context;
-        private readonly PerperWorkerAttribute _attribute;
+        private readonly PerperWorkerTriggerAttribute _attribute;
         private readonly string _name;
         private readonly ITriggeredFunctionExecutor _executor;
 
@@ -19,7 +19,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         private Task _listenTask;
 
-        public PerperWorkerListener(IPerperFabricContext context, PerperWorkerAttribute attribute, string name,
+        public PerperWorkerListener(IPerperFabricContext context, PerperWorkerTriggerAttribute attribute, string name,
             ITriggeredFunctionExecutor executor)
         {
             _context = context;

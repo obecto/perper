@@ -1,16 +1,17 @@
 using System;
 using Microsoft.Azure.WebJobs.Description;
-using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Config
 {
     [Binding]
     [AttributeUsage(AttributeTargets.Parameter)]
-    public class PerperWorkerAttribute : Attribute
+    public sealed class PerperStreamTriggerAttribute : Attribute
     {
         public string Stream { get; }
-        
-        public PerperWorkerAttribute(string stream)
+
+        public bool RunOnStartup { get; set; } = false;
+
+        public PerperStreamTriggerAttribute(string stream)
         {
             Stream = stream;
         }

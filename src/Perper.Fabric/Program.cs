@@ -39,10 +39,12 @@ namespace Perper.Fabric
                     tasks.AddRange(
                         from streamObject in streamObjects
                         select StreamBinaryTypeName.Parse(streamObject.GetBinaryType().TypeName)
-                        into typeName
-                        where typeName.DelegateType == DelegateType.Action
-                        select new Stream(typeName, ignite)
+                        into streamObjectTypeName
+
+                        where streamObjectTypeName.DelegateType == DelegateType.Action
+                        select new Stream(streamObjectTypeName, ignite)
                         into stream
+
                         select stream.Activate(cancellationToken));
                 }
             }

@@ -11,7 +11,7 @@ namespace Perper.WebJobs.Extensions.Triggers
     public class PerperStreamListener : IListener
     {
         private readonly IPerperFabricContext _context;
-        private readonly PerperStreamAttribute _attribute;
+        private readonly PerperStreamTriggerAttribute _attribute;
         private readonly string _name;
         private readonly ITriggeredFunctionExecutor _executor;
 
@@ -19,7 +19,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         private Task _listenTask;
 
-        public PerperStreamListener(IPerperFabricContext context, PerperStreamAttribute attribute, string name,
+        public PerperStreamListener(IPerperFabricContext context, PerperStreamTriggerAttribute attribute, string name,
             ITriggeredFunctionExecutor executor)
         {
             _context = context;

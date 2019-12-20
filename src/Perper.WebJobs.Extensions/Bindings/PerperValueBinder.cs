@@ -27,8 +27,8 @@ namespace Perper.WebJobs.Extensions.Bindings
             var data = _context.GetData(_attribute.Stream);
             return _attribute.TriggerAttribute switch
             {
-                nameof(PerperStreamAttribute) => await data.FetchStreamParameter<object>(_attribute.Parameter),
-                nameof(PerperWorkerAttribute) => await data.FetchWorkerParameterAsync<object>(_attribute.Parameter),
+                nameof(PerperStreamTriggerAttribute) => await data.FetchStreamParameter<object>(_attribute.Parameter),
+                nameof(PerperWorkerTriggerAttribute) => await data.FetchWorkerParameterAsync<object>(_attribute.Parameter),
                 _ => throw new ArgumentException()
             };
         }
@@ -38,10 +38,10 @@ namespace Perper.WebJobs.Extensions.Bindings
             var data = _context.GetData(_attribute.Stream);
             switch (_attribute.TriggerAttribute)
             {
-                case nameof(PerperStreamAttribute):
+                case nameof(PerperStreamTriggerAttribute):
                     await data.UpdateStreamParameterAsync(_attribute.Parameter, value);
                     break;
-                case nameof(PerperWorkerAttribute):
+                case nameof(PerperWorkerTriggerAttribute):
                     await data.SubmitWorkerResultAsync(value);
                     break;
                 default: throw new ArgumentException();
