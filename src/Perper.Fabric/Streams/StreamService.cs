@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Net.Sockets;
@@ -8,10 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
-using Apache.Ignite.Core.Cache.Query.Continuous;
 using Apache.Ignite.Core.Resource;
 using Apache.Ignite.Core.Services;
-using Perper.Fabric.Utils;
 using Perper.Protocol.Notifications;
 
 namespace Perper.Fabric.Streams
@@ -51,7 +48,8 @@ namespace Perper.Fabric.Streams
             _task = Task.Run(async () =>
             {
                 await Invoke();
-                await Task.WhenAll(_stream.GetInputStreams().Select(Engage));
+                await Task.WhenAll(new[] {InvokeWorker(cancellationToken)}.Union(_stream.GetInputStreams()
+                    .Select(inputStream => Engage(inputStream, cancellationToken))));
             }, cancellationToken);
         }
 
@@ -69,27 +67,22 @@ namespace Perper.Fabric.Streams
         private async Task InvokeWorker(CancellationToken cancellationToken)
         {
             var cache = _ignite.GetOrCreateCache<string, IBinaryObject>("workers");
-            while (!cancellationToken.IsCancellationRequested)
+            var workers = cache.GetKeysAsync((s, _) => s == _stream.StreamObjectTypeName.DelegateName,
+                cancellationToken);
+            await foreach (var batch in workers.WithCancellation(cancellationToken))
             {
-                var taskCompletionSource = new TaskCompletionSource<IEnumerable<string>>();
-                var listener =
-                    new ActionListener<string>(events => taskCompletionSource.SetResult(events.Select(e => e.Key)));
-
-                using (cache.QueryContinuous(new ContinuousQuery<string, IBinaryObject>(listener)))
+                foreach (var _ in batch)
                 {
-                    if ((await taskCompletionSource.Task).Contains(_stream.StreamObjectTypeName.DelegateName))
-                    {
-                        await SendNotification(new WorkerTriggerNotification());
-                    }
+                    await SendNotification(new WorkerTriggerNotification());
                 }
             }
         }
 
-        private async Task Engage(Tuple<string, Stream> inputStream)
+        private async Task Engage(Tuple<string, Stream> inputStream, CancellationToken cancellationToken)
         {
             var (parameterName, parameterStream) = inputStream;
             var parameterStreamObjectTypeName = parameterStream.StreamObjectTypeName;
-            await foreach (var items in parameterStream.Listen())
+            await foreach (var items in parameterStream.Listen(cancellationToken))
             {
                 foreach (var item in items)
                 {

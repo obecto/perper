@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Perper.WebJobs.Extensions.Services;
 
@@ -41,17 +42,26 @@ namespace Perper.WebJobs.Extensions.Model
             await data.UpdateStreamParameterAsync(_name, state);
         }
 
-        public async Task<T> CallWorkerAsync<T>(object parameters)
+        public async Task<T> CallWorkerAsync<T>(object parameters, CancellationToken cancellationToken)
         {
             var data = _context.GetData(_streamName);
             await data.InvokeWorkerAsync(parameters);
             var notifications = _context.GetNotifications(_streamName);
-            await foreach (var _ in notifications.WorkerResultSubmissions())
+            await foreach (var _ in notifications.WorkerResultSubmissions(cancellationToken))
             {
                 return await data.ReceiveWorkerResultAsync<T>();
             }
 
             throw new TimeoutException();
+        }
+
+        public async Task WaitUntilCancelled(CancellationToken cancellationToken)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            await using (cancellationToken.Register(s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
+            {
+                await tcs.Task.ConfigureAwait(false);
+            }
         }
     }
 }

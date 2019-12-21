@@ -6,9 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
-using Apache.Ignite.Core.Cache.Event;
-using Apache.Ignite.Core.Cache.Query.Continuous;
-using Perper.Fabric.Utils;
 using Perper.Protocol.Cache;
 
 namespace Perper.Fabric.Streams
@@ -48,16 +45,9 @@ namespace Perper.Fabric.Streams
             await Activate(cancellationToken);
 
             var cache = _ignite.GetOrCreateCache<long, IBinaryObject>(StreamObjectTypeName.DelegateName);
-            while (!cancellationToken.IsCancellationRequested)
+            await foreach (var items in cache.GetKeysAsync(cancellationToken))
             {
-                var taskCompletionSource = new TaskCompletionSource<IEnumerable<long>>();
-                var listener =
-                    new ActionListener<long>(events => taskCompletionSource.SetResult(events.Select(e => e.Key)));
-
-                using (cache.QueryContinuous(new ContinuousQuery<long, IBinaryObject>(listener)))
-                {
-                    yield return await taskCompletionSource.Task;
-                }
+                yield return items;
             }
         }
 

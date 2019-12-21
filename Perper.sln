@@ -28,8 +28,6 @@ EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perper.Protocol", "src\Perper.Protocol\Perper.Protocol.csproj", "{4F999EBD-26F4-4EF7-B492-7D85583291C5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Apocryph.FunctionApp", "..\apocryph\prototype\perper-new\Apocryph.FunctionApp\Apocryph.FunctionApp.csproj", "{F66613A3-013B-402B-9B73-822EF37B3E89}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -65,9 +63,5 @@ Global
 		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F66613A3-013B-402B-9B73-822EF37B3E89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F66613A3-013B-402B-9B73-822EF37B3E89}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F66613A3-013B-402B-9B73-822EF37B3E89}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F66613A3-013B-402B-9B73-822EF37B3E89}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

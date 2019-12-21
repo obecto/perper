@@ -5,9 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
-using Apache.Ignite.Core.Cache.Query.Continuous;
 using Perper.Fabric.Streams;
-using Perper.Fabric.Utils;
 using Perper.Protocol.Cache;
 
 namespace Perper.Fabric
@@ -27,26 +25,18 @@ namespace Perper.Fabric
 
             var tasks = new List<Task>();
             var cache = ignite.GetOrCreateCache<string, IBinaryObject>("streams");
-            while (!cancellationToken.IsCancellationRequested)
+            await foreach (var streamObjects in cache.GetValuesAsync(cancellationToken))
             {
-                var completionSource = new TaskCompletionSource<IEnumerable<IBinaryObject>>();
-                var listener =
-                    new ActionListener<string>(events => completionSource.SetResult(events.Select(e => e.Value)));
+                tasks.AddRange(
+                    from streamObject in streamObjects
+                    select StreamBinaryTypeName.Parse(streamObject.GetBinaryType().TypeName)
+                    into streamObjectTypeName
 
-                using (cache.QueryContinuous(new ContinuousQuery<string, IBinaryObject>(listener)))
-                {
-                    var streamObjects = await completionSource.Task;
-                    tasks.AddRange(
-                        from streamObject in streamObjects
-                        select StreamBinaryTypeName.Parse(streamObject.GetBinaryType().TypeName)
-                        into streamObjectTypeName
+                    where streamObjectTypeName.DelegateType == DelegateType.Action
+                    select new Stream(streamObjectTypeName, ignite)
+                    into stream
 
-                        where streamObjectTypeName.DelegateType == DelegateType.Action
-                        select new Stream(streamObjectTypeName, ignite)
-                        into stream
-
-                        select stream.Activate(cancellationToken));
-                }
+                    select stream.Activate(cancellationToken));
             }
 
             await Task.WhenAll(tasks);
