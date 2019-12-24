@@ -24,8 +24,8 @@ namespace Perper.Fabric
             AppDomain.CurrentDomain.ProcessExit += (sender, eventArgs) => cancellationTokenSource.Cancel();
 
             var tasks = new List<Task>();
-            var cache = ignite.GetOrCreateCache<string, IBinaryObject>("streams");
-            await foreach (var streamObjects in cache.GetValuesAsync(cancellationToken))
+            var streams = ignite.GetOrCreateBinaryCache<string>("streams");
+            await foreach (var streamObjects in streams.GetValuesAsync(cancellationToken))
             {
                 tasks.AddRange(
                     from streamObject in streamObjects
@@ -36,7 +36,7 @@ namespace Perper.Fabric
                     select new Stream(streamObjectTypeName, ignite)
                     into stream
 
-                    select stream.Activate(cancellationToken));
+                    select stream.ActivateAsync(cancellationToken));
             }
 
             await Task.WhenAll(tasks);

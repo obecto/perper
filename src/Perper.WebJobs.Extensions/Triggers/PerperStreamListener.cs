@@ -62,7 +62,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             }
             else
             {
-                var triggers = _context.GetNotifications(_name).StreamTriggers(cancellationToken);
+                var triggers = _context.GetNotifications(_attribute.Stream).StreamTriggers(cancellationToken);
                 await foreach (var _ in triggers.WithCancellation(cancellationToken))
                 {
                     await ExecuteAsync(cancellationToken);

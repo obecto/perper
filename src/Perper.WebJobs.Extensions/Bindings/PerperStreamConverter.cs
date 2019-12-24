@@ -4,7 +4,7 @@ using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Bindings
 {
-    public class PerperStreamConverter<T> : IConverter<PerperAttribute, PerperStreamAsyncCollector<T>>
+    public class PerperStreamConverter<T> : IConverter<PerperStreamAttribute, IAsyncCollector<T>>
     {
         private readonly IPerperFabricContext _context;
 
@@ -13,7 +13,7 @@ namespace Perper.WebJobs.Extensions.Bindings
             _context = context;
         }
 
-        public PerperStreamAsyncCollector<T> Convert(PerperAttribute attribute)
+        public IAsyncCollector<T> Convert(PerperStreamAttribute attribute)
         {
             return new PerperStreamAsyncCollector<T>(_context, attribute.Stream);
         }

@@ -11,11 +11,11 @@ namespace Perper.WebJobs.Extensions.Bindings
     public class PerperStreamValueBinder : IValueBinder
     {
         private readonly IPerperFabricContext _context;
-        private readonly PerperAttribute _attribute;
+        private readonly PerperStreamAttribute _attribute;
 
         public Type Type { get; }
 
-        public PerperStreamValueBinder(IPerperFabricContext context, PerperAttribute attribute, Type type)
+        public PerperStreamValueBinder(IPerperFabricContext context, PerperStreamAttribute attribute, Type type)
         {
             _context = context;
             _attribute = attribute;
@@ -25,7 +25,7 @@ namespace Perper.WebJobs.Extensions.Bindings
 
         public Task<object> GetValueAsync()
         {
-            var streamType = typeof(PerperStreamAsyncEnumerable<>).MakeGenericType(Type);
+            var streamType = typeof(PerperStreamAsyncEnumerable<>).MakeGenericType(Type.GenericTypeArguments[0]);
             var stream = Activator.CreateInstance(streamType, _context, _attribute.Stream, _attribute.Parameter);
             return Task.FromResult(stream);
         }

@@ -56,7 +56,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         private async Task ListenAsync(CancellationToken cancellationToken)
         {
-            var triggers = _context.GetNotifications(_name).WorkerTriggers(cancellationToken);
+            var triggers = _context.GetNotifications(_attribute.Stream).WorkerTriggers(cancellationToken);
             await foreach (var _ in triggers.WithCancellation(cancellationToken))
             {
                 var triggerValue = new PerperWorkerContext {StreamName = _attribute.Stream};

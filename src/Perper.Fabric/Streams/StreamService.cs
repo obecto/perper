@@ -9,6 +9,7 @@ using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Resource;
 using Apache.Ignite.Core.Services;
+using Perper.Protocol.Cache;
 using Perper.Protocol.Notifications;
 
 namespace Perper.Fabric.Streams
@@ -16,29 +17,37 @@ namespace Perper.Fabric.Streams
     [Serializable]
     public class StreamService : IService
     {
-        private readonly Stream _stream;
+        public string StreamObjectTypeName { get; set; }
 
-        [InstanceResource] private readonly IIgnite _ignite;
+        [InstanceResource] private IIgnite _ignite;
+        
+        [NonSerialized] private Stream _stream;
 
-        private PipeWriter _pipeWriter;
+        [NonSerialized] private PipeWriter _pipeWriter;
 
-        private Task _task;
-        private CancellationTokenSource _cancellationTokenSource;
-
-        public StreamService(Stream stream, IIgnite ignite)
-        {
-            _stream = stream;
-            _ignite = ignite;
-        }
+        [NonSerialized] private Task _task;
+        [NonSerialized] private CancellationTokenSource _cancellationTokenSource;
 
         public void Init(IServiceContext context)
         {
-            var clientSocket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
-            clientSocket.Connect(
-                new UnixDomainSocketEndPoint($"/tmp/perper_{_stream.StreamObjectTypeName.DelegateName}.sock"));
+            _stream = new Stream(StreamBinaryTypeName.Parse(StreamObjectTypeName), _ignite);
 
-            var networkStream = new NetworkStream(clientSocket);
-            _pipeWriter = PipeWriter.Create(networkStream);
+            try
+            {
+                var clientSocket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
+                clientSocket.Connect(
+                    new UnixDomainSocketEndPoint($"/tmp/perper_{_stream.StreamObjectTypeName.DelegateName}.sock"));
+
+                var networkStream = new NetworkStream(clientSocket);
+                _pipeWriter = PipeWriter.Create(networkStream);
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+
         }
 
         public void Execute(IServiceContext context)
@@ -82,7 +91,7 @@ namespace Perper.Fabric.Streams
         {
             var (parameterName, parameterStream) = inputStream;
             var parameterStreamObjectTypeName = parameterStream.StreamObjectTypeName;
-            await foreach (var items in parameterStream.Listen(cancellationToken))
+            await foreach (var items in parameterStream.ListenAsync(cancellationToken))
             {
                 foreach (var item in items)
                 {
@@ -102,6 +111,7 @@ namespace Perper.Fabric.Streams
             messageBytes[0] = (byte) message.Length;
             Encoding.Default.GetBytes(message, 0, message.Length, messageBytes, 1);
             await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(messageBytes));
+            await _pipeWriter.FlushAsync();
         }
     }
 }

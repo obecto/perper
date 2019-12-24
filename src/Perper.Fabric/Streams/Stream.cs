@@ -24,7 +24,7 @@ namespace Perper.Fabric.Streams
 
         public IEnumerable<Tuple<string, Stream>> GetInputStreams()
         {
-            var streamObject = _ignite.GetCache<string, IBinaryObject>("streams")[StreamObjectTypeName.DelegateName];
+            var streamObject = _ignite.GetBinaryCache<string>("streams")[StreamObjectTypeName.DelegateName];
 
             var newStream = new Func<string, Stream>(field =>
             {
@@ -35,15 +35,16 @@ namespace Perper.Fabric.Streams
 
             return
                 from field in streamObject.GetBinaryType().Fields
-                where streamObject.GetBinaryType().GetFieldTypeName(field).StartsWith(nameof(StreamObjectTypeName))
+                where streamObject.GetField<IBinaryObject>(field).GetBinaryType().TypeName
+                    .StartsWith(nameof(StreamBinaryTypeName))
                 select Tuple.Create(field, newStream(field));
         }
 
-        public async IAsyncEnumerable<IEnumerable<long>> Listen(
+        public async IAsyncEnumerable<IEnumerable<long>> ListenAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            await Activate(cancellationToken);
-
+            //TODO: Start service
+            
             var cache = _ignite.GetOrCreateCache<long, IBinaryObject>(StreamObjectTypeName.DelegateName);
             await foreach (var items in cache.GetKeysAsync(cancellationToken))
             {
@@ -51,14 +52,15 @@ namespace Perper.Fabric.Streams
             }
         }
 
-        public Task Activate(CancellationToken cancellationToken)
+        public Task ActivateAsync(CancellationToken cancellationToken)
         {
             var service = _ignite.GetServices().GetService<StreamService>(StreamObjectTypeName.DelegateName);
             if (service == null)
             {
-                service = new StreamService(this, _ignite);
+                service = new StreamService{StreamObjectTypeName = StreamObjectTypeName.ToString()};
                 _ignite.GetServices().DeployNodeSingleton(StreamObjectTypeName.DelegateName, service);
             }
+            //TODO: Stop service when cancelled
             return Task.CompletedTask;
         } 
     }
