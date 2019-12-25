@@ -16,12 +16,12 @@ namespace Perper.Protocol.Cache
 
         public override string ToString()
         {
-            return $"{nameof(StreamBinaryTypeName)}<{DelegateName},{DelegateType}>";
+            return $"{nameof(StreamBinaryTypeName)}_{DelegateName}_{DelegateType}";
         }
 
         public static StreamBinaryTypeName Parse(string stringValue)
         {
-            var pattern = $@"{nameof(StreamBinaryTypeName)}<(?'{nameof(DelegateName)}'.*),(?'{nameof(DelegateType)}'.*)>";
+            var pattern = $@"{nameof(StreamBinaryTypeName)}_(?'{nameof(DelegateName)}'.*)_(?'{nameof(DelegateType)}'.*)";
             var match = Regex.Match(stringValue, pattern);
             
             var name = match.Groups[nameof(DelegateName)].Value; 

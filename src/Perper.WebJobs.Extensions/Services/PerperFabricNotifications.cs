@@ -29,10 +29,10 @@ namespace Perper.WebJobs.Extensions.Services
         public async IAsyncEnumerable<(string, long)> StreamParameterItemUpdates<T>(string parameterName,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var channel = _context.CreateChannel<StreamParameterItemUpdateNotification>(_streamName, typeof(T), parameterName);
+            var channel = _context.CreateChannel<StreamParameterItemUpdateNotification>(_streamName, typeof(T).ToString(), parameterName);
             await foreach (var notification in channel.Reader.ReadAllAsync(cancellationToken))
             {
-                yield return (notification.ItemStreamName, notification.ItemKey);
+                yield return (notification.ItemStream, notification.ItemKey);
             }
         }
 

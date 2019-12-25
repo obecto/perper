@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
-using Apache.Ignite.Core.Binary;
 using Perper.Fabric.Streams;
 using Perper.Protocol.Cache;
 
@@ -25,11 +24,11 @@ namespace Perper.Fabric
 
             var tasks = new List<Task>();
             var streams = ignite.GetOrCreateBinaryCache<string>("streams");
-            await foreach (var streamObjects in streams.GetValuesAsync(cancellationToken))
+            await foreach (var streamObjects in streams.QueryContinuousAsync(cancellationToken))
             {
                 tasks.AddRange(
                     from streamObject in streamObjects
-                    select StreamBinaryTypeName.Parse(streamObject.GetBinaryType().TypeName)
+                    select StreamBinaryTypeName.Parse(streamObject.Item2.GetBinaryType().TypeName)
                     into streamObjectTypeName
 
                     where streamObjectTypeName.DelegateType == DelegateType.Action

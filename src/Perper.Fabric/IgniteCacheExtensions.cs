@@ -14,74 +14,42 @@ namespace Perper.Fabric
 {
     public static class IgniteCacheExtensions
     {
-        public static IAsyncEnumerable<IEnumerable<T>> GetKeysAsync<T>(this ICache<T, IBinaryObject> cache,
+        public static IAsyncEnumerable<IEnumerable<(T, IBinaryObject)>> QueryContinuousAsync<T>(
+            this ICache<T, IBinaryObject> cache,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            return GetAsync<T, T>(cache, null, cancellationToken);
+            return QueryContinuousAsync(cache, null, cancellationToken);
         }
         
-        public static IAsyncEnumerable<IEnumerable<T>> GetKeysAsync<T>(this ICache<T, IBinaryObject> cache,
-            Func<T, IBinaryObject, bool> filter,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            return GetAsync<T, T>(cache, filter, cancellationToken);
-        }
-        
-        public static IAsyncEnumerable<IEnumerable<IBinaryObject>> GetValuesAsync<T>(this ICache<T, IBinaryObject> cache,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            return GetAsync<T, IBinaryObject>(cache, null, cancellationToken);
-        }
-
-        public static IAsyncEnumerable<IEnumerable<IBinaryObject>> GetValuesAsync<T>(
+        public static async IAsyncEnumerable<IEnumerable<(T, IBinaryObject)>> QueryContinuousAsync<T>(
             this ICache<T, IBinaryObject> cache,
             Func<T, IBinaryObject, bool> filter,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            return GetAsync<T, IBinaryObject>(cache, filter, cancellationToken);
-        }
-
-        private static async IAsyncEnumerable<IEnumerable<TR>> GetAsync<TK, TR>(this ICache<TK, IBinaryObject> cache,
-            Func<TK, IBinaryObject, bool> filter,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            var channel = Channel.CreateUnbounded<IEnumerable<TR>>();
-            var listener = new Listener<TK,TR>(channel);
+            var channel = Channel.CreateUnbounded<IEnumerable<(T, IBinaryObject)>>();
+            var listener = new Listener<T>(channel);
             using var queryHandle = filter == null
-                ? cache.QueryContinuous(new ContinuousQuery<TK, IBinaryObject>(listener))
-                : cache.QueryContinuous(new ContinuousQuery<TK, IBinaryObject>(listener),
-                    new ScanQuery<TK, IBinaryObject>(new Filter<TK>(filter)));
+                ? cache.QueryContinuous(new ContinuousQuery<T, IBinaryObject>(listener))
+                : cache.QueryContinuous(new ContinuousQuery<T, IBinaryObject>(listener),
+                    new ScanQuery<T, IBinaryObject>(new Filter<T>(filter)));
             await foreach (var result in channel.Reader.ReadAllAsync(cancellationToken))
             {
                 yield return result;
             }
         }
 
-        private class Listener<T, TR> : ICacheEntryEventListener<T, IBinaryObject>
+        private class Listener<T> : ICacheEntryEventListener<T, IBinaryObject>
         {
-            private readonly Channel<IEnumerable<TR>> _channel;
+            private readonly Channel<IEnumerable<(T, IBinaryObject)>> _channel;
 
-            public Listener(Channel<IEnumerable<TR>> channel)
+            public Listener(Channel<IEnumerable<(T, IBinaryObject)>> channel)
             {
                 _channel = channel;
             }
 
             public void OnEvent(IEnumerable<ICacheEntryEvent<T, IBinaryObject>> events)
             {
-                _channel.Writer.TryWrite(events.Select(e =>
-                {
-                    if (e.Key is TR key)
-                    {
-                        return key;
-                    }
-
-                    if (e.Value is TR value)
-                    {
-                        return value;
-                    }
-
-                    throw new ArgumentException();
-                }));
+                _channel.Writer.TryWrite(events.Select(e => (e.Key, e.Value)));
             }
         }
 

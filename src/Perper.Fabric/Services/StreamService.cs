@@ -9,10 +9,11 @@ using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Resource;
 using Apache.Ignite.Core.Services;
+using Perper.Fabric.Streams;
 using Perper.Protocol.Cache;
 using Perper.Protocol.Notifications;
 
-namespace Perper.Fabric.Streams
+namespace Perper.Fabric.Services
 {
     [Serializable]
     public class StreamService : IService
@@ -47,7 +48,6 @@ namespace Perper.Fabric.Streams
                 Console.WriteLine(e);
                 throw;
             }
-
         }
 
         public void Execute(IServiceContext context)
@@ -76,9 +76,8 @@ namespace Perper.Fabric.Streams
         private async Task InvokeWorker(CancellationToken cancellationToken)
         {
             var cache = _ignite.GetOrCreateCache<string, IBinaryObject>("workers");
-            var workers = cache.GetKeysAsync((s, _) => s == _stream.StreamObjectTypeName.DelegateName,
-                cancellationToken);
-            await foreach (var batch in workers.WithCancellation(cancellationToken))
+            await foreach (var batch in cache.QueryContinuousAsync(
+                (s, _) => s == _stream.StreamObjectTypeName.DelegateName, cancellationToken))
             {
                 foreach (var _ in batch)
                 {
@@ -93,12 +92,12 @@ namespace Perper.Fabric.Streams
             var parameterStreamObjectTypeName = parameterStream.StreamObjectTypeName;
             await foreach (var items in parameterStream.ListenAsync(cancellationToken))
             {
-                foreach (var item in items)
+                foreach (var (item, itemType) in items)
                 {
                     await SendNotification(new StreamParameterItemUpdateNotification(
                         parameterName,
-                        parameterStreamObjectTypeName.DelegateType.ToString(),
                         parameterStreamObjectTypeName.DelegateName,
+                        itemType.GetBinaryType().TypeName,
                         item));
                 }
             }

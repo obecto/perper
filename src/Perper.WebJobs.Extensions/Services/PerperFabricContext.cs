@@ -19,7 +19,7 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly Dictionary<string, Task> _listeners;
         private readonly CancellationTokenSource _listenersCancellationTokenSource;
         
-        private readonly Dictionary<string, Dictionary<(Type, Type, string), object>> _channels;
+        private readonly Dictionary<string, Dictionary<(Type, string, string), object>> _channels;
         
         private readonly Dictionary<string, PerperFabricNotifications> _notificationsCache;
         private readonly Dictionary<string, PerperFabricData> _dataCache;
@@ -34,7 +34,7 @@ namespace Perper.WebJobs.Extensions.Services
             _listeners = new Dictionary<string, Task>();
             _listenersCancellationTokenSource = new CancellationTokenSource();
             
-            _channels = new Dictionary<string, Dictionary<(Type, Type, string), object>>();
+            _channels = new Dictionary<string, Dictionary<(Type, string, string), object>>();
             
             _notificationsCache = new Dictionary<string, PerperFabricNotifications>();
             _dataCache = new Dictionary<string, PerperFabricData>();
@@ -71,7 +71,7 @@ namespace Perper.WebJobs.Extensions.Services
                     }
                 }
             }, cancellationToken);
-            _channels[streamName] = new Dictionary<(Type, Type, string), object>();
+            _channels[streamName] = new Dictionary<(Type, string, string), object>();
         }
 
         public PerperFabricNotifications GetNotifications(string streamName)
@@ -92,7 +92,7 @@ namespace Perper.WebJobs.Extensions.Services
             return result;
         }
 
-        public Channel<T> CreateChannel<T>(string streamName, Type parameterType = default,
+        public Channel<T> CreateChannel<T>(string streamName, string parameterType = default,
             string parameterName = default)
         {
             var result = Channel.CreateUnbounded<T>();
@@ -122,8 +122,7 @@ namespace Perper.WebJobs.Extensions.Services
             else if (message.StartsWith(nameof(StreamParameterItemUpdateNotification)))
             {
                 var notification = StreamParameterItemUpdateNotification.Parse(message);
-                await WriteNotificationToChannel(notification, streamName, Type.GetType(notification.ParameterType),
-                    notification.ParameterName);
+                await WriteNotificationToChannel(notification, streamName, notification.ItemType, notification.ParameterName);
             }
             else if (message.StartsWith(nameof(WorkerTriggerNotification)))
             {
@@ -136,7 +135,7 @@ namespace Perper.WebJobs.Extensions.Services
         }
 
         private async ValueTask WriteNotificationToChannel<T>(T notification, string streamName,
-            Type parameterType = default, string parameterName = default)
+            string parameterType = default, string parameterName = default)
         {
             var streamChannels = _channels[streamName];
             if (streamChannels.TryGetValue((typeof(T), parameterType, parameterName), out var channel))

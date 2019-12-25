@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using DotNet.FunctionApp.Model;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Config;
@@ -12,12 +13,12 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("Consumer")]
         public static async Task RunAsync([PerperStreamTrigger("Consumer")] IPerperStreamContext context,
-            [PerperStream("processor")] IAsyncEnumerable<int> processor,
+            [PerperStream("processor")] IAsyncEnumerable<Data> processor,
             ILogger logger, CancellationToken cancellationToken)
         {
-            await foreach (var value in processor.WithCancellation(cancellationToken))
+            await foreach (var data in processor.WithCancellation(cancellationToken))
             {
-                logger.LogTrace($"Consumer stream receives: {value}");
+                logger.LogInformation($"Consumer stream receives: {data.Value}");
             }
         }
     }

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
+using Perper.Fabric.Services;
 using Perper.Protocol.Cache;
 
 namespace Perper.Fabric.Streams
@@ -40,28 +41,29 @@ namespace Perper.Fabric.Streams
                 select Tuple.Create(field, newStream(field));
         }
 
-        public async IAsyncEnumerable<IEnumerable<long>> ListenAsync(
+        public async IAsyncEnumerable<IEnumerable<(long, IBinaryObject)>> ListenAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            //TODO: Start service
+            using var deployment = new StreamServiceDeployment(_ignite, StreamObjectTypeName.ToString());
+            await deployment.DeployAsync();
             
-            var cache = _ignite.GetOrCreateCache<long, IBinaryObject>(StreamObjectTypeName.DelegateName);
-            await foreach (var items in cache.GetKeysAsync(cancellationToken))
+            var cache = _ignite.GetOrCreateBinaryCache<long>(StreamObjectTypeName.DelegateName);
+            await foreach (var items in cache.QueryContinuousAsync(cancellationToken))
             {
                 yield return items;
             }
         }
 
-        public Task ActivateAsync(CancellationToken cancellationToken)
+        public async Task ActivateAsync(CancellationToken cancellationToken)
         {
-            var service = _ignite.GetServices().GetService<StreamService>(StreamObjectTypeName.DelegateName);
-            if (service == null)
+            using var deployment = new StreamServiceDeployment(_ignite, StreamObjectTypeName.ToString());
+            await deployment.DeployAsync();
+            
+            var tcs = new TaskCompletionSource<bool>();
+            await using (cancellationToken.Register(s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
             {
-                service = new StreamService{StreamObjectTypeName = StreamObjectTypeName.ToString()};
-                _ignite.GetServices().DeployNodeSingleton(StreamObjectTypeName.DelegateName, service);
+                await tcs.Task.ConfigureAwait(false);
             }
-            //TODO: Stop service when cancelled
-            return Task.CompletedTask;
-        } 
+        }
     }
 }
