@@ -44,7 +44,7 @@ namespace Perper.Fabric.Streams
         public async IAsyncEnumerable<IEnumerable<(long, IBinaryObject)>> ListenAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            using var deployment = new StreamServiceDeployment(_ignite, StreamObjectTypeName.ToString());
+            await using var deployment = new StreamServiceDeployment(_ignite, StreamObjectTypeName.ToString());
             await deployment.DeployAsync();
             
             var cache = _ignite.GetOrCreateBinaryCache<long>(StreamObjectTypeName.DelegateName);
@@ -56,7 +56,7 @@ namespace Perper.Fabric.Streams
 
         public async Task ActivateAsync(CancellationToken cancellationToken)
         {
-            using var deployment = new StreamServiceDeployment(_ignite, StreamObjectTypeName.ToString());
+            await using var deployment = new StreamServiceDeployment(_ignite, StreamObjectTypeName.ToString());
             await deployment.DeployAsync();
             
             var tcs = new TaskCompletionSource<bool>();
