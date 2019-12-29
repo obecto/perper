@@ -6,7 +6,7 @@ using Perper.WebJobs.Extensions.Model;
 
 namespace DotNet.FunctionApp
 {
-    public class Worker
+    public static class Worker
     {
         [FunctionName("Worker")]
         [return: Perper("$return")]
@@ -15,7 +15,7 @@ namespace DotNet.FunctionApp
             [Perper("multiplier")] int multiplier,
             [Perper("state")] IEnumerable<int> state)
         {
-            return state.Last() + value * multiplier;
+            return state.LastOrDefault() + value * multiplier;
         }
     }
 }

@@ -18,14 +18,17 @@ namespace DotNet.FunctionApp
             [PerperStream("output")] IAsyncCollector<Data> output,
             ILogger logger, CancellationToken cancellationToken)
         {
-            // var state = await context.FetchStateAsync<List<int>>();
+            var state = await context.FetchStateAsync<List<int>>() ?? new List<int>();
             await foreach (var data in generator.WithCancellation(cancellationToken))
             {
-                // var result = await context.CallWorkerAsync<int>(new {value, multiplier, state}, cancellationToken);
-                // state.Add(result);
-                // await context.UpdateStateAsync(state);
-                logger.LogInformation($"Processor is processing value: {data.Value}");
-                await output.AddAsync(new Data{Value = data.Value * 2}, cancellationToken);
+                var value = data.Value;
+                logger.LogInformation($"Processor is processing value: {value}");
+
+                var result = await context.CallWorkerAsync<int>(new {value, multiplier, state}, cancellationToken);
+                state.Add(result);
+                await context.UpdateStateAsync(state);
+                
+                await output.AddAsync(new Data{Value = result}, cancellationToken);
             }
         }
     }

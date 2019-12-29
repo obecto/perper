@@ -37,7 +37,13 @@ namespace Perper.WebJobs.Extensions.Services
         {
             var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
             var streamObject = await streamsCacheClient.GetAsync(_streamName);
-            return streamObject.GetField<T>(name);
+            var field = streamObject.GetField<T>(name);
+            if (field is IBinaryObject binaryObject)
+            {
+                return binaryObject.Deserialize<T>();
+            }
+
+            return field;
         }
 
         public async Task UpdateStreamParameterAsync<T>(string name, T value)
@@ -70,7 +76,13 @@ namespace Perper.WebJobs.Extensions.Services
         {
             var workersCache = _igniteClient.GetBinaryCache<string>("workers");
             var workerObject = await workersCache.GetAsync(_streamName);
-            return workerObject.GetField<T>(name);
+            var field = workerObject.GetField<T>(name);
+            if (field is IBinaryObject binaryObject)
+            {
+                return binaryObject.Deserialize<T>();
+            }
+
+            return field;
         }
 
         public async Task SubmitWorkerResultAsync<T>(T value)
@@ -85,7 +97,13 @@ namespace Perper.WebJobs.Extensions.Services
         {
             var workersCache = _igniteClient.GetBinaryCache<string>("workers");
             var workerObject = await workersCache.GetAndRemoveAsync(_streamName);
-            return workerObject.Value.GetField<T>("$return");
+            var field = workerObject.Value.GetField<T>("$return");
+            if (field is IBinaryObject binaryObject)
+            {
+                return binaryObject.Deserialize<T>();
+            }
+
+            return field;
         }
 
         private IBinaryObject CreateProtocolObject(object header, object parameters)

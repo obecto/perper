@@ -14,24 +14,29 @@ namespace Perper.Fabric
 {
     public static class IgniteCacheExtensions
     {
-        public static IAsyncEnumerable<IEnumerable<(T, IBinaryObject)>> QueryContinuousAsync<T>(
-            this ICache<T, IBinaryObject> cache,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            return QueryContinuousAsync(cache, null, cancellationToken);
-        }
-        
         public static async IAsyncEnumerable<IEnumerable<(T, IBinaryObject)>> QueryContinuousAsync<T>(
             this ICache<T, IBinaryObject> cache,
-            Func<T, IBinaryObject, bool> filter,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            [EnumeratorCancellation] CancellationToken cancellationToken = default) where T : IComparable
         {
             var channel = Channel.CreateUnbounded<IEnumerable<(T, IBinaryObject)>>();
             var listener = new Listener<T>(channel);
-            using var queryHandle = filter == null
-                ? cache.QueryContinuous(new ContinuousQuery<T, IBinaryObject>(listener))
-                : cache.QueryContinuous(new ContinuousQuery<T, IBinaryObject>(listener),
-                    new ScanQuery<T, IBinaryObject>(new Filter<T>(filter)));
+            using var queryHandle = cache.QueryContinuous(new ContinuousQuery<T, IBinaryObject>(listener));
+            await foreach (var result in channel.Reader.ReadAllAsync(cancellationToken))
+            {
+                yield return result;
+            }
+        }
+
+        public static async IAsyncEnumerable<IEnumerable<(T, IBinaryObject)>> QueryContinuousAsync<T>(
+            this ICache<T, IBinaryObject> cache,
+            T filterKey,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default) where T : IComparable
+        {
+            var channel = Channel.CreateUnbounded<IEnumerable<(T, IBinaryObject)>>();
+            var listener = new Listener<T>(channel);
+            var filter = new Filter<T>(filterKey);
+            using var queryHandle = cache.QueryContinuous(new ContinuousQuery<T, IBinaryObject>(listener, filter),
+                new ScanQuery<T, IBinaryObject>(filter));
             await foreach (var result in channel.Reader.ReadAllAsync(cancellationToken))
             {
                 yield return result;
@@ -53,18 +58,24 @@ namespace Perper.Fabric
             }
         }
 
-        private class Filter<T> : ICacheEntryFilter<T, IBinaryObject>
+        private class Filter<T> : ICacheEntryFilter<T, IBinaryObject>, ICacheEntryEventFilter<T, IBinaryObject>
+            where T : IComparable
         {
-            private readonly Func<T, IBinaryObject, bool> _callback;
+            private readonly T _filterKey;
 
-            public Filter(Func<T, IBinaryObject, bool> callback)
+            public Filter(T filterKey)
             {
-                _callback = callback;
+                _filterKey = filterKey;
             }
-            
+
             public bool Invoke(ICacheEntry<T, IBinaryObject> entry)
             {
-                return _callback(entry.Key, entry.Value);
+                return _filterKey.Equals(entry.Key);
+            }
+
+            public bool Evaluate(ICacheEntryEvent<T, IBinaryObject> evt)
+            {
+                return _filterKey.Equals(evt.Key);
             }
         }
     }

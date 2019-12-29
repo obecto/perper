@@ -75,13 +75,20 @@ namespace Perper.Fabric.Services
 
         private async Task InvokeWorker(CancellationToken cancellationToken)
         {
-            var cache = _ignite.GetOrCreateCache<string, IBinaryObject>("workers");
-            await foreach (var batch in cache.QueryContinuousAsync(
-                (s, _) => s == _stream.StreamObjectTypeName.DelegateName, cancellationToken))
+            var cache = _ignite.GetOrCreateBinaryCache<string>("workers");
+            var streamName = _stream.StreamObjectTypeName.DelegateName;
+            await foreach (var workers in cache.QueryContinuousAsync(streamName, cancellationToken))
             {
-                foreach (var _ in batch)
+                foreach (var (_, worker) in workers)
                 {
-                    await SendNotification(new WorkerTriggerNotification());
+                    if (worker.HasField("$return"))
+                    {
+                        await SendNotification(new WorkerResultSubmitNotification());
+                    }
+                    else
+                    {
+                        await SendNotification(new WorkerTriggerNotification());    
+                    }
                 }
             }
         }

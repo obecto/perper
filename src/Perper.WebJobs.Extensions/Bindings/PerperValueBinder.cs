@@ -42,7 +42,11 @@ namespace Perper.WebJobs.Extensions.Bindings
                     await data.UpdateStreamParameterAsync(_attribute.Parameter, value);
                     break;
                 case nameof(PerperWorkerTriggerAttribute):
-                    await data.SubmitWorkerResultAsync(value);
+                    if (_attribute.Parameter == "$return")
+                    {
+                        await data.SubmitWorkerResultAsync(value);
+                    }
+
                     break;
                 default: throw new ArgumentException();
             }
