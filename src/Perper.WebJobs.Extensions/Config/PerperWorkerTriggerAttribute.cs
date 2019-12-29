@@ -1,6 +1,5 @@
 using System;
 using Microsoft.Azure.WebJobs.Description;
-using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Config
 {

@@ -35,20 +35,10 @@ namespace Perper.WebJobs.Extensions.Bindings
 
         public async Task SetValueAsync(object value, CancellationToken cancellationToken)
         {
-            var data = _context.GetData(_attribute.Stream);
-            switch (_attribute.TriggerAttribute)
+            if (_attribute.Parameter == "$return")
             {
-                case nameof(PerperStreamTriggerAttribute):
-                    await data.UpdateStreamParameterAsync(_attribute.Parameter, value);
-                    break;
-                case nameof(PerperWorkerTriggerAttribute):
-                    if (_attribute.Parameter == "$return")
-                    {
-                        await data.SubmitWorkerResultAsync(value);
-                    }
-
-                    break;
-                default: throw new ArgumentException();
+                var data = _context.GetData(_attribute.Stream);
+                await data.SubmitWorkerResultAsync(value);
             }
         }
 
