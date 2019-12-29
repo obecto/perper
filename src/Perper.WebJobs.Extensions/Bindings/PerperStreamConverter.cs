@@ -15,7 +15,7 @@ namespace Perper.WebJobs.Extensions.Bindings
 
         public IAsyncCollector<T> Convert(PerperStreamAttribute attribute)
         {
-            return new PerperStreamAsyncCollector<T>(_context, attribute.Stream);
+            return new PerperStreamAsyncCollector<T>(attribute.Stream, _context);
         }
     }
 }

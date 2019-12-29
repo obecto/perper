@@ -6,7 +6,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
-using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Resource;
 using Apache.Ignite.Core.Services;
 using Perper.Fabric.Streams;
@@ -70,24 +69,24 @@ namespace Perper.Fabric.Services
 
         private async ValueTask Invoke()
         {
-            await SendNotification(new StreamTriggerNotification());
+            await SendNotification(new StreamTriggerNotification(_stream.StreamObjectTypeName.StreamName));
         }
 
         private async Task InvokeWorker(CancellationToken cancellationToken)
         {
             var cache = _ignite.GetOrCreateBinaryCache<string>("workers");
-            var streamName = _stream.StreamObjectTypeName.DelegateName;
+            var streamName = _stream.StreamObjectTypeName.StreamName;
             await foreach (var workers in cache.QueryContinuousAsync(streamName, cancellationToken))
             {
                 foreach (var (_, worker) in workers)
                 {
                     if (worker.HasField("$return"))
                     {
-                        await SendNotification(new WorkerResultSubmitNotification());
+                        await SendNotification(new WorkerResultSubmitNotification(streamName));
                     }
                     else
                     {
-                        await SendNotification(new WorkerTriggerNotification());    
+                        await SendNotification(new WorkerTriggerNotification(streamName));    
                     }
                 }
             }
@@ -95,17 +94,15 @@ namespace Perper.Fabric.Services
 
         private async Task Engage(Tuple<string, Stream> inputStream, CancellationToken cancellationToken)
         {
+            var streamName = _stream.StreamObjectTypeName.StreamName;
             var (parameterName, parameterStream) = inputStream;
-            var parameterStreamObjectTypeName = parameterStream.StreamObjectTypeName;
+            var itemStreamName = parameterStream.StreamObjectTypeName.StreamName;
             await foreach (var items in parameterStream.ListenAsync(cancellationToken))
             {
-                foreach (var (item, itemType) in items)
+                foreach (var (itemKey, item) in items)
                 {
-                    await SendNotification(new StreamParameterItemUpdateNotification(
-                        parameterName,
-                        parameterStreamObjectTypeName.DelegateName,
-                        itemType.GetBinaryType().TypeName,
-                        item));
+                    await SendNotification(new StreamParameterItemUpdateNotification(streamName, parameterName,
+                        itemStreamName, item.GetBinaryType().TypeName, itemKey));
                 }
             }
         }

@@ -12,7 +12,7 @@ namespace DotNet.FunctionApp
     public static class Consumer
     {
         [FunctionName("Consumer")]
-        public static async Task RunAsync([PerperStreamTrigger("Consumer")] IPerperStreamContext context,
+        public static async Task RunAsync([PerperStreamTrigger] PerperStreamContext context,
             [PerperStream("processor")] IAsyncEnumerable<Data> processor,
             ILogger logger, CancellationToken cancellationToken)
         {

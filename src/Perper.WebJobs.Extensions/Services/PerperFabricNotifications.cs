@@ -7,52 +7,53 @@ namespace Perper.WebJobs.Extensions.Services
 {
     public class PerperFabricNotifications
     {
-        private readonly string _streamName;
+        private readonly string _delegateName;
         private readonly PerperFabricContext _context;
 
-        public PerperFabricNotifications(string streamName, PerperFabricContext context)
+        public PerperFabricNotifications(string delegateName, PerperFabricContext context)
         {
-            _streamName = streamName;
+            _delegateName = delegateName;
             _context = context;
         }
 
-        public async IAsyncEnumerable<object> StreamTriggers(
+        public async IAsyncEnumerable<string> StreamTriggers(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var channel = _context.CreateChannel<StreamTriggerNotification>(_streamName);
-            await foreach (var _ in channel.Reader.ReadAllAsync(cancellationToken))
-            {
-                yield return null;
-            }
-        }
-
-        public async IAsyncEnumerable<(string, long)> StreamParameterItemUpdates<T>(string parameterName,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            var channel = _context.CreateChannel<StreamParameterItemUpdateNotification>(_streamName, typeof(T).ToString(), parameterName);
+            var channel = _context.CreateChannel<StreamTriggerNotification>(_delegateName);
             await foreach (var notification in channel.Reader.ReadAllAsync(cancellationToken))
             {
-                yield return (notification.ItemStream, notification.ItemKey);
+                yield return notification.StreamName;
             }
         }
 
-        public async IAsyncEnumerable<object> WorkerTriggers(
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<(string, long)> StreamParameterItemUpdates<T>(string streamName,
+            string parameterName, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var channel = _context.CreateChannel<WorkerTriggerNotification>(_streamName);
-            await foreach (var _ in channel.Reader.ReadAllAsync(cancellationToken))
+            var channel = _context.CreateChannel<StreamParameterItemUpdateNotification>(_delegateName, streamName,
+                parameterName, typeof(T).ToString());
+            await foreach (var notification in channel.Reader.ReadAllAsync(cancellationToken))
             {
-                yield return null;
+                yield return (notification.ItemStreamName, notification.ItemKey);
             }
         }
 
-        public async IAsyncEnumerable<object> WorkerResultSubmissions(
+        public async IAsyncEnumerable<string> WorkerTriggers(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var channel = _context.CreateChannel<WorkerResultSubmitNotification>(_streamName);
-            await foreach (var _ in channel.Reader.ReadAllAsync(cancellationToken))
+            var channel = _context.CreateChannel<WorkerTriggerNotification>(_delegateName);
+            await foreach (var notification in channel.Reader.ReadAllAsync(cancellationToken))
             {
-                yield return null;
+                yield return notification.StreamName;
+            }
+        }
+
+        public async IAsyncEnumerable<string> WorkerResultSubmissions(
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var channel = _context.CreateChannel<WorkerResultSubmitNotification>(_delegateName);
+            await foreach (var notification in channel.Reader.ReadAllAsync(cancellationToken))
+            {
+                yield return notification.StreamName;
             }
         }
     }

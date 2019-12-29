@@ -8,11 +8,11 @@ namespace Perper.WebJobs.Extensions.Config
     [AttributeUsage(AttributeTargets.Parameter)]
     public class PerperWorkerTriggerAttribute : Attribute
     {
-        public string Stream { get; }
+        public string StreamDelegate { get; }
         
-        public PerperWorkerTriggerAttribute(string stream)
+        public PerperWorkerTriggerAttribute(string streamDelegate)
         {
-            Stream = stream;
+            StreamDelegate = streamDelegate;
         }
     }
 }

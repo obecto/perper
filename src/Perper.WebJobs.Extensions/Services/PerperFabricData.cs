@@ -19,21 +19,21 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task<IAsyncDisposable> StreamFunctionAsync(string name, object parameters)
         {
-            var typeName = new StreamBinaryTypeName(name, DelegateType.Function);
+            var typeName = new StreamBinaryTypeName(Guid.NewGuid().ToString(), name, DelegateType.Function);
             var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
-            await streamsCacheClient.PutAsync(name, CreateProtocolObject(typeName, parameters));
+            await streamsCacheClient.PutAsync(typeName.StreamName, CreateProtocolObject(typeName, parameters));
             return new PerperFabricStream(typeName, _igniteClient);
         }
 
         public async Task<IAsyncDisposable> StreamActionAsync(string name, object parameters)
         {
-            var typeName = new StreamBinaryTypeName(name, DelegateType.Action);
+            var typeName = new StreamBinaryTypeName(Guid.NewGuid().ToString(), name, DelegateType.Action);
             var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
-            await streamsCacheClient.PutAsync(name, CreateProtocolObject(typeName, parameters));
+            await streamsCacheClient.PutAsync(typeName.StreamName, CreateProtocolObject(typeName, parameters));
             return new PerperFabricStream(typeName, _igniteClient);
         }
 
-        public async Task<T> FetchStreamParameter<T>(string name)
+        public async Task<T> FetchStreamParameterAsync<T>(string name)
         {
             var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
             var streamObject = await streamsCacheClient.GetAsync(_streamName);
@@ -54,18 +54,18 @@ namespace Perper.WebJobs.Extensions.Services
             await streamsCacheClient.ReplaceAsync(_streamName, updatedStreamObject);
         }
 
-        public async Task<T> FetchStreamParameterItemAsync<T>(string itemStreamName, long itemKey)
-        {
-            var streamCacheClient = _igniteClient.GetCache<long, T>(itemStreamName);
-            return await streamCacheClient.GetAsync(itemKey);
-        }
-
         public async Task AddStreamItemAsync<T>(T value)
         {
             var streamCacheClient = _igniteClient.GetCache<long, T>(_streamName);
             await streamCacheClient.PutAsync(DateTime.UtcNow.ToFileTimeUtc(), value);
         }
 
+        public async Task<T> FetchStreamParameterStreamItemAsync<T>(string itemStreamName, long itemKey)
+        {
+            var itemStreamCacheClient = _igniteClient.GetCache<long, T>(itemStreamName);
+            return await itemStreamCacheClient.GetAsync(itemKey);
+        }
+        
         public async Task InvokeWorkerAsync(object parameters)
         {
             var workersCache = _igniteClient.GetBinaryCache<string>("workers");

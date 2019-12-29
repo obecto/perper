@@ -1,7 +1,12 @@
 namespace Perper.WebJobs.Extensions.Model
 {
-    public class PerperWorkerContext : IPerperWorkerContext
+    public class PerperWorkerContext
     {
         public string StreamName { get; set; }
+
+        public PerperWorkerContext(string streamName)
+        {
+            StreamName = streamName;
+        }
     }
 }

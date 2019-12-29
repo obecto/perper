@@ -26,7 +26,8 @@ namespace Perper.WebJobs.Extensions.Bindings
         public Task<object> GetValueAsync()
         {
             var streamType = typeof(PerperStreamAsyncEnumerable<>).MakeGenericType(Type.GenericTypeArguments[0]);
-            var stream = Activator.CreateInstance(streamType, _context, _attribute.Stream, _attribute.Parameter);
+            var stream = Activator.CreateInstance(streamType, 
+                _attribute.Stream, _attribute.Delegate, _attribute.Parameter, _context);
             return Task.FromResult(stream);
         }
 

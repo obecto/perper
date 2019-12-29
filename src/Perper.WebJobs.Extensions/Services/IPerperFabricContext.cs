@@ -5,8 +5,8 @@ namespace Perper.WebJobs.Extensions.Services
 {
     public interface IPerperFabricContext
     {
-        void StartListen(string streamName);
-        PerperFabricNotifications GetNotifications(string streamName);
+        void StartListen(string delegateName);
+        PerperFabricNotifications GetNotifications(string delegateName);
         PerperFabricData GetData(string streamName);
     }
 }

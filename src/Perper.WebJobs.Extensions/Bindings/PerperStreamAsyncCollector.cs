@@ -7,13 +7,13 @@ namespace Perper.WebJobs.Extensions.Bindings
 {
     public class PerperStreamAsyncCollector<T> : IAsyncCollector<T>
     {
-        private readonly IPerperFabricContext _context;
         private readonly string _streamName;
-
-        public PerperStreamAsyncCollector(IPerperFabricContext context, string streamName)
+        private readonly IPerperFabricContext _context;
+        
+        public PerperStreamAsyncCollector(string streamName, IPerperFabricContext context)
         {
-            _context = context;
             _streamName = streamName;
+            _context = context;
         }
 
         public async Task AddAsync(T item, CancellationToken cancellationToken = new CancellationToken())

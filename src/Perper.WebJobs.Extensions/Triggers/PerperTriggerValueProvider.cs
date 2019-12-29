@@ -1,17 +1,18 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
-    public class PerperStreamContextValueProvider : IValueProvider
+    public class PerperTriggerValueProvider : IValueProvider
     {
         private readonly object _value;
 
-        public PerperStreamContextValueProvider(object value)
+        public PerperTriggerValueProvider(object value)
         {
             _value = value;
+
+            Type = value.GetType();
         }
         
         public Task<object> GetValueAsync()
@@ -24,6 +25,6 @@ namespace Perper.WebJobs.Extensions.Triggers
             return "context";
         }
 
-        public Type Type { get; } = typeof(PerperStreamContext);
+        public Type Type { get; }
     }
 }

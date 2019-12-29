@@ -19,7 +19,7 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly Dictionary<string, Task> _listeners;
         private readonly CancellationTokenSource _listenersCancellationTokenSource;
         
-        private readonly Dictionary<string, Dictionary<(Type, string, string), object>> _channels;
+        private readonly Dictionary<string, Dictionary<(Type, string, string, string), object>> _channels;
         
         private readonly Dictionary<string, PerperFabricNotifications> _notificationsCache;
         private readonly Dictionary<string, PerperFabricData> _dataCache;
@@ -34,21 +34,21 @@ namespace Perper.WebJobs.Extensions.Services
             _listeners = new Dictionary<string, Task>();
             _listenersCancellationTokenSource = new CancellationTokenSource();
             
-            _channels = new Dictionary<string, Dictionary<(Type, string, string), object>>();
+            _channels = new Dictionary<string, Dictionary<(Type, string, string, string), object>>();
             
             _notificationsCache = new Dictionary<string, PerperFabricNotifications>();
             _dataCache = new Dictionary<string, PerperFabricData>();
         }
 
-        public void StartListen(string streamName)
+        public void StartListen(string delegateName)
         {
-            if (_listeners.ContainsKey(streamName)) return;
+            if (_listeners.ContainsKey(delegateName)) return;
 
             var cancellationToken = _listenersCancellationTokenSource.Token;
-            _listeners[streamName] = Task.Run(async () =>
+            _listeners[delegateName] = Task.Run(async () =>
             {
                 using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
-                socket.Bind(new UnixDomainSocketEndPoint($"/tmp/perper_{streamName}.sock"));
+                socket.Bind(new UnixDomainSocketEndPoint($"/tmp/perper_{delegateName}.sock"));
                 socket.Listen(120);
 
                 using var acceptedSocket = await socket.AcceptAsync().WithCancellation(cancellationToken);
@@ -62,7 +62,7 @@ namespace Perper.WebJobs.Extensions.Services
                     if (buffer.Length > messageSize)
                     {
                         var message = buffer.Slice(1, messageSize).ToAsciiString();
-                        await RouteMessage(streamName, message);
+                        await RouteMessage(delegateName, message);
                         reader.AdvanceTo(buffer.GetPosition(messageSize + 1));
                     }
                     else
@@ -71,15 +71,15 @@ namespace Perper.WebJobs.Extensions.Services
                     }
                 }
             }, cancellationToken);
-            _channels[streamName] = new Dictionary<(Type, string, string), object>();
+            _channels[delegateName] = new Dictionary<(Type, string, string, string), object>();
         }
 
-        public PerperFabricNotifications GetNotifications(string streamName)
+        public PerperFabricNotifications GetNotifications(string delegateName)
         {
-            if (_notificationsCache.TryGetValue(streamName, out var result)) return result;
+            if (_notificationsCache.TryGetValue(delegateName, out var result)) return result;
 
-            result = new PerperFabricNotifications(streamName, this);
-            _notificationsCache[streamName] = result;
+            result = new PerperFabricNotifications(delegateName, this);
+            _notificationsCache[delegateName] = result;
             return result;
         }
 
@@ -92,11 +92,11 @@ namespace Perper.WebJobs.Extensions.Services
             return result;
         }
 
-        public Channel<T> CreateChannel<T>(string streamName, string parameterType = default,
-            string parameterName = default)
+        public Channel<T> CreateChannel<T>(string delegateName,
+            string streamName = default, string parameterName = default, string parameterType = default)
         {
             var result = Channel.CreateUnbounded<T>();
-            _channels[streamName][(typeof(T), parameterType, parameterName)] = result;
+            _channels[delegateName][(typeof(T), streamName, parameterName, parameterType)] = result;
             return result;
         }
 
@@ -113,32 +113,33 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        private async ValueTask RouteMessage(string streamName, string message)
+        private async ValueTask RouteMessage(string delegateName, string message)
         {
             if (message.StartsWith(nameof(StreamTriggerNotification)))
             {
-                await WriteNotificationToChannel(StreamTriggerNotification.Parse(message), streamName);
+                await WriteNotificationToChannel(StreamTriggerNotification.Parse(message), delegateName);
             }
             else if (message.StartsWith(nameof(StreamParameterItemUpdateNotification)))
             {
                 var notification = StreamParameterItemUpdateNotification.Parse(message);
-                await WriteNotificationToChannel(notification, streamName, notification.ItemType, notification.ParameterName);
+                await WriteNotificationToChannel(notification, delegateName, notification.StreamName,
+                    notification.ParameterName, notification.ItemType);
             }
             else if (message.StartsWith(nameof(WorkerTriggerNotification)))
             {
-                await WriteNotificationToChannel(WorkerTriggerNotification.Parse(message), streamName);
+                await WriteNotificationToChannel(WorkerTriggerNotification.Parse(message), delegateName);
             }
             else if (message.StartsWith(nameof(WorkerResultSubmitNotification)))
             {
-                await WriteNotificationToChannel(WorkerResultSubmitNotification.Parse(message), streamName);
+                await WriteNotificationToChannel(WorkerResultSubmitNotification.Parse(message), delegateName);
             }
         }
 
-        private async ValueTask WriteNotificationToChannel<T>(T notification, string streamName,
-            string parameterType = default, string parameterName = default)
+        private async ValueTask WriteNotificationToChannel<T>(T notification, string delegateName, 
+            string streamName = default, string parameterName = default, string parameterType = default)
         {
-            var streamChannels = _channels[streamName];
-            if (streamChannels.TryGetValue((typeof(T), parameterType, parameterName), out var channel))
+            var streamChannels = _channels[delegateName];
+            if (streamChannels.TryGetValue((typeof(T), streamName, parameterName, parameterType), out var channel))
             {
                 await ((Channel<T>) channel).Writer.WriteAsync(notification, _listenersCancellationTokenSource.Token);
             }

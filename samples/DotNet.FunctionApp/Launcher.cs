@@ -9,8 +9,8 @@ namespace DotNet.FunctionApp
     public static class Launcher
     {
         [FunctionName("Launcher")]
-        public static async Task RunAsync([PerperStreamTrigger("Launcher", RunOnStartup = true)]
-            IPerperStreamContext context, CancellationToken cancellationToken)
+        public static async Task RunAsync([PerperStreamTrigger(RunOnStartup = true)]PerperStreamContext context, 
+            CancellationToken cancellationToken)
         {
             await using var generator = await context.StreamFunctionAsync("Generator", new {count = 100});
             await using var processor =

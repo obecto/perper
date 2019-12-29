@@ -25,7 +25,7 @@ namespace Perper.Fabric.Streams
 
         public IEnumerable<Tuple<string, Stream>> GetInputStreams()
         {
-            var streamObject = _ignite.GetBinaryCache<string>("streams")[StreamObjectTypeName.DelegateName];
+            var streamObject = _ignite.GetBinaryCache<string>("streams")[StreamObjectTypeName.StreamName];
 
             var newStream = new Func<string, Stream>(field =>
             {
@@ -47,7 +47,7 @@ namespace Perper.Fabric.Streams
             await using var deployment = new StreamServiceDeployment(_ignite, StreamObjectTypeName.ToString());
             await deployment.DeployAsync();
             
-            var cache = _ignite.GetOrCreateBinaryCache<long>(StreamObjectTypeName.DelegateName);
+            var cache = _ignite.GetOrCreateBinaryCache<long>(StreamObjectTypeName.StreamName);
             await foreach (var items in cache.QueryContinuousAsync(cancellationToken))
             {
                 yield return items;

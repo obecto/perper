@@ -5,48 +5,50 @@ using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Model
 {
-    public class PerperStreamContext : IPerperStreamContext
+    public class PerperStreamContext
     {
+        public string StreamName { get; }
+        public string DelegateName { get; }
+        
         private readonly IPerperFabricContext _context;
-        private readonly string _streamName;
-        private readonly string _name;
-
-        public PerperStreamContext(IPerperFabricContext context, string streamName, string name)
+        
+        public PerperStreamContext(string streamName, string delegateName, IPerperFabricContext context)
         {
+            StreamName = streamName;
+            DelegateName = delegateName;
+            
             _context = context;
-            _streamName = streamName;
-            _name = name;
         }
 
         public async Task<IAsyncDisposable> StreamActionAsync(string name, object parameters)
         {
-            var data = _context.GetData(_streamName);
+            var data = _context.GetData(StreamName);
             return await data.StreamActionAsync(name, parameters);
         }
 
         public async Task<IAsyncDisposable> StreamFunctionAsync(string name, object parameters)
         {
-            var data = _context.GetData(_streamName);
+            var data = _context.GetData(StreamName);
             return await data.StreamFunctionAsync(name, parameters);
         }
 
         public Task<T> FetchStateAsync<T>()
         {
-            var data = _context.GetData(_streamName);
-            return data.FetchStreamParameter<T>(_name);
+            var data = _context.GetData(StreamName);
+            return data.FetchStreamParameterAsync<T>("context");
         }
 
         public async Task UpdateStateAsync<T>(T state)
         {
-            var data = _context.GetData(_streamName);
-            await data.UpdateStreamParameterAsync(_name, state);
+            var data = _context.GetData(StreamName);
+            await data.UpdateStreamParameterAsync("context", state);
         }
 
         public async Task<T> CallWorkerAsync<T>(object parameters, CancellationToken cancellationToken)
         {
-            var data = _context.GetData(_streamName);
+            var data = _context.GetData(StreamName);
             await data.InvokeWorkerAsync(parameters);
-            var notifications = _context.GetNotifications(_streamName);
+            var notifications = _context.GetNotifications(DelegateName);
             await foreach (var _ in notifications.WorkerResultSubmissions(cancellationToken))
             {
                 return await data.ReceiveWorkerResultAsync<T>();

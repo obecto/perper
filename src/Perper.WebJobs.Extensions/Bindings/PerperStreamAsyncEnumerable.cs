@@ -8,17 +8,20 @@ namespace Perper.WebJobs.Extensions.Bindings
 {
     public class PerperStreamAsyncEnumerable<T> : IAsyncEnumerable<T>
     {
-        private readonly IPerperFabricContext _context;
         private readonly string _streamName;
+        private readonly string _delegateName;
         private readonly string _parameterName;
+        private readonly IPerperFabricContext _context;
 
         private readonly IAsyncEnumerable<T> _impl;
 
-        public PerperStreamAsyncEnumerable(IPerperFabricContext context, string streamName, string parameterName)
+        public PerperStreamAsyncEnumerable(string streamName, string delegateName, string parameterName,
+            IPerperFabricContext context)
         {
-            _context = context;
             _streamName = streamName;
+            _delegateName = delegateName;
             _parameterName = parameterName;
+            _context = context;
 
             _impl = Impl();
         }
@@ -31,10 +34,11 @@ namespace Perper.WebJobs.Extensions.Bindings
         private async IAsyncEnumerable<T> Impl([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var data = _context.GetData(_streamName);
-            var updates = _context.GetNotifications(_streamName).StreamParameterItemUpdates<T>(_parameterName, cancellationToken);
+            var updates = _context.GetNotifications(_delegateName).StreamParameterItemUpdates<T>(
+                _streamName, _parameterName, cancellationToken);
             await foreach (var (itemStreamName, itemKey) in updates.WithCancellation(cancellationToken))
             {
-                yield return await data.FetchStreamParameterItemAsync<T>(itemStreamName, itemKey);
+                yield return await data.FetchStreamParameterStreamItemAsync<T>(itemStreamName, itemKey);
             }
         }
     }

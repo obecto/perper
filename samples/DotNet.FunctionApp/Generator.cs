@@ -11,7 +11,7 @@ namespace DotNet.FunctionApp
     public static class Generator
     {
         [FunctionName("Generator")]
-        public static async Task Run([PerperStreamTrigger("Generator")] IPerperStreamContext context,
+        public static async Task Run([PerperStreamTrigger] PerperStreamContext context,
             [Perper("count")] int count,
             [PerperStream("output")] IAsyncCollector<Data> output,
             ILogger logger, CancellationToken cancellationToken)

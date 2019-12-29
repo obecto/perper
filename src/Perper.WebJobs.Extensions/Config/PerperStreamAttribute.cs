@@ -7,10 +7,11 @@ namespace Perper.WebJobs.Extensions.Config
     [AttributeUsage(AttributeTargets.Parameter)]
     public class PerperStreamAttribute : Attribute
     {
-        [AutoResolve] public string Stream { get; set; } = "{stream}";
-        [AutoResolve] public string TriggerAttribute { get; set; } = "{triggerAttribute}";
         public string Parameter { get; }
 
+        [AutoResolve] public string Stream { get; set; } = "{stream}";
+        [AutoResolve] public string Delegate { get; set; } = "{delegate}";
+        
         public PerperStreamAttribute(string parameter)
         {
             Parameter = parameter;

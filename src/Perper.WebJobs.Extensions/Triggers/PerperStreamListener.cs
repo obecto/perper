@@ -10,29 +10,29 @@ namespace Perper.WebJobs.Extensions.Triggers
 {
     public class PerperStreamListener : IListener
     {
-        private readonly IPerperFabricContext _context;
         private readonly PerperStreamTriggerAttribute _attribute;
-        private readonly string _name;
+        private readonly string _delegateName;
         private readonly ITriggeredFunctionExecutor _executor;
+        private readonly IPerperFabricContext _context;
 
         private readonly CancellationTokenSource _listenCancellationTokenSource;
 
         private Task _listenTask;
 
-        public PerperStreamListener(IPerperFabricContext context, PerperStreamTriggerAttribute attribute, string name,
-            ITriggeredFunctionExecutor executor)
+        public PerperStreamListener(PerperStreamTriggerAttribute attribute, string delegateName,
+            ITriggeredFunctionExecutor executor, IPerperFabricContext context)
         {
-            _context = context;
             _attribute = attribute;
-            _name = name;
+            _delegateName = delegateName;
             _executor = executor;
+            _context = context;
 
             _listenCancellationTokenSource = new CancellationTokenSource();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _context.StartListen(_attribute.Stream);
+            _context.StartListen(_delegateName);
             
             _listenTask = ListenAsync(_listenCancellationTokenSource.Token);
             return Task.CompletedTask;
@@ -58,21 +58,21 @@ namespace Perper.WebJobs.Extensions.Triggers
         {
             if (_attribute.RunOnStartup)
             {
-                await ExecuteAsync(cancellationToken);
+                await ExecuteAsync(string.Empty, cancellationToken);
             }
             else
             {
-                var triggers = _context.GetNotifications(_attribute.Stream).StreamTriggers(cancellationToken);
-                await foreach (var _ in triggers.WithCancellation(cancellationToken))
+                var triggers = _context.GetNotifications(_delegateName).StreamTriggers(cancellationToken);
+                await foreach (var streamName in triggers.WithCancellation(cancellationToken))
                 {
-                    await ExecuteAsync(cancellationToken);
+                    await ExecuteAsync(streamName, cancellationToken);
                 }
             }
         }
 
-        private async Task ExecuteAsync(CancellationToken cancellationToken)
+        private async Task ExecuteAsync(string streamName, CancellationToken cancellationToken)
         {
-            var triggerValue = new PerperStreamContext(_context, _attribute.Stream, _name);
+            var triggerValue = new PerperStreamContext(streamName, _delegateName, _context);
             await _executor.TryExecuteAsync(new TriggeredFunctionData {TriggerValue = triggerValue}, cancellationToken);
         }
     }

@@ -17,10 +17,10 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
-            var attribute = context.Parameter.GetCustomAttribute<TAttribute>(inherit: false);
+            var attribute = context.Parameter.GetCustomAttribute<TAttribute>(false);
             return Task.FromResult<ITriggerBinding>(attribute == null
                 ? null
-                : new PerperTriggerBinding(_fabricContext, attribute, context.Parameter.Name));
+                : new PerperTriggerBinding(attribute, _fabricContext));
         }
     }
 }
