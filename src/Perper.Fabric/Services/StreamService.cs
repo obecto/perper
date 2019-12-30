@@ -92,7 +92,7 @@ namespace Perper.Fabric.Services
             }
         }
 
-        private async Task Engage(Tuple<string, Stream> inputStream, CancellationToken cancellationToken)
+        private async Task Engage((string, Stream) inputStream, CancellationToken cancellationToken)
         {
             var streamName = _stream.StreamObjectTypeName.StreamName;
             var (parameterName, parameterStream) = inputStream;

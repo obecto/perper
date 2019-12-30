@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,22 +22,27 @@ namespace Perper.Fabric.Streams
             _ignite = ignite;
         }
 
-        public IEnumerable<Tuple<string, Stream>> GetInputStreams()
+        public IEnumerable<(string, Stream)> GetInputStreams()
         {
             var streamObject = _ignite.GetBinaryCache<string>("streams")[StreamObjectTypeName.StreamName];
 
-            var newStream = new Func<string, Stream>(field =>
+            foreach (var field in streamObject.GetBinaryType().Fields)
             {
-                var typeName =
-                    StreamBinaryTypeName.Parse(streamObject.GetField<IBinaryObject>(field).GetBinaryType().TypeName);
-                return new Stream(typeName, _ignite);
-            });
+                string fieldType;
+                try
+                {
+                    fieldType = streamObject.GetField<IBinaryObject>(field).GetBinaryType().TypeName;
+                }
+                catch (InvalidCastException)
+                {
+                    continue;
+                }
 
-            return
-                from field in streamObject.GetBinaryType().Fields
-                where streamObject.GetField<IBinaryObject>(field).GetBinaryType().TypeName
-                    .StartsWith(nameof(StreamBinaryTypeName))
-                select Tuple.Create(field, newStream(field));
+                if (fieldType.StartsWith(nameof(StreamBinaryTypeName)))
+                {
+                    yield return (field, new Stream(StreamBinaryTypeName.Parse(fieldType), _ignite));
+                }
+            }
         }
 
         public async IAsyncEnumerable<IEnumerable<(long, IBinaryObject)>> ListenAsync(
