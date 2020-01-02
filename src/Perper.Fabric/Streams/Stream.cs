@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,26 +23,28 @@ namespace Perper.Fabric.Streams
             _ignite = ignite;
         }
 
-        public IEnumerable<(string, Stream)> GetInputStreams()
+        public IEnumerable<(string, IEnumerable<Stream>)> GetInputStreams()
         {
             var streamObject = _ignite.GetBinaryCache<string>("streams")[StreamObjectTypeName.StreamName];
 
             foreach (var field in streamObject.GetBinaryType().Fields)
             {
-                string fieldType;
+                IBinaryObject[] fieldValues;
                 try
                 {
-                    fieldType = streamObject.GetField<IBinaryObject>(field).GetBinaryType().TypeName;
+                    fieldValues = streamObject.GetField<IBinaryObject[]>(field);
                 }
                 catch (InvalidCastException)
                 {
                     continue;
                 }
 
-                if (fieldType.StartsWith(nameof(StreamBinaryTypeName)))
-                {
-                    yield return (field, new Stream(StreamBinaryTypeName.Parse(fieldType), _ignite));
-                }
+                var streams = from value in fieldValues
+                    select value.GetBinaryType().TypeName
+                    into valueType
+                    where valueType.StartsWith(nameof(StreamBinaryTypeName))
+                    select new Stream(StreamBinaryTypeName.Parse(valueType), _ignite);
+                yield return (field, streams);
             }
         }
 

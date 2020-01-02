@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
@@ -65,7 +66,7 @@ namespace Perper.WebJobs.Extensions.Services
             var itemStreamCacheClient = _igniteClient.GetCache<long, T>(itemStreamName);
             return await itemStreamCacheClient.GetAsync(itemKey);
         }
-        
+
         public async Task InvokeWorkerAsync(object parameters)
         {
             var workersCache = _igniteClient.GetBinaryCache<string>("workers");
@@ -92,7 +93,7 @@ namespace Perper.WebJobs.Extensions.Services
             var updatedWorkerObject = workerObject.ToBuilder().SetField("$return", value).Build();
             await workersCache.ReplaceAsync(_streamName, updatedWorkerObject);
         }
-        
+
         public async Task<T> ReceiveWorkerResultAsync<T>()
         {
             var workersCache = _igniteClient.GetBinaryCache<string>("workers");
@@ -115,13 +116,18 @@ namespace Perper.WebJobs.Extensions.Services
             foreach (var propertyInfo in properties)
             {
                 var propertyValue = propertyInfo.GetValue(parameters);
-                if (propertyValue is PerperFabricStream stream)
+                switch (propertyValue)
                 {
-                    builder.SetField(propertyInfo.Name, binary.GetBuilder(stream.TypeName.ToString()).Build());
-                }
-                else
-                {
-                    builder.SetField(propertyInfo.Name, propertyValue);
+                    case PerperFabricStream stream:
+                        builder.SetField(propertyInfo.Name, new[] {binary.GetBuilder(stream.TypeName.ToString()).Build()});
+                        break;
+                    case IAsyncDisposable[] streams when streams.FirstOrDefault() is PerperFabricStream:
+                        builder.SetField(propertyInfo.Name, streams.Select(s =>
+                            binary.GetBuilder(((PerperFabricStream) s).TypeName.ToString()).Build()).ToArray());
+                        break;
+                    default:
+                        builder.SetField(propertyInfo.Name, propertyValue);
+                        break;
                 }
             }
 

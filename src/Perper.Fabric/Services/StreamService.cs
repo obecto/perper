@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Net.Sockets;
@@ -92,19 +93,22 @@ namespace Perper.Fabric.Services
             }
         }
 
-        private async Task Engage((string, Stream) inputStream, CancellationToken cancellationToken)
+        private async Task Engage((string, IEnumerable<Stream>) inputStreams, CancellationToken cancellationToken)
         {
             var streamName = _stream.StreamObjectTypeName.StreamName;
-            var (parameterName, parameterStream) = inputStream;
-            var itemStreamName = parameterStream.StreamObjectTypeName.StreamName;
-            await foreach (var items in parameterStream.ListenAsync(cancellationToken))
+            var (parameterName, parameterStreams) = inputStreams;
+            await Task.WhenAll(parameterStreams.Select(parameterStream =>
             {
-                foreach (var (itemKey, item) in items)
+                var itemStreamName = parameterStream.StreamObjectTypeName.StreamName;
+                return parameterStream.ListenAsync(cancellationToken).ForEachAsync(async items =>
                 {
-                    await SendNotification(new StreamParameterItemUpdateNotification(streamName, parameterName,
-                        itemStreamName, item.GetBinaryType().TypeName, itemKey));
-                }
-            }
+                    foreach (var (itemKey, item) in items)
+                    {
+                        await SendNotification(new StreamParameterItemUpdateNotification(streamName, parameterName,
+                            itemStreamName, item.GetBinaryType().TypeName, itemKey));
+                    }
+                }, cancellationToken);
+            }));
         }
 
         private async ValueTask SendNotification(object notification)

@@ -9,6 +9,7 @@
 
     <ItemGroup>
       <PackageReference Include="System.IO.Pipelines" Version="4.6.0" />
+      <PackageReference Include="System.Linq.Async" Version="4.0.0" />
       <PackageReference Include="System.Threading.Channels" Version="4.7.0" />
     </ItemGroup>
 
