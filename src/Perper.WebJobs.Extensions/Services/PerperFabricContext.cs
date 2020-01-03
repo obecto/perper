@@ -53,7 +53,7 @@ namespace Perper.WebJobs.Extensions.Services
             {
                 var socketPath = $"/tmp/perper_{delegateName}.sock";
 
-                using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP)
+                using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
                 socket.Bind(new UnixDomainSocketEndPoint(socketPath));
                 socket.Listen(120);
                 _logger.LogDebug($"Started listening on socket '{socketPath}'");
