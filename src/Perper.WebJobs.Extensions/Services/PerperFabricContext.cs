@@ -21,7 +21,7 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly Dictionary<string, Task> _listeners;
         private readonly CancellationTokenSource _listenersCancellationTokenSource;
 
-        private readonly Dictionary<string, Dictionary<(Type, string, string, string), object>> _channels;
+        private readonly Dictionary<string, Dictionary<(Type, string, string), (Type, object)>> _channels;
 
         private readonly Dictionary<string, PerperFabricNotifications> _notificationsCache;
         private readonly Dictionary<string, PerperFabricData> _dataCache;
@@ -38,7 +38,7 @@ namespace Perper.WebJobs.Extensions.Services
             _listeners = new Dictionary<string, Task>();
             _listenersCancellationTokenSource = new CancellationTokenSource();
 
-            _channels = new Dictionary<string, Dictionary<(Type, string, string, string), object>>();
+            _channels = new Dictionary<string, Dictionary<(Type, string, string), (Type, object)>>();
 
             _notificationsCache = new Dictionary<string, PerperFabricNotifications>();
             _dataCache = new Dictionary<string, PerperFabricData>();
@@ -78,7 +78,7 @@ namespace Perper.WebJobs.Extensions.Services
                     }
                 }
             }, cancellationToken);
-            _channels[delegateName] = new Dictionary<(Type, string, string, string), object>();
+            _channels[delegateName] = new Dictionary<(Type, string, string), (Type, object)>();
         }
 
         public PerperFabricNotifications GetNotifications(string delegateName)
@@ -100,11 +100,11 @@ namespace Perper.WebJobs.Extensions.Services
         }
 
         public Channel<T> CreateChannel<T>(string delegateName,
-            string streamName = default, string parameterName = default, string parameterType = default)
+            string streamName = default, string parameterName = default, Type parameterType = default)
         {
-            var result = Channel.CreateUnbounded<T>();
-            _channels[delegateName][(typeof(T), streamName, parameterName, parameterType)] = result;
-            return result;
+            var channel = Channel.CreateUnbounded<T>();
+            _channels[delegateName][(typeof(T), streamName, parameterName)] = (parameterType, channel);
+            return channel;
         }
 
         public async ValueTask DisposeAsync()
@@ -147,7 +147,8 @@ namespace Perper.WebJobs.Extensions.Services
             string streamName = default, string parameterName = default, string parameterType = default)
         {
             var streamChannels = _channels[delegateName];
-            if (streamChannels.TryGetValue((typeof(T), streamName, parameterName, parameterType), out var channel))
+            var (expectedType, channel) = streamChannels[(typeof(T), streamName, parameterName)];
+            if (expectedType == default || expectedType.IsAssignableFrom(expectedType.Assembly.GetType(parameterType)))
             {
                 await ((Channel<T>) channel).Writer.WriteAsync(notification, _listenersCancellationTokenSource.Token);
             }

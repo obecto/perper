@@ -30,7 +30,7 @@ namespace Perper.WebJobs.Extensions.Services
             string parameterName, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var channel = _context.CreateChannel<StreamParameterItemUpdateNotification>(_delegateName, streamName,
-                parameterName, typeof(T).ToString());
+                parameterName, typeof(T));
             await foreach (var notification in channel.Reader.ReadAllAsync(cancellationToken))
             {
                 yield return (notification.ItemStreamName, notification.ItemKey);
