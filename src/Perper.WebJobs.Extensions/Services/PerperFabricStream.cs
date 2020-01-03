@@ -14,10 +14,10 @@ namespace Perper.WebJobs.Extensions.Services
         public PerperFabricStream(StreamBinaryTypeName typeName, IIgniteClient igniteClient)
         {
             TypeName = typeName;
-            
+
             _igniteClient = igniteClient;
         }
-        
+
         public async ValueTask DisposeAsync()
         {
             var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");

@@ -10,7 +10,7 @@ namespace Perper.WebJobs.Extensions
         public static IWebJobsBuilder AddPerper(this IWebJobsBuilder builder)
         {
             builder.AddExtension<PerperExtensionConfigProvider>();
-            builder.Services.AddSingleton<IPerperFabricContext>(provider => new PerperFabricContext());
+            builder.Services.AddSingleton<IPerperFabricContext, PerperFabricContext>();
             return builder;
         }
     }

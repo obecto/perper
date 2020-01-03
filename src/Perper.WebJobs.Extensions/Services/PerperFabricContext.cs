@@ -8,6 +8,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Client;
+using Microsoft.Extensions.Logging;
 using Perper.Protocol.Notifications;
 
 namespace Perper.WebJobs.Extensions.Services
@@ -15,17 +16,20 @@ namespace Perper.WebJobs.Extensions.Services
     public class PerperFabricContext : IPerperFabricContext, IAsyncDisposable
     {
         private readonly IIgniteClient _igniteClient;
+        private readonly ILogger _logger;
 
         private readonly Dictionary<string, Task> _listeners;
         private readonly CancellationTokenSource _listenersCancellationTokenSource;
-        
+
         private readonly Dictionary<string, Dictionary<(Type, string, string, string), object>> _channels;
-        
+
         private readonly Dictionary<string, PerperFabricNotifications> _notificationsCache;
         private readonly Dictionary<string, PerperFabricData> _dataCache;
 
-        public PerperFabricContext()
+        public PerperFabricContext(ILogger<PerperFabricContext> logger)
         {
+            _logger = logger;
+
             _igniteClient = Ignition.StartClient(new IgniteClientConfiguration
             {
                 Endpoints = new List<string> {"127.0.0.1"}
@@ -33,9 +37,9 @@ namespace Perper.WebJobs.Extensions.Services
 
             _listeners = new Dictionary<string, Task>();
             _listenersCancellationTokenSource = new CancellationTokenSource();
-            
+
             _channels = new Dictionary<string, Dictionary<(Type, string, string, string), object>>();
-            
+
             _notificationsCache = new Dictionary<string, PerperFabricNotifications>();
             _dataCache = new Dictionary<string, PerperFabricData>();
         }
@@ -47,9 +51,12 @@ namespace Perper.WebJobs.Extensions.Services
             var cancellationToken = _listenersCancellationTokenSource.Token;
             _listeners[delegateName] = Task.Run(async () =>
             {
-                using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
-                socket.Bind(new UnixDomainSocketEndPoint($"/tmp/perper_{delegateName}.sock"));
+                var socketPath = $"/tmp/perper_{delegateName}.sock";
+
+                using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP)
+                socket.Bind(new UnixDomainSocketEndPoint(socketPath));
                 socket.Listen(120);
+                _logger.LogDebug($"Started listening on socket '{socketPath}'");
 
                 using var acceptedSocket = await socket.AcceptAsync().WithCancellation(cancellationToken);
 
@@ -87,7 +94,7 @@ namespace Perper.WebJobs.Extensions.Services
         {
             if (_dataCache.TryGetValue(streamName, out var result)) return result;
 
-            result = new PerperFabricData(streamName, _igniteClient);
+            result = new PerperFabricData(streamName, _igniteClient, _logger);
             _dataCache[streamName] = result;
             return result;
         }
@@ -104,6 +111,7 @@ namespace Perper.WebJobs.Extensions.Services
         {
             try
             {
+                _logger.LogDebug($"Disposing context!");
                 _listenersCancellationTokenSource.Cancel();
                 await Task.WhenAll(_listeners.Values);
             }
@@ -135,7 +143,7 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        private async ValueTask WriteNotificationToChannel<T>(T notification, string delegateName, 
+        private async ValueTask WriteNotificationToChannel<T>(T notification, string delegateName,
             string streamName = default, string parameterName = default, string parameterType = default)
         {
             var streamChannels = _channels[delegateName];

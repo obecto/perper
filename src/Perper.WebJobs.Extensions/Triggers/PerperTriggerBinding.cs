@@ -5,6 +5,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Config;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
@@ -15,12 +16,14 @@ namespace Perper.WebJobs.Extensions.Triggers
     {
         private readonly Attribute _attribute;
         private readonly IPerperFabricContext _fabricContext;
+        private readonly ILogger _logger;
         public Type TriggerValueType { get; }
 
-        public PerperTriggerBinding(Attribute attribute, IPerperFabricContext fabricContext)
+        public PerperTriggerBinding(Attribute attribute, IPerperFabricContext fabricContext, ILogger logger)
         {
             _attribute = attribute;
             _fabricContext = fabricContext;
+            _logger = logger;
 
             TriggerValueType = GetTriggerValueType();
         }
@@ -29,9 +32,9 @@ namespace Perper.WebJobs.Extensions.Triggers
         {
             return Task.FromResult<IListener>(_attribute switch
             {
-                PerperStreamTriggerAttribute streamAttribute => new PerperStreamListener(streamAttribute, 
-                    context.Descriptor.ShortName, context.Executor, _fabricContext),
-                PerperWorkerTriggerAttribute workerAttribute => new PerperWorkerListener(workerAttribute, 
+                PerperStreamTriggerAttribute streamAttribute => new PerperStreamListener(streamAttribute,
+                    context.Descriptor.ShortName, context.Executor, _fabricContext, _logger),
+                PerperWorkerTriggerAttribute workerAttribute => new PerperWorkerListener(workerAttribute,
                     context.Executor, _fabricContext),
                 _ => throw new ArgumentException()
             });

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
+using Microsoft.Extensions.Logging;
 using Perper.Protocol.Cache;
 
 namespace Perper.WebJobs.Extensions.Services
@@ -11,9 +12,11 @@ namespace Perper.WebJobs.Extensions.Services
     {
         private readonly string _streamName;
         private readonly IIgniteClient _igniteClient;
+        private readonly ILogger _logger;
 
-        public PerperFabricData(string streamName, IIgniteClient igniteClient)
+        public PerperFabricData(string streamName, IIgniteClient igniteClient, ILogger logger)
         {
+            _logger = logger;
             _streamName = streamName;
             _igniteClient = igniteClient;
         }
@@ -39,6 +42,16 @@ namespace Perper.WebJobs.Extensions.Services
             var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
             var streamObject = await streamsCacheClient.GetAsync(_streamName);
             var field = streamObject.GetField<T>(name);
+
+            if (!streamObject.HasField(name) && name != "context")
+            {
+                _logger.LogWarning($"No value found for parameter '{name}' of stream '{_streamName}'");
+            }
+            else if (field == null && name != "context")
+            {
+                _logger.LogWarning($"Null or mismatching type passed for parameter '{name}' of stream '{_streamName}'");
+            }
+
             if (field is IBinaryObject binaryObject)
             {
                 return binaryObject.Deserialize<T>();

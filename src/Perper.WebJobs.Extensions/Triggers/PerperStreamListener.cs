@@ -2,6 +2,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Config;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
@@ -14,18 +15,20 @@ namespace Perper.WebJobs.Extensions.Triggers
         private readonly string _delegateName;
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly IPerperFabricContext _context;
+        private readonly ILogger _logger;
 
         private readonly CancellationTokenSource _listenCancellationTokenSource;
 
         private Task _listenTask;
 
         public PerperStreamListener(PerperStreamTriggerAttribute attribute, string delegateName,
-            ITriggeredFunctionExecutor executor, IPerperFabricContext context)
+            ITriggeredFunctionExecutor executor, IPerperFabricContext context, ILogger logger)
         {
             _attribute = attribute;
             _delegateName = delegateName;
             _executor = executor;
             _context = context;
+            _logger = logger;
 
             _listenCancellationTokenSource = new CancellationTokenSource();
         }
@@ -33,7 +36,7 @@ namespace Perper.WebJobs.Extensions.Triggers
         public Task StartAsync(CancellationToken cancellationToken)
         {
             _context.StartListen(_delegateName);
-            
+
             _listenTask = ListenAsync(_listenCancellationTokenSource.Token);
             return Task.CompletedTask;
         }
@@ -72,6 +75,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         private async Task ExecuteAsync(string streamName, CancellationToken cancellationToken)
         {
+            _logger.LogInformation($"Starting '{_delegateName}' as '{streamName}'");
             var triggerValue = new PerperStreamContext(streamName, _delegateName, _context);
             await _executor.TryExecuteAsync(new TriggeredFunctionData {TriggerValue = triggerValue}, cancellationToken);
         }
