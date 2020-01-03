@@ -22,7 +22,7 @@ namespace DotNet.FunctionApp
                 });
             await using var consumer = await context.StreamActionAsync(nameof(Consumer), new {processor});
 
-            await context.WaitUntilCancelled(cancellationToken);
+            await context.BindOutput(cancellationToken);
         }
     }
 }

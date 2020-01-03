@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
 using Perper.WebJobs.Extensions.Services;
@@ -56,9 +58,21 @@ namespace Perper.WebJobs.Extensions.Model
 
             throw new TimeoutException();
         }
-
-        public async Task WaitUntilCancelled(CancellationToken cancellationToken)
+        
+        public Task BindOutput(CancellationToken cancellationToken)
         {
+            return BindOutput(default(IEnumerable<IAsyncDisposable>), cancellationToken);
+        }
+        
+        public Task BindOutput(IAsyncDisposable stream, CancellationToken cancellationToken)
+        {
+            return BindOutput(new []{stream}, cancellationToken);
+        }
+
+        public async Task BindOutput(IEnumerable<IAsyncDisposable> streams, CancellationToken cancellationToken)
+        {
+            // Join streams and pass the result as current stream output
+            
             var tcs = new TaskCompletionSource<bool>();
             await using (cancellationToken.Register(s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
             {
