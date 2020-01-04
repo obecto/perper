@@ -20,7 +20,7 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly ILogger _logger;
 
         private readonly IIgniteClient _igniteClient;
-        
+
         private readonly Dictionary<string, Task> _listeners;
         private readonly CancellationTokenSource _listenersCancellationTokenSource;
 
@@ -30,7 +30,7 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly Dictionary<string, PerperFabricData> _dataCache;
 
         private readonly Assembly _streamTypesAssembly;
-        
+
         public PerperFabricContext(IConfiguration configuration, ILogger<PerperFabricContext> logger)
         {
             _logger = logger;
@@ -52,7 +52,7 @@ namespace Perper.WebJobs.Extensions.Services
             if (!string.IsNullOrEmpty(streamTypesAssemblyName))
             {
                 _streamTypesAssembly = Assembly.Load(streamTypesAssemblyName);
-            } 
+            }
         }
 
         public void StartListen(string delegateName)
@@ -164,16 +164,10 @@ namespace Perper.WebJobs.Extensions.Services
                 await ((Channel<T>) channel).Writer.WriteAsync(notification, _listenersCancellationTokenSource.Token);
             }
         }
-
+        
         private Type GetParameterType(string parameterType)
         {
-            var result = Type.GetType(parameterType);
-            if (result == null && _streamTypesAssembly != null)
-            {
-                result = _streamTypesAssembly.GetType(parameterType);
-            }
-
-            return result;
+            return Type.GetType(parameterType, null, (__, t, _) => Type.GetType(t) ?? _streamTypesAssembly.GetType(t));
         }
     }
 }
