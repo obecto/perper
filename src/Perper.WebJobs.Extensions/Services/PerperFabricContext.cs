@@ -161,10 +161,17 @@ namespace Perper.WebJobs.Extensions.Services
             var (expectedType, channel) = streamChannels[(typeof(T), streamName, parameterName)];
             if (expectedType == default || expectedType.IsAssignableFrom(GetParameterType(parameterType)))
             {
+                if (typeof(T) == typeof(StreamParameterItemUpdateNotification)) {
+                    _logger.LogTrace("Routed a '{parameterType}' to '{streamName}'s '{parameterName}'", parameterType, streamName, parameterName);
+                }
                 await ((Channel<T>) channel).Writer.WriteAsync(notification, _listenersCancellationTokenSource.Token);
+            } else {
+                if (typeof(T) == typeof(StreamParameterItemUpdateNotification)) {
+                    _logger.LogTrace("Did not route a '{parameterType}' to '{streamName}'s '{parameterName}' due to mismatched types", parameterType, streamName, parameterName);
+                }
             }
         }
-        
+
         private Type GetParameterType(string parameterType)
         {
             return Type.GetType(parameterType, null, (__, t, _) => Type.GetType(t) ?? _streamTypesAssembly.GetType(t));

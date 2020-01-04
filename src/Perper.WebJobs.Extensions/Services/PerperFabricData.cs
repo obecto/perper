@@ -24,7 +24,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task<IAsyncDisposable> StreamFunctionAsync(string name, object parameters)
         {
-            var typeName = new StreamBinaryTypeName(Guid.NewGuid().ToString(), name, DelegateType.Function);
+            var typeName = new StreamBinaryTypeName(GenerateStreamName(name), name, DelegateType.Function);
             var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
             await streamsCacheClient.PutAsync(typeName.StreamName, CreateProtocolObject(typeName, parameters));
             return new PerperFabricStream(typeName, _igniteClient);
@@ -32,7 +32,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task<IAsyncDisposable> StreamActionAsync(string name, object parameters)
         {
-            var typeName = new StreamBinaryTypeName(Guid.NewGuid().ToString(), name, DelegateType.Action);
+            var typeName = new StreamBinaryTypeName(GenerateStreamName(name), name, DelegateType.Action);
             var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
             await streamsCacheClient.PutAsync(typeName.StreamName, CreateProtocolObject(typeName, parameters));
             return new PerperFabricStream(typeName, _igniteClient);
@@ -134,6 +134,11 @@ namespace Perper.WebJobs.Extensions.Services
             }
 
             return field;
+        }
+
+        private string GenerateStreamName(string delegateName)
+        {
+            return $"{delegateName.Replace("'", "").Replace(",", "")}-{Guid.NewGuid().ToString()}";
         }
 
         private IBinaryObject CreateProtocolObject(object header, object parameters)
