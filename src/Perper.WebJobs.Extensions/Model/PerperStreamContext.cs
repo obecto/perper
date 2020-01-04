@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
@@ -58,12 +59,12 @@ namespace Perper.WebJobs.Extensions.Model
 
             throw new TimeoutException();
         }
-        
+
         public Task BindOutput(CancellationToken cancellationToken)
         {
-            return BindOutput(default(IEnumerable<IAsyncDisposable>), cancellationToken);
+            return BindOutput(new IAsyncDisposable[] { }, cancellationToken);
         }
-        
+
         public Task BindOutput(IAsyncDisposable stream, CancellationToken cancellationToken)
         {
             return BindOutput(new []{stream}, cancellationToken);
@@ -71,8 +72,9 @@ namespace Perper.WebJobs.Extensions.Model
 
         public async Task BindOutput(IEnumerable<IAsyncDisposable> streams, CancellationToken cancellationToken)
         {
-            // Join streams and pass the result as current stream output
-            
+            var data = _context.GetData(StreamName);
+            await data.BindStreamOutputAsync(streams);
+        
             var tcs = new TaskCompletionSource<bool>();
             await using (cancellationToken.Register(s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
             {

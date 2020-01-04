@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
+using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Resource;
 using Apache.Ignite.Core.Services;
 using Perper.Fabric.Streams;
@@ -56,9 +57,9 @@ namespace Perper.Fabric.Services
             var cancellationToken = _cancellationTokenSource.Token;
             _task = Task.Run(async () =>
             {
-                await Invoke();
-                await Task.WhenAll(new[] {InvokeWorker(cancellationToken)}.Union(_stream.GetInputStreams()
-                    .Select(inputStream => Engage(inputStream, cancellationToken))));
+                await InvokeAsync();
+                await Task.WhenAll(new[] {InvokeWorkerAsync(cancellationToken), BindOutputAsync(cancellationToken)}.Union(
+                    _stream.GetInputStreams().Select(inputStream => EngageAsync(inputStream, cancellationToken))));
             }, cancellationToken);
         }
 
@@ -68,32 +69,54 @@ namespace Perper.Fabric.Services
             _task.Wait();
         }
 
-        private async ValueTask Invoke()
+        private async ValueTask InvokeAsync()
         {
-            await SendNotification(new StreamTriggerNotification(_stream.StreamObjectTypeName.StreamName));
+            await SendNotificationAsync(new StreamTriggerNotification(_stream.StreamObjectTypeName.StreamName));
         }
 
-        private async Task InvokeWorker(CancellationToken cancellationToken)
+        private async Task InvokeWorkerAsync(CancellationToken cancellationToken)
         {
             var cache = _ignite.GetOrCreateBinaryCache<string>("workers");
             var streamName = _stream.StreamObjectTypeName.StreamName;
             await foreach (var workers in cache.QueryContinuousAsync(streamName, cancellationToken))
             {
-                foreach (var (_, worker) in workers)
+                foreach (var (_, workerObject) in workers)
                 {
-                    if (worker.HasField("$return"))
+                    if (workerObject.HasField("$return"))
                     {
-                        await SendNotification(new WorkerResultSubmitNotification(streamName));
+                        await SendNotificationAsync(new WorkerResultSubmitNotification(streamName));
                     }
                     else
                     {
-                        await SendNotification(new WorkerTriggerNotification(streamName));    
+                        await SendNotificationAsync(new WorkerTriggerNotification(streamName));    
                     }
                 }
             }
         }
 
-        private async Task Engage((string, IEnumerable<Stream>) inputStreams, CancellationToken cancellationToken)
+        private async Task BindOutputAsync(CancellationToken cancellationToken)
+        {
+            var cache = _ignite.GetOrCreateBinaryCache<string>("streams");
+            var streamName = _stream.StreamObjectTypeName.StreamName;
+            IEnumerable<Stream> outputStreams = new Stream[] { };
+            await foreach (var streams in cache.QueryContinuousAsync(streamName, cancellationToken))
+            {
+                var (_, streamObject) = streams.Single();
+                if (streamObject.HasField("$return"))
+                {
+                    outputStreams = streamObject.GetField<IBinaryObject[]>("$return").Select(v =>
+                        new Stream(StreamBinaryTypeName.Parse(v.GetBinaryType().TypeName), _ignite));
+                    break;
+                }
+            }
+
+            var itemsCache = _ignite.GetOrCreateBinaryCache<long>(_stream.StreamObjectTypeName.StreamName);
+            await Task.WhenAll(outputStreams.Select(outputStream =>
+                outputStream.ListenAsync(cancellationToken).ForEachAsync(async items =>
+                    await itemsCache.PutAllAsync(items), cancellationToken)));
+        }
+
+        private async Task EngageAsync((string, IEnumerable<Stream>) inputStreams, CancellationToken cancellationToken)
         {
             var streamName = _stream.StreamObjectTypeName.StreamName;
             var (parameterName, parameterStreams) = inputStreams;
@@ -104,14 +127,14 @@ namespace Perper.Fabric.Services
                 {
                     foreach (var (itemKey, item) in items)
                     {
-                        await SendNotification(new StreamParameterItemUpdateNotification(streamName, parameterName,
+                        await SendNotificationAsync(new StreamParameterItemUpdateNotification(streamName, parameterName,
                             itemStreamName, item.GetBinaryType().TypeName, itemKey));
                     }
                 }, cancellationToken);
             }));
         }
 
-        private async ValueTask SendNotification(object notification)
+        private async ValueTask SendNotificationAsync(object notification)
         {
             var message = notification.ToString();
             var messageBytes = new byte[message.Length + 1];

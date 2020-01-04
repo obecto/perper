@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
@@ -35,6 +36,21 @@ namespace Perper.WebJobs.Extensions.Services
             var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
             await streamsCacheClient.PutAsync(typeName.StreamName, CreateProtocolObject(typeName, parameters));
             return new PerperFabricStream(typeName, _igniteClient);
+        }
+
+        public async Task BindStreamOutputAsync(IEnumerable<IAsyncDisposable> streams)
+        {
+            var binary = _igniteClient.GetBinary();
+            var streamsObjects = streams.Select(s =>
+                binary.GetBuilder(((PerperFabricStream) s).TypeName.ToString()).Build()).ToArray();
+
+            if (streamsObjects.Any())
+            {
+                var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
+                var streamObject = await streamsCacheClient.GetAsync(_streamName);
+                var updatedStreamObject = streamObject.ToBuilder().SetField("$return", streamsObjects).Build();
+                await streamsCacheClient.ReplaceAsync(_streamName, updatedStreamObject);
+            }
         }
 
         public async Task<T> FetchStreamParameterAsync<T>(string name)

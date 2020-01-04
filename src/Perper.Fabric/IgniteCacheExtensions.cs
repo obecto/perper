@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
+using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Cache;
 using Apache.Ignite.Core.Cache.Event;
@@ -14,6 +15,11 @@ namespace Perper.Fabric
 {
     public static class IgniteCacheExtensions
     {
+        public static Task PutAllAsync<TK, TV>(this ICache<TK, TV> cache, IEnumerable<(TK, TV)> values)
+        {
+            return cache.PutAllAsync(values.Select(v => new KeyValuePair<TK, TV>(v.Item1, v.Item2)));
+        }
+
         public static async IAsyncEnumerable<IEnumerable<(T, IBinaryObject)>> QueryContinuousAsync<T>(
             this ICache<T, IBinaryObject> cache,
             [EnumeratorCancellation] CancellationToken cancellationToken = default) where T : IComparable
