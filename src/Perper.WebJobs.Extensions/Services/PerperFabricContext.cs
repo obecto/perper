@@ -3,11 +3,13 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Client;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Perper.Protocol.Notifications;
 
@@ -15,9 +17,10 @@ namespace Perper.WebJobs.Extensions.Services
 {
     public class PerperFabricContext : IPerperFabricContext, IAsyncDisposable
     {
-        private readonly IIgniteClient _igniteClient;
         private readonly ILogger _logger;
 
+        private readonly IIgniteClient _igniteClient;
+        
         private readonly Dictionary<string, Task> _listeners;
         private readonly CancellationTokenSource _listenersCancellationTokenSource;
 
@@ -26,7 +29,9 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly Dictionary<string, PerperFabricNotifications> _notificationsCache;
         private readonly Dictionary<string, PerperFabricData> _dataCache;
 
-        public PerperFabricContext(ILogger<PerperFabricContext> logger)
+        private readonly Assembly _streamTypesAssembly;
+        
+        public PerperFabricContext(IConfiguration configuration, ILogger<PerperFabricContext> logger)
         {
             _logger = logger;
 
@@ -42,6 +47,12 @@ namespace Perper.WebJobs.Extensions.Services
 
             _notificationsCache = new Dictionary<string, PerperFabricNotifications>();
             _dataCache = new Dictionary<string, PerperFabricData>();
+
+            var streamTypesAssemblyName = configuration.GetValue<string>("PerperStreamTypesAssembly");
+            if (!string.IsNullOrEmpty(streamTypesAssemblyName))
+            {
+                _streamTypesAssembly = Assembly.Load(streamTypesAssemblyName);
+            } 
         }
 
         public void StartListen(string delegateName)
@@ -148,10 +159,21 @@ namespace Perper.WebJobs.Extensions.Services
         {
             var streamChannels = _channels[delegateName];
             var (expectedType, channel) = streamChannels[(typeof(T), streamName, parameterName)];
-            if (expectedType == default || expectedType.IsAssignableFrom(expectedType.Assembly.GetType(parameterType)))
+            if (expectedType == default || expectedType.IsAssignableFrom(GetParameterType(parameterType)))
             {
                 await ((Channel<T>) channel).Writer.WriteAsync(notification, _listenersCancellationTokenSource.Token);
             }
+        }
+
+        private Type GetParameterType(string parameterType)
+        {
+            var result = Type.GetType(parameterType);
+            if (result == null && _streamTypesAssembly != null)
+            {
+                result = _streamTypesAssembly.GetType(parameterType);
+            }
+
+            return result;
         }
     }
 }
