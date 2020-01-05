@@ -137,9 +137,9 @@ namespace Perper.Fabric.Services
         private async ValueTask SendNotificationAsync(object notification)
         {
             var message = notification.ToString();
-            var messageBytes = new byte[message.Length + 1];
-            messageBytes[0] = (byte) message.Length;
-            Encoding.Default.GetBytes(message, 0, message.Length, messageBytes, 1);
+            var messageBytes = new byte[message.Length + sizeof(ushort)];
+            Array.Copy(BitConverter.GetBytes((ushort)message.Length), messageBytes, sizeof(ushort));
+            Encoding.ASCII.GetBytes(message, 0, message.Length, messageBytes, sizeof(ushort));
             await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(messageBytes));
             await _pipeWriter.FlushAsync();
         }

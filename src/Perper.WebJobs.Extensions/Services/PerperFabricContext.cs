@@ -76,12 +76,11 @@ namespace Perper.WebJobs.Extensions.Services
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     var buffer = await reader.ReadSequenceAsync(cancellationToken);
-                    var messageSize = buffer.Slice(0, 1).ToArray()[0];
-                    if (buffer.Length > messageSize)
+                    if (buffer.TryReadLengthDelimitedMessage(out var messageLength))
                     {
-                        var message = buffer.Slice(1, messageSize).ToAsciiString();
+                        var message = buffer.Slice(sizeof(ushort), messageLength).ToAsciiString();
                         await RouteMessage(delegateName, message);
-                        reader.AdvanceTo(buffer.GetPosition(messageSize + 1));
+                        reader.AdvanceTo(buffer.GetPosition(messageLength + sizeof(ushort)));
                     }
                     else
                     {
@@ -174,7 +173,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         private Type GetParameterType(string parameterType)
         {
-            return Type.GetType(parameterType, null, (__, t, _) => Type.GetType(t) ?? _streamTypesAssembly.GetType(t));
+            return Type.GetType(parameterType, null, (__, t, _) => Type.GetType(t) ?? _streamTypesAssembly?.GetType(t));
         }
     }
 }
