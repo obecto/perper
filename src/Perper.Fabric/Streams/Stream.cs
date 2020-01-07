@@ -34,8 +34,13 @@ namespace Perper.Fabric.Streams
                 {
                     fieldValues = streamObject.GetField<IBinaryObject[]>(field);
                 }
-                catch (InvalidCastException)
+                catch (TypeInitializationException)
                 {
+                    continue;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.ToString());
                     continue;
                 }
 
@@ -44,8 +49,11 @@ namespace Perper.Fabric.Streams
                     into valueType
                     where valueType.StartsWith(nameof(StreamBinaryTypeName))
                     select new Stream(StreamBinaryTypeName.Parse(valueType), _ignite);
+
+
                 yield return (field, streams);
             }
+
         }
 
         public async IAsyncEnumerable<IEnumerable<(long, IBinaryObject)>> ListenAsync(

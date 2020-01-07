@@ -57,7 +57,7 @@ namespace Perper.WebJobs.Extensions.Services
         {
             var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
             var streamObject = await streamsCacheClient.GetAsync(_streamName);
-            var field = streamObject.GetField<T>(name);
+            var field = streamObject.GetField<object>(name);
 
             if (!streamObject.HasField(name) && name != "context")
             {
@@ -73,7 +73,7 @@ namespace Perper.WebJobs.Extensions.Services
                 return binaryObject.Deserialize<T>();
             }
 
-            return field;
+            return (T)field;
         }
 
         public async Task UpdateStreamParameterAsync<T>(string name, T value)
@@ -106,13 +106,15 @@ namespace Perper.WebJobs.Extensions.Services
         {
             var workersCache = _igniteClient.GetBinaryCache<string>("workers");
             var workerObject = await workersCache.GetAsync(_streamName);
-            var field = workerObject.GetField<T>(name);
+            var field = workerObject.GetField<object>(name);
+
             if (field is IBinaryObject binaryObject)
             {
                 return binaryObject.Deserialize<T>();
             }
 
-            return field;
+            return (T)field;
+
         }
 
         public async Task SubmitWorkerResultAsync<T>(T value)
@@ -127,13 +129,13 @@ namespace Perper.WebJobs.Extensions.Services
         {
             var workersCache = _igniteClient.GetBinaryCache<string>("workers");
             var workerObject = await workersCache.GetAndRemoveAsync(_streamName);
-            var field = workerObject.Value.GetField<T>("$return");
+            var field = workerObject.Value.GetField<object>("$return");
             if (field is IBinaryObject binaryObject)
             {
                 return binaryObject.Deserialize<T>();
             }
 
-            return field;
+            return (T)field;
         }
 
         private string GenerateStreamName(string delegateName)
