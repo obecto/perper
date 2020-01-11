@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -65,11 +66,14 @@ namespace Perper.WebJobs.Extensions.Triggers
             }
             else
             {
+                var executions = new List<Task>();
                 var triggers = _context.GetNotifications(_delegateName).StreamTriggers(cancellationToken);
                 await foreach (var streamName in triggers.WithCancellation(cancellationToken))
                 {
-                    await ExecuteAsync(streamName, cancellationToken);
+                    executions.Add(ExecuteAsync(streamName, cancellationToken));
                 }
+
+                await Task.WhenAll(executions);
             }
         }
 

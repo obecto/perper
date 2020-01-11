@@ -140,6 +140,7 @@ namespace Perper.Fabric.Services
             var messageBytes = new byte[message.Length + sizeof(ushort)];
             Array.Copy(BitConverter.GetBytes((ushort)message.Length), messageBytes, sizeof(ushort));
             Encoding.ASCII.GetBytes(message, 0, message.Length, messageBytes, sizeof(ushort));
+            Console.WriteLine($"Sending Notification:{message}");
             await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(messageBytes));
             await _pipeWriter.FlushAsync();
         }

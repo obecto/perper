@@ -1,5 +1,4 @@
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Net.Sockets;
@@ -69,24 +68,14 @@ namespace Perper.WebJobs.Extensions.Services
                 socket.Listen(120);
                 _logger.LogDebug($"Started listening on socket '{socketPath}'");
 
-                using var acceptedSocket = await socket.AcceptAsync().WithCancellation(cancellationToken);
-
-                await using var networkStream = new NetworkStream(acceptedSocket, true);
-                var reader = PipeReader.Create(networkStream);
+                var acceptedListeners = new List<Task>();
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    var buffer = await reader.ReadSequenceAsync(cancellationToken);
-                    if (buffer.TryReadLengthDelimitedMessage(out var messageLength))
-                    {
-                        var message = buffer.Slice(sizeof(ushort), messageLength).ToAsciiString();
-                        await RouteMessage(delegateName, message);
-                        reader.AdvanceTo(buffer.GetPosition(messageLength + sizeof(ushort)));
-                    }
-                    else
-                    {
-                        reader.AdvanceTo(buffer.Start);
-                    }
+                    acceptedListeners.Add(AcceptSocket(await socket.AcceptAsync().WithCancellation(cancellationToken),
+                        delegateName, cancellationToken));
                 }
+
+                await Task.WhenAll(acceptedListeners);
             }, cancellationToken);
             _channels[delegateName] = new Dictionary<(Type, string, string), (Type, object)>();
         }
@@ -128,6 +117,29 @@ namespace Perper.WebJobs.Extensions.Services
             finally
             {
                 _listenersCancellationTokenSource.Dispose();
+            }
+        }
+
+        private async Task AcceptSocket(Socket socket, string delegateName, CancellationToken cancellationToken)
+        {
+            using (socket)
+            {
+                await using var networkStream = new NetworkStream(socket, true);
+                var reader = PipeReader.Create(networkStream);
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    var buffer = await reader.ReadSequenceAsync(cancellationToken);
+                    if (buffer.TryReadLengthDelimitedMessage(out var messageLength))
+                    {
+                        var message = buffer.Slice(sizeof(ushort), messageLength).ToAsciiString();
+                        await RouteMessage(delegateName, message);
+                        reader.AdvanceTo(buffer.GetPosition(messageLength + sizeof(ushort)));
+                    }
+                    else
+                    {
+                        reader.AdvanceTo(buffer.Start);
+                    }
+                }    
             }
         }
 
