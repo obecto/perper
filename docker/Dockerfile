@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/core/sdk AS build-env
+FROM mcr.microsoft.com/dotnet/core/sdk:3.1-buster AS build-env
 WORKDIR /app
 COPY src src
 WORKDIR /app/src/Perper.Fabric
