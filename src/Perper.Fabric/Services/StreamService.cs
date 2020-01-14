@@ -38,7 +38,7 @@ namespace Perper.Fabric.Services
             {
                 var clientSocket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
                 clientSocket.Connect(
-                    new UnixDomainSocketEndPoint($"/tmp/perper_{_stream.StreamObjectTypeName.DelegateName}.sock"));
+                    new UnixDomainSocketEndPoint($"/tmp/perper/{_stream.StreamObjectTypeName.DelegateName}.sock"));
 
                 var networkStream = new NetworkStream(clientSocket);
                 _pipeWriter = PipeWriter.Create(networkStream);

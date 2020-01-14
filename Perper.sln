@@ -28,6 +28,11 @@ EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perper.Protocol", "src\Perper.Protocol\Perper.Protocol.csproj", "{4F999EBD-26F4-4EF7-B492-7D85583291C5}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docker", "docker", "{4E442550-F0DE-476C-A348-F484A081CFD5}"
+ProjectSection(SolutionItems) = preProject
+	docker\Dockerfile = docker\Dockerfile
+EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

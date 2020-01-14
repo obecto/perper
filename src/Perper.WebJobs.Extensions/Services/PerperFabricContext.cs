@@ -61,7 +61,7 @@ namespace Perper.WebJobs.Extensions.Services
             var cancellationToken = _listenersCancellationTokenSource.Token;
             _listeners[delegateName] = Task.Run(async () =>
             {
-                var socketPath = $"/tmp/perper_{delegateName}.sock";
+                var socketPath = $"/tmp/perper/{delegateName}.sock";
 
                 using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
                 socket.Bind(new UnixDomainSocketEndPoint(socketPath));

@@ -1,11 +1,18 @@
 # Perper
 *(This project is under active development)*
 
-Stream-based, horizontally scalable framework for asynchronous data processing, built on top of [Apache Ignite](https://ignite.apache.org/) and [Azure Functions](https://azure.microsoft.com/en-us/services/functions/).
+Stream-based, horizontally scalable framework for asynchronous data 
+processing, built on top of [Apache Ignite](https://ignite.apache.org/) 
+and [Azure Functions](https://azure.microsoft.com/en-us/services/functions/).
 
 ## Overview
 
-Perper consists of two building blocks: Perper Fabric and Perper Functions. Perper Fabric is built on top of Ignite, utilising its data grid, compute grid and clustering capabilities to provide orchestration layer for Perper Functions. Perper Functions is built on top of Azure Functions as Azure Functions Extension and serves as main programming environment in Perper.
+Perper consists of two building blocks: Perper Fabric and Perper Functions. 
+Perper Fabric is built on top of Ignite, utilising its data grid, 
+compute grid and clustering capabilities to provide orchestration layer 
+for Perper Functions. Perper Functions is built on top of Azure Functions 
+as Azure Functions Extension and serves as main programming environment 
+in Perper.
 
 ## Getting started
 
@@ -15,21 +22,24 @@ You can use Perper on all major operating systems: Windows, Linux and macOS.
 
 Before running this sample, you must have the following:
 
-- Install [Azure Functions Core Tools](https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local#v2)
-- Install [.NET Core 2.1](https://dotnet.microsoft.com/download/dotnet-core/2.1)
+- Install [Azure Functions Core Tools v3](https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local#v2)
+- Install [.NET Core SDK 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1)
 - Install [Docker](https://docs.docker.com/install/)
 
 ### Create the local function app project
 
-Run the following command from the command line to create a function app project in the PerperFunctionApp folder of the current local directory
+Run the following command from the command line to create a function app project 
+in the PerperFunctionApp folder of the current local directory
 
 ```bash
 func init PerperFunctionApp
 ```
 
-When prompted, select a worker runtime - for now only dotnet and python are fully supported.
+When prompted, select a worker runtime - for now only dotnet and python are 
+fully supported.
 
-After the project is created, use the following command to navigate to the new PerperFunctionApp project folder.
+After the project is created, use the following command to navigate to the 
+new PerperFunctionApp project folder.
 
 ```bash
 cd PerperFunctionApp
@@ -37,33 +47,76 @@ cd PerperFunctionApp
 
 ### Enable Perper Functions
 
-In order to use Perper Functions you have to enable Perper Extension for Azure Functions. You can do this with the following code:
+In order to use Perper Functions you have to enable Perper Extension for 
+Azure Functions. You can do this by cloning Perper GitHub repo and adding a
+reference to Perper.WebJobs.Extensions project in the function's project file.
 
-```bash
-func extensions install -p Perper.WebJobs.Extensions -v 0.1.0 
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <AzureFunctionsVersion>v3</AzureFunctionsVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="3.0.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="host.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="local.settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </None>
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="../../perper/src/Perper.WebJobs.Extensions/Perper.WebJobs.Extensions.csproj" />
+</ItemGroup>
+</Project>
 ```
 
 ### Create a function
 
-The way to declare a function and its bindings varies, depending on your project language.
+The way to declare a function and its bindings varies, depending on your 
+project language.
 
 #### C#
 
 ```csharp
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
-using Perper.WebJobs.Extensions.Bindings;
+using Microsoft.Extensions.Logging;
+using Perper.WebJobs.Extensions.Config;
 using Perper.WebJobs.Extensions.Model;
-using Perper.WebJobs.Extensions.Triggers;
 
 namespace PerperFunctionApp
 {
-    public static class ProcessData
+    public static class Launcher
     {
-        [FunctionName("ProcessData")]
-        [return: Stream]
-        public static int Run([StreamTrigger] StreamContext context, [Stream] int data)
+        [FunctionName("Launcher")]
+        public static async Task RunAsync([PerperStreamTrigger(RunOnStartup = true)]
+            PerperStreamContext context,
+            ILogger logger,
+            CancellationToken cancellationToken)
         {
-            return data * 10;
+            logger.LogInformation("Launcher invoked!");
+
+            await context.BindOutput(cancellationToken);
+        }
+    }
+}
+```
+
+To enable logging edit the *host.json* file as follows:
+
+```json
+{
+    "version": "2.0",
+    "logging": {
+        "logLevel": {
+            "PerperFunctionApp": "Information",
+            "Perper.WebJobs.Extensions.Triggers": "Information"
         }
     }
 }
@@ -71,62 +124,28 @@ namespace PerperFunctionApp
 
 #### Python
 
-Before declaring the function, we have to include Python language bindings for Perper in requirements.txt:
-
-```
-azure-functions
-git+git://github.com/obecto/perper.git#subdirectory=python-binding
-```
-
-
-Function source (ProcessData/\_\_init\_\_.py):
-
-```python
-import logging
-
-import azure.functions as func
-import perper.functions as perper
-
-
-def main(context: perper.StreamContext, data: int):
-    return data * 10
-
-```
-
-
-Function bindings (ProcessData/function.json):
-```json
-{
-  "scriptFile": "__init__.py",
-  "bindings": [
-    {
-      "name": "context",
-      "type": "streamTrigger",
-      "direction": "in"
-    },
-    {
-      "name": "data",
-      "type": "stream",
-      "direction": "in"
-    },
-    {
-      "name": "$return",
-      "type": "stream",
-      "direction": "out"
-    }
-  ]
-}
-```
+*(TODO: Add step by step instructions for creating Python worker function)*
 
 ### Run the function locally
 
-Before running the function locally you have to start Perper Fabric in local development mode:
+Before running the function locally you have to start Perper Fabric in local 
+development mode:
 
+- Building Perper Fabric Docker
 ```bash
-docker run -t perper-fabric-local --network=host --ipc=host perper/perper-fabric
+docker build -t perper/fabric -f docker/Dockerfile .
+```
+- Create Perper Fabric IPC directory  
+```bash
+mkdir -p /tmp/perper
+```
+- Run Perper Fabric Docker 
+```bash
+docker run -v /tmp/perper:/tmp/perper --network=host --ipc=host -it perper/fabric
 ```
 
-The following command starts the function app. The start command varies, depending on your project language.
+The following command starts the function app. The start command varies, 
+depending on your project language.
 
 #### C#
 
@@ -141,20 +160,23 @@ func start
 ```
 
 ## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+Pull requests are welcome. For major changes, please open an issue first 
+to discuss what you would like to change.
 
 Please make sure to update tests as appropriate.
 
 ### Development environment
 
-Perper Fabric and Perper Functions are built from a common code base and therefore use a single common development environment. For now the recommended development environment is Ubuntu 18.04 LTS.
+Perper Fabric and Perper Functions are built from a common code base 
+and therefore use a single common development environment. For now the 
+recommended development environment is Ubuntu 18.04 LTS.
 
 ### Prerequisite
 
 Before running this sample, you must have the following:
 
-- Install [.NET Core 2.1](https://dotnet.microsoft.com/download/dotnet-core/2.1)
-- Install [Azure Functions Core Tools](https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local#v2)
+- Install [Azure Functions Core Tools v3](https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local#v2)
+- Install [.NET Core SDK 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1)
 - Install [Apache Ignite .NET](https://apacheignite-net.readme.io/docs/cross-platform-support)
 
 ### Build
