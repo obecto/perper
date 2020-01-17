@@ -60,7 +60,8 @@ namespace Perper.Fabric
 
             public void OnEvent(IEnumerable<ICacheEntryEvent<T, IBinaryObject>> events)
             {
-                _channel.Writer.TryWrite(events.Select(e => (e.Key, e.Value)));
+                _channel.Writer.TryWrite(events.Where(e => e.EventType != CacheEntryEventType.Removed)
+                    .Select(e => (e.Key, e.Value)));
             }
         }
 

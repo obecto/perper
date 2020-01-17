@@ -28,7 +28,7 @@ namespace Perper.WebJobs.Extensions.Bindings
             return _attribute.TriggerAttribute switch
             {
                 nameof(PerperStreamTriggerAttribute) => await data.FetchStreamParameterAsync<object>(_attribute.Parameter),
-                nameof(PerperWorkerTriggerAttribute) => await data.FetchWorkerParameterAsync<object>(_attribute.Parameter),
+                nameof(PerperWorkerTriggerAttribute) => await data.FetchWorkerParameterAsync<object>(_attribute.Worker, _attribute.Parameter),
                 _ => throw new ArgumentException()
             };
         }
@@ -38,7 +38,7 @@ namespace Perper.WebJobs.Extensions.Bindings
             if (_attribute.Parameter == "$return")
             {
                 var data = _context.GetData(_attribute.Stream);
-                await data.SubmitWorkerResultAsync(value);
+                await data.SubmitWorkerResultAsync(_attribute.Worker, value);
             }
         }
 

@@ -14,13 +14,15 @@ namespace DotNet.FunctionApp
         [FunctionName("Generator")]
         public static async Task Run([PerperStreamTrigger] PerperStreamContext context,
             [Perper("count")] int count,
-            [PerperStream("output")] IAsyncCollector<Data> output,
+            [Perper("tag")] string tag,
+            [PerperStream("output")] IAsyncCollector<Data<int, string>> output,
             ILogger logger, CancellationToken cancellationToken)
         {
             for (var i = 0; i < count; i++)
             {
-                logger.LogInformation($"Generator generates: {i}");
-                await output.AddAsync(new Data {Value = i}, cancellationToken);
+                logger.LogInformation($"[{tag}] Generator generates: {i}");
+                if(tag == "first") await Task.Delay(TimeSpan.FromMilliseconds(1000), cancellationToken);
+                await output.AddAsync(new Data<int, string> {Value = i}, cancellationToken);
             }
         }
     }

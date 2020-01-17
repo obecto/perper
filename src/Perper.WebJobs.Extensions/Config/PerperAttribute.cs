@@ -10,6 +10,7 @@ namespace Perper.WebJobs.Extensions.Config
         public string Parameter { get; }
 
         [AutoResolve] public string Stream { get; set; } = "{stream}";
+        [AutoResolve] public string Worker { get; set; } = "{worker}";
         [AutoResolve] public string TriggerAttribute { get; set; } = "{triggerAttribute}";
 
         public PerperAttribute(string parameter)

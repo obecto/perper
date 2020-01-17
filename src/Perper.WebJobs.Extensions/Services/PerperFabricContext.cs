@@ -128,7 +128,11 @@ namespace Perper.WebJobs.Extensions.Services
                 var reader = PipeReader.Create(networkStream);
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    var buffer = await reader.ReadSequenceAsync(cancellationToken);
+                    var readResult = await reader.ReadAsync(cancellationToken);
+                    if (readResult.IsCanceled) throw new OperationCanceledException();
+                    if (readResult.IsCompleted) break;
+
+                    var buffer = readResult.Buffer;
                     if (buffer.TryReadLengthDelimitedMessage(out var messageLength))
                     {
                         var message = buffer.Slice(sizeof(ushort), messageLength).ToAsciiString();

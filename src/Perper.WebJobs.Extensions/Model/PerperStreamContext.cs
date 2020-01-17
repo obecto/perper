@@ -47,14 +47,14 @@ namespace Perper.WebJobs.Extensions.Model
             await data.UpdateStreamParameterAsync("context", state);
         }
 
-        public async Task<T> CallWorkerAsync<T>(object parameters, CancellationToken cancellationToken)
+        public async Task<T> CallWorkerAsync<T>(string name, object parameters, CancellationToken cancellationToken)
         {
             var data = _context.GetData(StreamName);
-            await data.InvokeWorkerAsync(parameters);
+            var workerName = await data.CallWorkerAsync(name, parameters);
             var notifications = _context.GetNotifications(DelegateName);
             await foreach (var _ in notifications.WorkerResultSubmissions(cancellationToken))
             {
-                return await data.ReceiveWorkerResultAsync<T>();
+                return await data.ReceiveWorkerResultAsync<T>(workerName);
             }
 
             throw new TimeoutException();

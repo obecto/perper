@@ -24,7 +24,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task<IAsyncDisposable> StreamFunctionAsync(string name, object parameters)
         {
-            var typeName = new StreamBinaryTypeName(GenerateStreamName(name), name, DelegateType.Function);
+            var typeName = new StreamBinaryTypeName(GenerateName(name), name, DelegateType.Function);
             var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
             await streamsCacheClient.PutAsync(typeName.StreamName, CreateProtocolObject(typeName, parameters));
             return new PerperFabricStream(typeName, _igniteClient);
@@ -32,7 +32,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task<IAsyncDisposable> StreamActionAsync(string name, object parameters)
         {
-            var typeName = new StreamBinaryTypeName(GenerateStreamName(name), name, DelegateType.Action);
+            var typeName = new StreamBinaryTypeName(GenerateName(name), name, DelegateType.Action);
             var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
             await streamsCacheClient.PutAsync(typeName.StreamName, CreateProtocolObject(typeName, parameters));
             return new PerperFabricStream(typeName, _igniteClient);
@@ -96,16 +96,18 @@ namespace Perper.WebJobs.Extensions.Services
             return await itemStreamCacheClient.GetAsync(itemKey);
         }
 
-        public async Task InvokeWorkerAsync(object parameters)
+        public async Task<string> CallWorkerAsync(string name, object parameters)
         {
-            var workersCache = _igniteClient.GetBinaryCache<string>("workers");
-            await workersCache.PutAsync(_streamName, CreateProtocolObject(new WorkerBinaryTypeName(), parameters));
+            var typeName = new WorkerBinaryTypeName(GenerateName(name), name);
+            var workersCache = _igniteClient.GetBinaryCache<string>($"{_streamName}_workers");
+            await workersCache.PutAsync(typeName.WorkerName, CreateProtocolObject(typeName, parameters));
+            return typeName.WorkerName;
         }
 
-        public async Task<T> FetchWorkerParameterAsync<T>(string name)
+        public async Task<T> FetchWorkerParameterAsync<T>(string workerName, string name)
         {
-            var workersCache = _igniteClient.GetBinaryCache<string>("workers");
-            var workerObject = await workersCache.GetAsync(_streamName);
+            var workersCache = _igniteClient.GetBinaryCache<string>($"{_streamName}_workers");
+            var workerObject = await workersCache.GetAsync(workerName);
             var field = workerObject.GetField<object>(name);
 
             if (field is IBinaryObject binaryObject)
@@ -114,21 +116,20 @@ namespace Perper.WebJobs.Extensions.Services
             }
 
             return (T)field;
-
         }
 
-        public async Task SubmitWorkerResultAsync<T>(T value)
+        public async Task SubmitWorkerResultAsync<T>(string workerName, T value)
         {
-            var workersCache = _igniteClient.GetBinaryCache<string>("workers");
-            var workerObject = await workersCache.GetAsync(_streamName);
+            var workersCache = _igniteClient.GetBinaryCache<string>($"{_streamName}_workers");
+            var workerObject = await workersCache.GetAsync(workerName);
             var updatedWorkerObject = workerObject.ToBuilder().SetField("$return", value).Build();
-            await workersCache.ReplaceAsync(_streamName, updatedWorkerObject);
+            await workersCache.ReplaceAsync(workerName, updatedWorkerObject);
         }
 
-        public async Task<T> ReceiveWorkerResultAsync<T>()
+        public async Task<T> ReceiveWorkerResultAsync<T>(string workerName)
         {
-            var workersCache = _igniteClient.GetBinaryCache<string>("workers");
-            var workerObject = await workersCache.GetAndRemoveAsync(_streamName);
+            var workersCache = _igniteClient.GetBinaryCache<string>($"{_streamName}_workers");
+            var workerObject = await workersCache.GetAndRemoveAsync(workerName);
             var field = workerObject.Value.GetField<object>("$return");
             if (field is IBinaryObject binaryObject)
             {
@@ -138,7 +139,7 @@ namespace Perper.WebJobs.Extensions.Services
             return (T)field;
         }
 
-        private string GenerateStreamName(string delegateName)
+        private static string GenerateName(string delegateName)
         {
             return $"{delegateName.Replace("'", "").Replace(",", "")}-{Guid.NewGuid().ToString()}";
         }

@@ -37,13 +37,13 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        public async IAsyncEnumerable<string> WorkerTriggers(
+        public async IAsyncEnumerable<(string, string)> WorkerTriggers(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var channel = _context.CreateChannel<WorkerTriggerNotification>(_delegateName);
             await foreach (var notification in channel.Reader.ReadAllAsync(cancellationToken))
             {
-                yield return notification.StreamName;
+                yield return (notification.StreamName, notification.WorkerName);
             }
         }
 

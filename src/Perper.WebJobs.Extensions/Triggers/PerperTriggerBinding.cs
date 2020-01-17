@@ -35,18 +35,19 @@ namespace Perper.WebJobs.Extensions.Triggers
                 PerperStreamTriggerAttribute streamAttribute => new PerperStreamListener(streamAttribute,
                     context.Descriptor.ShortName, context.Executor, _fabricContext, _logger),
                 PerperWorkerTriggerAttribute workerAttribute => new PerperWorkerListener(workerAttribute,
-                    context.Executor, _fabricContext),
+                    context.Descriptor.ShortName, context.Executor, _fabricContext),
                 _ => throw new ArgumentException()
             });
         }
 
         public Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
-            var (streamName, delegateName, triggerAttributeName) = GetTriggerData(value);
+            var (streamName, workerName, delegateName, triggerAttributeName) = GetTriggerData(value);
             return Task.FromResult<ITriggerData>(new TriggerData(new PerperTriggerValueProvider(value),
                 new Dictionary<string, object>
                 {
                     {"stream", streamName},
+                    {"worker", workerName},
                     {"delegate", delegateName},
                     {"triggerAttribute", triggerAttributeName}
                 }));
@@ -55,6 +56,7 @@ namespace Perper.WebJobs.Extensions.Triggers
         public IReadOnlyDictionary<string, Type> BindingDataContract { get; } = new Dictionary<string, Type>
         {
             {"stream", typeof(string)},
+            {"worker", typeof(string)},
             {"delegate", typeof(string)},
             {"triggerAttribute", typeof(string)}
         };
@@ -74,14 +76,14 @@ namespace Perper.WebJobs.Extensions.Triggers
             };
         }
 
-        private (string, string, string) GetTriggerData(object value)
+        private (string, string, string, string) GetTriggerData(object value)
         {
             return _attribute switch
             {
-                PerperStreamTriggerAttribute _ => (((PerperStreamContext) value).StreamName,
+                PerperStreamTriggerAttribute _ => (((PerperStreamContext) value).StreamName, null,
                     ((PerperStreamContext) value).DelegateName, nameof(PerperStreamTriggerAttribute)),
-                PerperWorkerTriggerAttribute workerAttribute => (((PerperWorkerContext) value).StreamName,
-                    workerAttribute.StreamDelegate, nameof(PerperWorkerTriggerAttribute)),
+                PerperWorkerTriggerAttribute _ => (((PerperWorkerContext) value).StreamName,
+                    ((PerperWorkerContext) value).WorkerName, null, nameof(PerperWorkerTriggerAttribute)),
                 _ => throw new ArgumentException()
             };
         }

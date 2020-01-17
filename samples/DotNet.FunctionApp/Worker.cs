@@ -10,7 +10,7 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("Worker")]
         [return: Perper("$return")]
-        public static int Run([PerperWorkerTrigger("Processor")] PerperWorkerContext context,
+        public static int Run([PerperWorkerTrigger] PerperWorkerContext context,
             [Perper("value")] int value,
             [Perper("multiplier")] int multiplier,
             [Perper("state")] IEnumerable<int> state)

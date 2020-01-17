@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -11,6 +12,7 @@ namespace Perper.WebJobs.Extensions.Triggers
     public class PerperWorkerListener : IListener
     {
         private readonly PerperWorkerTriggerAttribute _attribute;
+        private readonly string _delegateName;
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly IPerperFabricContext _context;
 
@@ -18,10 +20,11 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         private Task _listenTask;
 
-        public PerperWorkerListener(PerperWorkerTriggerAttribute attribute,
+        public PerperWorkerListener(PerperWorkerTriggerAttribute attribute, string delegateName, 
             ITriggeredFunctionExecutor executor, IPerperFabricContext context)
         {
             _attribute = attribute;
+            _delegateName = delegateName;
             _executor = executor;
             _context = context;
 
@@ -30,7 +33,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _context.StartListen(_attribute.StreamDelegate);
+            _context.StartListen(_delegateName);
 
             _listenTask = ListenAsync(_listenCancellationTokenSource.Token);
             return Task.CompletedTask;
@@ -54,10 +57,10 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         private async Task ListenAsync(CancellationToken cancellationToken)
         {
-            var triggers = _context.GetNotifications(_attribute.StreamDelegate).WorkerTriggers(cancellationToken);
-            await foreach (var streamName in triggers.WithCancellation(cancellationToken))
+            var triggers = _context.GetNotifications(_delegateName).WorkerTriggers(cancellationToken);
+            await foreach (var (streamName, workerName) in triggers.WithCancellation(cancellationToken))
             {
-                var triggerValue = new PerperWorkerContext(streamName);
+                var triggerValue = new PerperWorkerContext(streamName, workerName);
                 await _executor.TryExecuteAsync(new TriggeredFunctionData {TriggerValue = triggerValue},
                     cancellationToken);
             }

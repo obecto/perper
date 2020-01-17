@@ -13,9 +13,9 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("Processor")]
         public static async Task RunAsync([PerperStreamTrigger] PerperStreamContext context,
-            [PerperStream("generator")] IAsyncEnumerable<Data> generator,
+            [PerperStream("generator")] IAsyncEnumerable<Data<int, string>> generator,
             [Perper("multiplier")] int multiplier,
-            [PerperStream("output")] IAsyncCollector<Data> output,
+            [PerperStream("output")] IAsyncCollector<Data<int, string>> output,
             ILogger logger, CancellationToken cancellationToken)
         {
             var state = await context.FetchStateAsync<List<int>>() ?? new List<int>();
@@ -24,11 +24,11 @@ namespace DotNet.FunctionApp
                 var value = data.Value;
                 logger.LogInformation($"Processor is processing value: {value}");
 
-                var result = await context.CallWorkerAsync<int>(new {value, multiplier, state}, cancellationToken);
+                var result = await context.CallWorkerAsync<int>("Worker", new {value, multiplier, state}, cancellationToken);
                 state.Add(result);
                 await context.UpdateStateAsync(state);
                 
-                await output.AddAsync(new Data{Value = result}, cancellationToken);
+                await output.AddAsync(new Data<int, string>{Value = result}, cancellationToken);
             }
         }
     }

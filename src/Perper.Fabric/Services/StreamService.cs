@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO.Pipelines;
 using System.Linq;
-using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
@@ -11,6 +8,7 @@ using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Resource;
 using Apache.Ignite.Core.Services;
 using Perper.Fabric.Streams;
+using Perper.Fabric.Transport;
 using Perper.Protocol.Cache;
 using Perper.Protocol.Notifications;
 
@@ -25,7 +23,7 @@ namespace Perper.Fabric.Services
         
         [NonSerialized] private Stream _stream;
 
-        [NonSerialized] private PipeWriter _pipeWriter;
+        [NonSerialized] private FunctionConnection _connection;
 
         [NonSerialized] private Task _task;
         [NonSerialized] private CancellationTokenSource _cancellationTokenSource;
@@ -36,13 +34,7 @@ namespace Perper.Fabric.Services
 
             try
             {
-                var clientSocket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
-                clientSocket.Connect(
-                    new UnixDomainSocketEndPoint($"/tmp/perper/{_stream.StreamObjectTypeName.DelegateName}.sock"));
-
-                var networkStream = new NetworkStream(clientSocket);
-                _pipeWriter = PipeWriter.Create(networkStream);
-
+                _connection = new FunctionConnection(_stream.StreamObjectTypeName.DelegateName);
             }
             catch (Exception e)
             {
@@ -71,29 +63,33 @@ namespace Perper.Fabric.Services
 
         private async ValueTask InvokeAsync()
         {
-            await SendNotificationAsync(new StreamTriggerNotification(_stream.StreamObjectTypeName.StreamName));
+            await _connection.SendNotificationAsync(new StreamTriggerNotification(_stream.StreamObjectTypeName.StreamName));
         }
 
         private async Task InvokeWorkerAsync(CancellationToken cancellationToken)
         {
-            var cache = _ignite.GetOrCreateBinaryCache<string>("workers");
             var streamName = _stream.StreamObjectTypeName.StreamName;
-            await foreach (var workers in cache.QueryContinuousAsync(streamName, cancellationToken))
+            var workersCache = _ignite.GetOrCreateBinaryCache<string>($"{streamName}_workers");
+            await foreach (var workers in workersCache.QueryContinuousAsync(cancellationToken))
             {
                 foreach (var (_, workerObject) in workers)
                 {
+                    var workerTypeName = WorkerBinaryTypeName.Parse(workerObject.GetBinaryType().TypeName);
+                    var workerName = workerTypeName.WorkerName;
+                    
                     if (workerObject.HasField("$return"))
                     {
-                        await SendNotificationAsync(new WorkerResultSubmitNotification(streamName));
+                        await _connection.SendNotificationAsync(new WorkerResultSubmitNotification(streamName, workerName));
                     }
                     else
                     {
-                        await SendNotificationAsync(new WorkerTriggerNotification(streamName));    
+                        await using var workerConnection = new FunctionConnection(workerTypeName.DelegateName);
+                        await workerConnection.SendNotificationAsync(new WorkerTriggerNotification(streamName, workerName));   
                     }
                 }
             }
         }
-
+        
         private async Task BindOutputAsync(CancellationToken cancellationToken)
         {
             var cache = _ignite.GetOrCreateBinaryCache<string>("streams");
@@ -127,22 +123,11 @@ namespace Perper.Fabric.Services
                 {
                     foreach (var (itemKey, item) in items)
                     {
-                        await SendNotificationAsync(new StreamParameterItemUpdateNotification(streamName, parameterName,
+                        await _connection.SendNotificationAsync(new StreamParameterItemUpdateNotification(streamName, parameterName,
                             itemStreamName, item.GetBinaryType().TypeName, itemKey));
                     }
                 }, cancellationToken);
             }));
-        }
-
-        private async ValueTask SendNotificationAsync(object notification)
-        {
-            var message = notification.ToString();
-            var messageBytes = new byte[message.Length + sizeof(ushort)];
-            Array.Copy(BitConverter.GetBytes((ushort)message.Length), messageBytes, sizeof(ushort));
-            Encoding.ASCII.GetBytes(message, 0, message.Length, messageBytes, sizeof(ushort));
-            Console.WriteLine($"Sending Notification:{message}");
-            await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(messageBytes));
-            await _pipeWriter.FlushAsync();
         }
     }
 }
