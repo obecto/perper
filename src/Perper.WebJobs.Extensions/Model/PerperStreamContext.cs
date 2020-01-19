@@ -52,7 +52,7 @@ namespace Perper.WebJobs.Extensions.Model
             var data = _context.GetData(StreamName);
             var workerName = await data.CallWorkerAsync(name, parameters);
             var notifications = _context.GetNotifications(DelegateName);
-            await foreach (var _ in notifications.WorkerResultSubmissions(cancellationToken))
+            await foreach (var _ in notifications.WorkerResultSubmissions(StreamName, workerName, cancellationToken))
             {
                 return await data.ReceiveWorkerResultAsync<T>(workerName);
             }

@@ -47,10 +47,10 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        public async IAsyncEnumerable<string> WorkerResultSubmissions(
+        public async IAsyncEnumerable<string> WorkerResultSubmissions(string streamName, string workerName,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var channel = _context.CreateChannel<WorkerResultSubmitNotification>(_delegateName);
+            var channel = _context.CreateChannel<WorkerResultSubmitNotification>(_delegateName, streamName, workerName);
             await foreach (var notification in channel.Reader.ReadAllAsync(cancellationToken))
             {
                 yield return notification.StreamName;

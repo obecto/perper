@@ -155,9 +155,9 @@ namespace Perper.WebJobs.Extensions.Services
             }
             else if (message.StartsWith(nameof(StreamParameterItemUpdateNotification)))
             {
-                var notification = StreamParameterItemUpdateNotification.Parse(message);
-                await WriteNotificationToChannel(notification, delegateName, notification.StreamName,
-                    notification.ParameterName, notification.ItemType);
+                var streamNotification = StreamParameterItemUpdateNotification.Parse(message);
+                await WriteNotificationToChannel(streamNotification, delegateName, streamNotification.StreamName,
+                    streamNotification.ParameterName, streamNotification.ItemType);
             }
             else if (message.StartsWith(nameof(WorkerTriggerNotification)))
             {
@@ -165,7 +165,9 @@ namespace Perper.WebJobs.Extensions.Services
             }
             else if (message.StartsWith(nameof(WorkerResultSubmitNotification)))
             {
-                await WriteNotificationToChannel(WorkerResultSubmitNotification.Parse(message), delegateName);
+                var workerNotification = WorkerResultSubmitNotification.Parse(message);
+                await WriteNotificationToChannel(workerNotification, delegateName, workerNotification.StreamName,
+                    workerNotification.WorkerName);
             }
         }
 
