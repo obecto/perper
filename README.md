@@ -84,27 +84,93 @@ project language.
 
 #### C#
 
+The first step is to define Launcher function that creates the stream graph
+that will be executed:
+
+*Launcher*
 ```csharp
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Config;
 using Perper.WebJobs.Extensions.Model;
 
-namespace PerperFunctionApp
+namespace DotNet.FunctionApp
 {
     public static class Launcher
     {
         [FunctionName("Launcher")]
         public static async Task RunAsync([PerperStreamTrigger(RunOnStartup = true)]
             PerperStreamContext context,
-            ILogger logger,
             CancellationToken cancellationToken)
         {
-            logger.LogInformation("Launcher invoked!");
+            await using var generator =
+                await context.StreamFunctionAsync(nameof(Generator), new {count = 10 });
+            await using var consumer =
+                await context.StreamActionAsync(nameof(Consumer), new {generator});
 
             await context.BindOutput(cancellationToken);
+        }
+    }
+}
+```
+
+Then we have to create the corresponding functions for the two streams (Generator and Consumer):
+
+*Generator*
+```csharp
+using System.Threading;
+using System.Threading.Tasks;
+using DotNet.FunctionApp.Model;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Extensions.Logging;
+using Perper.WebJobs.Extensions.Config;
+using Perper.WebJobs.Extensions.Model;
+
+namespace DotNet.FunctionApp
+{
+    public static class Generator
+    {
+        [FunctionName("Generator")]
+        public static async Task Run([PerperStreamTrigger] PerperStreamContext context,
+            [Perper("count")] int count,
+            [PerperStream("output")] IAsyncCollector<Data<int>> output,
+            ILogger logger, CancellationToken cancellationToken)
+        {
+            for (var i = 0; i < count; i++)
+            {
+                await output.AddAsync(new Data<int> {Value = i}, cancellationToken);
+            }
+        }
+    }
+}
+```
+
+
+*Consumer*
+```csharp
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using DotNet.FunctionApp.Model;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Extensions.Logging;
+using Perper.WebJobs.Extensions.Config;
+using Perper.WebJobs.Extensions.Model;
+
+namespace DotNet.FunctionApp
+{
+    public static class Consumer
+    {
+        [FunctionName("Consumer")]
+        public static async Task RunAsync([PerperStreamTrigger] PerperStreamContext context,
+            [PerperStream("generator")] IAsyncEnumerable<Data<int>> generator,
+            ILogger logger, CancellationToken cancellationToken)
+        {
+            await foreach (var data in generator.WithCancellation(cancellationToken))
+            {
+                logger.LogInformation($"Consumer stream receives: {data.Value}");
+            }
         }
     }
 }
