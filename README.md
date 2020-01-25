@@ -14,6 +14,8 @@ for Perper Functions. Perper Functions is built on top of Azure Functions
 as Azure Functions Extension and serves as main programming environment 
 in Perper.
 
+![Architecture Overview](docs/images/architecture_overview.jpg "Architecture Overview")
+
 ## Getting started
 
 You can use Perper on all major operating systems: Windows, Linux and macOS.
