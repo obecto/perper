@@ -158,7 +158,7 @@ namespace Perper.WebJobs.Extensions.Services
                     case PerperFabricStream stream:
                         builder.SetField(propertyInfo.Name, new[] {binary.GetBuilder(stream.TypeName.ToString()).Build()});
                         break;
-                    case IAsyncDisposable[] streams when streams.FirstOrDefault() is PerperFabricStream:
+                    case IAsyncDisposable[] streams when streams.All(s => s is PerperFabricStream):
                         builder.SetField(propertyInfo.Name, streams.Select(s =>
                             binary.GetBuilder(((PerperFabricStream) s).TypeName.ToString()).Build()).ToArray());
                         break;
