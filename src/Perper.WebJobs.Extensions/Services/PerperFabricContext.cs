@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Reflection;
@@ -61,7 +62,7 @@ namespace Perper.WebJobs.Extensions.Services
             var cancellationToken = _listenersCancellationTokenSource.Token;
             _listeners[delegateName] = Task.Run(async () =>
             {
-                var socketPath = $"/tmp/perper/{delegateName}.sock";
+                var socketPath = $"{Path.GetTempPath()}perper/{delegateName}.sock";
 
                 using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
                 socket.Bind(new UnixDomainSocketEndPoint(socketPath));
