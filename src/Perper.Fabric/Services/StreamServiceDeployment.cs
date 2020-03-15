@@ -7,15 +7,15 @@ namespace Perper.Fabric.Services
 {
     public class StreamServiceDeployment : IAsyncDisposable
     {
-        private readonly IIgnite _ignite;
         private readonly string _name;
-
+        private readonly IIgnite _ignite;
+        
         private IAtomicReference<string> _refCountNameReference;
 
-        public StreamServiceDeployment(IIgnite ignite, string name)
+        public StreamServiceDeployment(string name, IIgnite ignite)
         {
-            _ignite = ignite;
             _name = name;
+            _ignite = ignite;
         }
 
         public async ValueTask DeployAsync()
@@ -80,7 +80,7 @@ namespace Perper.Fabric.Services
         {
             _ignite.GetAtomicLong(refCountName, 1, true);
 
-            var service = new StreamService {StreamObjectTypeName = _name};
+            var service = new StreamService {StreamName = _name};
             await _ignite.GetServices().DeployClusterSingletonAsync(refCountName, service);
         }
     }

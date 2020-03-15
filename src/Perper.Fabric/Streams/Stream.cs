@@ -13,26 +13,27 @@ namespace Perper.Fabric.Streams
 {
     public class Stream
     {
-        public StreamBinaryTypeName StreamObjectTypeName { get; }
+        public StreamData StreamData { get; }
         private readonly IIgnite _ignite;
 
-        public Stream(StreamBinaryTypeName streamObjectTypeName, IIgnite ignite)
+        public Stream(StreamData streamData, IIgnite ignite)
         {
-            StreamObjectTypeName = streamObjectTypeName;
+            StreamData = streamData;
 
             _ignite = ignite;
         }
 
         public IEnumerable<(string, IEnumerable<Stream>)> GetInputStreams()
         {
-            var streamObject = _ignite.GetBinaryCache<string>("streams")[StreamObjectTypeName.StreamName];
-
-            foreach (var field in streamObject.GetBinaryType().Fields)
+            var streamsCache = _ignite.GetCache<string, StreamData>("streams");
+            
+            var streamDelegateParams = StreamData.Params;
+            foreach (var field in streamDelegateParams.GetBinaryType().Fields)
             {
                 IBinaryObject[] fieldValues;
                 try
                 {
-                    fieldValues = streamObject.GetField<IBinaryObject[]>(field);
+                    fieldValues = streamDelegateParams.GetField<IBinaryObject[]>(field);
                 }
                 catch (TypeInitializationException)
                 {
@@ -44,25 +45,22 @@ namespace Perper.Fabric.Streams
                     continue;
                 }
 
-                var streams = from value in fieldValues
-                    select value.GetBinaryType().TypeName
-                    into valueType
-                    where valueType.StartsWith(nameof(StreamBinaryTypeName))
-                    select new Stream(StreamBinaryTypeName.Parse(valueType), _ignite);
-
+                var streams = 
+                    from value in fieldValues
+                    where value.GetBinaryType().TypeName.Contains(nameof(StreamRef))
+                    select new Stream(streamsCache[value.Deserialize<StreamRef>().StreamName], _ignite);
 
                 yield return (field, streams);
             }
-
         }
 
         public async IAsyncEnumerable<IEnumerable<(long, IBinaryObject)>> ListenAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            await using var deployment = new StreamServiceDeployment(_ignite, StreamObjectTypeName.ToString());
+            await using var deployment = new StreamServiceDeployment(StreamData.Name, _ignite);
             await deployment.DeployAsync();
             
-            var cache = _ignite.GetOrCreateBinaryCache<long>(StreamObjectTypeName.StreamName);
+            var cache = _ignite.GetOrCreateBinaryCache<long>(StreamData.Name);
             await foreach (var items in cache.QueryContinuousAsync(cancellationToken))
             {
                 yield return items;
@@ -71,7 +69,7 @@ namespace Perper.Fabric.Streams
 
         public async Task ActivateAsync(CancellationToken cancellationToken)
         {
-            await using var deployment = new StreamServiceDeployment(_ignite, StreamObjectTypeName.ToString());
+            await using var deployment = new StreamServiceDeployment(StreamData.Name, _ignite);
             await deployment.DeployAsync();
             
             var tcs = new TaskCompletionSource<bool>();

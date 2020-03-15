@@ -17,7 +17,7 @@ namespace Perper.Fabric.Services
     [Serializable]
     public class StreamService : IService
     {
-        public string StreamObjectTypeName { get; set; }
+        public string StreamName { get; set; }
 
         [InstanceResource] private IIgnite _ignite;
         
@@ -30,11 +30,12 @@ namespace Perper.Fabric.Services
 
         public void Init(IServiceContext context)
         {
-            _stream = new Stream(StreamBinaryTypeName.Parse(StreamObjectTypeName), _ignite);
+            var streamsCache = _ignite.GetCache<string, StreamData>("streams");
+            _stream = new Stream(streamsCache[StreamName], _ignite);
 
             try
             {
-                _connection = new FunctionConnection(_stream.StreamObjectTypeName.DelegateName);
+                _connection = new FunctionConnection(_stream.StreamData.Delegate);
             }
             catch (Exception e)
             {
@@ -63,28 +64,25 @@ namespace Perper.Fabric.Services
 
         private async ValueTask InvokeAsync()
         {
-            await _connection.SendNotificationAsync(new StreamTriggerNotification(_stream.StreamObjectTypeName.StreamName));
+            await _connection.SendNotificationAsync(new StreamTriggerNotification(_stream.StreamData.Name));
         }
 
         private async Task InvokeWorkerAsync(CancellationToken cancellationToken)
         {
-            var streamName = _stream.StreamObjectTypeName.StreamName;
-            var workersCache = _ignite.GetOrCreateBinaryCache<string>($"{streamName}_workers");
+            var streamName = _stream.StreamData.Name;
+            var workersCache = _ignite.GetOrCreateCache<string, WorkerData>($"{streamName}_workers");
             await foreach (var workers in workersCache.QueryContinuousAsync(cancellationToken))
             {
                 foreach (var (_, workerObject) in workers)
                 {
-                    var workerTypeName = WorkerBinaryTypeName.Parse(workerObject.GetBinaryType().TypeName);
-                    var workerName = workerTypeName.WorkerName;
-                    
-                    if (workerObject.HasField("$return"))
+                    if (workerObject.Params.HasField("$return"))
                     {
-                        await _connection.SendNotificationAsync(new WorkerResultSubmitNotification(streamName, workerName));
+                        await _connection.SendNotificationAsync(new WorkerResultSubmitNotification(streamName, workerObject.Name));
                     }
                     else
                     {
-                        await using var workerConnection = new FunctionConnection(workerTypeName.DelegateName);
-                        await workerConnection.SendNotificationAsync(new WorkerTriggerNotification(streamName, workerName));   
+                        await using var workerConnection = new FunctionConnection(workerObject.Delegate);
+                        await workerConnection.SendNotificationAsync(new WorkerTriggerNotification(streamName, workerObject.Name));   
                     }
                 }
             }
@@ -92,21 +90,21 @@ namespace Perper.Fabric.Services
         
         private async Task BindOutputAsync(CancellationToken cancellationToken)
         {
-            var cache = _ignite.GetOrCreateBinaryCache<string>("streams");
-            var streamName = _stream.StreamObjectTypeName.StreamName;
+            var streamsCache = _ignite.GetCache<string, StreamData>("streams");
+            var streamName = _stream.StreamData.Name;
             IEnumerable<Stream> outputStreams = new Stream[] { };
-            await foreach (var streams in cache.QueryContinuousAsync(streamName, cancellationToken))
+            await foreach (var streams in streamsCache.QueryContinuousAsync(streamName, cancellationToken))
             {
                 var (_, streamObject) = streams.Single();
-                if (streamObject.HasField("$return"))
+                if (streamObject.Params.HasField("$return"))
                 {
-                    outputStreams = streamObject.GetField<IBinaryObject[]>("$return").Select(v =>
-                        new Stream(StreamBinaryTypeName.Parse(v.GetBinaryType().TypeName), _ignite));
+                    outputStreams = streamObject.Params.GetField<IBinaryObject[]>("$return").Select(v =>
+                        new Stream(streamsCache[v.Deserialize<StreamRef>().StreamName], _ignite));
                     break;
                 }
             }
 
-            var itemsCache = _ignite.GetOrCreateBinaryCache<long>(_stream.StreamObjectTypeName.StreamName);
+            var itemsCache = _ignite.GetOrCreateBinaryCache<long>(_stream.StreamData.Name);
             await Task.WhenAll(outputStreams.Select(outputStream =>
                 outputStream.ListenAsync(cancellationToken).ForEachAsync(async items =>
                     await itemsCache.PutAllAsync(items), cancellationToken)));
@@ -114,11 +112,11 @@ namespace Perper.Fabric.Services
 
         private async Task EngageAsync((string, IEnumerable<Stream>) inputStreams, CancellationToken cancellationToken)
         {
-            var streamName = _stream.StreamObjectTypeName.StreamName;
+            var streamName = _stream.StreamData.Name;
             var (parameterName, parameterStreams) = inputStreams;
             await Task.WhenAll(parameterStreams.Select(parameterStream =>
             {
-                var itemStreamName = parameterStream.StreamObjectTypeName.StreamName;
+                var itemStreamName = parameterStream.StreamData.Name;
                 return parameterStream.ListenAsync(cancellationToken).ForEachAsync(async items =>
                 {
                     foreach (var (itemKey, item) in items)

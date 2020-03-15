@@ -24,42 +24,53 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task<IAsyncDisposable> StreamFunctionAsync(string name, object parameters)
         {
-            var typeName = new StreamBinaryTypeName(GenerateName(name), name, DelegateType.Function);
-            var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
-            await streamsCacheClient.PutAsync(typeName.StreamName, CreateProtocolObject(typeName, parameters));
-            return new PerperFabricStream(typeName, _igniteClient);
+            var streamObject = new StreamData
+            {
+                Name = GenerateName(name), 
+                Delegate = name, 
+                DelegateType = StreamDelegateType.Function,
+                Params = CreateDelegateParameters(parameters)
+            };
+            var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
+            await streamsCache.PutAsync(streamObject.Name, streamObject);
+            return new PerperFabricStream(streamObject, _igniteClient);
         }
 
         public async Task<IAsyncDisposable> StreamActionAsync(string name, object parameters)
         {
-            var typeName = new StreamBinaryTypeName(GenerateName(name), name, DelegateType.Action);
-            var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
-            await streamsCacheClient.PutAsync(typeName.StreamName, CreateProtocolObject(typeName, parameters));
-            return new PerperFabricStream(typeName, _igniteClient);
+            var streamObject = new StreamData
+            {
+                Name = GenerateName(name), 
+                Delegate = name, 
+                DelegateType = StreamDelegateType.Action,
+                Params = CreateDelegateParameters(parameters)
+            };
+            var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
+            await streamsCache.PutAsync(streamObject.Name, streamObject);
+            return new PerperFabricStream(streamObject, _igniteClient);
         }
 
         public async Task BindStreamOutputAsync(IEnumerable<IAsyncDisposable> streams)
         {
-            var binary = _igniteClient.GetBinary();
             var streamsObjects = streams.Select(s =>
-                binary.GetBuilder(((PerperFabricStream) s).TypeName.ToString()).Build()).ToArray();
+                ((PerperFabricStream) s).StreamData.GetRef()).ToArray();
 
             if (streamsObjects.Any())
             {
-                var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
+                var streamsCacheClient = _igniteClient.GetCache<string, StreamData>("streams");
                 var streamObject = await streamsCacheClient.GetAsync(_streamName);
-                var updatedStreamObject = streamObject.ToBuilder().SetField("$return", streamsObjects).Build();
-                await streamsCacheClient.ReplaceAsync(_streamName, updatedStreamObject);
+                streamObject.Params = streamObject.Params.ToBuilder().SetField("$return", streamsObjects).Build();
+                await streamsCacheClient.ReplaceAsync(_streamName, streamObject);
             }
         }
 
         public async Task<T> FetchStreamParameterAsync<T>(string name)
         {
-            var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
+            var streamsCacheClient = _igniteClient.GetCache<string, StreamData>("streams");
             var streamObject = await streamsCacheClient.GetAsync(_streamName);
-            var field = streamObject.GetField<object>(name);
+            var field = streamObject.Params.GetField<object>(name);
 
-            if (!streamObject.HasField(name) && name != "context")
+            if (!streamObject.Params.HasField(name) && name != "context")
             {
                 _logger.LogWarning($"No value found for parameter '{name}' of stream '{_streamName}'");
             }
@@ -78,10 +89,10 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task UpdateStreamParameterAsync<T>(string name, T value)
         {
-            var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
+            var streamsCacheClient = _igniteClient.GetCache<string, StreamData>("streams");
             var streamObject = await streamsCacheClient.GetAsync(_streamName);
-            var updatedStreamObject = streamObject.ToBuilder().SetField(name, value).Build();
-            await streamsCacheClient.ReplaceAsync(_streamName, updatedStreamObject);
+            streamObject.Params = streamObject.Params.ToBuilder().SetField(name, value).Build();
+            await streamsCacheClient.ReplaceAsync(_streamName, streamObject);
         }
 
         public async Task AddStreamItemAsync<T>(T value)
@@ -98,17 +109,22 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task<string> CallWorkerAsync(string name, object parameters)
         {
-            var typeName = new WorkerBinaryTypeName(GenerateName(name), name);
-            var workersCache = _igniteClient.GetBinaryCache<string>($"{_streamName}_workers");
-            await workersCache.PutAsync(typeName.WorkerName, CreateProtocolObject(typeName, parameters));
-            return typeName.WorkerName;
+            var workerObject = new WorkerData
+            {
+                Name = GenerateName(name), 
+                Delegate = name,
+                Params = CreateDelegateParameters(parameters)
+            };
+            var workersCache = _igniteClient.GetCache<string, WorkerData>($"{_streamName}_workers");
+            await workersCache.PutAsync(workerObject.Name, workerObject);
+            return workerObject.Name;
         }
 
         public async Task<T> FetchWorkerParameterAsync<T>(string workerName, string name)
         {
-            var workersCache = _igniteClient.GetBinaryCache<string>($"{_streamName}_workers");
+            var workersCache = _igniteClient.GetCache<string, WorkerData>($"{_streamName}_workers");
             var workerObject = await workersCache.GetAsync(workerName);
-            var field = workerObject.GetField<object>(name);
+            var field = workerObject.Params.GetField<object>(name);
 
             if (field is IBinaryObject binaryObject)
             {
@@ -120,17 +136,17 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task SubmitWorkerResultAsync<T>(string workerName, T value)
         {
-            var workersCache = _igniteClient.GetBinaryCache<string>($"{_streamName}_workers");
+            var workersCache = _igniteClient.GetCache<string, WorkerData>($"{_streamName}_workers");
             var workerObject = await workersCache.GetAsync(workerName);
-            var updatedWorkerObject = workerObject.ToBuilder().SetField("$return", value).Build();
-            await workersCache.ReplaceAsync(workerName, updatedWorkerObject);
+            workerObject.Params = workerObject.Params.ToBuilder().SetField("$return", value).Build();
+            await workersCache.ReplaceAsync(workerName, workerObject);
         }
 
         public async Task<T> ReceiveWorkerResultAsync<T>(string workerName)
         {
-            var workersCache = _igniteClient.GetBinaryCache<string>($"{_streamName}_workers");
+            var workersCache = _igniteClient.GetCache<string, WorkerData>($"{_streamName}_workers");
             var workerObject = await workersCache.GetAndRemoveAsync(workerName);
-            var field = workerObject.Value.GetField<object>("$return");
+            var field = workerObject.Value.Params.GetField<object>("$return");
             if (field is IBinaryObject binaryObject)
             {
                 return binaryObject.Deserialize<T>();
@@ -144,10 +160,9 @@ namespace Perper.WebJobs.Extensions.Services
             return $"{delegateName.Replace("'", "").Replace(",", "")}-{Guid.NewGuid().ToString()}";
         }
 
-        private IBinaryObject CreateProtocolObject(object header, object parameters)
+        private IBinaryObject CreateDelegateParameters(object parameters)
         {
-            var binary = _igniteClient.GetBinary();
-            var builder = _igniteClient.GetBinary().GetBuilder(header.ToString());
+            var builder = _igniteClient.GetBinary().GetBuilder($"stream{Guid.NewGuid():N}");
 
             var properties = parameters.GetType().GetProperties();
             foreach (var propertyInfo in properties)
@@ -156,11 +171,11 @@ namespace Perper.WebJobs.Extensions.Services
                 switch (propertyValue)
                 {
                     case PerperFabricStream stream:
-                        builder.SetField(propertyInfo.Name, new[] {binary.GetBuilder(stream.TypeName.ToString()).Build()});
+                        builder.SetField(propertyInfo.Name, new[] {stream.StreamData.GetRef()});
                         break;
                     case IAsyncDisposable[] streams when streams.All(s => s is PerperFabricStream):
                         builder.SetField(propertyInfo.Name, streams.Select(s =>
-                            binary.GetBuilder(((PerperFabricStream) s).TypeName.ToString()).Build()).ToArray());
+                            ((PerperFabricStream) s).StreamData.GetRef()).ToArray());
                         break;
                     default:
                         builder.SetField(propertyInfo.Name, propertyValue);

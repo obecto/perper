@@ -23,19 +23,13 @@ namespace Perper.Fabric
             AppDomain.CurrentDomain.ProcessExit += (sender, eventArgs) => cancellationTokenSource.Cancel();
 
             var tasks = new List<Task>();
-            var streams = ignite.GetOrCreateBinaryCache<string>("streams");
-            await foreach (var streamObjects in streams.QueryContinuousAsync(cancellationToken))
+            var streams = ignite.GetOrCreateCache<string, StreamData>("streams");
+            await foreach (var streamTuples in streams.QueryContinuousAsync(cancellationToken))
             {
                 tasks.AddRange(
-                    from streamObject in streamObjects
-                    select StreamBinaryTypeName.Parse(streamObject.Item2.GetBinaryType().TypeName)
-                    into streamObjectTypeName
-
-                    where streamObjectTypeName.DelegateType == DelegateType.Action
-                    select new Stream(streamObjectTypeName, ignite)
-                    into stream
-
-                    select stream.ActivateAsync(cancellationToken));
+                    from streamTuple in streamTuples
+                    where streamTuple.Item2.DelegateType == StreamDelegateType.Action
+                    select new Stream(streamTuple.Item2, ignite).ActivateAsync(cancellationToken));
             }
 
             await Task.WhenAll(tasks);

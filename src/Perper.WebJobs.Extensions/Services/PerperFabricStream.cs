@@ -7,13 +7,13 @@ namespace Perper.WebJobs.Extensions.Services
 {
     public class PerperFabricStream : IAsyncDisposable
     {
-        public StreamBinaryTypeName TypeName { get; }
+        public StreamData StreamData { get; }
 
         private readonly IIgniteClient _igniteClient;
 
-        public PerperFabricStream(StreamBinaryTypeName typeName, IIgniteClient igniteClient)
+        public PerperFabricStream(StreamData streamData, IIgniteClient igniteClient)
         {
-            TypeName = typeName;
+            StreamData = streamData;
 
             _igniteClient = igniteClient;
         }
@@ -21,7 +21,7 @@ namespace Perper.WebJobs.Extensions.Services
         public async ValueTask DisposeAsync()
         {
             var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
-            await streamsCacheClient.RemoveAsync(TypeName.StreamName);
+            await streamsCacheClient.RemoveAsync(StreamData.Name);
         }
     }
 }
