@@ -64,7 +64,7 @@ namespace Perper.Fabric.Services
 
         private async ValueTask InvokeAsync()
         {
-            await _connection.SendNotificationAsync(new StreamTriggerNotification(_stream.StreamData.Name));
+            await _connection.SendNotificationAsync(new StreamTriggerNotification(_stream.StreamData.Name){Delegate = _stream.StreamData.Delegate});
         }
 
         private async Task InvokeWorkerAsync(CancellationToken cancellationToken)
@@ -77,12 +77,12 @@ namespace Perper.Fabric.Services
                 {
                     if (workerObject.Params.HasField("$return"))
                     {
-                        await _connection.SendNotificationAsync(new WorkerResultSubmitNotification(streamName, workerObject.Name));
+                        await _connection.SendNotificationAsync(new WorkerResultSubmitNotification(streamName, workerObject.Name){Delegate = _stream.StreamData.Delegate});
                     }
                     else
                     {
                         await using var workerConnection = new FunctionConnection(workerObject.Delegate);
-                        await workerConnection.SendNotificationAsync(new WorkerTriggerNotification(streamName, workerObject.Name));   
+                        await workerConnection.SendNotificationAsync(new WorkerTriggerNotification(streamName, workerObject.Name){Delegate = workerObject.Delegate});   
                     }
                 }
             }
@@ -122,7 +122,7 @@ namespace Perper.Fabric.Services
                     foreach (var (itemKey, item) in items)
                     {
                         await _connection.SendNotificationAsync(new StreamParameterItemUpdateNotification(streamName, parameterName,
-                            itemStreamName, item.GetBinaryType().TypeName, itemKey));
+                            itemStreamName, item.GetBinaryType().TypeName, itemKey){Delegate = _stream.StreamData.Delegate});
                     }
                 }, cancellationToken);
             }));

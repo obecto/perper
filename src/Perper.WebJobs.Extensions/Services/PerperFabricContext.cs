@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.IO.Pipelines;
+using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Threading;
@@ -20,10 +20,7 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly ILogger _logger;
 
         private readonly IIgniteClient _igniteClient;
-
-        private readonly Dictionary<string, Task> _listeners;
-        private readonly CancellationTokenSource _listenersCancellationTokenSource;
-
+        
         private readonly Dictionary<string, Dictionary<(Type, string, string), (Type, object)>> _channels;
 
         private readonly Dictionary<string, PerperFabricNotifications> _notificationsCache;
@@ -31,6 +28,9 @@ namespace Perper.WebJobs.Extensions.Services
 
         private readonly Assembly _streamTypesAssembly;
 
+        private Task _listener;
+        private CancellationTokenSource _listenerCancellationTokenSource;
+        
         public PerperFabricContext(IConfiguration configuration, ILogger<PerperFabricContext> logger)
         {
             _logger = logger;
@@ -39,9 +39,6 @@ namespace Perper.WebJobs.Extensions.Services
             {
                 Endpoints = new List<string> {"127.0.0.1"}
             });
-
-            _listeners = new Dictionary<string, Task>();
-            _listenersCancellationTokenSource = new CancellationTokenSource();
 
             _channels = new Dictionary<string, Dictionary<(Type, string, string), (Type, object)>>();
 
@@ -57,28 +54,29 @@ namespace Perper.WebJobs.Extensions.Services
 
         public void StartListen(string delegateName)
         {
-            if (_listeners.ContainsKey(delegateName)) return;
+            _channels.TryAdd(delegateName, new Dictionary<(Type, string, string), (Type, object)>());
+            
+            if (_listener != null) return;
 
-            var cancellationToken = _listenersCancellationTokenSource.Token;
-            _listeners[delegateName] = Task.Run(async () =>
+            _listenerCancellationTokenSource = new CancellationTokenSource();
+            
+            var cancellationToken = _listenerCancellationTokenSource.Token;
+            _listener = Task.Run(async () =>
             {
-                var socketPath = $"{Path.GetTempPath()}perper/{delegateName}.sock";
-
-                using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
-                socket.Bind(new UnixDomainSocketEndPoint(socketPath));
+                using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
+                socket.Bind(new IPEndPoint(IPAddress.Loopback, 40400));
                 socket.Listen(120);
-                _logger.LogDebug($"Started listening on socket '{socketPath}'");
+                _logger.LogDebug("Started listening on socket 40400...");
 
                 var acceptedListeners = new List<Task>();
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    acceptedListeners.Add(AcceptSocket(await socket.AcceptAsync().WithCancellation(cancellationToken),
-                        delegateName, cancellationToken));
+                    acceptedListeners.Add(AcceptSocket(await socket.AcceptAsync().WithCancellation(cancellationToken), 
+                        cancellationToken));
                 }
 
                 await Task.WhenAll(acceptedListeners);
             }, cancellationToken);
-            _channels[delegateName] = new Dictionary<(Type, string, string), (Type, object)>();
         }
 
         public PerperFabricNotifications GetNotifications(string delegateName)
@@ -109,19 +107,22 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async ValueTask DisposeAsync()
         {
-            try
+            if (_listenerCancellationTokenSource != null)
             {
-                _logger.LogDebug($"Disposing context!");
-                _listenersCancellationTokenSource.Cancel();
-                await Task.WhenAll(_listeners.Values);
-            }
-            finally
-            {
-                _listenersCancellationTokenSource.Dispose();
+                try
+                {
+                    _logger.LogDebug($"Disposing context!");
+                    _listenerCancellationTokenSource.Cancel();
+                    await _listener;
+                }
+                finally
+                {
+                    _listenerCancellationTokenSource.Dispose();
+                }
             }
         }
 
-        private async Task AcceptSocket(Socket socket, string delegateName, CancellationToken cancellationToken)
+        private async Task AcceptSocket(Socket socket, CancellationToken cancellationToken)
         {
             using (socket)
             {
@@ -137,7 +138,7 @@ namespace Perper.WebJobs.Extensions.Services
                     if (buffer.TryReadLengthDelimitedMessage(out var messageLength))
                     {
                         var message = buffer.Slice(sizeof(ushort), messageLength).ToAsciiString();
-                        await RouteMessage(delegateName, message);
+                        await RouteMessage(message);
                         reader.AdvanceTo(buffer.GetPosition(messageLength + sizeof(ushort)));
                     }
                     else
@@ -148,41 +149,41 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        private async ValueTask RouteMessage(string delegateName, string message)
+        private async ValueTask RouteMessage(string message)
         {
             if (message.StartsWith(nameof(StreamTriggerNotification)))
             {
-                await WriteNotificationToChannel(StreamTriggerNotification.Parse(message), delegateName);
+                await WriteNotificationToChannel(StreamTriggerNotification.Parse(message));
             }
             else if (message.StartsWith(nameof(StreamParameterItemUpdateNotification)))
             {
                 var streamNotification = StreamParameterItemUpdateNotification.Parse(message);
-                await WriteNotificationToChannel(streamNotification, delegateName, streamNotification.StreamName,
+                await WriteNotificationToChannel(streamNotification, streamNotification.StreamName,
                     streamNotification.ParameterName, streamNotification.ItemType);
             }
             else if (message.StartsWith(nameof(WorkerTriggerNotification)))
             {
-                await WriteNotificationToChannel(WorkerTriggerNotification.Parse(message), delegateName);
+                await WriteNotificationToChannel(WorkerTriggerNotification.Parse(message));
             }
             else if (message.StartsWith(nameof(WorkerResultSubmitNotification)))
             {
                 var workerNotification = WorkerResultSubmitNotification.Parse(message);
-                await WriteNotificationToChannel(workerNotification, delegateName, workerNotification.StreamName,
+                await WriteNotificationToChannel(workerNotification, workerNotification.StreamName,
                     workerNotification.WorkerName);
             }
         }
 
-        private async ValueTask WriteNotificationToChannel<T>(T notification, string delegateName,
-            string streamName = default, string parameterName = default, string parameterType = default)
+        private async ValueTask WriteNotificationToChannel<T>(T notification, string streamName = default, 
+            string parameterName = default, string parameterType = default) where T:INotification
         {
-            var streamChannels = _channels[delegateName];
+            var streamChannels = _channels[notification.Delegate];
             var (expectedType, channel) = streamChannels[(typeof(T), streamName, parameterName)];
             if (expectedType == default || expectedType.IsAssignableFrom(GetParameterType(parameterType)))
             {
                 if (typeof(T) == typeof(StreamParameterItemUpdateNotification)) {
                     _logger.LogTrace("Routed a '{parameterType}' to '{streamName}'s '{parameterName}'", parameterType, streamName, parameterName);
                 }
-                await ((Channel<T>) channel).Writer.WriteAsync(notification, _listenersCancellationTokenSource.Token);
+                await ((Channel<T>) channel).Writer.WriteAsync(notification, _listenerCancellationTokenSource.Token);
             } else {
                 if (typeof(T) == typeof(StreamParameterItemUpdateNotification)) {
                     _logger.LogTrace("Did not route a '{parameterType}' to '{streamName}'s '{parameterName}' due to mismatched types", parameterType, streamName, parameterName);

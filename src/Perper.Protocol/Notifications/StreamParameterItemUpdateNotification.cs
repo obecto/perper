@@ -3,14 +3,16 @@ using System.Text.RegularExpressions;
 
 namespace Perper.Protocol.Notifications
 {
-    public class StreamParameterItemUpdateNotification
+    public class StreamParameterItemUpdateNotification : INotification
     {
+        public string Delegate { get; set; }
+        
         public string StreamName { get; }
         public string ParameterName { get; }
         public string ItemStreamName { get; }
         public string ItemType { get; }
         public long ItemKey { get; }
-
+        
         public StreamParameterItemUpdateNotification(string streamName, string parameterName,
             string itemStreamName, string itemType, long itemKey)
         {
@@ -24,21 +26,22 @@ namespace Perper.Protocol.Notifications
         public override string ToString()
         {
             return
-                $"{nameof(StreamParameterItemUpdateNotification)}<{StreamName}%{ParameterName}%{ItemStreamName}%{ItemType}%{ItemKey}>";
+                $"{nameof(StreamParameterItemUpdateNotification)}<{StreamName}%{ParameterName}%{ItemStreamName}%{ItemType}%{ItemKey}%{Delegate}>";
         }
 
         public static StreamParameterItemUpdateNotification Parse(string stringValue)
         {
             if (!stringValue.StartsWith(nameof(StreamParameterItemUpdateNotification))) throw new ArgumentException();
 
-            var pattern = $@"{nameof(StreamParameterItemUpdateNotification)}<(?'{nameof(StreamName)}'.*)%(?'{nameof(ParameterName)}'.*)%(?'{nameof(ItemStreamName)}'.*)%(?'{nameof(ItemType)}'.*)%(?'{nameof(ItemKey)}'.*)>";
+            var pattern = $@"{nameof(StreamParameterItemUpdateNotification)}<(?'{nameof(StreamName)}'.*)%(?'{nameof(ParameterName)}'.*)%(?'{nameof(ItemStreamName)}'.*)%(?'{nameof(ItemType)}'.*)%(?'{nameof(ItemKey)}'.*)%(?'{nameof(Delegate)}'.*)>";
             var match = Regex.Match(stringValue, pattern);
             var streamName = match.Groups[nameof(StreamName)].Value;
             var parameterName = match.Groups[nameof(ParameterName)].Value;
             var itemStreamName = match.Groups[nameof(ItemStreamName)].Value;
             var itemType = match.Groups[nameof(ItemType)].Value;
             var itemKey = long.Parse(match.Groups[nameof(ItemKey)].Value);
-            return new StreamParameterItemUpdateNotification(streamName, parameterName, itemStreamName, itemType, itemKey);
+            var dlg = match.Groups[nameof(Delegate)].Value;
+            return new StreamParameterItemUpdateNotification(streamName, parameterName, itemStreamName, itemType, itemKey){Delegate = dlg};
         }
     }
 }

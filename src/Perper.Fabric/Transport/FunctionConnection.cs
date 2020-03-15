@@ -1,5 +1,6 @@
 using System;
 using System.IO.Pipelines;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,9 +15,8 @@ namespace Perper.Fabric.Transport
 
         public FunctionConnection(string delegateName)
         {
-            _clientSocket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
-            _clientSocket.Connect(
-                new UnixDomainSocketEndPoint($"/tmp/perper/{delegateName}.sock"));
+            _clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
+            _clientSocket.Connect(new IPEndPoint(IPAddress.Loopback, 40400));
 
             _networkStream = new NetworkStream(_clientSocket);
             _pipeWriter = PipeWriter.Create(_networkStream);
