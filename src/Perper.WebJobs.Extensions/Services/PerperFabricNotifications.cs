@@ -19,41 +19,41 @@ namespace Perper.WebJobs.Extensions.Services
         public async IAsyncEnumerable<string> StreamTriggers(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var channel = _context.CreateChannel<StreamTriggerNotification>(_delegateName);
+            var channel = _context.CreateChannel(NotificationType.StreamTrigger, _delegateName);
             await foreach (var notification in channel.Reader.ReadAllAsync(cancellationToken))
             {
-                yield return notification.StreamName;
+                yield return notification.Stream;
             }
         }
 
         public async IAsyncEnumerable<(string, long)> StreamParameterItemUpdates<T>(string streamName,
             string parameterName, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var channel = _context.CreateChannel<StreamParameterItemUpdateNotification>(_delegateName, streamName,
+            var channel = _context.CreateChannel(NotificationType.StreamParameterItemUpdate, _delegateName, streamName,
                 parameterName, typeof(T));
             await foreach (var notification in channel.Reader.ReadAllAsync(cancellationToken))
             {
-                yield return (notification.ItemStreamName, notification.ItemKey);
+                yield return (notification.ParameterStream, notification.ParameterStreamItemKey);
             }
         }
 
         public async IAsyncEnumerable<(string, string)> WorkerTriggers(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var channel = _context.CreateChannel<WorkerTriggerNotification>(_delegateName);
+            var channel = _context.CreateChannel(NotificationType.WorkerTrigger, _delegateName);
             await foreach (var notification in channel.Reader.ReadAllAsync(cancellationToken))
             {
-                yield return (notification.StreamName, notification.WorkerName);
+                yield return (notification.Stream, notification.Worker);
             }
         }
 
         public async IAsyncEnumerable<string> WorkerResultSubmissions(string streamName, string workerName,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var channel = _context.CreateChannel<WorkerResultSubmitNotification>(_delegateName, streamName, workerName);
+            var channel = _context.CreateChannel(NotificationType.WorkerResult, _delegateName, streamName, workerName);
             await foreach (var notification in channel.Reader.ReadAllAsync(cancellationToken))
             {
-                yield return notification.StreamName;
+                yield return notification.Stream;
             }
         }
     }

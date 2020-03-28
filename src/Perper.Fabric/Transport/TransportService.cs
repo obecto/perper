@@ -4,12 +4,12 @@ using System.IO.Pipelines;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Services;
+using Perper.Protocol.Notifications;
 
 namespace Perper.Fabric.Transport
 {
@@ -19,11 +19,11 @@ namespace Perper.Fabric.Transport
         [NonSerialized] private Task _task;
         [NonSerialized] private CancellationTokenSource _cancellationTokenSource;
 
-        [NonSerialized] private HashSet<Channel<object>> _channels;
+        [NonSerialized] private HashSet<Channel<byte[]>> _channels;
 
         public void Init(IServiceContext context)
         {
-            _channels = new HashSet<Channel<object>>();
+            _channels = new HashSet<Channel<byte[]>>();
         }
 
         public void Execute(IServiceContext context)
@@ -53,29 +53,28 @@ namespace Perper.Fabric.Transport
             _task.Wait();
         }
 
-        public async Task SendAsync(object message)
+        public async Task SendAsync(Notification notification)
         {
+            var message = JsonSerializer.SerializeToUtf8Bytes(notification);
             await Task.WhenAll(from channel in _channels
                 select channel.Writer.WriteAsync(message).AsTask());
         }
 
         private async Task AcceptSocket(Socket socket, CancellationToken cancellationToken)
         {
-            var channel = Channel.CreateUnbounded<object>();
+            var channel = Channel.CreateUnbounded<byte[]>();
             _channels.Add(channel);
             try
             {
                 await using var networkStream = new NetworkStream(socket, true);
                 var pipeWriter = PipeWriter.Create(networkStream);
-                var jsonWriter = new Utf8JsonWriter(pipeWriter);
 
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    var notification = await channel.Reader.ReadAsync(cancellationToken);
-                    var message = notification.ToString();
+                    var message = await channel.Reader.ReadAsync(cancellationToken);
                     var messageBytes = new byte[message.Length + sizeof(ushort)];
                     Array.Copy(BitConverter.GetBytes((ushort) message.Length), messageBytes, sizeof(ushort));
-                    Encoding.ASCII.GetBytes(message, 0, message.Length, messageBytes, sizeof(ushort));
+                    Array.Copy(message, 0, messageBytes, sizeof(ushort), message.Length);
                     await pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(messageBytes), cancellationToken);
                     await pipeWriter.FlushAsync(cancellationToken);
                 }

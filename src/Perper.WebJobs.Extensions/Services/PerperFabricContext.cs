@@ -1,9 +1,11 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -21,7 +23,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         private readonly IIgniteClient _igniteClient;
         
-        private readonly Dictionary<string, Dictionary<(Type, string, string), (Type, object)>> _channels;
+        private readonly Dictionary<string, Dictionary<(NotificationType, string, string), (Type, Channel<Notification>)>> _channels;
 
         private readonly Dictionary<string, PerperFabricNotifications> _notificationsCache;
         private readonly Dictionary<string, PerperFabricData> _dataCache;
@@ -40,7 +42,7 @@ namespace Perper.WebJobs.Extensions.Services
                 Endpoints = new List<string> {"127.0.0.1"}
             });
 
-            _channels = new Dictionary<string, Dictionary<(Type, string, string), (Type, object)>>();
+            _channels = new Dictionary<string, Dictionary<(NotificationType, string, string), (Type, Channel<Notification>)>>();
 
             _notificationsCache = new Dictionary<string, PerperFabricNotifications>();
             _dataCache = new Dictionary<string, PerperFabricData>();
@@ -54,7 +56,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public void StartListen(string delegateName)
         {
-            _channels.TryAdd(delegateName, new Dictionary<(Type, string, string), (Type, object)>());
+            _channels.TryAdd(delegateName, new Dictionary<(NotificationType, string, string), (Type, Channel<Notification>)>());
             
             if (_listener != null) return;
 
@@ -76,8 +78,8 @@ namespace Perper.WebJobs.Extensions.Services
                     var buffer = readResult.Buffer;
                     if (buffer.TryReadLengthDelimitedMessage(out var messageLength))
                     {
-                        var message = buffer.Slice(sizeof(ushort), messageLength).ToAsciiString();
-                        await RouteMessage(message);
+                        var notification = ParseNotification(buffer.Slice(sizeof(ushort), messageLength));
+                        await RouteNotification(notification);
                         reader.AdvanceTo(buffer.GetPosition(messageLength + sizeof(ushort)));
                     }
                     else
@@ -106,11 +108,11 @@ namespace Perper.WebJobs.Extensions.Services
             return result;
         }
 
-        public Channel<T> CreateChannel<T>(string delegateName,
+        public Channel<Notification> CreateChannel(NotificationType notificationType, string delegateName,
             string streamName = default, string parameterName = default, Type parameterType = default)
         {
-            var channel = Channel.CreateUnbounded<T>();
-            _channels[delegateName][(typeof(T), streamName, parameterName)] = (parameterType, channel);
+            var channel = Channel.CreateUnbounded<Notification>();
+            _channels[delegateName][(notificationType, streamName, parameterName)] = (parameterType, channel);
             return channel;
         }
 
@@ -120,7 +122,7 @@ namespace Perper.WebJobs.Extensions.Services
             {
                 try
                 {
-                    _logger.LogDebug($"Disposing context!");
+                    _logger.LogDebug("Disposing context!");
                     _listenerCancellationTokenSource.Cancel();
                     await _listener;
                 }
@@ -131,43 +133,48 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        private async ValueTask RouteMessage(string message)
+        private static Notification ParseNotification(ReadOnlySequence<byte> message)
         {
-            if (message.StartsWith(nameof(StreamTriggerNotification)))
+            var reader = new Utf8JsonReader(message);
+            var result = JsonSerializer.Deserialize<Notification>(ref reader);
+            return result;
+        }
+
+        private async ValueTask RouteNotification(Notification notification)
+        {
+            switch (notification.Type)
             {
-                await WriteNotificationToChannel(StreamTriggerNotification.Parse(message));
-            }
-            else if (message.StartsWith(nameof(StreamParameterItemUpdateNotification)))
-            {
-                var streamNotification = StreamParameterItemUpdateNotification.Parse(message);
-                await WriteNotificationToChannel(streamNotification, streamNotification.StreamName,
-                    streamNotification.ParameterName, streamNotification.ItemType);
-            }
-            else if (message.StartsWith(nameof(WorkerTriggerNotification)))
-            {
-                await WriteNotificationToChannel(WorkerTriggerNotification.Parse(message));
-            }
-            else if (message.StartsWith(nameof(WorkerResultSubmitNotification)))
-            {
-                var workerNotification = WorkerResultSubmitNotification.Parse(message);
-                await WriteNotificationToChannel(workerNotification, workerNotification.StreamName,
-                    workerNotification.WorkerName);
+                case NotificationType.StreamTrigger:
+                    await WriteNotificationToChannel(notification);
+                    break;
+                case NotificationType.StreamParameterItemUpdate:
+                    await WriteNotificationToChannel(notification, notification.Stream, 
+                        notification.Parameter, notification.ParameterStreamItemType);
+                    break;
+                case NotificationType.WorkerTrigger:
+                    await WriteNotificationToChannel(notification);
+                    break;
+                case NotificationType.WorkerResult:
+                    await WriteNotificationToChannel(notification, notification.Stream, notification.Worker);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 
-        private async ValueTask WriteNotificationToChannel<T>(T notification, string streamName = default, 
-            string parameterName = default, string parameterType = default) where T:INotification
+        private async ValueTask WriteNotificationToChannel(Notification notification, string streamName = default, 
+            string parameterName = default, string parameterType = default)
         {
             var streamChannels = _channels[notification.Delegate];
-            var (expectedType, channel) = streamChannels[(typeof(T), streamName, parameterName)];
+            var (expectedType, channel) = streamChannels[(notification.Type, streamName, parameterName)];
             if (expectedType == default || expectedType.IsAssignableFrom(GetParameterType(parameterType)))
             {
-                if (typeof(T) == typeof(StreamParameterItemUpdateNotification)) {
+                if (notification.Type == NotificationType.StreamParameterItemUpdate) {
                     _logger.LogTrace("Routed a '{parameterType}' to '{streamName}'s '{parameterName}'", parameterType, streamName, parameterName);
                 }
-                await ((Channel<T>) channel).Writer.WriteAsync(notification, _listenerCancellationTokenSource.Token);
+                await channel.Writer.WriteAsync(notification, _listenerCancellationTokenSource.Token);
             } else {
-                if (typeof(T) == typeof(StreamParameterItemUpdateNotification)) {
+                if (notification.Type == NotificationType.StreamParameterItemUpdate) {
                     _logger.LogTrace("Did not route a '{parameterType}' to '{streamName}'s '{parameterName}' due to mismatched types", parameterType, streamName, parameterName);
                 }
             }

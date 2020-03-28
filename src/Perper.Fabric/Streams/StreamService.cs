@@ -55,7 +55,12 @@ namespace Perper.Fabric.Streams
 
         private async ValueTask InvokeAsync()
         {
-            await _transportService.SendAsync(new StreamTriggerNotification(_stream.StreamData.Name){Delegate = _stream.StreamData.Delegate});
+            await _transportService.SendAsync(new Notification
+            {
+                Type = NotificationType.StreamTrigger,
+                Stream = _stream.StreamData.Name,
+                Delegate = _stream.StreamData.Delegate
+            });
         }
 
         private async Task InvokeWorkerAsync(CancellationToken cancellationToken)
@@ -68,11 +73,23 @@ namespace Perper.Fabric.Streams
                 {
                     if (workerObject.Params.HasField("$return"))
                     {
-                        await _transportService.SendAsync(new WorkerResultSubmitNotification(streamName, workerObject.Name){Delegate = _stream.StreamData.Delegate});
+                        await _transportService.SendAsync(new Notification
+                        {
+                            Type = NotificationType.WorkerResult,
+                            Stream = streamName,
+                            Worker = workerObject.Name,
+                            Delegate = _stream.StreamData.Delegate
+                        });
                     }
                     else
                     {
-                        await _transportService.SendAsync(new WorkerTriggerNotification(streamName, workerObject.Name){Delegate = workerObject.Delegate});   
+                        await _transportService.SendAsync(new Notification
+                        {
+                            Type = NotificationType.WorkerTrigger,
+                            Stream = streamName,
+                            Worker = workerObject.Name,
+                            Delegate = workerObject.Delegate
+                        });
                     }
                 }
             }
@@ -111,8 +128,17 @@ namespace Perper.Fabric.Streams
                 {
                     foreach (var (itemKey, item) in items)
                     {
-                        await _transportService.SendAsync(new StreamParameterItemUpdateNotification(streamName, parameterName,
-                            itemStreamName, item.GetBinaryType().TypeName, itemKey){Delegate = _stream.StreamData.Delegate});
+                        await _transportService.SendAsync(new Notification
+                        {
+                            Type = NotificationType.StreamParameterItemUpdate,
+                            Stream = streamName,
+                            Delegate = _stream.StreamData.Delegate,
+                            Parameter = parameterName,
+                            ParameterStream = itemStreamName,
+                            ParameterStreamItemKey = itemKey,
+                            
+                            ParameterStreamItemType = item.GetBinaryType().TypeName
+                        });
                     }
                 }, cancellationToken);
             }));
