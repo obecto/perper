@@ -33,12 +33,11 @@ namespace Perper.WebJobs.Extensions.Bindings
 
         private async IAsyncEnumerable<T> Impl([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var data = _context.GetData(_streamName);
             var updates = _context.GetNotifications(_delegateName).StreamParameterItemUpdates<T>(
                 _streamName, _parameterName, cancellationToken);
-            await foreach (var (itemStreamName, itemKey) in updates.WithCancellation(cancellationToken))
+            await foreach (var (_, item) in updates.WithCancellation(cancellationToken))
             {
-                yield return await data.FetchStreamParameterStreamItemAsync<T>(itemStreamName, itemKey);
+                yield return item;
             }
         }
     }

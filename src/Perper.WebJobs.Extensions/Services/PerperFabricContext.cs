@@ -4,14 +4,12 @@ using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
-using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Client;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Perper.Protocol.Notifications;
 
@@ -19,7 +17,7 @@ namespace Perper.WebJobs.Extensions.Services
 {
     public class PerperFabricContext : IPerperFabricContext, IAsyncDisposable
     {
-        private readonly ILogger _logger;
+        private readonly ILogger<PerperFabricContext> _logger;
 
         private readonly IIgniteClient _igniteClient;
         
@@ -28,12 +26,10 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly Dictionary<string, PerperFabricNotifications> _notificationsCache;
         private readonly Dictionary<string, PerperFabricData> _dataCache;
 
-        private readonly Assembly _streamTypesAssembly;
-
         private Task _listener;
         private CancellationTokenSource _listenerCancellationTokenSource;
         
-        public PerperFabricContext(IConfiguration configuration, ILogger<PerperFabricContext> logger)
+        public PerperFabricContext(ILogger<PerperFabricContext> logger)
         {
             _logger = logger;
 
@@ -46,12 +42,6 @@ namespace Perper.WebJobs.Extensions.Services
 
             _notificationsCache = new Dictionary<string, PerperFabricNotifications>();
             _dataCache = new Dictionary<string, PerperFabricData>();
-
-            var streamTypesAssemblyName = configuration.GetValue<string>("PerperStreamTypesAssembly");
-            if (!string.IsNullOrEmpty(streamTypesAssemblyName))
-            {
-                _streamTypesAssembly = Assembly.Load(streamTypesAssemblyName);
-            }
         }
 
         public void StartListen(string delegateName)
@@ -148,8 +138,10 @@ namespace Perper.WebJobs.Extensions.Services
                     await WriteNotificationToChannel(notification);
                     break;
                 case NotificationType.StreamParameterItemUpdate:
+                    notification.ParameterStreamItem = await _igniteClient.GetCache<long, object>(notification.ParameterStream)
+                        .GetAsync(notification.ParameterStreamItemKey);
                     await WriteNotificationToChannel(notification, notification.Stream, 
-                        notification.Parameter, notification.ParameterStreamItemType);
+                        notification.Parameter, notification.ParameterStreamItem.GetType());
                     break;
                 case NotificationType.WorkerTrigger:
                     await WriteNotificationToChannel(notification);
@@ -163,11 +155,11 @@ namespace Perper.WebJobs.Extensions.Services
         }
 
         private async ValueTask WriteNotificationToChannel(Notification notification, string streamName = default, 
-            string parameterName = default, string parameterType = default)
+            string parameterName = default, Type parameterType = default)
         {
             var streamChannels = _channels[notification.Delegate];
             var (expectedType, channel) = streamChannels[(notification.Type, streamName, parameterName)];
-            if (expectedType == default || expectedType.IsAssignableFrom(GetParameterType(parameterType)))
+            if (expectedType == default || expectedType.IsAssignableFrom(parameterType))
             {
                 if (notification.Type == NotificationType.StreamParameterItemUpdate) {
                     _logger.LogTrace("Routed a '{parameterType}' to '{streamName}'s '{parameterName}'", parameterType, streamName, parameterName);
@@ -178,11 +170,6 @@ namespace Perper.WebJobs.Extensions.Services
                     _logger.LogTrace("Did not route a '{parameterType}' to '{streamName}'s '{parameterName}' due to mismatched types", parameterType, streamName, parameterName);
                 }
             }
-        }
-
-        private Type GetParameterType(string parameterType)
-        {
-            return Type.GetType(parameterType, null, (__, t, _) => Type.GetType(t) ?? _streamTypesAssembly?.GetType(t));
         }
     }
 }

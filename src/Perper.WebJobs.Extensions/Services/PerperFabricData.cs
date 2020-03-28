@@ -101,12 +101,6 @@ namespace Perper.WebJobs.Extensions.Services
             await streamCacheClient.PutAsync(DateTime.UtcNow.ToFileTimeUtc(), value);
         }
 
-        public async Task<T> FetchStreamParameterStreamItemAsync<T>(string itemStreamName, long itemKey)
-        {
-            var itemStreamCacheClient = _igniteClient.GetCache<long, T>(itemStreamName);
-            return await itemStreamCacheClient.GetAsync(itemKey);
-        }
-
         public async Task<string> CallWorkerAsync(string name, object parameters)
         {
             var workerObject = new WorkerData

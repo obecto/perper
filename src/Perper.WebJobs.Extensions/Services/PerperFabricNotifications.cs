@@ -26,14 +26,14 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        public async IAsyncEnumerable<(string, long)> StreamParameterItemUpdates<T>(string streamName,
+        public async IAsyncEnumerable<(string, T)> StreamParameterItemUpdates<T>(string streamName,
             string parameterName, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var channel = _context.CreateChannel(NotificationType.StreamParameterItemUpdate, _delegateName, streamName,
                 parameterName, typeof(T));
             await foreach (var notification in channel.Reader.ReadAllAsync(cancellationToken))
             {
-                yield return (notification.ParameterStream, notification.ParameterStreamItemKey);
+                yield return (notification.ParameterStream, (T)notification.ParameterStreamItem);
             }
         }
 

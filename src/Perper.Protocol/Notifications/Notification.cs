@@ -1,4 +1,5 @@
 using System.Security.Principal;
+using System.Text.Json.Serialization;
 
 namespace Perper.Protocol.Notifications
 {
@@ -14,7 +15,7 @@ namespace Perper.Protocol.Notifications
         public string ParameterStream { get; set; }
         public long ParameterStreamItemKey { get; set; }
 
-
-        public string ParameterStreamItemType { get; set; }
+        [JsonIgnore]
+        public object ParameterStreamItem { get; set; }
     }
 }

@@ -135,9 +135,7 @@ namespace Perper.Fabric.Streams
                             Delegate = _stream.StreamData.Delegate,
                             Parameter = parameterName,
                             ParameterStream = itemStreamName,
-                            ParameterStreamItemKey = itemKey,
-                            
-                            ParameterStreamItemType = item.GetBinaryType().TypeName
+                            ParameterStreamItemKey = itemKey
                         });
                     }
                 }, cancellationToken);
