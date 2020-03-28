@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Perper.Fabric.Streams;
+using Perper.Fabric.Transport;
 using Perper.Protocol.Cache;
 
 namespace Perper.Fabric
@@ -17,6 +18,8 @@ namespace Perper.Fabric
             {
                 IgniteHome = "/usr/share/apache-ignite"
             });
+
+            await ignite.GetServices().DeployNodeSingletonAsync(nameof(TransportService), new TransportService());
 
             var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;

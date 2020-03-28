@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.DataStructures;
 
-namespace Perper.Fabric.Services
+namespace Perper.Fabric.Streams
 {
     public class StreamServiceDeployment : IAsyncDisposable
     {

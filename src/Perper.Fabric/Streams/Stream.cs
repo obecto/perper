@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
-using Perper.Fabric.Services;
 using Perper.Protocol.Cache;
 
 namespace Perper.Fabric.Streams

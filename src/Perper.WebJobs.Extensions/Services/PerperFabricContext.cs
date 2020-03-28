@@ -64,18 +64,27 @@ namespace Perper.WebJobs.Extensions.Services
             _listener = Task.Run(async () =>
             {
                 using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
-                socket.Bind(new IPEndPoint(IPAddress.Loopback, 40400));
-                socket.Listen(120);
-                _logger.LogDebug("Started listening on socket 40400...");
-
-                var acceptedListeners = new List<Task>();
+                await socket.ConnectAsync(IPAddress.Loopback, 40400).WithCancellation(cancellationToken);
+                await using var networkStream = new NetworkStream(socket);
+                var reader = PipeReader.Create(networkStream);
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    acceptedListeners.Add(AcceptSocket(await socket.AcceptAsync().WithCancellation(cancellationToken), 
-                        cancellationToken));
-                }
+                    var readResult = await reader.ReadAsync(cancellationToken);
+                    if (readResult.IsCanceled) throw new OperationCanceledException();
+                    if (readResult.IsCompleted) break;
 
-                await Task.WhenAll(acceptedListeners);
+                    var buffer = readResult.Buffer;
+                    if (buffer.TryReadLengthDelimitedMessage(out var messageLength))
+                    {
+                        var message = buffer.Slice(sizeof(ushort), messageLength).ToAsciiString();
+                        await RouteMessage(message);
+                        reader.AdvanceTo(buffer.GetPosition(messageLength + sizeof(ushort)));
+                    }
+                    else
+                    {
+                        reader.AdvanceTo(buffer.Start);
+                    }
+                }
             }, cancellationToken);
         }
 
@@ -119,33 +128,6 @@ namespace Perper.WebJobs.Extensions.Services
                 {
                     _listenerCancellationTokenSource.Dispose();
                 }
-            }
-        }
-
-        private async Task AcceptSocket(Socket socket, CancellationToken cancellationToken)
-        {
-            using (socket)
-            {
-                await using var networkStream = new NetworkStream(socket, true);
-                var reader = PipeReader.Create(networkStream);
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    var readResult = await reader.ReadAsync(cancellationToken);
-                    if (readResult.IsCanceled) throw new OperationCanceledException();
-                    if (readResult.IsCompleted) break;
-
-                    var buffer = readResult.Buffer;
-                    if (buffer.TryReadLengthDelimitedMessage(out var messageLength))
-                    {
-                        var message = buffer.Slice(sizeof(ushort), messageLength).ToAsciiString();
-                        await RouteMessage(message);
-                        reader.AdvanceTo(buffer.GetPosition(messageLength + sizeof(ushort)));
-                    }
-                    else
-                    {
-                        reader.AdvanceTo(buffer.Start);
-                    }
-                }    
             }
         }
 

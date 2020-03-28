@@ -2,11 +2,11 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Perper.WebJobs.Extensions
+namespace Perper.Fabric
 {
-    public static class PerperTaskExtensions
-    { 
-        public static async Task WithCancellation(this Task task, CancellationToken cancellationToken)
+    public static class TaskExtensions
+    {
+        public static async Task<T> WithCancellation<T>(this Task<T> task, CancellationToken cancellationToken)
         {
             var tcs = new TaskCompletionSource<bool>();
             await using (cancellationToken.Register(s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
@@ -16,7 +16,7 @@ namespace Perper.WebJobs.Extensions
                     throw new OperationCanceledException(cancellationToken);
                 }
 
-                await task;
+                return await task;
             }
         }
     }

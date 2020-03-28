@@ -7,12 +7,11 @@ using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Resource;
 using Apache.Ignite.Core.Services;
-using Perper.Fabric.Streams;
 using Perper.Fabric.Transport;
 using Perper.Protocol.Cache;
 using Perper.Protocol.Notifications;
 
-namespace Perper.Fabric.Services
+namespace Perper.Fabric.Streams
 {
     [Serializable]
     public class StreamService : IService
@@ -20,10 +19,10 @@ namespace Perper.Fabric.Services
         public string StreamName { get; set; }
 
         [InstanceResource] private IIgnite _ignite;
-        
+
         [NonSerialized] private Stream _stream;
 
-        [NonSerialized] private FunctionConnection _connection;
+        [NonSerialized] private TransportService _transportService;
 
         [NonSerialized] private Task _task;
         [NonSerialized] private CancellationTokenSource _cancellationTokenSource;
@@ -33,15 +32,7 @@ namespace Perper.Fabric.Services
             var streamsCache = _ignite.GetCache<string, StreamData>("streams");
             _stream = new Stream(streamsCache[StreamName], _ignite);
 
-            try
-            {
-                _connection = new FunctionConnection(_stream.StreamData.Delegate);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                throw;
-            }
+            _transportService = _ignite.GetServices().GetService<TransportService>(nameof(TransportService));
         }
 
         public void Execute(IServiceContext context)
@@ -64,7 +55,7 @@ namespace Perper.Fabric.Services
 
         private async ValueTask InvokeAsync()
         {
-            await _connection.SendNotificationAsync(new StreamTriggerNotification(_stream.StreamData.Name){Delegate = _stream.StreamData.Delegate});
+            await _transportService.SendAsync(new StreamTriggerNotification(_stream.StreamData.Name){Delegate = _stream.StreamData.Delegate});
         }
 
         private async Task InvokeWorkerAsync(CancellationToken cancellationToken)
@@ -77,12 +68,11 @@ namespace Perper.Fabric.Services
                 {
                     if (workerObject.Params.HasField("$return"))
                     {
-                        await _connection.SendNotificationAsync(new WorkerResultSubmitNotification(streamName, workerObject.Name){Delegate = _stream.StreamData.Delegate});
+                        await _transportService.SendAsync(new WorkerResultSubmitNotification(streamName, workerObject.Name){Delegate = _stream.StreamData.Delegate});
                     }
                     else
                     {
-                        await using var workerConnection = new FunctionConnection(workerObject.Delegate);
-                        await workerConnection.SendNotificationAsync(new WorkerTriggerNotification(streamName, workerObject.Name){Delegate = workerObject.Delegate});   
+                        await _transportService.SendAsync(new WorkerTriggerNotification(streamName, workerObject.Name){Delegate = workerObject.Delegate});   
                     }
                 }
             }
@@ -121,7 +111,7 @@ namespace Perper.Fabric.Services
                 {
                     foreach (var (itemKey, item) in items)
                     {
-                        await _connection.SendNotificationAsync(new StreamParameterItemUpdateNotification(streamName, parameterName,
+                        await _transportService.SendAsync(new StreamParameterItemUpdateNotification(streamName, parameterName,
                             itemStreamName, item.GetBinaryType().TypeName, itemKey){Delegate = _stream.StreamData.Delegate});
                     }
                 }, cancellationToken);
