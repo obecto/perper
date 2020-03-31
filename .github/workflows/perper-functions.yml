@@ -16,12 +16,6 @@ jobs:
         working-directory: ./src/Perper.WebJobs.Extensions
         run: dotnet build --configuration Release  
 
-      - name: Install NuGet client
-        uses: warrenbuckley/Setup-Nuget@v1
-
-      - name: Add private GitHub registry to NuGet
-        run: nuget source Add -Name "GitHub" -Source "https://nuget.pkg.github.com/obecto/index.json" -Username obecto -Password ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Push generated package to GitHub registry
+      - name: Push generated package to nuget.org
         working-directory: ./src/Perper.WebJobs.Extensions/bin/Release
-        run: nuget push *.nupkg -Source "GitHub" -SkipDuplicate
+        run: dotnet nuget push *.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
