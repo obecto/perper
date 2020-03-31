@@ -18,4 +18,4 @@ jobs:
 
       - name: Push generated package to nuget.org
         working-directory: ./src/Perper.WebJobs.Extensions/bin/Release
-        run: dotnet nuget push *.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
+        run: dotnet nuget push *.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
