@@ -32,8 +32,8 @@ namespace Perper.Fabric.Transport
             var cancellationToken = _cancellationTokenSource.Token;
             _task = Task.Run(async () =>
             {
-                using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
-                socket.Bind(new IPEndPoint(IPAddress.Loopback, 40400));
+                using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                socket.Bind(new IPEndPoint(IPAddress.Any, 40400));
                 socket.Listen(120);
 
                 var acceptedListeners = new List<Task>();

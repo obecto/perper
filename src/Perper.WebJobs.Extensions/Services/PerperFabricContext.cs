@@ -55,7 +55,7 @@ namespace Perper.WebJobs.Extensions.Services
             var cancellationToken = _listenerCancellationTokenSource.Token;
             _listener = Task.Run(async () =>
             {
-                using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
+                using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 await socket.ConnectAsync(IPAddress.Loopback, 40400).WithCancellation(cancellationToken);
                 await using var networkStream = new NetworkStream(socket);
                 var reader = PipeReader.Create(networkStream);
