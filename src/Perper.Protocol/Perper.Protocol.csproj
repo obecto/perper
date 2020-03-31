@@ -4,6 +4,19 @@
         <TargetFramework>netcoreapp3.1</TargetFramework>
         <Nullable>enable</Nullable>
         <LangVersion>8</LangVersion>
+        <PackageVersion>0.3.0</PackageVersion>
+        <Title>Perper Protocol</Title>
+        <Authors>Obecto EOOD</Authors>
+        <PackageProjectUrl>https://github.com/obecto/perper</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/obecto/perper/blob/master/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/obecto/perper</RepositoryUrl>
+        <RepositoryType>Git</RepositoryType>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
 
     <ItemGroup>
