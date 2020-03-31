@@ -2,14 +2,11 @@ name: Perper Fabric
 
 on:
   push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+    paths: 
+      - 'src/Perper.Fabric/**'
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
     steps:
