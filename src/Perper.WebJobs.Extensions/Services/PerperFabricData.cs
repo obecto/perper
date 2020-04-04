@@ -22,12 +22,22 @@ namespace Perper.WebJobs.Extensions.Services
             _igniteClient = igniteClient;
         }
 
+        public IAsyncDisposable DeclareStream(string name)
+        {
+            var streamObject = new StreamData
+            {
+                Name = GenerateName(name),
+                Delegate = name,
+            };
+            return new PerperFabricStream(streamObject, _igniteClient);
+        }
+
         public async Task<IAsyncDisposable> StreamFunctionAsync(string name, object parameters)
         {
             var streamObject = new StreamData
             {
-                Name = GenerateName(name), 
-                Delegate = name, 
+                Name = GenerateName(name),
+                Delegate = name,
                 DelegateType = StreamDelegateType.Function,
                 Params = CreateDelegateParameters(parameters)
             };
@@ -36,18 +46,38 @@ namespace Perper.WebJobs.Extensions.Services
             return new PerperFabricStream(streamObject, _igniteClient);
         }
 
+        public async Task<IAsyncDisposable> StreamFunctionAsync(IAsyncDisposable declaration, object parameters)
+        {
+            var streamObject = ((PerperFabricStream) declaration).StreamData;
+            streamObject.DelegateType = StreamDelegateType.Function;
+            streamObject.Params = CreateDelegateParameters(parameters);
+            var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
+            await streamsCache.PutAsync(streamObject.Name, streamObject);
+            return declaration;
+        }
+
         public async Task<IAsyncDisposable> StreamActionAsync(string name, object parameters)
         {
             var streamObject = new StreamData
             {
-                Name = GenerateName(name), 
-                Delegate = name, 
+                Name = GenerateName(name),
+                Delegate = name,
                 DelegateType = StreamDelegateType.Action,
                 Params = CreateDelegateParameters(parameters)
             };
             var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
             await streamsCache.PutAsync(streamObject.Name, streamObject);
             return new PerperFabricStream(streamObject, _igniteClient);
+        }
+
+        public async Task<IAsyncDisposable> StreamActionAsync(IAsyncDisposable declaration, object parameters)
+        {
+            var streamObject = ((PerperFabricStream) declaration).StreamData;
+            streamObject.DelegateType = StreamDelegateType.Action;
+            streamObject.Params = CreateDelegateParameters(parameters);
+            var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
+            await streamsCache.PutAsync(streamObject.Name, streamObject);
+            return declaration;
         }
 
         public async Task BindStreamOutputAsync(IEnumerable<IAsyncDisposable> streams)

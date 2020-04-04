@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
 using Perper.WebJobs.Extensions.Services;
@@ -23,16 +21,34 @@ namespace Perper.WebJobs.Extensions.Model
             _context = context;
         }
 
+        public IAsyncDisposable DeclareStream(string name)
+        {
+            var data = _context.GetData(StreamName);
+            return data.DeclareStream(name);
+        }
+        
+        public async Task<IAsyncDisposable> StreamFunctionAsync(string name, object parameters)
+        {
+            var data = _context.GetData(StreamName);
+            return await data.StreamFunctionAsync(name, parameters);
+        }
+        
+        public async Task<IAsyncDisposable> StreamFunctionAsync(IAsyncDisposable declaration, object parameters)
+        {
+            var data = _context.GetData(StreamName);
+            return await data.StreamFunctionAsync(declaration, parameters);
+        }
+        
         public async Task<IAsyncDisposable> StreamActionAsync(string name, object parameters)
         {
             var data = _context.GetData(StreamName);
             return await data.StreamActionAsync(name, parameters);
         }
-
-        public async Task<IAsyncDisposable> StreamFunctionAsync(string name, object parameters)
+        
+        public async Task<IAsyncDisposable> StreamActionAsync(IAsyncDisposable declaration, object parameters)
         {
             var data = _context.GetData(StreamName);
-            return await data.StreamFunctionAsync(name, parameters);
+            return await data.StreamActionAsync(declaration, parameters);
         }
 
         public Task<T> FetchStateAsync<T>()

@@ -13,6 +13,7 @@ namespace DotNet.FunctionApp
             PerperStreamContext context,
             CancellationToken cancellationToken)
         {
+            await using var cyclicGenerator = context.DeclareStream(nameof(CyclicGenerator));
             await using var firstGenerator =
                 await context.StreamFunctionAsync(nameof(Generator), new {count = 10, tag = "first"});
             await using var secondGenerator =
@@ -20,9 +21,11 @@ namespace DotNet.FunctionApp
             await using var processor =
                 await context.StreamFunctionAsync(nameof(Processor), new
                 {
-                    generator = new[] {firstGenerator, secondGenerator},
+                    generator = new[] {firstGenerator, secondGenerator, cyclicGenerator},
                     multiplier = 10
                 });
+            await context.StreamFunctionAsync(cyclicGenerator, new {processor});
+            
             await using var consumer =
                 await context.StreamActionAsync(nameof(Consumer), new {processor});
 
