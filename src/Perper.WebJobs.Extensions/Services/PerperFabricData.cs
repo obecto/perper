@@ -22,6 +22,15 @@ namespace Perper.WebJobs.Extensions.Services
             _igniteClient = igniteClient;
         }
 
+        public IAsyncDisposable GetStream()
+        {
+            var streamObject = new StreamData
+            {
+                Name = _streamName
+            };
+            return new PerperFabricStream(streamObject, _igniteClient);
+        }
+        
         public IAsyncDisposable DeclareStream(string name)
         {
             var streamObject = new StreamData

@@ -21,6 +21,12 @@ namespace Perper.WebJobs.Extensions.Model
             _context = context;
         }
 
+        public IAsyncDisposable GetStream()
+        {
+            var data = _context.GetData(StreamName);
+            return data.GetStream();
+        }
+
         public IAsyncDisposable DeclareStream(string name)
         {
             var data = _context.GetData(StreamName);
@@ -76,25 +82,28 @@ namespace Perper.WebJobs.Extensions.Model
             throw new TimeoutException();
         }
 
-        public Task BindOutput(CancellationToken cancellationToken)
+        public Task BindOutput(CancellationToken cancellationToken = default)
         {
             return BindOutput(new IAsyncDisposable[] { }, cancellationToken);
         }
 
-        public Task BindOutput(IAsyncDisposable stream, CancellationToken cancellationToken)
+        public Task BindOutput(IAsyncDisposable stream, CancellationToken cancellationToken = default)
         {
             return BindOutput(new []{stream}, cancellationToken);
         }
 
-        public async Task BindOutput(IEnumerable<IAsyncDisposable> streams, CancellationToken cancellationToken)
+        public async Task BindOutput(IEnumerable<IAsyncDisposable> streams, CancellationToken cancellationToken = default)
         {
             var data = _context.GetData(StreamName);
             await data.BindStreamOutputAsync(streams);
-        
-            var tcs = new TaskCompletionSource<bool>();
-            await using (cancellationToken.Register(s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
+
+            if (cancellationToken != default)
             {
-                await tcs.Task.ConfigureAwait(false);
+                var tcs = new TaskCompletionSource<bool>();
+                await using (cancellationToken.Register(s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
+                {
+                    await tcs.Task.ConfigureAwait(false);
+                }    
             }
         }
     }

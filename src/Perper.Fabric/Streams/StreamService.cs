@@ -94,27 +94,34 @@ namespace Perper.Fabric.Streams
                 }
             }
         }
-        
+
         private async Task BindOutputAsync(CancellationToken cancellationToken)
         {
             var streamsCache = _ignite.GetCache<string, StreamData>("streams");
             var streamName = _stream.StreamData.Name;
-            IEnumerable<Stream> outputStreams = new Stream[] { };
+            var itemsCache = _ignite.GetOrCreateBinaryCache<long>(streamName);
+            var outputStreams = new Dictionary<string, Stream>();
+            var tasks = new List<Task>();
             await foreach (var streams in streamsCache.QueryContinuousAsync(streamName, cancellationToken))
             {
                 var (_, streamObject) = streams.Single();
                 if (streamObject.Params.HasField("$return"))
                 {
-                    outputStreams = streamObject.Params.GetField<IBinaryObject[]>("$return").Select(v =>
-                        new Stream(streamsCache[v.Deserialize<StreamRef>().StreamName], _ignite));
-                    break;
+                    foreach (var outputStreamRef in streamObject.Params.GetField<IBinaryObject[]>("$return"))
+                    {
+                        var outputStreamName = outputStreamRef.Deserialize<StreamRef>().StreamName;
+                        var outputStream = new Stream(streamsCache[outputStreamName], _ignite);
+                        if (outputStreams.TryAdd(outputStreamName, outputStream))
+                        {
+                            var task = outputStream.ListenAsync(cancellationToken).ForEachAsync(
+                                async items => await itemsCache.PutAllAsync(items), cancellationToken);
+                            tasks.Add(task);
+                        }
+                    }
                 }
             }
 
-            var itemsCache = _ignite.GetOrCreateBinaryCache<long>(_stream.StreamData.Name);
-            await Task.WhenAll(outputStreams.Select(outputStream =>
-                outputStream.ListenAsync(cancellationToken).ForEachAsync(async items =>
-                    await itemsCache.PutAllAsync(items), cancellationToken)));
+            await Task.WhenAll(tasks);
         }
 
         private async Task EngageAsync((string, IEnumerable<Stream>) inputStreams, CancellationToken cancellationToken)
