@@ -82,29 +82,31 @@ namespace Perper.WebJobs.Extensions.Model
             throw new TimeoutException();
         }
 
-        public Task BindOutput(CancellationToken cancellationToken = default)
+        public Task BindOutput(CancellationToken cancellationToken)
         {
             return BindOutput(new IAsyncDisposable[] { }, cancellationToken);
         }
 
-        public Task BindOutput(IAsyncDisposable stream, CancellationToken cancellationToken = default)
+        public Task BindOutput(IAsyncDisposable stream, CancellationToken cancellationToken)
         {
             return BindOutput(new []{stream}, cancellationToken);
         }
 
-        public async Task BindOutput(IEnumerable<IAsyncDisposable> streams, CancellationToken cancellationToken = default)
+        public async Task BindOutput(IEnumerable<IAsyncDisposable> streams, CancellationToken cancellationToken)
+        {
+            await RebindOutput(streams);
+
+            var tcs = new TaskCompletionSource<bool>();
+            await using (cancellationToken.Register(s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
+            {
+                await tcs.Task.ConfigureAwait(false);
+            }    
+        }
+        
+        public async Task RebindOutput(IEnumerable<IAsyncDisposable> streams)
         {
             var data = _context.GetData(StreamName);
             await data.BindStreamOutputAsync(streams);
-
-            if (cancellationToken != default)
-            {
-                var tcs = new TaskCompletionSource<bool>();
-                await using (cancellationToken.Register(s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
-                {
-                    await tcs.Task.ConfigureAwait(false);
-                }    
-            }
         }
     }
 }
