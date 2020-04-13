@@ -22,7 +22,7 @@ You can use Perper on all major operating systems: Windows, Linux and macOS.
 
 ### Prerequisite
 
-Before running this sample, you must have the following:
+Before running the next steps, you must have the following:
 
 - Install [Azure Functions Core Tools v3](https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local#v2)
 - Install [.NET Core SDK 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1)
