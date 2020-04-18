@@ -101,27 +101,47 @@ namespace Perper.Fabric.Streams
             var streamName = _stream.StreamData.Name;
             var itemsCache = _ignite.GetOrCreateBinaryCache<long>(streamName);
             var outputStreams = new Dictionary<string, Stream>();
-            var tasks = new List<Task>();
-            await foreach (var streams in streamsCache.QueryContinuousAsync(streamName, cancellationToken))
+            var deployments = new List<IAsyncDisposable>();
+            var listenTasks = new List<Task>();
+            try
             {
-                var (_, streamObject) = streams.Single();
-                if (streamObject.Params.HasField("$return"))
+                await foreach (var streams in streamsCache.QueryContinuousAsync(streamName, cancellationToken))
                 {
-                    foreach (var outputStreamRef in streamObject.Params.GetField<IBinaryObject[]>("$return"))
+                    var (_, streamObject) = streams.Single();
+                    if (streamObject.Params.HasField("$return"))
                     {
-                        var outputStreamName = outputStreamRef.Deserialize<StreamRef>().StreamName;
-                        var outputStream = new Stream(streamsCache[outputStreamName], _ignite);
-                        if (outputStreams.TryAdd(outputStreamName, outputStream))
+                        var newOutputStreams = new List<Stream>();
+                        foreach (var outputStreamRef in streamObject.Params.GetField<IBinaryObject[]>("$return"))
                         {
-                            var task = outputStream.ListenAsync(cancellationToken).ForEachAsync(
-                                async items => await itemsCache.PutAllAsync(items), cancellationToken);
-                            tasks.Add(task);
+                            var outputStreamName = outputStreamRef.Deserialize<StreamRef>().StreamName;
+                            var outputStream = new Stream(streamsCache[outputStreamName], _ignite);
+                         
+                            if (outputStreams.TryAdd(outputStreamName, outputStream))
+                            {
+                                var outputStreamServiceDeployment = new StreamServiceDeployment(outputStreamName, _ignite);
+                                await outputStreamServiceDeployment.DeployAsync();
+                            
+                                deployments.Add(outputStreamServiceDeployment);
+                                newOutputStreams.Add(outputStream);
+                            }
                         }
+
+                        listenTasks.AddRange(newOutputStreams.Select(stream =>
+                        {
+                            return stream.ListenAsync(cancellationToken).ForEachAsync(
+                                async items =>
+                                {
+                                    await itemsCache.PutAllAsync(items);
+                                }, cancellationToken);
+                        }));
                     }
                 }
+                await Task.WhenAll(listenTasks);
             }
-
-            await Task.WhenAll(tasks);
+            finally
+            {
+                await Task.WhenAll(deployments.Select(d => d.DisposeAsync().AsTask()));
+            }
         }
 
         private async Task EngageAsync((string, IEnumerable<Stream>) inputStreams, CancellationToken cancellationToken)

@@ -56,26 +56,41 @@ namespace Perper.WebJobs.Extensions.Services
             _listener = Task.Run(async () =>
             {
                 using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                await socket.ConnectAsync(IPAddress.Loopback, 40400).WithCancellation(cancellationToken);
+                await socket.ConnectAsync(IPAddress.Loopback, 40400);
                 await using var networkStream = new NetworkStream(socket);
                 var reader = PipeReader.Create(networkStream);
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    var readResult = await reader.ReadAsync(cancellationToken);
-                    if (readResult.IsCanceled) throw new OperationCanceledException();
-                    if (readResult.IsCompleted) break;
+                    while (true)
+                    {
+                        var readResult = await reader.ReadAsync(cancellationToken);
+                        var buffer = readResult.Buffer;
+                        try
+                        {
+                            if (readResult.IsCanceled)
+                            {
+                                break;
+                            }
 
-                    var buffer = readResult.Buffer;
-                    if (buffer.TryReadLengthDelimitedMessage(out var messageLength))
-                    {
-                        var notification = ParseNotification(buffer.Slice(sizeof(ushort), messageLength));
-                        await RouteNotification(notification);
-                        reader.AdvanceTo(buffer.GetPosition(messageLength + sizeof(ushort)));
+                            while (TryParseMessage(ref buffer, out var notification))
+                            {
+                                await RouteNotification(notification);
+                            }
+
+                            if (readResult.IsCompleted)
+                            {
+                                break;
+                            }
+                        }
+                        finally
+                        {
+                            reader.AdvanceTo(buffer.Start, buffer.End);
+                        }
                     }
-                    else
-                    {
-                        reader.AdvanceTo(buffer.Start);
-                    }
+                }
+                finally
+                {
+                    await reader.CompleteAsync();
                 }
             }, cancellationToken);
         }
@@ -121,6 +136,19 @@ namespace Perper.WebJobs.Extensions.Services
                     _listenerCancellationTokenSource.Dispose();
                 }
             }
+        }
+
+        private static bool TryParseMessage(ref ReadOnlySequence<byte> buffer, out Notification notification)
+        {
+            if (buffer.TryReadLengthDelimitedMessage(out var messageLength))
+            {
+                notification = ParseNotification(buffer.Slice(sizeof(ushort), messageLength));
+                buffer = buffer.Slice(sizeof(ushort) + messageLength);
+                return true;
+            }
+
+            notification = new Notification();
+            return false;
         }
 
         private static Notification ParseNotification(ReadOnlySequence<byte> message)

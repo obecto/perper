@@ -5,7 +5,7 @@
         <LangVersion>8</LangVersion>
         <Nullable>enable</Nullable>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageVersion>0.3.6</PackageVersion>
+        <PackageVersion>0.3.7</PackageVersion>
         <Authors>Obecto EOOD</Authors>
         <RepositoryUrl>https://github.com/obecto/perper</RepositoryUrl>
         <Title>Perper Functions</Title>

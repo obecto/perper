@@ -4,9 +4,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
+using Apache.Ignite.Core.Log;
 using Perper.Fabric.Streams;
 using Perper.Fabric.Transport;
 using Perper.Protocol.Cache;
+using LogLevel = Apache.Ignite.Core.Log.LogLevel;
 
 namespace Perper.Fabric
 {
@@ -14,9 +16,12 @@ namespace Perper.Fabric
     {
         public static async Task Main(string[] args)
         {
-            var ignite = Ignition.Start(new IgniteConfiguration
+            SynchronizationContext.SetSynchronizationContext(
+                new ThreadPoolSynchronizationContext());
+            
+            using var ignite = Ignition.Start(new IgniteConfiguration
             {
-                IgniteHome = "/usr/share/apache-ignite"
+                IgniteHome = "/usr/share/apache-ignite",
             });
 
             await ignite.GetServices().DeployNodeSingletonAsync(nameof(TransportService), new TransportService());
@@ -37,5 +42,9 @@ namespace Perper.Fabric
 
             await Task.WhenAll(tasks);
         }
+    }
+
+    public class ThreadPoolSynchronizationContext : SynchronizationContext
+    {
     }
 }

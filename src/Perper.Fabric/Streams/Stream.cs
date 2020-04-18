@@ -53,6 +53,14 @@ namespace Perper.Fabric.Streams
             }
         }
 
+        public async Task ActivateAsync(CancellationToken cancellationToken)
+        {
+            await using var deployment = new StreamServiceDeployment(StreamData.Name, _ignite);
+            await deployment.DeployAsync();
+
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+        }
+        
         public async IAsyncEnumerable<IEnumerable<(long, IBinaryObject)>> ListenAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
@@ -63,18 +71,6 @@ namespace Perper.Fabric.Streams
             await foreach (var items in cache.QueryContinuousAsync(cancellationToken))
             {
                 yield return items;
-            }
-        }
-
-        public async Task ActivateAsync(CancellationToken cancellationToken)
-        {
-            await using var deployment = new StreamServiceDeployment(StreamData.Name, _ignite);
-            await deployment.DeployAsync();
-            
-            var tcs = new TaskCompletionSource<bool>();
-            await using (cancellationToken.Register(s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
-            {
-                await tcs.Task.ConfigureAwait(false);
             }
         }
     }

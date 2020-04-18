@@ -25,7 +25,11 @@ namespace Perper.Fabric
         {
             var channel = Channel.CreateUnbounded<IEnumerable<(TK, TV)>>();
             var listener = new Listener<TK, TV>(channel);
-            using var queryHandle = cache.QueryContinuous(new ContinuousQuery<TK, TV>(listener));
+            using var queryHandle = cache.QueryContinuous(new ContinuousQuery<TK, TV>(listener), new ScanQuery<TK, TV>());
+
+            await channel.Writer.WriteAsync(queryHandle.GetInitialQueryCursor().GetAll()
+                .Select(entry => (entry.Key, entry.Value)), cancellationToken);
+
             await foreach (var result in channel.Reader.ReadAllAsync(cancellationToken))
             {
                 yield return result;
