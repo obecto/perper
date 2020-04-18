@@ -20,8 +20,8 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async ValueTask DisposeAsync()
         {
-            var streamsCacheClient = _igniteClient.GetBinaryCache<string>("streams");
-            await streamsCacheClient.RemoveAsync(StreamData.Name);
+            var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
+            await streamsCache.RemoveAsync(StreamData.Name);
         }
     }
 }

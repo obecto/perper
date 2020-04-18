@@ -136,7 +136,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task AddStreamItemAsync<T>(T value)
         {
-            var streamCacheClient = _igniteClient.GetCache<long, T>(_streamName);
+            var streamCacheClient = _igniteClient.GetOrCreateCache<long, T>(_streamName);
             await streamCacheClient.PutAsync(DateTime.UtcNow.ToFileTimeUtc(), value);
         }
 
@@ -148,7 +148,7 @@ namespace Perper.WebJobs.Extensions.Services
                 Delegate = name,
                 Params = CreateDelegateParameters(parameters)
             };
-            var workersCache = _igniteClient.GetCache<string, WorkerData>($"{_streamName}_workers");
+            var workersCache = _igniteClient.GetOrCreateCache<string, WorkerData>($"{_streamName}_workers");
             await workersCache.PutAsync(workerObject.Name, workerObject);
             return workerObject.Name;
         }
