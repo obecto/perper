@@ -186,17 +186,34 @@ namespace Perper.WebJobs.Extensions.Services
             string parameterName = default, Type parameterType = default)
         {
             var streamChannels = _channels[notification.Delegate];
-            var (expectedType, channel) = streamChannels[(notification.Type, streamName, parameterName)];
-            if (expectedType == default || expectedType.IsAssignableFrom(parameterType))
+            if (streamChannels.TryGetValue((notification.Type, streamName, parameterName), out var streamChannelPair))
             {
-                if (notification.Type == NotificationType.StreamParameterItemUpdate) {
-                    _logger.LogTrace("Routed a '{parameterType}' to '{streamName}'s '{parameterName}'", parameterType, streamName, parameterName);
+                var (expectedType, channel) = streamChannelPair;
+                if (expectedType == default || expectedType.IsAssignableFrom(parameterType))
+                {
+                    if (notification.Type == NotificationType.StreamParameterItemUpdate)
+                    {
+                        _logger.LogTrace("Routed a '{parameterType}' to '{streamName}'s '{parameterName}'",
+                            parameterType, streamName, parameterName);
+                    }
+
+                    await channel.Writer.WriteAsync(notification, _listenerCancellationTokenSource.Token);
                 }
-                await channel.Writer.WriteAsync(notification, _listenerCancellationTokenSource.Token);
-            } else {
-                if (notification.Type == NotificationType.StreamParameterItemUpdate) {
-                    _logger.LogTrace("Did not route a '{parameterType}' to '{streamName}'s '{parameterName}' due to mismatched types", parameterType, streamName, parameterName);
+                else
+                {
+                    if (notification.Type == NotificationType.StreamParameterItemUpdate)
+                    {
+                        _logger.LogTrace(
+                            "Did not route a '{parameterType}' to '{streamName}'s '{parameterName}' due to mismatched types",
+                            parameterType, streamName, parameterName);
+                    }
                 }
+            }
+            else
+            {
+                _logger.LogTrace(
+                    "Did not route a '{parameterType}' to '{streamName}'s '{parameterName}' due to missing listener",
+                    parameterType, streamName, parameterName);
             }
         }
     }
