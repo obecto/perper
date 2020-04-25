@@ -23,7 +23,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             var attribute = context.Parameter.GetCustomAttribute<TAttribute>(false);
             return Task.FromResult<ITriggerBinding>(attribute == null
                 ? null
-                : new PerperTriggerBinding(attribute, _fabricContext, _logger));
+                : new PerperTriggerBinding(attribute, context.Parameter.ParameterType, _fabricContext, _logger));
         }
     }
 }

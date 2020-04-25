@@ -1,6 +1,8 @@
 using System;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Perper.WebJobs.Extensions.Config;
 using Perper.WebJobs.Extensions.Services;
@@ -24,6 +26,12 @@ namespace Perper.WebJobs.Extensions.Bindings
 
         public async Task<object> GetValueAsync()
         {
+            if (_attribute.Parameter == "$return" && Type.GetGenericTypeDefinition() == typeof(IAsyncCollector<>))
+            {
+                var collectorType = typeof(PerperWorkerAsyncCollector<>).MakeGenericType(Type.GenericTypeArguments);
+                return Activator.CreateInstance(collectorType, _attribute.Stream, _attribute.Worker, _context);
+            }
+            
             var data = _context.GetData(_attribute.Stream);
             return _attribute.TriggerAttribute switch
             {
@@ -35,7 +43,7 @@ namespace Perper.WebJobs.Extensions.Bindings
 
         public async Task SetValueAsync(object value, CancellationToken cancellationToken)
         {
-            if (_attribute.Parameter == "$return")
+            if (_attribute.Parameter == "$return" && Type.GetGenericTypeDefinition() != typeof(IAsyncCollector<>))
             {
                 var data = _context.GetData(_attribute.Stream);
                 await data.SubmitWorkerResultAsync(_attribute.Worker, value);

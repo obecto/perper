@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Perper.WebJobs.Extensions.Config;
@@ -13,6 +14,7 @@ namespace Perper.WebJobs.Extensions.Triggers
     {
         private readonly PerperWorkerTriggerAttribute _attribute;
         private readonly string _delegateName;
+        private readonly IConverter<PerperWorkerContext, object> _triggerValueConverter;
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly IPerperFabricContext _context;
 
@@ -21,10 +23,12 @@ namespace Perper.WebJobs.Extensions.Triggers
         private Task _listenTask;
 
         public PerperWorkerListener(PerperWorkerTriggerAttribute attribute, string delegateName, 
+            IConverter<PerperWorkerContext, object> triggerValueConverter,
             ITriggeredFunctionExecutor executor, IPerperFabricContext context)
         {
             _attribute = attribute;
             _delegateName = delegateName;
+            _triggerValueConverter = triggerValueConverter;
             _executor = executor;
             _context = context;
 
@@ -60,8 +64,9 @@ namespace Perper.WebJobs.Extensions.Triggers
             var triggers = _context.GetNotifications(_delegateName).WorkerTriggers(cancellationToken);
             await foreach (var (streamName, workerName) in triggers.WithCancellation(cancellationToken))
             {
-                var triggerValue = new PerperWorkerContext(streamName, workerName);
-                await _executor.TryExecuteAsync(new TriggeredFunctionData {TriggerValue = triggerValue},
+                var triggerValue = new PerperWorkerContext {StreamName = streamName, WorkerName = workerName};
+                await _executor.TryExecuteAsync(
+                    new TriggeredFunctionData {TriggerValue = _triggerValueConverter.Convert(triggerValue)},
                     cancellationToken);
             }
         }

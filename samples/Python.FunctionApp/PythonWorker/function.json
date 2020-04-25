@@ -1,0 +1,22 @@
+{
+  "scriptFile": "__init__.py",
+  "bindings": [
+    {
+      "name": "context",
+      "type": "perperWorkerTrigger",
+      "direction": "in"
+    },
+    {
+      "name": "value",
+      "parameter": "value",
+      "type": "perper",
+      "direction": "in"
+    },
+    {
+      "name": "$return",
+      "parameter": "$return",
+      "type": "perper",
+      "direction": "out"
+    }
+  ]
+}

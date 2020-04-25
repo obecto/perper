@@ -1,2 +1,1 @@
 azure-functions
-../../python-binding

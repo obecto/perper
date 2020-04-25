@@ -166,10 +166,8 @@ namespace Perper.WebJobs.Extensions.Services
                     await WriteNotificationToChannel(notification);
                     break;
                 case NotificationType.StreamParameterItemUpdate:
-                    notification.ParameterStreamItem = await _igniteClient.GetCache<long, object>(notification.ParameterStream)
-                        .GetAsync(notification.ParameterStreamItemKey);
-                    await WriteNotificationToChannel(notification, notification.Stream, 
-                        notification.Parameter, notification.ParameterStreamItem.GetType());
+                    await WriteNotificationToChannel(notification, notification.Stream,
+                        notification.Parameter);
                     break;
                 case NotificationType.WorkerTrigger:
                     await WriteNotificationToChannel(notification);
@@ -183,37 +181,49 @@ namespace Perper.WebJobs.Extensions.Services
         }
 
         private async ValueTask WriteNotificationToChannel(Notification notification, string streamName = default, 
-            string parameterName = default, Type parameterType = default)
+            string parameterName = default)
         {
-            var streamChannels = _channels[notification.Delegate];
-            if (streamChannels.TryGetValue((notification.Type, streamName, parameterName), out var streamChannelPair))
+            if (_channels.TryGetValue(notification.Delegate, out var streamChannels))
             {
-                var (expectedType, channel) = streamChannelPair;
-                if (expectedType == default || expectedType.IsAssignableFrom(parameterType))
+                Type? parameterType = default;
+                if (notification.Type == NotificationType.StreamParameterItemUpdate)
                 {
-                    if (notification.Type == NotificationType.StreamParameterItemUpdate)
-                    {
-                        _logger.LogTrace("Routed a '{parameterType}' to '{streamName}'s '{parameterName}'",
-                            parameterType, streamName, parameterName);
-                    }
+                    notification.ParameterStreamItem = await _igniteClient
+                        .GetCache<long, object>(notification.ParameterStream)
+                        .GetAsync(notification.ParameterStreamItemKey);
+                    parameterType = notification.ParameterStreamItem.GetType();
+                }
 
-                    await channel.Writer.WriteAsync(notification, _listenerCancellationTokenSource.Token);
+                if (streamChannels.TryGetValue((notification.Type, streamName, parameterName),
+                    out var streamChannelPair))
+                {
+                    var (expectedType, channel) = streamChannelPair;
+                    if (expectedType == default || expectedType.IsAssignableFrom(parameterType))
+                    {
+                        if (notification.Type == NotificationType.StreamParameterItemUpdate)
+                        {
+                            _logger.LogTrace("Routed a '{parameterType}' to '{streamName}'s '{parameterName}'",
+                                parameterType, streamName, parameterName);
+                        }
+
+                        await channel.Writer.WriteAsync(notification, _listenerCancellationTokenSource.Token);
+                    }
+                    else
+                    {
+                        if (notification.Type == NotificationType.StreamParameterItemUpdate)
+                        {
+                            _logger.LogTrace(
+                                "Did not route a '{parameterType}' to '{streamName}'s '{parameterName}' due to mismatched types",
+                                parameterType, streamName, parameterName);
+                        }
+                    }
                 }
                 else
                 {
-                    if (notification.Type == NotificationType.StreamParameterItemUpdate)
-                    {
-                        _logger.LogTrace(
-                            "Did not route a '{parameterType}' to '{streamName}'s '{parameterName}' due to mismatched types",
-                            parameterType, streamName, parameterName);
-                    }
+                    _logger.LogTrace(
+                        "Did not route a '{parameterType}' to '{streamName}'s '{parameterName}' due to missing listener",
+                        parameterType, streamName, parameterName);
                 }
-            }
-            else
-            {
-                _logger.LogTrace(
-                    "Did not route a '{parameterType}' to '{streamName}'s '{parameterName}' due to missing listener",
-                    parameterType, streamName, parameterName);
             }
         }
     }

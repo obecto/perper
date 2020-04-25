@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Listeners;
@@ -17,15 +18,18 @@ namespace Perper.WebJobs.Extensions.Triggers
         private readonly Attribute _attribute;
         private readonly IPerperFabricContext _fabricContext;
         private readonly ILogger _logger;
+        private readonly PerperWorkerTriggerValueConverter _workerTriggerValueConverter;
         public Type TriggerValueType { get; }
 
-        public PerperTriggerBinding(Attribute attribute, IPerperFabricContext fabricContext, ILogger logger)
+        public PerperTriggerBinding(Attribute attribute, Type triggerValueType,
+            IPerperFabricContext fabricContext, ILogger logger)
         {
             _attribute = attribute;
             _fabricContext = fabricContext;
             _logger = logger;
-
-            TriggerValueType = GetTriggerValueType();
+            _workerTriggerValueConverter = new PerperWorkerTriggerValueConverter(triggerValueType); 
+            
+            TriggerValueType = triggerValueType;
         }
 
         public Task<IListener> CreateListenerAsync(ListenerFactoryContext context)
@@ -35,7 +39,7 @@ namespace Perper.WebJobs.Extensions.Triggers
                 PerperStreamTriggerAttribute streamAttribute => new PerperStreamListener(streamAttribute,
                     context.Descriptor.ShortName, context.Executor, _fabricContext, _logger),
                 PerperWorkerTriggerAttribute workerAttribute => new PerperWorkerListener(workerAttribute,
-                    context.Descriptor.ShortName, context.Executor, _fabricContext),
+                    context.Descriptor.ShortName, _workerTriggerValueConverter, context.Executor, _fabricContext),
                 _ => throw new ArgumentException()
             });
         }
@@ -66,26 +70,23 @@ namespace Perper.WebJobs.Extensions.Triggers
             return new ParameterDescriptor();
         }
 
-        private Type GetTriggerValueType()
-        {
-            return _attribute switch
-            {
-                PerperStreamTriggerAttribute _ => typeof(PerperStreamContext),
-                PerperWorkerTriggerAttribute _ => typeof(PerperWorkerContext),
-                _ => throw new ArgumentException()
-            };
-        }
-
         private (string, string, string, string) GetTriggerData(object value)
         {
-            return _attribute switch
+            switch (_attribute)
             {
-                PerperStreamTriggerAttribute _ => (((PerperStreamContext) value).StreamName, null,
-                    ((PerperStreamContext) value).DelegateName, nameof(PerperStreamTriggerAttribute)),
-                PerperWorkerTriggerAttribute _ => (((PerperWorkerContext) value).StreamName,
-                    ((PerperWorkerContext) value).WorkerName, null, nameof(PerperWorkerTriggerAttribute)),
-                _ => throw new ArgumentException()
-            };
+                case PerperStreamTriggerAttribute _:
+                {
+                    var context = (PerperStreamContext) value;
+                    return (context.StreamName, null, context.DelegateName, nameof(PerperStreamTriggerAttribute));
+                }
+                case PerperWorkerTriggerAttribute _:
+                {
+                    var context = _workerTriggerValueConverter.ConvertBack(value);
+                    return (context.StreamName, context.WorkerName, null, nameof(PerperWorkerTriggerAttribute));
+                }
+                default:
+                    throw new ArgumentException();
+            }
         }
     }
 }
