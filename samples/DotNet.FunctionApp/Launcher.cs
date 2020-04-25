@@ -19,7 +19,7 @@ namespace DotNet.FunctionApp
             await using var secondGenerator =
                 await context.StreamFunctionAsync(nameof(Generator), new {count = 10, tag = "second"});
             await using var processor =
-                await context.StreamFunctionAsync(nameof(Processor), new
+                await context.StreamFunctionAsync(nameof(PythonProcessor), new
                 {
                     generator = new[] {firstGenerator, secondGenerator, cyclicGenerator},
                     multiplier = 10
