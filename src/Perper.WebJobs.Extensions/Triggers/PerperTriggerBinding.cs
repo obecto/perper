@@ -27,8 +27,8 @@ namespace Perper.WebJobs.Extensions.Triggers
             _attribute = attribute;
             _fabricContext = fabricContext;
             _logger = logger;
-            _workerTriggerValueConverter = new PerperWorkerTriggerValueConverter(triggerValueType); 
-            
+            _workerTriggerValueConverter = new PerperWorkerTriggerValueConverter(triggerValueType);
+
             TriggerValueType = triggerValueType;
         }
 
@@ -37,9 +37,9 @@ namespace Perper.WebJobs.Extensions.Triggers
             return Task.FromResult<IListener>(_attribute switch
             {
                 PerperStreamTriggerAttribute streamAttribute => new PerperStreamListener(streamAttribute,
-                    context.Descriptor.ShortName, context.Executor, _fabricContext, _logger),
+                    context.Descriptor.FullName, context.Executor, _fabricContext, _logger),
                 PerperWorkerTriggerAttribute workerAttribute => new PerperWorkerListener(workerAttribute,
-                    context.Descriptor.ShortName, _workerTriggerValueConverter, context.Executor, _fabricContext),
+                    context.Descriptor.FullName, _workerTriggerValueConverter, context.Executor, _fabricContext),
                 _ => throw new ArgumentException()
             });
         }

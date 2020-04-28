@@ -24,7 +24,7 @@ namespace DotNet.FunctionApp
                 var value = data.Value;
                 logger.LogInformation($"Processor is processing value: {value}");
 
-                var result = await context.CallWorkerAsync<int>("Worker", new {value, multiplier, state}, cancellationToken);
+                var result = await context.CallWorkerAsync<int>(typeof(Worker), new {value, multiplier, state}, cancellationToken);
                 state.Add(result);
                 await context.UpdateStateAsync(state);
                 

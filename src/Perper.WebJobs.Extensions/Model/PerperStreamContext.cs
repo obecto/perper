@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Perper.WebJobs.Extensions.Services;
@@ -32,13 +33,33 @@ namespace Perper.WebJobs.Extensions.Model
             var data = _context.GetData(StreamName);
             return data.DeclareStream(name);
         }
-        
+
+        public IAsyncDisposable DeclareStream(MethodInfo method)
+        {
+            return DeclareStream(method.GetFullName());
+        }
+
+        public IAsyncDisposable DeclareStream(Type type)
+        {
+            return DeclareStream(type.GetFunctionMethod());
+        }
+
         public async Task<IAsyncDisposable> StreamFunctionAsync(string name, object parameters)
         {
             var data = _context.GetData(StreamName);
             return await data.StreamFunctionAsync(name, parameters);
         }
-        
+
+        public Task<IAsyncDisposable> StreamFunctionAsync(MethodInfo method, object parameters)
+        {
+            return StreamFunctionAsync(method.GetFullName(), parameters);
+        }
+
+        public Task<IAsyncDisposable> StreamFunctionAsync(Type type, object parameters)
+        {
+            return StreamFunctionAsync(type.GetFunctionMethod(), parameters);
+        }
+
         public async Task<IAsyncDisposable> StreamFunctionAsync(IAsyncDisposable declaration, object parameters)
         {
             var data = _context.GetData(StreamName);
@@ -50,7 +71,17 @@ namespace Perper.WebJobs.Extensions.Model
             var data = _context.GetData(StreamName);
             return await data.StreamActionAsync(name, parameters);
         }
-        
+
+        public Task<IAsyncDisposable> StreamActionAsync(MethodInfo method, object parameters)
+        {
+            return StreamActionAsync(method.GetFullName(), parameters);
+        }
+
+        public Task<IAsyncDisposable> StreamActionAsync(Type type, object parameters)
+        {
+            return StreamActionAsync(type.GetFunctionMethod(), parameters);
+        }
+
         public async Task<IAsyncDisposable> StreamActionAsync(IAsyncDisposable declaration, object parameters)
         {
             var data = _context.GetData(StreamName);
@@ -80,6 +111,16 @@ namespace Perper.WebJobs.Extensions.Model
             }
 
             throw new TimeoutException();
+        }
+
+        public Task<T> CallWorkerAsync<T>(MethodInfo method, object parameters, CancellationToken cancellationToken)
+        {
+            return CallWorkerAsync<T>(method.GetFullName(), parameters, cancellationToken);
+        }
+
+        public Task<T> CallWorkerAsync<T>(Type type, object parameters, CancellationToken cancellationToken)
+        {
+            return CallWorkerAsync<T>(type.GetFunctionMethod(), parameters, cancellationToken);
         }
 
         public Task BindOutput(CancellationToken cancellationToken)

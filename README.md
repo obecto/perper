@@ -105,9 +105,9 @@ namespace DotNet.FunctionApp
             CancellationToken cancellationToken)
         {
             await using var generator =
-                await context.StreamFunctionAsync(nameof(Generator), new {count = 10 });
+                await context.StreamFunctionAsync(typeof(Generator), new {count = 10 });
             await using var consumer =
-                await context.StreamActionAsync(nameof(Consumer), new {generator});
+                await context.StreamActionAsync(typeof(Consumer), new {generator});
 
             await context.BindOutput(cancellationToken);
         }
