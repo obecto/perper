@@ -31,19 +31,21 @@ namespace Perper.WebJobs.Extensions.Bindings
                 var collectorType = typeof(PerperWorkerAsyncCollector<>).MakeGenericType(Type.GenericTypeArguments);
                 return Activator.CreateInstance(collectorType, _attribute.Stream, _attribute.Worker, _context);
             }
-            
+
             var data = _context.GetData(_attribute.Stream);
             return _attribute.TriggerAttribute switch
             {
-                nameof(PerperStreamTriggerAttribute) => await data.FetchStreamParameterAsync<object>(_attribute.Parameter),
-                nameof(PerperWorkerTriggerAttribute) => await data.FetchWorkerParameterAsync<object>(_attribute.Worker, _attribute.Parameter),
+                nameof(PerperStreamTriggerAttribute) => await data.FetchStreamParameterAsync<object>(_attribute
+                    .Parameter),
+                nameof(PerperWorkerTriggerAttribute) => await data.FetchWorkerParameterAsync<object>(_attribute.Worker,
+                    _attribute.Parameter),
                 _ => throw new ArgumentException()
             };
         }
 
         public async Task SetValueAsync(object value, CancellationToken cancellationToken)
         {
-            if (_attribute.Parameter == "$return" && Type.GetGenericTypeDefinition() != typeof(IAsyncCollector<>))
+            if (_attribute.Parameter == "$return" && !TypeIsAsyncCollector())
             {
                 var data = _context.GetData(_attribute.Stream);
                 await data.SubmitWorkerResultAsync(_attribute.Worker, value);
@@ -53,6 +55,11 @@ namespace Perper.WebJobs.Extensions.Bindings
         public string ToInvokeString()
         {
             return $"{_attribute.Stream}/{_attribute.Parameter}";
+        }
+
+        private bool TypeIsAsyncCollector()
+        {
+            return Type.IsGenericType && Type.GetGenericTypeDefinition() == typeof(IAsyncCollector<>);
         }
     }
 }
