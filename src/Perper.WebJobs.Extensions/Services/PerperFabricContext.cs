@@ -10,14 +10,18 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Client;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Perper.Protocol.Notifications;
+using Perper.WebJobs.Extensions.Config;
 
 namespace Perper.WebJobs.Extensions.Services
 {
     public class PerperFabricContext : IPerperFabricContext, IAsyncDisposable
     {
         private readonly ILogger<PerperFabricContext> _logger;
+        private readonly string _igniteHost;
 
         private readonly IIgniteClient _igniteClient;
         
@@ -29,13 +33,14 @@ namespace Perper.WebJobs.Extensions.Services
         private Task _listener;
         private CancellationTokenSource _listenerCancellationTokenSource;
         
-        public PerperFabricContext(ILogger<PerperFabricContext> logger)
+        public PerperFabricContext(ILogger<PerperFabricContext> logger, IOptions<PerperFabricConfig> configOptions)
         {
             _logger = logger;
+            _igniteHost = configOptions.Value.Host ?? IPAddress.Loopback.ToString();
 
             _igniteClient = Ignition.StartClient(new IgniteClientConfiguration
             {
-                Endpoints = new List<string> {"127.0.0.1"}
+                Endpoints = new List<string> {_igniteHost}
             });
 
             _channels = new Dictionary<string, Dictionary<(NotificationType, string, string), (Type, Channel<Notification>)>>();
@@ -56,7 +61,7 @@ namespace Perper.WebJobs.Extensions.Services
             _listener = Task.Run(async () =>
             {
                 using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                await socket.ConnectAsync(IPAddress.Loopback, 40400);
+                await socket.ConnectAsync(_igniteHost, 40400);
                 await using var networkStream = new NetworkStream(socket);
                 var reader = PipeReader.Create(networkStream);
                 try
