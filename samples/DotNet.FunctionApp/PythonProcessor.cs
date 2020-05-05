@@ -24,7 +24,7 @@ namespace DotNet.FunctionApp
                 var value = data.Value;
                 logger.LogInformation($"Processor is processing value: {value}");
 
-                var result = await context.CallWorkerAsync<string>("Functions.PythonWorker", new
+                var result = await context.CallWorkerAsync<string>("Host.Functions.PythonWorker", new
                 {
                     value = value.ToString()
                 }, cancellationToken);
