@@ -19,6 +19,14 @@ ProjectSection(SolutionItems) = preProject
 	docker\Dockerfile = docker\Dockerfile
 EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "python-binding", "python-binding", "{7F7D6C67-3E15-4BD1-8745-3A2E7A7E386A}"
+ProjectSection(SolutionItems) = preProject
+	python-binding\setup.py = python-binding\setup.py
+	python-binding\azure_functions\perper\perper.py = python-binding\azure_functions\perper\perper.py
+	python-binding\azure_functions\perper\__init__.py = python-binding\azure_functions\perper\__init__.py
+	python-binding\azure_functions\perper\_perper.py = python-binding\azure_functions\perper\_perper.py
+EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

@@ -29,6 +29,8 @@ namespace Perper.WebJobs.Extensions.Config
                 Task.FromResult<IValueBinder>(new PerperValueBinder(_fabricContext, a, t)));
 
             var streamBindingRule = context.AddBindingRule<PerperStreamAttribute>();
+            streamBindingRule.BindToValueProvider<string>((a, t) =>
+                Task.FromResult<IValueBinder>(new PerperStreamValueBinder(_fabricContext, a, typeof(string))));
             streamBindingRule.BindToValueProvider<IAsyncEnumerable<OpenType>>((a, t) =>
                 Task.FromResult<IValueBinder>(new PerperStreamValueBinder(_fabricContext, a, t)));
             streamBindingRule.BindToCollector<OpenType>(typeof(PerperStreamConverter<>), _fabricContext);

@@ -29,6 +29,11 @@ namespace DotNet.FunctionApp
             await using var consumer =
                 await context.StreamActionAsync(typeof(Consumer), new {processor});
 
+            await using var dataFrameGenerator = await context.StreamFunctionAsync(typeof(DataFrameGenerator),
+                new {indices = new[] {1, 2, 3, 4, 5, 6}});
+            await using var dataFrameConsumer =
+                await context.StreamActionAsync(typeof(Consumer), new {dataFrameGenerator});
+
             await context.BindOutput(cancellationToken);
         }
     }

@@ -7,9 +7,9 @@
       "direction": "in"
     },
     {
-      "name": "value",
-      "parameter": "value",
-      "type": "perper",
+      "name": "data",
+      "parameter": "data",
+      "type": "perperStream",
       "direction": "in"
     },
     {

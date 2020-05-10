@@ -61,7 +61,7 @@ namespace Perper.Fabric.Streams
             await Task.Delay(Timeout.Infinite, cancellationToken);
         }
         
-        public async IAsyncEnumerable<IEnumerable<(long, IBinaryObject)>> ListenAsync(
+        public async IAsyncEnumerable<IEnumerable<(long, object)>> ListenAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await using var deployment = new StreamServiceDeployment(StreamData.Name, _ignite);

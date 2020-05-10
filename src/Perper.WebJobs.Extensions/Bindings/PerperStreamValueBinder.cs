@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -25,10 +27,15 @@ namespace Perper.WebJobs.Extensions.Bindings
 
         public Task<object> GetValueAsync()
         {
+            if (Type == typeof(string))
+            {
+                return Task.FromResult((object)JsonSerializer.Serialize(new {_attribute.Stream}));
+            }
+            
             var streamType = typeof(PerperStreamAsyncEnumerable<>).MakeGenericType(Type.GenericTypeArguments[0]);
             var stream = Activator.CreateInstance(streamType, 
                 _attribute.Stream, _attribute.Delegate, _attribute.Parameter, _context);
-            return Task.FromResult(stream);
+            return Task.FromResult(stream!);
         }
 
         public Task SetValueAsync(object value, CancellationToken cancellationToken)
