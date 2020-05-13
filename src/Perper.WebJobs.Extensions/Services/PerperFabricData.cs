@@ -31,64 +31,55 @@ namespace Perper.WebJobs.Extensions.Services
             return new PerperFabricStream(streamObject, _igniteClient);
         }
         
-        public IAsyncDisposable DeclareStream(string name)
+        public IAsyncDisposable DeclareStream(string streamName, string delegateName)
         {
             var streamObject = new StreamData
             {
-                Name = GenerateName(name),
-                Delegate = name,
+                Name = streamName,
+                Delegate = delegateName
             };
             return new PerperFabricStream(streamObject, _igniteClient);
         }
 
-        public async Task<IAsyncDisposable> StreamFunctionAsync(string name, object parameters)
+        public async Task<IAsyncDisposable> StreamFunctionAsync(string streamName, string delegateName, object parameters)
         {
-            var streamObject = new StreamData
-            {
-                Name = GenerateName(name),
-                Delegate = name,
-                DelegateType = StreamDelegateType.Function,
-                Params = CreateDelegateParameters(parameters)
-            };
             var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
+            var streamGetResult = await streamsCache.TryGetAsync(streamName);
+            var streamObject = streamGetResult.Success
+                ? streamGetResult.Value
+                : new StreamData
+                {
+                    Name = streamName,
+                    Delegate = delegateName,
+                    DelegateType = StreamDelegateType.Function,
+                    Params = CreateDelegateParameters(parameters)
+                };
+            streamObject.LastModified = DateTime.UtcNow;
             await streamsCache.PutAsync(streamObject.Name, streamObject);
-            return new PerperFabricStream(streamObject, _igniteClient);
-        }
-
-        public async Task<IAsyncDisposable> StreamFunctionAsync(PerperStreamName perperStreamName, object parameters)
-        {
-            var streamObject = new StreamData
-            {
-                Name = perperStreamName.Name,
-                Delegate = perperStreamName.DelegateName,
-                DelegateType = StreamDelegateType.Function,
-                Params = CreateDelegateParameters(parameters)
-            };
-            var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
-            await streamsCache.PutIfAbsentAsync(streamObject.Name, streamObject);
             return new PerperFabricStream(streamObject, _igniteClient);
         }
 
         public async Task<IAsyncDisposable> StreamFunctionAsync(IAsyncDisposable declaration, object parameters)
         {
             var streamObject = ((PerperFabricStream) declaration).StreamData;
-            streamObject.DelegateType = StreamDelegateType.Function;
-            streamObject.Params = CreateDelegateParameters(parameters);
-            var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
-            await streamsCache.PutAsync(streamObject.Name, streamObject);
+            await StreamFunctionAsync(streamObject.Name, streamObject.Delegate, parameters);
             return declaration;
         }
 
-        public async Task<IAsyncDisposable> StreamActionAsync(string name, object parameters)
+        public async Task<IAsyncDisposable> StreamActionAsync(string streamName, string delegateName, object parameters)
         {
-            var streamObject = new StreamData
-            {
-                Name = GenerateName(name),
-                Delegate = name,
-                DelegateType = StreamDelegateType.Action,
-                Params = CreateDelegateParameters(parameters)
-            };
             var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
+            var streamGetResult = await streamsCache.TryGetAsync(streamName);
+            var streamObject = streamGetResult.Success
+                ? streamGetResult.Value
+                : new StreamData
+                {
+                    Name = streamName,
+                    Delegate = delegateName,
+                    DelegateType = StreamDelegateType.Action,
+                    Params = CreateDelegateParameters(parameters)
+                };
+            streamObject.LastModified = DateTime.UtcNow;
             await streamsCache.PutAsync(streamObject.Name, streamObject);
             return new PerperFabricStream(streamObject, _igniteClient);
         }
@@ -96,10 +87,7 @@ namespace Perper.WebJobs.Extensions.Services
         public async Task<IAsyncDisposable> StreamActionAsync(IAsyncDisposable declaration, object parameters)
         {
             var streamObject = ((PerperFabricStream) declaration).StreamData;
-            streamObject.DelegateType = StreamDelegateType.Action;
-            streamObject.Params = CreateDelegateParameters(parameters);
-            var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
-            await streamsCache.PutAsync(streamObject.Name, streamObject);
+            await StreamActionAsync(streamObject.Name, streamObject.Delegate, parameters);
             return declaration;
         }
 
@@ -154,12 +142,12 @@ namespace Perper.WebJobs.Extensions.Services
             await streamCacheClient.PutAsync(DateTime.UtcNow.ToFileTimeUtc(), value);
         }
 
-        public async Task<string> CallWorkerAsync(string name, object parameters)
+        public async Task<string> CallWorkerAsync(string workerName, string delegateName, object parameters)
         {
             var workerObject = new WorkerData
             {
-                Name = GenerateName(name), 
-                Delegate = name,
+                Name = workerName, 
+                Delegate = delegateName,
                 Params = CreateDelegateParameters(parameters)
             };
             var workersCache = _igniteClient.GetOrCreateCache<string, WorkerData>($"{_streamName}_workers");
@@ -200,11 +188,6 @@ namespace Perper.WebJobs.Extensions.Services
             }
 
             return (T)field;
-        }
-
-        private static string GenerateName(string delegateName)
-        {
-            return $"{delegateName.Replace("'", "").Replace(",", "")}-{Guid.NewGuid().ToString()}";
         }
 
         private IBinaryObject CreateDelegateParameters(object parameters)

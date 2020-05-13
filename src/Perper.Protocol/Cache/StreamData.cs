@@ -1,3 +1,4 @@
+using System;
 using Apache.Ignite.Core.Binary;
 
 namespace Perper.Protocol.Cache
@@ -9,6 +10,7 @@ namespace Perper.Protocol.Cache
         public StreamDelegateType DelegateType { get; set; }
 
         public IBinaryObject Params { get; set; }
+        public DateTime LastModified { get; set; } = DateTime.UtcNow;
 
         public StreamRef GetRef()
         {

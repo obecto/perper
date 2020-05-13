@@ -42,9 +42,33 @@ namespace Perper.Fabric.Streams
             _task = Task.Run(async () =>
             {
                 await InvokeAsync();
-                await Task.WhenAll(new[] {InvokeWorkerAsync(cancellationToken), BindOutputAsync(cancellationToken)}.Union(
+                await Task.WhenAll(new[]
+                {
+                    ReInvokeAsync(cancellationToken),
+                    InvokeWorkerAsync(cancellationToken), 
+                    BindOutputAsync(cancellationToken)
+                }.Union(
                     _stream.GetInputStreams().Select(inputStream => EngageAsync(inputStream, cancellationToken))));
             }, cancellationToken);
+        }
+
+        private async Task ReInvokeAsync(CancellationToken cancellationToken)
+        {
+            var streamsCache = _ignite.GetCache<string, StreamData>("streams");
+            await foreach (var streams in streamsCache.QueryContinuousAsync(_stream.StreamData.Name, cancellationToken))
+            {
+                var (_, stream) = streams.Last();
+                if (stream.LastModified > _stream.StreamData.LastModified)
+                {
+                    await _transportService.SendAsync(new Notification
+                    {
+                        Type = NotificationType.StreamTrigger,
+                        Stream = _stream.StreamData.Name,
+                        Delegate = _stream.StreamData.Delegate
+                    });
+                }
+                _stream.StreamData.LastModified = stream.LastModified;
+            }
         }
 
         public void Cancel(IServiceContext context)
