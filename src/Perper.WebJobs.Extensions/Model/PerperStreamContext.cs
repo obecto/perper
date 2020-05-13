@@ -50,6 +50,12 @@ namespace Perper.WebJobs.Extensions.Model
             return await data.StreamFunctionAsync(name, parameters);
         }
 
+        public async Task<IAsyncDisposable> StreamFunctionAsync(PerperStreamName perperStream, object parameters)
+        {
+            var data = _context.GetData(StreamName);
+            return await data.StreamFunctionAsync(perperStream, parameters);
+        }
+
         public Task<IAsyncDisposable> StreamFunctionAsync(MethodInfo method, object parameters)
         {
             return StreamFunctionAsync(method.GetFullName(), parameters);

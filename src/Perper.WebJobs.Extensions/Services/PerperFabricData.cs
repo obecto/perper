@@ -55,6 +55,20 @@ namespace Perper.WebJobs.Extensions.Services
             return new PerperFabricStream(streamObject, _igniteClient);
         }
 
+        public async Task<IAsyncDisposable> StreamFunctionAsync(PerperStreamName perperStreamName, object parameters)
+        {
+            var streamObject = new StreamData
+            {
+                Name = perperStreamName.Name,
+                Delegate = perperStreamName.DelegateName,
+                DelegateType = StreamDelegateType.Function,
+                Params = CreateDelegateParameters(parameters)
+            };
+            var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
+            await streamsCache.PutIfAbsentAsync(streamObject.Name, streamObject);
+            return new PerperFabricStream(streamObject, _igniteClient);
+        }
+
         public async Task<IAsyncDisposable> StreamFunctionAsync(IAsyncDisposable declaration, object parameters)
         {
             var streamObject = ((PerperFabricStream) declaration).StreamData;
