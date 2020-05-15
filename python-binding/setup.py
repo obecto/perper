@@ -6,14 +6,14 @@ with open("README.md") as f:
 
 setup(
     name='azure-functions-perper-binding',
-    version='0.3.14',
+    version='0.3.15',
     packages=['azure_functions.perper'],
     long_description=long_description,
     long_description_content_type='text/markdown',
     license='MIT License',
     author='Obecto EOOD',
     url='https://github.com/obecto/perper',
-    install_requires=['azure-functions-worker'],
+    install_requires=['azure-functions-worker','pyignite'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Programming Language :: Python :: 3.6',
