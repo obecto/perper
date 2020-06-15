@@ -91,7 +91,7 @@ namespace Perper.WebJobs.Extensions.Model
 
                 if (childrenWithOutputCount == childrenCount)
                 {
-                    await output.AddAsync(module.Build(context, moduleInput)!);
+                    await output.AddAsync((await module.Build(context, moduleInput)!)!);
                 }
             }
         }

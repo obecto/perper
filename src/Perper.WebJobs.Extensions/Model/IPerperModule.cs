@@ -1,9 +1,11 @@
+using System.Threading.Tasks;
+
 namespace Perper.WebJobs.Extensions.Model
 {
-    public interface IPerperModule<TInput, out TOutput>
+    public interface IPerperModule<TInput, TOutput>
     {
         TInput Init(PerperStreamContext context, IPerperLoader loader);
 
-        TOutput Build(PerperStreamContext context, TInput input);
+        Task<TOutput> Build(PerperStreamContext context, TInput input);
     }
 }

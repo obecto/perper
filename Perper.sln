@@ -27,6 +27,8 @@ ProjectSection(SolutionItems) = preProject
 	python-binding\azure_functions\perper\_perper.py = python-binding\azure_functions\perper\_perper.py
 EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Structure.FunctionApp", "samples\Structure.FunctionApp\src\Structure.FunctionApp.csproj", "{33563688-812A-419F-8336-C09F7C35386A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,6 +40,7 @@ Global
 		{76B3F8CB-9BB7-43F1-84E4-B421E76E7EDF} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
 		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
 		{4F999EBD-26F4-4EF7-B492-7D85583291C5} = {0C1B132E-1677-46B6-9EF5-B306558045E8}
+		{33563688-812A-419F-8336-C09F7C35386A} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{9D6B115C-3B6D-4E41-92B0-69AE3EB7926C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -60,5 +63,9 @@ Global
 		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33563688-812A-419F-8336-C09F7C35386A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33563688-812A-419F-8336-C09F7C35386A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33563688-812A-419F-8336-C09F7C35386A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33563688-812A-419F-8336-C09F7C35386A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
