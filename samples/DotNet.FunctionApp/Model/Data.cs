@@ -1,7 +1,11 @@
+using Apache.Ignite.Core.Cache.Configuration;
+
 namespace DotNet.FunctionApp.Model
 {
-    public class Data<T, TV>
+    public class Data
     {
-        public T Value { get; set; }
+        public int Value { get; set; }
+
+        public string Description { get; set; }
     }
 }

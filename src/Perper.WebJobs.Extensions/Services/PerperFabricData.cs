@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
+using Apache.Ignite.Linq;
 using Microsoft.Extensions.Logging;
 using Perper.Protocol.Cache;
 
@@ -30,7 +31,7 @@ namespace Perper.WebJobs.Extensions.Services
             };
             return new PerperFabricStream(streamObject, _igniteClient);
         }
-        
+
         public IAsyncDisposable DeclareStream(string streamName, string delegateName)
         {
             var streamObject = new StreamData
@@ -41,7 +42,7 @@ namespace Perper.WebJobs.Extensions.Services
             return new PerperFabricStream(streamObject, _igniteClient);
         }
 
-        public async Task<IAsyncDisposable> StreamFunctionAsync(string streamName, string delegateName, object parameters)
+        public async Task<IAsyncDisposable> StreamFunctionAsync(string streamName, string delegateName, object parameters, Type indexType = null)
         {
             var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
             var streamGetResult = await streamsCache.TryGetAsync(streamName);
@@ -52,7 +53,9 @@ namespace Perper.WebJobs.Extensions.Services
                     Name = streamName,
                     Delegate = delegateName,
                     DelegateType = StreamDelegateType.Function,
-                    Params = CreateDelegateParameters(parameters)
+                    Params = CreateDelegateParameters(parameters),
+                    IndexType = indexType != null ? indexType.FullName : null,
+                    IndexFields = GetIndexFields(indexType)
                 };
             streamObject.LastModified = DateTime.UtcNow;
             await streamsCache.PutAsync(streamObject.Name, streamObject);
@@ -61,7 +64,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task<IAsyncDisposable> StreamFunctionAsync(IAsyncDisposable declaration, object parameters)
         {
-            var streamObject = ((PerperFabricStream) declaration).StreamData;
+            var streamObject = ((PerperFabricStream)declaration).StreamData;
             await StreamFunctionAsync(streamObject.Name, streamObject.Delegate, parameters);
             return declaration;
         }
@@ -86,7 +89,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task<IAsyncDisposable> StreamActionAsync(IAsyncDisposable declaration, object parameters)
         {
-            var streamObject = ((PerperFabricStream) declaration).StreamData;
+            var streamObject = ((PerperFabricStream)declaration).StreamData;
             await StreamActionAsync(streamObject.Name, streamObject.Delegate, parameters);
             return declaration;
         }
@@ -94,7 +97,7 @@ namespace Perper.WebJobs.Extensions.Services
         public async Task BindStreamOutputAsync(IEnumerable<IAsyncDisposable> streams)
         {
             var streamsObjects = streams.Select(s =>
-                ((PerperFabricStream) s).StreamData.GetRef()).ToArray();
+                ((PerperFabricStream)s).StreamData.GetRef()).ToArray();
 
             if (streamsObjects.Any())
             {
@@ -138,15 +141,22 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task AddStreamItemAsync<T>(T value)
         {
-            var streamCacheClient = _igniteClient.GetOrCreateCache<long, T>(_streamName);
+            var streamCacheClient = _igniteClient.GetCache<long, T>(_streamName);
             await streamCacheClient.PutAsync(DateTime.UtcNow.ToFileTimeUtc(), value);
+        }
+
+        public IQueryable<T> QueryStreamItemsAsync<T>()
+        {
+            var streamCacheClient = _igniteClient.GetCache<long, T>(_streamName).AsCacheQueryable();
+
+            return streamCacheClient.Select(entry => entry.Value);
         }
 
         public async Task<string> CallWorkerAsync(string workerName, string delegateName, object parameters)
         {
             var workerObject = new WorkerData
             {
-                Name = workerName, 
+                Name = workerName,
                 Delegate = delegateName,
                 Params = CreateDelegateParameters(parameters)
             };
@@ -201,11 +211,11 @@ namespace Perper.WebJobs.Extensions.Services
                 switch (propertyValue)
                 {
                     case PerperFabricStream stream:
-                        builder.SetField(propertyInfo.Name, new[] {stream.StreamData.GetRef()});
+                        builder.SetField(propertyInfo.Name, new[] { stream.StreamData.GetRef() });
                         break;
                     case IAsyncDisposable[] streams when streams.All(s => s is PerperFabricStream):
                         builder.SetField(propertyInfo.Name, streams.Select(s =>
-                            ((PerperFabricStream) s).StreamData.GetRef()).ToArray());
+                            ((PerperFabricStream)s).StreamData.GetRef()).ToArray());
                         break;
                     default:
                         builder.SetField(propertyInfo.Name, propertyValue);
@@ -214,6 +224,26 @@ namespace Perper.WebJobs.Extensions.Services
             }
 
             return builder.Build();
+        }
+
+        private IEnumerable<KeyValuePair<string, string>> GetIndexFields(Type indexType)
+        {
+            if (indexType == null)
+            {
+                return null;
+            }
+
+            List<KeyValuePair<string, string>> indexFields = new List<KeyValuePair<string, string>>();
+            foreach (var item in indexType.GetProperties())
+            {
+                string javaType = JavaTypeMappingHelper.GetJavaTypeAsString(item.PropertyType);
+                if (!String.IsNullOrEmpty(javaType))
+                {
+                    indexFields.Add(new KeyValuePair<string, string>(item.Name, javaType));
+                }
+            }
+
+            return indexFields;
         }
     }
 }

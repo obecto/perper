@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+using DotNet.FunctionApp.Model;
 using Microsoft.Azure.WebJobs;
 using Perper.WebJobs.Extensions.Config;
 using Perper.WebJobs.Extensions.Model;
@@ -14,13 +15,13 @@ namespace DotNet.FunctionApp
             CancellationToken cancellationToken)
         {
             await using var firstGenerator =
-                await context.StreamFunctionAsync("NamedGenerator", typeof(Generator), new {count = 10, tag = "first"});
+                await context.StreamFunctionAsync("NamedGenerator", typeof(Generator), new {count = 10, tag = "first"}, typeof(Data));
             await using var processor =
                 await context.StreamFunctionAsync("NamedProcessor", typeof(Processor), new
                 {
                     generator = new[] {firstGenerator},
                     multiplier = 10
-                });
+                }, typeof(Data));
             await using var consumer =
                 await context.StreamActionAsync("NamedConsumer", typeof(Consumer), new {processor});
             

@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Model
@@ -20,6 +22,15 @@ namespace Perper.WebJobs.Extensions.Model
             DelegateName = delegateName;
             
             _context = context;
+        }
+
+        public IQueryable<T> Query<T>(IAsyncEnumerable<T> stream)
+        {
+            PerperStreamAsyncEnumerable<T> perperStream = stream as PerperStreamAsyncEnumerable<T>;
+            var streamName = perperStream.GetStreamName();
+            var data = _context.GetData(streamName);
+
+            return data.QueryStreamItemsAsync<T>();
         }
 
         public Task<T> FetchStateAsync<T>()
@@ -74,10 +85,10 @@ namespace Perper.WebJobs.Extensions.Model
         #endregion
 
         #region StreamFunctionAsync
-        public async Task<IAsyncDisposable> StreamFunctionAsync(string streamName, string delegateName, object parameters)
+        public async Task<IAsyncDisposable> StreamFunctionAsync(string streamName, string delegateName, object parameters, Type indexType = null)
         {
             var data = _context.GetData(StreamName);
-            return await data.StreamFunctionAsync(streamName, delegateName, parameters);
+            return await data.StreamFunctionAsync(streamName, delegateName, parameters, indexType);
         }
         
         public async Task<IAsyncDisposable> StreamFunctionAsync(string name, object parameters)
@@ -86,9 +97,9 @@ namespace Perper.WebJobs.Extensions.Model
             return await data.StreamFunctionAsync(GenerateName(name), name, parameters);
         }
 
-        public Task<IAsyncDisposable> StreamFunctionAsync(string streamName, MethodInfo method, object parameters)
+        public Task<IAsyncDisposable> StreamFunctionAsync(string streamName, MethodInfo method, object parameters, Type indexType = null)
         {
-            return StreamFunctionAsync(streamName, method.GetFullName(), parameters);
+            return StreamFunctionAsync(streamName, method.GetFullName(), parameters, indexType);
         }
         
         public Task<IAsyncDisposable> StreamFunctionAsync(MethodInfo method, object parameters)
@@ -100,7 +111,12 @@ namespace Perper.WebJobs.Extensions.Model
         {
             return StreamFunctionAsync(streamName, type.GetFunctionMethod(), parameters);
         }
-        
+
+        public Task<IAsyncDisposable> StreamFunctionAsync(string streamName, Type type, object parameters, Type indexType = null)
+        {
+            return StreamFunctionAsync(streamName, type.GetFunctionMethod(), parameters, indexType);
+        }
+
         public Task<IAsyncDisposable> StreamFunctionAsync(Type type, object parameters)
         {
             return StreamFunctionAsync(type.GetFunctionMethod(), parameters);
