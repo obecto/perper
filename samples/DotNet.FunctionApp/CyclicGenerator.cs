@@ -14,15 +14,15 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("CyclicGenerator")]
         public static async Task Run([PerperStreamTrigger] PerperStreamContext context,
-            [PerperStream("processor")] IAsyncEnumerable<Data<int, string>> processor,
-            [PerperStream("output")] IAsyncCollector<Data<int, string>> output,
+            [PerperStream("processor")] IAsyncEnumerable<Data> processor,
+            [PerperStream("output")] IAsyncCollector<Data> output,
             ILogger logger, CancellationToken cancellationToken)
         {
             await foreach (var data in processor.WithCancellation(cancellationToken))
             {
                 logger.LogInformation($"CyclicGenerator stream receives: {data.Value}");
                 await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
-                await output.AddAsync(new Data<int, string> {Value = data.Value / 10}, cancellationToken);
+                await output.AddAsync(new Data {Value = data.Value / 10}, cancellationToken);
             }
         }
     }

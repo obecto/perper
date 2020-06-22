@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Apache.Ignite.Core.Binary;
 
 namespace Perper.Protocol.Cache
@@ -11,6 +12,10 @@ namespace Perper.Protocol.Cache
 
         public IBinaryObject Params { get; set; }
         public DateTime LastModified { get; set; } = DateTime.UtcNow;
+
+        public string IndexType { get; set; }
+
+        public IEnumerable<KeyValuePair<string, string>> IndexFields { get; set; }
 
         public StreamRef GetRef()
         {
