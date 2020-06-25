@@ -2,10 +2,11 @@ using System;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Client;
 using Perper.Protocol.Cache;
+using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Services
 {
-    public class PerperFabricStream : IAsyncDisposable
+    public class PerperFabricStream : IPerperStream
     {
         public StreamData StreamData { get; }
 

@@ -45,84 +45,84 @@ namespace Perper.WebJobs.Extensions.Model
             await data.UpdateStreamParameterAsync("context", state);
         }
         
-        public IAsyncDisposable GetStream()
+        public IPerperStream GetStream()
         {
             var data = _context.GetData(StreamName);
             return data.GetStream();
         }
 
         #region DeclareStream
-        public IAsyncDisposable DeclareStream(string streamName, string delegateName)
+        public IPerperStream DeclareStream(string streamName, string delegateName)
         {
             var data = _context.GetData(StreamName);
             return data.DeclareStream(streamName, delegateName);
         }
         
-        public IAsyncDisposable DeclareStream(string name)
+        public IPerperStream DeclareStream(string name)
         {
             return DeclareStream(GenerateName(name), name);
         }
 
-        public IAsyncDisposable DeclareStream(string streamName, MethodInfo method)
+        public IPerperStream DeclareStream(string streamName, MethodInfo method)
         {
             return DeclareStream(streamName, method.GetFullName());
         }
         
-        public IAsyncDisposable DeclareStream(MethodInfo method)
+        public IPerperStream DeclareStream(MethodInfo method)
         {
             return DeclareStream(method.GetFullName());
         }
 
-        public IAsyncDisposable DeclareStream(string streamName, Type type)
+        public IPerperStream DeclareStream(string streamName, Type type)
         {
             return DeclareStream(streamName, type.GetFunctionMethod());
         }
 
-        public IAsyncDisposable DeclareStream(Type type)
+        public IPerperStream DeclareStream(Type type)
         {
             return DeclareStream(type.GetFunctionMethod());
         }
         #endregion
 
         #region StreamFunctionAsync
-        public async Task<IAsyncDisposable> StreamFunctionAsync(string streamName, string delegateName, object parameters, Type indexType = null)
+        public async Task<IPerperStream> StreamFunctionAsync(string streamName, string delegateName, object parameters, Type indexType = null)
         {
             var data = _context.GetData(StreamName);
             return await data.StreamFunctionAsync(streamName, delegateName, parameters, indexType);
         }
         
-        public async Task<IAsyncDisposable> StreamFunctionAsync(string name, object parameters)
+        public async Task<IPerperStream> StreamFunctionAsync(string name, object parameters)
         {
             var data = _context.GetData(StreamName);
             return await data.StreamFunctionAsync(GenerateName(name), name, parameters);
         }
 
-        public Task<IAsyncDisposable> StreamFunctionAsync(string streamName, MethodInfo method, object parameters, Type indexType = null)
+        public Task<IPerperStream> StreamFunctionAsync(string streamName, MethodInfo method, object parameters, Type indexType = null)
         {
             return StreamFunctionAsync(streamName, method.GetFullName(), parameters, indexType);
         }
         
-        public Task<IAsyncDisposable> StreamFunctionAsync(MethodInfo method, object parameters)
+        public Task<IPerperStream> StreamFunctionAsync(MethodInfo method, object parameters)
         {
             return StreamFunctionAsync(method.GetFullName(), parameters);
         }
 
-        public Task<IAsyncDisposable> StreamFunctionAsync(string streamName, Type type, object parameters)
+        public Task<IPerperStream> StreamFunctionAsync(string streamName, Type type, object parameters)
         {
             return StreamFunctionAsync(streamName, type.GetFunctionMethod(), parameters);
         }
 
-        public Task<IAsyncDisposable> StreamFunctionAsync(string streamName, Type type, object parameters, Type indexType = null)
+        public Task<IPerperStream> StreamFunctionAsync(string streamName, Type type, object parameters, Type indexType = null)
         {
             return StreamFunctionAsync(streamName, type.GetFunctionMethod(), parameters, indexType);
         }
 
-        public Task<IAsyncDisposable> StreamFunctionAsync(Type type, object parameters)
+        public Task<IPerperStream> StreamFunctionAsync(Type type, object parameters)
         {
             return StreamFunctionAsync(type.GetFunctionMethod(), parameters);
         }
 
-        public async Task<IAsyncDisposable> StreamFunctionAsync(IAsyncDisposable declaration, object parameters)
+        public async Task<IPerperStream> StreamFunctionAsync(IPerperStream declaration, object parameters)
         {
             var data = _context.GetData(StreamName);
             return await data.StreamFunctionAsync(declaration, parameters);
@@ -130,39 +130,39 @@ namespace Perper.WebJobs.Extensions.Model
         #endregion
 
         #region StreamActionAsync
-        public async Task<IAsyncDisposable> StreamActionAsync(string streamName, string delegateName, object parameters)
+        public async Task<IPerperStream> StreamActionAsync(string streamName, string delegateName, object parameters)
         {
             var data = _context.GetData(StreamName);
             return await data.StreamActionAsync(streamName, delegateName, parameters);
         }
         
-        public async Task<IAsyncDisposable> StreamActionAsync(string name, object parameters)
+        public async Task<IPerperStream> StreamActionAsync(string name, object parameters)
         {
             var data = _context.GetData(StreamName);
             return await data.StreamActionAsync(GenerateName(name),name, parameters);
         }
 
-        public Task<IAsyncDisposable> StreamActionAsync(string streamName, MethodInfo method, object parameters)
+        public Task<IPerperStream> StreamActionAsync(string streamName, MethodInfo method, object parameters)
         {
             return StreamActionAsync(streamName, method.GetFullName(), parameters);
         }
         
-        public Task<IAsyncDisposable> StreamActionAsync(MethodInfo method, object parameters)
+        public Task<IPerperStream> StreamActionAsync(MethodInfo method, object parameters)
         {
             return StreamActionAsync(method.GetFullName(), parameters);
         }
 
-        public Task<IAsyncDisposable> StreamActionAsync(string streamName, Type type, object parameters)
+        public Task<IPerperStream> StreamActionAsync(string streamName, Type type, object parameters)
         {
             return StreamActionAsync(streamName, type.GetFunctionMethod(), parameters);
         }
         
-        public Task<IAsyncDisposable> StreamActionAsync(Type type, object parameters)
+        public Task<IPerperStream> StreamActionAsync(Type type, object parameters)
         {
             return StreamActionAsync(type.GetFunctionMethod(), parameters);
         }
         
-        public async Task<IAsyncDisposable> StreamActionAsync(IAsyncDisposable declaration, object parameters)
+        public async Task<IPerperStream> StreamActionAsync(IPerperStream declaration, object parameters)
         {
             var data = _context.GetData(StreamName);
             return await data.StreamActionAsync(declaration, parameters);
@@ -196,15 +196,15 @@ namespace Perper.WebJobs.Extensions.Model
         
         public Task BindOutput(CancellationToken cancellationToken)
         {
-            return BindOutput(new IAsyncDisposable[] { }, cancellationToken);
+            return BindOutput(new IPerperStream[] { }, cancellationToken);
         }
 
-        public Task BindOutput(IAsyncDisposable stream, CancellationToken cancellationToken)
+        public Task BindOutput(IPerperStream stream, CancellationToken cancellationToken)
         {
             return BindOutput(new []{stream}, cancellationToken);
         }
 
-        public async Task BindOutput(IEnumerable<IAsyncDisposable> streams, CancellationToken cancellationToken)
+        public async Task BindOutput(IEnumerable<IPerperStream> streams, CancellationToken cancellationToken)
         {
             await RebindOutput(streams);
 
@@ -215,7 +215,7 @@ namespace Perper.WebJobs.Extensions.Model
             }    
         }
         
-        public async Task RebindOutput(IEnumerable<IAsyncDisposable> streams)
+        public async Task RebindOutput(IEnumerable<IPerperStream> streams)
         {
             var data = _context.GetData(StreamName);
             await data.BindStreamOutputAsync(streams);

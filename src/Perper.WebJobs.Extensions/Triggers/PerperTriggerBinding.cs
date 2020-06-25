@@ -40,6 +40,8 @@ namespace Perper.WebJobs.Extensions.Triggers
                     context.Descriptor.FullName, context.Executor, _fabricContext, _logger),
                 PerperWorkerTriggerAttribute workerAttribute => new PerperWorkerListener(workerAttribute,
                     context.Descriptor.FullName, _workerTriggerValueConverter, context.Executor, _fabricContext),
+                PerperModuleTriggerAttribute moduleAttribute => new PerperModuleListener(moduleAttribute,
+                    context.Descriptor.ShortName, context.Executor, _fabricContext),
                 _ => throw new ArgumentException()
             });
         }
@@ -83,6 +85,11 @@ namespace Perper.WebJobs.Extensions.Triggers
                 {
                     var context = _workerTriggerValueConverter.ConvertBack(value);
                     return (context.StreamName, context.WorkerName, null, nameof(PerperWorkerTriggerAttribute));
+                }
+                case PerperModuleTriggerAttribute _:
+                {
+                    var context = (PerperModuleContext) value;
+                    return (context.StreamName, null, context.DelegateName, nameof(PerperModuleTriggerAttribute));
                 }
                 default:
                     throw new ArgumentException();

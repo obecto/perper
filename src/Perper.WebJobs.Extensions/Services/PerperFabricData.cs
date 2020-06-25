@@ -7,6 +7,7 @@ using Apache.Ignite.Core.Client;
 using Apache.Ignite.Linq;
 using Microsoft.Extensions.Logging;
 using Perper.Protocol.Cache;
+using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Services
 {
@@ -23,7 +24,7 @@ namespace Perper.WebJobs.Extensions.Services
             _igniteClient = igniteClient;
         }
 
-        public IAsyncDisposable GetStream()
+        public IPerperStream GetStream()
         {
             var streamObject = new StreamData
             {
@@ -32,7 +33,7 @@ namespace Perper.WebJobs.Extensions.Services
             return new PerperFabricStream(streamObject, _igniteClient);
         }
 
-        public IAsyncDisposable DeclareStream(string streamName, string delegateName)
+        public IPerperStream DeclareStream(string streamName, string delegateName)
         {
             var streamObject = new StreamData
             {
@@ -42,7 +43,7 @@ namespace Perper.WebJobs.Extensions.Services
             return new PerperFabricStream(streamObject, _igniteClient);
         }
 
-        public async Task<IAsyncDisposable> StreamFunctionAsync(string streamName, string delegateName, object parameters, Type indexType = null)
+        public async Task<IPerperStream> StreamFunctionAsync(string streamName, string delegateName, object parameters, Type indexType = null)
         {
             var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
             var streamGetResult = await streamsCache.TryGetAsync(streamName);
@@ -62,14 +63,14 @@ namespace Perper.WebJobs.Extensions.Services
             return new PerperFabricStream(streamObject, _igniteClient);
         }
 
-        public async Task<IAsyncDisposable> StreamFunctionAsync(IAsyncDisposable declaration, object parameters)
+        public async Task<IPerperStream> StreamFunctionAsync(IPerperStream declaration, object parameters)
         {
             var streamObject = ((PerperFabricStream)declaration).StreamData;
             await StreamFunctionAsync(streamObject.Name, streamObject.Delegate, parameters);
             return declaration;
         }
 
-        public async Task<IAsyncDisposable> StreamActionAsync(string streamName, string delegateName, object parameters)
+        public async Task<IPerperStream> StreamActionAsync(string streamName, string delegateName, object parameters)
         {
             var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
             var streamGetResult = await streamsCache.TryGetAsync(streamName);
@@ -87,14 +88,14 @@ namespace Perper.WebJobs.Extensions.Services
             return new PerperFabricStream(streamObject, _igniteClient);
         }
 
-        public async Task<IAsyncDisposable> StreamActionAsync(IAsyncDisposable declaration, object parameters)
+        public async Task<IPerperStream> StreamActionAsync(IPerperStream declaration, object parameters)
         {
             var streamObject = ((PerperFabricStream)declaration).StreamData;
             await StreamActionAsync(streamObject.Name, streamObject.Delegate, parameters);
             return declaration;
         }
 
-        public async Task BindStreamOutputAsync(IEnumerable<IAsyncDisposable> streams)
+        public async Task BindStreamOutputAsync(IEnumerable<IPerperStream> streams)
         {
             var streamsObjects = streams.Select(s =>
                 ((PerperFabricStream)s).StreamData.GetRef()).ToArray();
@@ -213,7 +214,7 @@ namespace Perper.WebJobs.Extensions.Services
                     case PerperFabricStream stream:
                         builder.SetField(propertyInfo.Name, new[] { stream.StreamData.GetRef() });
                         break;
-                    case IAsyncDisposable[] streams when streams.All(s => s is PerperFabricStream):
+                    case IPerperStream[] streams when streams.All(s => s is PerperFabricStream):
                         builder.SetField(propertyInfo.Name, streams.Select(s =>
                             ((PerperFabricStream)s).StreamData.GetRef()).ToArray());
                         break;

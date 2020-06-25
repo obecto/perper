@@ -40,6 +40,9 @@ namespace Perper.WebJobs.Extensions.Config
 
             var workerTriggerBindingRule = context.AddBindingRule<PerperWorkerTriggerAttribute>();
             workerTriggerBindingRule.BindToTrigger(new PerperTriggerBindingProvider<PerperWorkerTriggerAttribute>(_fabricContext, _logger));
+            
+            var moduleTriggerBindingRule = context.AddBindingRule<PerperModuleTriggerAttribute>();
+            moduleTriggerBindingRule.BindToTrigger(new PerperTriggerBindingProvider<PerperModuleTriggerAttribute>(_fabricContext, _logger));
         }
     }
 }
