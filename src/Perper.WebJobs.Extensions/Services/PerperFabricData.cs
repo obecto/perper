@@ -26,30 +26,17 @@ namespace Perper.WebJobs.Extensions.Services
 
         public IPerperStream GetStream()
         {
-            var streamObject = new StreamData
-            {
-                Name = _streamName
-            };
-            return new PerperFabricStream(streamObject, _igniteClient);
+            return new PerperFabricStream(_streamName, _igniteClient);
         }
 
         public IPerperStream GetStream(StreamRef streamRef)
         {
-            var streamObject = new StreamData
-            {
-                Name = streamRef.StreamName
-            };
-            return new PerperFabricStream(streamObject, _igniteClient);
+            return new PerperFabricStream(streamRef.StreamName, _igniteClient);
         }
 
         public IPerperStream DeclareStream(string streamName, string delegateName)
         {
-            var streamObject = new StreamData
-            {
-                Name = streamName,
-                Delegate = delegateName
-            };
-            return new PerperFabricStream(streamObject, _igniteClient);
+            return new PerperFabricStream(streamName, _igniteClient, delegateName);
         }
 
         public async Task<IPerperStream> StreamFunctionAsync(string streamName, string delegateName, object parameters, Type indexType = null)
@@ -69,13 +56,13 @@ namespace Perper.WebJobs.Extensions.Services
                 };
             streamObject.LastModified = DateTime.UtcNow;
             await streamsCache.PutAsync(streamObject.Name, streamObject);
-            return new PerperFabricStream(streamObject, _igniteClient);
+            return new PerperFabricStream(streamObject.Name, _igniteClient);
         }
 
         public async Task<IPerperStream> StreamFunctionAsync(IPerperStream declaration, object parameters)
         {
-            var streamObject = ((PerperFabricStream)declaration).StreamData;
-            await StreamFunctionAsync(streamObject.Name, streamObject.Delegate, parameters);
+            var streamObject = ((PerperFabricStream)declaration);
+            await StreamFunctionAsync(streamObject.StreamRef.StreamName, streamObject.DeclaredDelegate, parameters);
             return declaration;
         }
 
@@ -94,20 +81,20 @@ namespace Perper.WebJobs.Extensions.Services
                 };
             streamObject.LastModified = DateTime.UtcNow;
             await streamsCache.PutAsync(streamObject.Name, streamObject);
-            return new PerperFabricStream(streamObject, _igniteClient);
+            return new PerperFabricStream(streamObject.Name, _igniteClient);
         }
 
         public async Task<IPerperStream> StreamActionAsync(IPerperStream declaration, object parameters)
         {
-            var streamObject = ((PerperFabricStream)declaration).StreamData;
-            await StreamActionAsync(streamObject.Name, streamObject.Delegate, parameters);
+            var streamObject = ((PerperFabricStream)declaration);
+            await StreamActionAsync(streamObject.StreamRef.StreamName, streamObject.DeclaredDelegate, parameters);
             return declaration;
         }
 
         public async Task BindStreamOutputAsync(IEnumerable<IPerperStream> streams)
         {
             var streamsObjects = streams.Select(s =>
-                ((PerperFabricStream)s).GetStreamRef()).ToArray();
+                ((PerperFabricStream)s).StreamRef).ToArray();
 
             if (streamsObjects.Any())
             {
@@ -221,11 +208,11 @@ namespace Perper.WebJobs.Extensions.Services
                 switch (propertyValue)
                 {
                     case PerperFabricStream stream:
-                        builder.SetField(propertyInfo.Name, new[] { stream.GetStreamRef() });
+                        builder.SetField(propertyInfo.Name, new[] { stream.StreamRef });
                         break;
                     case IPerperStream[] streams when streams.All(s => s is PerperFabricStream):
                         builder.SetField(propertyInfo.Name, streams.Select(s =>
-                            ((PerperFabricStream)s).GetStreamRef()).ToArray());
+                            ((PerperFabricStream)s).StreamRef).ToArray());
                         break;
                     default:
                         builder.SetField(propertyInfo.Name, propertyValue);

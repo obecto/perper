@@ -8,39 +8,29 @@ namespace Perper.WebJobs.Extensions.Services
 {
     public class PerperFabricStream : IPerperStream
     {
-        public StreamData StreamData { get; }
+        public StreamRef StreamRef { get; }
 
-        public bool Passthrough { get; }
+        public string DeclaredDelegate { get; }
 
         private readonly IIgniteClient _igniteClient;
 
-        public PerperFabricStream(StreamData streamData, IIgniteClient igniteClient, bool passthrough = false)
+        public PerperFabricStream(string streamName, IIgniteClient igniteClient, string declaredDelegate = "", bool passthrough = false)
         {
-            StreamData = streamData;
-            Passthrough = passthrough;
+            StreamRef = new StreamRef {StreamName = streamName, Passthrough = passthrough};
+            DeclaredDelegate = declaredDelegate;
 
             _igniteClient = igniteClient;
         }
 
         public IPerperStream GetRef()
         {
-            return new PerperFabricStream(StreamData, _igniteClient, true);
-        }
-
-        public StreamRef GetStreamRef()
-        {
-            Console.WriteLine("Passthrough for {0}: {1}", StreamData.Name, Passthrough);
-            return new StreamRef
-            {
-                StreamName = StreamData.Name,
-                Passthrough = Passthrough
-            };
+            return new PerperFabricStream(StreamRef.StreamName, _igniteClient, "", true);
         }
 
         public async ValueTask DisposeAsync()
         {
             var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
-            await streamsCache.RemoveAsync(StreamData.Name);
+            await streamsCache.RemoveAsync(StreamRef.StreamName);
         }
     }
 }
