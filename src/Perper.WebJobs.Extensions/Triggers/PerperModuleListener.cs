@@ -19,7 +19,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         private Task _listenTask;
 
-        public PerperModuleListener(PerperModuleTriggerAttribute attribute, string delegateName, 
+        public PerperModuleListener(PerperModuleTriggerAttribute attribute, string delegateName,
             ITriggeredFunctionExecutor executor, IPerperFabricContext context)
         {
             _attribute = attribute;
@@ -59,9 +59,9 @@ namespace Perper.WebJobs.Extensions.Triggers
             var triggers = _context.GetNotifications(_delegateName).WorkerTriggers(cancellationToken);
             await foreach (var (streamName, workerName) in triggers.WithCancellation(cancellationToken))
             {
-                var triggerValue = new PerperModuleContext(streamName, _delegateName, _context);
+                var triggerValue = new PerperModuleContext(streamName, _delegateName, workerName, _context);
                 await _executor.TryExecuteAsync(
-                    new TriggeredFunctionData {TriggerValue = triggerValue},
+                    new TriggeredFunctionData { TriggerValue = triggerValue },
                     cancellationToken);
             }
         }

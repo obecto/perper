@@ -149,12 +149,13 @@ namespace Perper.WebJobs.Extensions.Services
             return streamCacheClient.Select(entry => entry.Value);
         }
 
-        public async Task<string> CallWorkerAsync(string workerName, string delegateName, object parameters)
+        public async Task<string> CallWorkerAsync(string workerName, string delegateName, string caller, object parameters)
         {
             var workerObject = new WorkerData
             {
                 Name = workerName,
                 Delegate = delegateName,
+                Caller = caller,
                 Params = CreateDelegateParameters(parameters)
             };
             var workersCache = _igniteClient.GetOrCreateCache<string, WorkerData>($"{_streamName}_workers");
@@ -180,7 +181,15 @@ namespace Perper.WebJobs.Extensions.Services
         {
             var workersCache = _igniteClient.GetCache<string, WorkerData>($"{_streamName}_workers");
             var workerObject = await workersCache.GetAsync(workerName);
-            workerObject.Params = workerObject.Params.ToBuilder().SetField("$return", value).Build();
+            if (value is PerperFabricStream)
+            {
+                var valueAsStream = (value as PerperFabricStream).StreamRef;
+                workerObject.Params = workerObject.Params.ToBuilder().SetField("$return", valueAsStream).Build();
+            }  
+            else
+            {
+                workerObject.Params = workerObject.Params.ToBuilder().SetField("$return", value).Build();
+            }
             await workersCache.ReplaceAsync(workerName, workerObject);
         }
 
@@ -191,6 +200,11 @@ namespace Perper.WebJobs.Extensions.Services
             var field = workerObject.Value.Params.GetField<object>("$return");
             if (field is IBinaryObject binaryObject)
             {
+                if (binaryObject.GetBinaryType().TypeName == typeof(StreamRef).FullName)
+                {
+                    var streamRef = binaryObject.Deserialize<StreamRef>();
+                    return (T)GetStream(streamRef);
+                }
                 return binaryObject.Deserialize<T>();
             }
 

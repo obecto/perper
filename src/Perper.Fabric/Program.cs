@@ -21,7 +21,7 @@ namespace Perper.Fabric
 
             using var ignite = Ignition.Start(new IgniteConfiguration
             {
-                IgniteHome = "/usr/share/apache-ignite",
+                IgniteHome = "C:\\Ignite",
             });
 
             await ignite.GetServices().DeployNodeSingletonAsync(nameof(TransportService), new TransportService());

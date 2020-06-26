@@ -89,7 +89,7 @@ namespace Perper.WebJobs.Extensions.Triggers
                 case PerperModuleTriggerAttribute _:
                 {
                     var context = (PerperModuleContext) value;
-                    return (context.StreamName, null, context.DelegateName, nameof(PerperModuleTriggerAttribute));
+                    return (context.StreamName, context.WorkerName, context.DelegateName, nameof(PerperModuleTriggerAttribute));
                 }
                 default:
                     throw new ArgumentException();

@@ -28,23 +28,31 @@ namespace Perper.WebJobs.Extensions.Bindings
             Type = type;
         }
 
-        public Task<object> GetValueAsync()
+        public async Task<object> GetValueAsync()
         {
             if (Type == typeof(string))
             {
-                return Task.FromResult((object)JsonSerializer.Serialize(new {_attribute.Stream}));
+                return (object)JsonSerializer.Serialize(new {_attribute.Stream});
             }
 
             if (Type == typeof(IPerperStream))
             {
                 var data = _context.GetData(_attribute.Stream);
-                return data.FetchStreamParameterAsync<object[]>(_attribute.Parameter).ContinueWith(x => (object)data.GetStream((x.Result[0] as IBinaryObject).Deserialize<StreamRef>()));
+                //data.FetchWorkerParameterAsync<object[]>(_attribute.Parameter).ContinueWith(x => (object)data.GetStream((x.Result[0] as IBinaryObject).Deserialize<StreamRef>()));
+
+                var result = _attribute.TriggerAttribute switch
+                {
+                    nameof(PerperModuleTriggerAttribute) => await data.FetchWorkerParameterAsync<object[]>(_attribute.Worker, _attribute.Parameter),
+                    _ => throw new ArgumentException()
+                };
+
+                return data.GetStream((result[0] as IBinaryObject).Deserialize<StreamRef>());
             }
 
             var streamType = typeof(PerperStreamAsyncEnumerable<>).MakeGenericType(Type.GenericTypeArguments[0]);
             var stream = Activator.CreateInstance(streamType,
                 _attribute.Stream, _attribute.Delegate, _attribute.Parameter, _context);
-            return Task.FromResult(stream!);
+            return stream;
         }
 
         public Task SetValueAsync(object value, CancellationToken cancellationToken)

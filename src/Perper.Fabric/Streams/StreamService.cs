@@ -102,7 +102,7 @@ namespace Perper.Fabric.Streams
                             Type = NotificationType.WorkerResult,
                             Stream = streamName,
                             Worker = workerObject.Name,
-                            Delegate = _stream.StreamData.Delegate
+                            Delegate = workerObject.Caller
                         });
                     }
                     else

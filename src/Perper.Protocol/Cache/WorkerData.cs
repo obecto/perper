@@ -6,7 +6,9 @@ namespace Perper.Protocol.Cache
     {
         public string Name { get; set; }
         public string Delegate { get; set; }
-        
+
+        public string Caller { get; set; }
+
         public IBinaryObject Params { get; set; }
     }
 }
