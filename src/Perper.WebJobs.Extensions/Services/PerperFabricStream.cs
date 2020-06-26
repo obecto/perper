@@ -10,21 +10,31 @@ namespace Perper.WebJobs.Extensions.Services
     {
         public StreamData StreamData { get; }
 
-        public bool IsRef { get; }
+        public bool Passthrough { get; }
 
         private readonly IIgniteClient _igniteClient;
 
-        public PerperFabricStream(StreamData streamData, IIgniteClient igniteClient, bool isRef = false)
+        public PerperFabricStream(StreamData streamData, IIgniteClient igniteClient, bool passthrough = false)
         {
             StreamData = streamData;
-            IsRef = isRef;
+            Passthrough = passthrough;
 
             _igniteClient = igniteClient;
         }
 
-        public PerperFabricStream GetRef()
+        public IPerperStream GetRef()
         {
             return new PerperFabricStream(StreamData, _igniteClient, true);
+        }
+
+        public StreamRef GetStreamRef()
+        {
+            Console.WriteLine("Passthrough for {0}: {1}", StreamData.Name, Passthrough);
+            return new StreamRef
+            {
+                StreamName = StreamData.Name,
+                Passthrough = Passthrough
+            };
         }
 
         public async ValueTask DisposeAsync()

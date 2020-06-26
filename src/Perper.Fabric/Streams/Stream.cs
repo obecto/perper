@@ -46,10 +46,12 @@ namespace Perper.Fabric.Streams
                     continue;
                 }
 
-                var streams = 
+                var streams =
                     from value in fieldValues
                     where value.GetBinaryType().TypeName.Contains(nameof(StreamRef))
-                    select new Stream(streamsCache[value.Deserialize<StreamRef>().StreamName], _ignite);
+                    let streamRef = value.Deserialize<StreamRef>()
+                    where !streamRef.Passthrough
+                    select new Stream(streamsCache[streamRef.StreamName], _ignite);
 
                 yield return (field, streams);
             }

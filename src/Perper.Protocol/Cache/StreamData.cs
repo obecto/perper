@@ -16,13 +16,5 @@ namespace Perper.Protocol.Cache
         public string IndexType { get; set; }
 
         public IEnumerable<KeyValuePair<string, string>> IndexFields { get; set; }
-
-        public StreamRef GetRef()
-        {
-            return new StreamRef
-            {
-                StreamName = Name
-            };
-        }
     }
 }

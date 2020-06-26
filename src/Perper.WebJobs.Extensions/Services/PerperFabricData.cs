@@ -107,7 +107,7 @@ namespace Perper.WebJobs.Extensions.Services
         public async Task BindStreamOutputAsync(IEnumerable<IPerperStream> streams)
         {
             var streamsObjects = streams.Select(s =>
-                ((PerperFabricStream)s).StreamData.GetRef()).ToArray();
+                ((PerperFabricStream)s).GetStreamRef()).ToArray();
 
             if (streamsObjects.Any())
             {
@@ -221,11 +221,11 @@ namespace Perper.WebJobs.Extensions.Services
                 switch (propertyValue)
                 {
                     case PerperFabricStream stream:
-                        builder.SetField(propertyInfo.Name, new[] { stream.StreamData.GetRef() });
+                        builder.SetField(propertyInfo.Name, new[] { stream.GetStreamRef() });
                         break;
                     case IPerperStream[] streams when streams.All(s => s is PerperFabricStream):
                         builder.SetField(propertyInfo.Name, streams.Select(s =>
-                            ((PerperFabricStream)s).StreamData.GetRef()).ToArray());
+                            ((PerperFabricStream)s).GetStreamRef()).ToArray());
                         break;
                     default:
                         builder.SetField(propertyInfo.Name, propertyValue);
