@@ -4,9 +4,12 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Ignite.Core.Binary;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Perper.Protocol.Cache;
 using Perper.WebJobs.Extensions.Config;
 using Perper.WebJobs.Extensions.Services;
+using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Bindings
 {
@@ -31,9 +34,15 @@ namespace Perper.WebJobs.Extensions.Bindings
             {
                 return Task.FromResult((object)JsonSerializer.Serialize(new {_attribute.Stream}));
             }
-            
+
+            if (Type == typeof(IPerperStream))
+            {
+                var data = _context.GetData(_attribute.Stream);
+                return data.FetchStreamParameterAsync<object[]>(_attribute.Parameter).ContinueWith(x => (object)data.GetStream((x.Result[0] as IBinaryObject).Deserialize<StreamRef>()));
+            }
+
             var streamType = typeof(PerperStreamAsyncEnumerable<>).MakeGenericType(Type.GenericTypeArguments[0]);
-            var stream = Activator.CreateInstance(streamType, 
+            var stream = Activator.CreateInstance(streamType,
                 _attribute.Stream, _attribute.Delegate, _attribute.Parameter, _context);
             return Task.FromResult(stream!);
         }

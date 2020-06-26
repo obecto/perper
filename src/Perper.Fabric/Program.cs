@@ -18,7 +18,7 @@ namespace Perper.Fabric
         {
             SynchronizationContext.SetSynchronizationContext(
                 new ThreadPoolSynchronizationContext());
-            
+
             using var ignite = Ignition.Start(new IgniteConfiguration
             {
                 IgniteHome = "/usr/share/apache-ignite",

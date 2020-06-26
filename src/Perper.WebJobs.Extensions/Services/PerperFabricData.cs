@@ -33,6 +33,15 @@ namespace Perper.WebJobs.Extensions.Services
             return new PerperFabricStream(streamObject, _igniteClient);
         }
 
+        public IPerperStream GetStream(StreamRef streamRef)
+        {
+            var streamObject = new StreamData
+            {
+                Name = streamRef.StreamName
+            };
+            return new PerperFabricStream(streamObject, _igniteClient);
+        }
+
         public IPerperStream DeclareStream(string streamName, string delegateName)
         {
             var streamObject = new StreamData

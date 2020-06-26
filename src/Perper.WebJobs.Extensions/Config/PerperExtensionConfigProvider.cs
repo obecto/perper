@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Services;
+using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Triggers;
 
 namespace Perper.WebJobs.Extensions.Config
@@ -31,6 +32,8 @@ namespace Perper.WebJobs.Extensions.Config
             var streamBindingRule = context.AddBindingRule<PerperStreamAttribute>();
             streamBindingRule.BindToValueProvider<string>((a, t) =>
                 Task.FromResult<IValueBinder>(new PerperStreamValueBinder(_fabricContext, a, typeof(string))));
+            streamBindingRule.BindToValueProvider<IPerperStream>((a, t) =>
+                Task.FromResult<IValueBinder>(new PerperStreamValueBinder(_fabricContext, a, typeof(IPerperStream))));
             streamBindingRule.BindToValueProvider<IAsyncEnumerable<OpenType>>((a, t) =>
                 Task.FromResult<IValueBinder>(new PerperStreamValueBinder(_fabricContext, a, t)));
             streamBindingRule.BindToCollector<OpenType>(typeof(PerperStreamConverter<>), _fabricContext);

@@ -23,8 +23,8 @@ namespace DotNet.FunctionApp
                     multiplier = 10
                 }, typeof(Data));
             await using var consumer =
-                await context.StreamActionAsync("NamedConsumer", typeof(Consumer), new {processor});
-            
+                await context.StreamActionAsync("NamedPassthroughConsumer", typeof(PassthroughConsumer), new {processor = processor.GetRef()});
+
             await context.BindOutput(cancellationToken);
         }
     }
