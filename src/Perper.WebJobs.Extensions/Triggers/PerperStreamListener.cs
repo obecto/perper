@@ -84,7 +84,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             var result = await _executor.TryExecuteAsync(new TriggeredFunctionData {TriggerValue = triggerValue}, cancellationToken);
             if (result.Exception != null)
             {
-                _logger.LogError($"Exception while executing '{streamName}': {result.Exception.ToString()}")
+                _logger.LogError($"Exception while executing '{streamName}': {result.Exception.ToString()}");
             }
         }
     }
