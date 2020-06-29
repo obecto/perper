@@ -51,6 +51,12 @@ namespace Perper.WebJobs.Extensions.Model
             return data.GetStream();
         }
 
+        public IPerperStream GetStream(string streamName)
+        {
+            var data = _context.GetData(streamName);
+            return data.GetStream();
+        }
+
         #region DeclareStream
         public IPerperStream DeclareStream(string streamName, string delegateName)
         {
