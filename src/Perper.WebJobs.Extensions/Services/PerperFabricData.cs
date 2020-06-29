@@ -181,11 +181,10 @@ namespace Perper.WebJobs.Extensions.Services
         {
             var workersCache = _igniteClient.GetCache<string, WorkerData>($"{_streamName}_workers");
             var workerObject = await workersCache.GetAsync(workerName);
-            if (value is PerperFabricStream)
+            if (value is PerperFabricStream stream)
             {
-                var valueAsStream = (value as PerperFabricStream).StreamRef;
-                workerObject.Params = workerObject.Params.ToBuilder().SetField("$return", valueAsStream).Build();
-            }  
+                workerObject.Params = workerObject.Params.ToBuilder().SetField("$return", stream.StreamRef).Build();
+            }
             else
             {
                 workerObject.Params = workerObject.Params.ToBuilder().SetField("$return", value).Build();

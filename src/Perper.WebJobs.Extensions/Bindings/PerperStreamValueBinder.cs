@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -35,10 +36,9 @@ namespace Perper.WebJobs.Extensions.Bindings
                 return (object)JsonSerializer.Serialize(new {_attribute.Stream});
             }
 
-            if (Type == typeof(IPerperStream))
+            if (Type == typeof(IPerperStream) || Type == typeof(IPerperStream[]))
             {
                 var data = _context.GetData(_attribute.Stream);
-                //data.FetchWorkerParameterAsync<object[]>(_attribute.Parameter).ContinueWith(x => (object)data.GetStream((x.Result[0] as IBinaryObject).Deserialize<StreamRef>()));
 
                 var result = _attribute.TriggerAttribute switch
                 {
@@ -47,13 +47,24 @@ namespace Perper.WebJobs.Extensions.Bindings
                     _ => throw new ArgumentException()
                 };
 
-                return data.GetStream((result[0] as IBinaryObject).Deserialize<StreamRef>());
+                var streams = result.OfType<IBinaryObject>().Select(x => data.GetStream(x.Deserialize<StreamRef>())).ToArray();
+
+
+                if (Type == typeof(IPerperStream))
+                {
+                    // if (streams.Length > 1) warning
+                    return streams[0];
+                }
+                else
+                {
+                    return streams;
+                }
             }
 
             var streamType = typeof(PerperStreamAsyncEnumerable<>).MakeGenericType(Type.GenericTypeArguments[0]);
             var stream = Activator.CreateInstance(streamType,
                 _attribute.Stream, _attribute.Delegate, _attribute.Parameter, _context);
-            return stream;
+            return stream!;
         }
 
         public Task SetValueAsync(object value, CancellationToken cancellationToken)

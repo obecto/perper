@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
@@ -21,7 +22,7 @@ namespace Perper.Fabric
 
             using var ignite = Ignition.Start(new IgniteConfiguration
             {
-                IgniteHome = "C:\\Ignite",
+                IgniteHome = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "C:\\Ignite" : "/usr/share/apache-ignite",
             });
 
             await ignite.GetServices().DeployNodeSingletonAsync(nameof(TransportService), new TransportService());

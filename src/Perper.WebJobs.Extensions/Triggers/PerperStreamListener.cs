@@ -81,7 +81,11 @@ namespace Perper.WebJobs.Extensions.Triggers
         {
             _logger.LogInformation($"Starting '{_delegateName}' as '{streamName}'");
             var triggerValue = new PerperStreamContext(streamName, _delegateName, _context);
-            await _executor.TryExecuteAsync(new TriggeredFunctionData {TriggerValue = triggerValue}, cancellationToken);
+            var result = await _executor.TryExecuteAsync(new TriggeredFunctionData {TriggerValue = triggerValue}, cancellationToken);
+            if (result.Exception != null)
+            {
+                _logger.LogError($"Exception while executing '{streamName}': {result.Exception.ToString()}")
+            }
         }
     }
 }
