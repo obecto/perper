@@ -132,19 +132,18 @@ namespace Perper.Fabric.Streams
                 await foreach (var streams in streamsCache.QueryContinuousAsync(streamName, cancellationToken))
                 {
                     var (_, streamObject) = streams.Single();
-                    if (streamObject.Params.HasField("$return"))
+                    if (streamObject.StreamParams.TryGetValue("$return", out var outputStreamNames))
                     {
                         var newOutputStreams = new List<Stream>();
-                        foreach (var outputStreamRef in streamObject.Params.GetField<IBinaryObject[]>("$return"))
+                        foreach (var outputStreamName in outputStreamNames)
                         {
-                            var outputStreamName = outputStreamRef.Deserialize<StreamRef>().StreamName;
                             var outputStream = new Stream(streamsCache[outputStreamName], _ignite);
-                         
+
                             if (outputStreams.TryAdd(outputStreamName, outputStream))
                             {
                                 var outputStreamServiceDeployment = new StreamServiceDeployment(outputStreamName, _ignite);
                                 await outputStreamServiceDeployment.DeployAsync();
-                            
+
                                 deployments.Add(outputStreamServiceDeployment);
                                 newOutputStreams.Add(outputStream);
                             }

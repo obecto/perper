@@ -14,9 +14,9 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("Processor")]
         public static async Task RunAsync([PerperStreamTrigger] PerperStreamContext context,
-            [PerperStream("generator")] IAsyncEnumerable<Data> generator,
+            [Perper("generator")] IAsyncEnumerable<Data> generator,
             [Perper("multiplier")] int multiplier,
-            [PerperStream("output")] IAsyncCollector<Data> output,
+            [Perper("output")] IAsyncCollector<Data> output,
             ILogger logger, CancellationToken cancellationToken)
         {
             var state = await context.FetchStateAsync<List<int>>() ?? new List<int>();

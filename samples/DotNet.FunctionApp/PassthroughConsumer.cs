@@ -12,12 +12,12 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("PassthroughConsumer")]
         public static async Task RunAsync([PerperStreamTrigger] PerperStreamContext context,
-            [PerperStream("processor")] IPerperStream processor,
+            [Perper("processor")] IPerperStream processor,
             ILogger logger, CancellationToken cancellationToken)
         {
             logger.LogInformation($"Starting pass-through consumer");
             await using var consumer =
-                await context.StreamActionAsync("NamedConsumer", typeof(Consumer), new {processor});
+                await context.StreamActionAsync("NamedConsumer", typeof(Consumer), new {processor = processor.Subscribe()});
 
             await context.BindOutput(cancellationToken);
         }

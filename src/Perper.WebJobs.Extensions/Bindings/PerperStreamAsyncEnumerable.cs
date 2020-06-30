@@ -40,25 +40,11 @@ namespace Perper.WebJobs.Extensions.Bindings
 
         private async IAsyncEnumerable<T> Impl([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            if (typeof(T) == typeof(IPerperStream))
+            var updates = _context.GetNotifications(_delegateName).StreamParameterItemUpdates<T>(
+                _streamName, _parameterName, cancellationToken);
+            await foreach (var (_, item) in updates.WithCancellation(cancellationToken))
             {
-                var data = _context.GetData(_streamName);
-                var updates = _context.GetNotifications(_delegateName).StreamParameterItemUpdates<StreamRef>(
-                    _streamName, _parameterName, cancellationToken);
-                System.Console.WriteLine("fakesub");
-                await foreach (var (_, item) in updates.WithCancellation(cancellationToken))
-                {
-                    yield return (T)data.GetStream(item);
-                }
-            }
-            else
-            {
-                var updates = _context.GetNotifications(_delegateName).StreamParameterItemUpdates<T>(
-                    _streamName, _parameterName, cancellationToken);
-                await foreach (var (_, item) in updates.WithCancellation(cancellationToken))
-                {
-                    yield return item;
-                }
+                yield return item;
             }
         }
     }

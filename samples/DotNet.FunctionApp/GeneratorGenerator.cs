@@ -14,7 +14,7 @@ namespace DotNet.FunctionApp
         [FunctionName("GeneratorGenerator")]
         public static async Task Run([PerperStreamTrigger] PerperStreamContext context,
             [Perper("count")] int count,
-            [PerperStream("output")] IAsyncCollector<IPerperStream> output,
+            [Perper("output")] IAsyncCollector<IPerperStream> output,
             ILogger logger, CancellationToken cancellationToken)
         {
             var state = await context.FetchStateAsync<Data>() ?? new Data {Value = 0};

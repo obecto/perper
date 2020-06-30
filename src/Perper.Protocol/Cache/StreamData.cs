@@ -11,10 +11,22 @@ namespace Perper.Protocol.Cache
         public StreamDelegateType DelegateType { get; set; }
 
         public IBinaryObject Params { get; set; }
+        public Dictionary<string, string[]> StreamParams { get; set; }
+
         public DateTime LastModified { get; set; } = DateTime.UtcNow;
 
-        public string IndexType { get; set; }
+        public string? IndexType { get; set; }
+        public IEnumerable<KeyValuePair<string, string>>? IndexFields { get; set; }
 
-        public IEnumerable<KeyValuePair<string, string>> IndexFields { get; set; }
+        public StreamData(string name, string delegateName, StreamDelegateType delegateType, IBinaryObject dataParams, Dictionary<string, string[]> streamParams, string? indexType = null, IEnumerable<KeyValuePair<string, string>>? indexFields = null)
+        {
+            Name = name;
+            Delegate = delegateName;
+            DelegateType = delegateType;
+            Params = dataParams;
+            StreamParams = streamParams;
+            IndexType = indexType;
+            IndexFields = indexFields;
+        }
     }
 }

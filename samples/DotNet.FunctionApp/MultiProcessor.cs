@@ -14,8 +14,8 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("MultiProcessor")]
         public static async Task Run([PerperStreamTrigger] PerperStreamContext context,
-            [PerperStream("generators")] IAsyncEnumerable<IPerperStream> generators,
-            [PerperStream("output")] IAsyncCollector<IPerperStream> output,
+            [Perper("generators")] IAsyncEnumerable<IPerperStream> generators,
+            [Perper("output")] IAsyncCollector<IPerperStream> output,
             ILogger logger, CancellationToken cancellationToken)
         {
             var i = 0;
@@ -23,7 +23,7 @@ namespace DotNet.FunctionApp
             {
                 logger.LogInformation($"Multi Processor receives generator: {0}", i);
                 var stream = await context.StreamFunctionAsync("NamedProcessor-" + i, typeof(Processor), new {
-                    generator = new[] {generator},
+                    generator = new[] { generator.Subscribe() },
                     multiplier = 10
                 }, typeof(Data));
                 await output.AddAsync(stream, cancellationToken);

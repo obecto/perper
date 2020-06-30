@@ -27,31 +27,11 @@ namespace Perper.Fabric.Streams
         public IEnumerable<(string, IEnumerable<Stream>)> GetInputStreams()
         {
             var streamsCache = _ignite.GetCache<string, StreamData>("streams");
-            
-            var streamDelegateParams = StreamData.Params;
-            foreach (var field in streamDelegateParams.GetBinaryType().Fields)
-            {
-                IBinaryObject[] fieldValues;
-                try
-                {
-                    fieldValues = streamDelegateParams.GetField<IBinaryObject[]>(field);
-                }
-                catch (TypeInitializationException)
-                {
-                    continue;
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.ToString());
-                    continue;
-                }
 
-                var streams =
-                    from value in fieldValues
-                    where value.GetBinaryType().TypeName.Contains(nameof(StreamRef))
-                    let streamRef = value.Deserialize<StreamRef>()
-                    where !streamRef.Passthrough
-                    select new Stream(streamsCache[streamRef.StreamName], _ignite);
+            var streamParams = StreamData.StreamParams;
+            foreach (var (field, streamNames) in streamParams)
+            {
+                var streams = streamNames.Select(name => new Stream(streamsCache[name], _ignite));
 
                 yield return (field, streams);
             }
@@ -86,7 +66,7 @@ namespace Perper.Fabric.Streams
             {
                 cache = _ignite.GetOrCreateBinaryCache<long>(StreamData.Name);
             }
-            
+
             await foreach (var items in cache.QueryContinuousAsync(cancellationToken))
             {
                 yield return items;

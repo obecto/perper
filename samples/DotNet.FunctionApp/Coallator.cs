@@ -14,7 +14,7 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("Coallator")]
         public static async Task Run([PerperStreamTrigger] PerperStreamContext context,
-            [PerperStream("inputs")] IAsyncEnumerable<IPerperStream> inputs,
+            [Perper("inputs")] IAsyncEnumerable<IPerperStream> inputs,
             ILogger logger, CancellationToken cancellationToken)
         {
             var outputs = new List<IPerperStream>();

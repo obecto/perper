@@ -14,8 +14,8 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("CyclicGenerator")]
         public static async Task Run([PerperStreamTrigger] PerperStreamContext context,
-            [PerperStream("processor")] IAsyncEnumerable<Data> processor,
-            [PerperStream("output")] IAsyncCollector<Data> output,
+            [Perper("processor")] IAsyncEnumerable<Data> processor,
+            [Perper("output")] IAsyncCollector<Data> output,
             ILogger logger, CancellationToken cancellationToken)
         {
             await foreach (var data in processor.WithCancellation(cancellationToken))

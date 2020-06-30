@@ -10,5 +10,13 @@ namespace Perper.Protocol.Cache
         public string Caller { get; set; }
 
         public IBinaryObject Params { get; set; }
+
+        public WorkerData(string name, string delegateName, string caller, IBinaryObject dataParams)
+        {
+            Name = name;
+            Delegate = delegateName;
+            Caller = caller;
+            Params = dataParams;
+        }
     }
 }

@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -6,7 +5,6 @@ using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Services;
-using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Triggers;
 
 namespace Perper.WebJobs.Extensions.Config
@@ -29,21 +27,12 @@ namespace Perper.WebJobs.Extensions.Config
             bindingRule.BindToValueProvider<OpenType>((a, t) =>
                 Task.FromResult<IValueBinder>(new PerperValueBinder(_fabricContext, a, t)));
 
-            var streamBindingRule = context.AddBindingRule<PerperStreamAttribute>();
-            streamBindingRule.BindToValueProvider<string>((a, t) =>
-                Task.FromResult<IValueBinder>(new PerperStreamValueBinder(_fabricContext, a, typeof(string))));
-            streamBindingRule.BindToValueProvider<IPerperStream>((a, t) =>
-                Task.FromResult<IValueBinder>(new PerperStreamValueBinder(_fabricContext, a, typeof(IPerperStream))));
-            streamBindingRule.BindToValueProvider<IAsyncEnumerable<OpenType>>((a, t) =>
-                Task.FromResult<IValueBinder>(new PerperStreamValueBinder(_fabricContext, a, t)));
-            streamBindingRule.BindToCollector<OpenType>(typeof(PerperStreamConverter<>), _fabricContext);
-
             var streamTriggerBindingRule = context.AddBindingRule<PerperStreamTriggerAttribute>();
             streamTriggerBindingRule.BindToTrigger(new PerperTriggerBindingProvider<PerperStreamTriggerAttribute>(_fabricContext, _logger));
 
             var workerTriggerBindingRule = context.AddBindingRule<PerperWorkerTriggerAttribute>();
             workerTriggerBindingRule.BindToTrigger(new PerperTriggerBindingProvider<PerperWorkerTriggerAttribute>(_fabricContext, _logger));
-            
+
             var moduleTriggerBindingRule = context.AddBindingRule<PerperModuleTriggerAttribute>();
             moduleTriggerBindingRule.BindToTrigger(new PerperTriggerBindingProvider<PerperModuleTriggerAttribute>(_fabricContext, _logger));
         }

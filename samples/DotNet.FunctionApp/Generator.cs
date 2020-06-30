@@ -15,7 +15,7 @@ namespace DotNet.FunctionApp
         public static async Task Run([PerperStreamTrigger] PerperStreamContext context,
             [Perper("count")] int count,
             [Perper("tag")] string tag,
-            [PerperStream("output")] IAsyncCollector<Data> output,
+            [Perper("output")] IAsyncCollector<Data> output,
             ILogger logger, CancellationToken cancellationToken)
         {
             var lastData = await context.FetchStateAsync<Data>() ?? new Data {Value = 0};

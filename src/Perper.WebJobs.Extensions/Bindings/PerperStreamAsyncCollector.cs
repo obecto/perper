@@ -22,14 +22,7 @@ namespace Perper.WebJobs.Extensions.Bindings
         {
             var data = _context.GetData(_streamName);
 
-            if (typeof(T) == typeof(IPerperStream))
-            {
-                await data.AddStreamItemAsync((item as PerperFabricStream)!.StreamRef);
-            }
-            else
-            {
-                await data.AddStreamItemAsync(item);
-            }
+            await data.AddStreamItemAsync(item);
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = new CancellationToken())

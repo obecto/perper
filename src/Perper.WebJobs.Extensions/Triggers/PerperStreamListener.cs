@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -82,7 +83,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             _logger.LogInformation($"Starting '{_delegateName}' as '{streamName}'");
             var triggerValue = new PerperStreamContext(streamName, _delegateName, _context);
             var result = await _executor.TryExecuteAsync(new TriggeredFunctionData {TriggerValue = triggerValue}, cancellationToken);
-            if (result.Exception != null)
+            if (result.Exception != null && !(result.Exception is OperationCanceledException))
             {
                 _logger.LogError($"Exception while executing '{streamName}': {result.Exception.ToString()}");
             }
