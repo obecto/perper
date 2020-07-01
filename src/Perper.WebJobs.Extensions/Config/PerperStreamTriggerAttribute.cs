@@ -7,6 +7,5 @@ namespace Perper.WebJobs.Extensions.Config
     [AttributeUsage(AttributeTargets.Parameter)]
     public sealed class PerperStreamTriggerAttribute : Attribute
     {
-        public bool RunOnStartup { get; set; }
     }
 }

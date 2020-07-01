@@ -61,21 +61,14 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         private async Task ListenAsync(CancellationToken cancellationToken)
         {
-            if (_attribute.RunOnStartup)
+            var executions = new List<Task>();
+            var triggers = _context.GetNotifications(_delegateName).StreamTriggers(cancellationToken);
+            await foreach (var streamName in triggers.WithCancellation(cancellationToken))
             {
-                await ExecuteAsync(string.Empty, cancellationToken);
+                executions.Add(ExecuteAsync(streamName, cancellationToken));
             }
-            else
-            {
-                var executions = new List<Task>();
-                var triggers = _context.GetNotifications(_delegateName).StreamTriggers(cancellationToken);
-                await foreach (var streamName in triggers.WithCancellation(cancellationToken))
-                {
-                    executions.Add(ExecuteAsync(streamName, cancellationToken));
-                }
 
-                await Task.WhenAll(executions);
-            }
+            await Task.WhenAll(executions);
         }
 
         private async Task ExecuteAsync(string streamName, CancellationToken cancellationToken)
