@@ -13,14 +13,14 @@ namespace DotNet.FunctionApp
         [FunctionName("DataFrameGenerator")]
         public static async Task Run([PerperStreamTrigger] PerperStreamContext context,
             [Perper("indices")] int[] indices,
-            [PerperStream("output")] IAsyncCollector<Hashtable> output,
+            [Perper("output")] IAsyncCollector<Hashtable> output,
             ILogger logger, CancellationToken cancellationToken)
         {
             foreach (var index in indices)
             {
                 await output.AddAsync(new Hashtable {{"Index", index}, {"Index2", index}}, cancellationToken);
             }
-            
+
             var result = await context.CallWorkerAsync<string>("Host.Functions.PythonWorker", new
             {
                 data = context.GetStream()

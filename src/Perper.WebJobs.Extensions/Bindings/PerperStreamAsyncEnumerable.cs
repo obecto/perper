@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Perper.Protocol.Cache;
 using Perper.WebJobs.Extensions.Services;
+using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Bindings
 {

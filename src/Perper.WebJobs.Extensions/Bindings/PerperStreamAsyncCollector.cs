@@ -1,7 +1,9 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
+using Perper.Protocol.Cache;
 using Perper.WebJobs.Extensions.Services;
+using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Bindings
 {
@@ -19,6 +21,7 @@ namespace Perper.WebJobs.Extensions.Bindings
         public async Task AddAsync(T item, CancellationToken cancellationToken = new CancellationToken())
         {
             var data = _context.GetData(_streamName);
+
             await data.AddStreamItemAsync(item);
         }
 

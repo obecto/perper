@@ -13,21 +13,20 @@ namespace Perper.WebJobs.Extensions.Model
     {
         public string StreamName { get; }
         public string DelegateName { get; }
-        
+
         private readonly IPerperFabricContext _context;
-        
+
         public PerperStreamContext(string streamName, string delegateName, IPerperFabricContext context)
         {
             StreamName = streamName;
             DelegateName = delegateName;
-            
+
             _context = context;
         }
 
         public IQueryable<T> Query<T>(IAsyncEnumerable<T> stream)
         {
-            PerperStreamAsyncEnumerable<T> perperStream = stream as PerperStreamAsyncEnumerable<T>;
-            var streamName = perperStream.GetStreamName();
+            var streamName = (stream as PerperStreamAsyncEnumerable<T>)!.GetStreamName();
             var data = _context.GetData(streamName);
 
             return data.QueryStreamItemsAsync<T>();
@@ -44,10 +43,16 @@ namespace Perper.WebJobs.Extensions.Model
             var data = _context.GetData(StreamName);
             await data.UpdateStreamParameterAsync("context", state);
         }
-        
+
         public IPerperStream GetStream()
         {
             var data = _context.GetData(StreamName);
+            return data.GetStream();
+        }
+
+        public IPerperStream GetStream(string streamName)
+        {
+            var data = _context.GetData(streamName);
             return data.GetStream();
         }
 
@@ -57,7 +62,7 @@ namespace Perper.WebJobs.Extensions.Model
             var data = _context.GetData(StreamName);
             return data.DeclareStream(streamName, delegateName);
         }
-        
+
         public IPerperStream DeclareStream(string name)
         {
             return DeclareStream(GenerateName(name), name);
@@ -67,7 +72,7 @@ namespace Perper.WebJobs.Extensions.Model
         {
             return DeclareStream(streamName, method.GetFullName());
         }
-        
+
         public IPerperStream DeclareStream(MethodInfo method)
         {
             return DeclareStream(method.GetFullName());
@@ -85,34 +90,29 @@ namespace Perper.WebJobs.Extensions.Model
         #endregion
 
         #region StreamFunctionAsync
-        public async Task<IPerperStream> StreamFunctionAsync(string streamName, string delegateName, object parameters, Type indexType = null)
+        public async Task<IPerperStream> StreamFunctionAsync(string streamName, string delegateName, object parameters, Type? indexType = null)
         {
             var data = _context.GetData(StreamName);
             return await data.StreamFunctionAsync(streamName, delegateName, parameters, indexType);
         }
-        
+
         public async Task<IPerperStream> StreamFunctionAsync(string name, object parameters)
         {
             var data = _context.GetData(StreamName);
             return await data.StreamFunctionAsync(GenerateName(name), name, parameters);
         }
 
-        public Task<IPerperStream> StreamFunctionAsync(string streamName, MethodInfo method, object parameters, Type indexType = null)
+        public Task<IPerperStream> StreamFunctionAsync(string streamName, MethodInfo method, object parameters, Type? indexType = null)
         {
             return StreamFunctionAsync(streamName, method.GetFullName(), parameters, indexType);
         }
-        
+
         public Task<IPerperStream> StreamFunctionAsync(MethodInfo method, object parameters)
         {
             return StreamFunctionAsync(method.GetFullName(), parameters);
         }
 
-        public Task<IPerperStream> StreamFunctionAsync(string streamName, Type type, object parameters)
-        {
-            return StreamFunctionAsync(streamName, type.GetFunctionMethod(), parameters);
-        }
-
-        public Task<IPerperStream> StreamFunctionAsync(string streamName, Type type, object parameters, Type indexType = null)
+        public Task<IPerperStream> StreamFunctionAsync(string streamName, Type type, object parameters, Type? indexType = null)
         {
             return StreamFunctionAsync(streamName, type.GetFunctionMethod(), parameters, indexType);
         }
@@ -135,7 +135,7 @@ namespace Perper.WebJobs.Extensions.Model
             var data = _context.GetData(StreamName);
             return await data.StreamActionAsync(streamName, delegateName, parameters);
         }
-        
+
         public async Task<IPerperStream> StreamActionAsync(string name, object parameters)
         {
             var data = _context.GetData(StreamName);
@@ -146,7 +146,7 @@ namespace Perper.WebJobs.Extensions.Model
         {
             return StreamActionAsync(streamName, method.GetFullName(), parameters);
         }
-        
+
         public Task<IPerperStream> StreamActionAsync(MethodInfo method, object parameters)
         {
             return StreamActionAsync(method.GetFullName(), parameters);
@@ -156,12 +156,12 @@ namespace Perper.WebJobs.Extensions.Model
         {
             return StreamActionAsync(streamName, type.GetFunctionMethod(), parameters);
         }
-        
+
         public Task<IPerperStream> StreamActionAsync(Type type, object parameters)
         {
             return StreamActionAsync(type.GetFunctionMethod(), parameters);
         }
-        
+
         public async Task<IPerperStream> StreamActionAsync(IPerperStream declaration, object parameters)
         {
             var data = _context.GetData(StreamName);
@@ -173,7 +173,7 @@ namespace Perper.WebJobs.Extensions.Model
         public async Task<T> CallWorkerAsync<T>(string name, object parameters, CancellationToken cancellationToken)
         {
             var data = _context.GetData(StreamName);
-            var workerName = await data.CallWorkerAsync(GenerateName(name), name, parameters);
+            var workerName = await data.CallWorkerAsync(GenerateName(name), name, DelegateName, parameters);
             var notifications = _context.GetNotifications(DelegateName);
             await foreach (var _ in notifications.WorkerResultSubmissions(StreamName, workerName, cancellationToken))
             {
@@ -193,7 +193,7 @@ namespace Perper.WebJobs.Extensions.Model
             return CallWorkerAsync<T>(type.GetFunctionMethod(), parameters, cancellationToken);
         }
         #endregion
-        
+
         public Task BindOutput(CancellationToken cancellationToken)
         {
             return BindOutput(new IPerperStream[] { }, cancellationToken);
@@ -209,18 +209,18 @@ namespace Perper.WebJobs.Extensions.Model
             await RebindOutput(streams);
 
             var tcs = new TaskCompletionSource<bool>();
-            await using (cancellationToken.Register(s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
+            await using (cancellationToken.Register(() => tcs.TrySetResult(true)))
             {
                 await tcs.Task.ConfigureAwait(false);
-            }    
+            }
         }
-        
+
         public async Task RebindOutput(IEnumerable<IPerperStream> streams)
         {
             var data = _context.GetData(StreamName);
             await data.BindStreamOutputAsync(streams);
         }
-        
+
         private static string GenerateName(string delegateName)
         {
             return $"{delegateName.Replace("'", "").Replace(",", "")}-{Guid.NewGuid().ToString()}";

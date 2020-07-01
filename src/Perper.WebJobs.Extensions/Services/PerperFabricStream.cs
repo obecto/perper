@@ -1,28 +1,37 @@
 using System;
 using System.Threading.Tasks;
-using Apache.Ignite.Core.Client;
-using Perper.Protocol.Cache;
 using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Services
 {
     public class PerperFabricStream : IPerperStream
     {
-        public StreamData StreamData { get; }
+        public string StreamName { get; }
 
-        private readonly IIgniteClient _igniteClient;
+        public bool Subscribed { get; }
 
-        public PerperFabricStream(StreamData streamData, IIgniteClient igniteClient)
+        public string DeclaredDelegate { get; }
+
+        [NonSerialized]
+        private Func<Task>? _dispose;
+
+        public PerperFabricStream(string streamName, bool subscribed = false, string declaredDelegate = "", Func<Task>? dispose = null)
         {
-            StreamData = streamData;
+            StreamName = streamName;
+            Subscribed = subscribed;
+            DeclaredDelegate = declaredDelegate;
 
-            _igniteClient = igniteClient;
+            _dispose = dispose;
         }
 
-        public async ValueTask DisposeAsync()
+        public IPerperStream Subscribe()
         {
-            var streamsCache = _igniteClient.GetCache<string, StreamData>("streams");
-            await streamsCache.RemoveAsync(StreamData.Name);
+            return new PerperFabricStream(StreamName, true);
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            return _dispose == null ? default : new ValueTask(_dispose());
         }
     }
 }

@@ -12,7 +12,7 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("Consumer")]
         public static async Task RunAsync([PerperStreamTrigger] PerperStreamContext context,
-            [PerperStream("processor")] IAsyncEnumerable<object> processor,
+            [Perper("processor")] IAsyncEnumerable<object> processor,
             ILogger logger, CancellationToken cancellationToken)
         {
             await foreach (var data in processor.WithCancellation(cancellationToken))

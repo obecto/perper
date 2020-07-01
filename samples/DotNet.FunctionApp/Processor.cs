@@ -1,12 +1,8 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Ignite.Linq;
 using DotNet.FunctionApp.Model;
-using Microsoft.AspNetCore.Mvc.Internal;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Config;
@@ -18,9 +14,9 @@ namespace DotNet.FunctionApp
     {
         [FunctionName("Processor")]
         public static async Task RunAsync([PerperStreamTrigger] PerperStreamContext context,
-            [PerperStream("generator")] IAsyncEnumerable<Data> generator,
+            [Perper("generator")] IAsyncEnumerable<Data> generator,
             [Perper("multiplier")] int multiplier,
-            [PerperStream("output")] IAsyncCollector<Data> output,
+            [Perper("output")] IAsyncCollector<Data> output,
             ILogger logger, CancellationToken cancellationToken)
         {
             var state = await context.FetchStateAsync<List<int>>() ?? new List<int>();
