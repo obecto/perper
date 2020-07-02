@@ -31,7 +31,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public IPerperStream DeclareStream(string streamName, string delegateName)
         {
-            return new PerperFabricStream(streamName, true, delegateName, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
+            return new PerperFabricStream(streamName, false, delegateName, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
         }
 
         public async Task<IPerperStream> StreamFunctionAsync(string streamName, string delegateName, object parameters, Type? indexType = null)
