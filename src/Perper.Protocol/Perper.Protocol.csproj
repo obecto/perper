@@ -4,7 +4,7 @@
         <TargetFramework>netcoreapp3.1</TargetFramework>
         <Nullable>enable</Nullable>
         <LangVersion>8</LangVersion>
-        <PackageVersion>0.3.3</PackageVersion>
+        <PackageVersion>0.3.4</PackageVersion>
         <Title>Perper Protocol</Title>
         <Authors>Obecto EOOD</Authors>
         <PackageProjectUrl>https://github.com/obecto/perper</PackageProjectUrl>
@@ -15,9 +15,14 @@
     </PropertyGroup>
 
     <PropertyGroup>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
+    </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="Apache.Ignite" Version="2.7.6" />
