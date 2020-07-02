@@ -10,8 +10,8 @@ namespace DotNet.FunctionApp
     public static class Launcher
     {
         [FunctionName("Launcher")]
-        public static async Task RunAsync([PerperStreamTrigger(RunOnStartup = true)]
-            PerperStreamContext context,
+        public static async Task RunAsync([PerperModuleTrigger(RunOnStartup = true)]
+            PerperModuleContext context,
             CancellationToken cancellationToken)
         {
             await using var multiGenerator =
