@@ -15,11 +15,9 @@ namespace DotNet.FunctionApp
             CancellationToken cancellationToken)
         {
             await using var multiGenerator =
-                await context.StreamFunctionAsync("NamedGeneratorGenerator", typeof(GeneratorGenerator), new {count = 2});
-            await using var multiProcessor =
-                await context.StreamFunctionAsync("NamedMultiProcessor", typeof(MultiProcessor), new {generators = multiGenerator.Subscribe()});
+                await context.StreamFunctionAsync("NamedGeneratorGenerator", typeof(GeneratorGenerator), new {count = 40});
             await using var coallator =
-                await context.StreamActionAsync("NamedCoallator", typeof(Coallator), new {inputs = multiProcessor.Subscribe()});
+                await context.StreamFunctionAsync("NamedCoallator", typeof(Coallator), new {inputs = multiGenerator.Subscribe()});
             await using var consumer =
                 await context.StreamActionAsync("NamedPassthroughConsumer", typeof(PassthroughConsumer), new {processor = coallator});
 

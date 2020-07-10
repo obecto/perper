@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
@@ -21,9 +22,10 @@ namespace Perper.Fabric.Streams
         [InstanceResource] private IIgnite _ignite;
 
         [NonSerialized] private Stream _stream;
-
+        [NonSerialized] private Channel<StreamData> _streamUpdates;
+        
         [NonSerialized] private TransportService _transportService;
-
+        
         [NonSerialized] private Task _task;
         [NonSerialized] private CancellationTokenSource _cancellationTokenSource;
 
@@ -31,8 +33,10 @@ namespace Perper.Fabric.Streams
         {
             var streamsCache = _ignite.GetCache<string, StreamData>("streams");
             _stream = new Stream(streamsCache[StreamName], _ignite);
-
+            _streamUpdates = Channel.CreateUnbounded<StreamData>();
+            
             _transportService = _ignite.GetServices().GetService<TransportService>(nameof(TransportService));
+            
         }
 
         public void Execute(IServiceContext context)
@@ -44,31 +48,11 @@ namespace Perper.Fabric.Streams
                 await InvokeAsync();
                 await Task.WhenAll(new[]
                 {
-                    ReInvokeAsync(cancellationToken),
                     InvokeWorkerAsync(cancellationToken), 
-                    BindOutputAsync(cancellationToken)
+                    UpdateStreamAsync(cancellationToken)
                 }.Union(
                     _stream.GetInputStreams().Select(inputStream => EngageAsync(inputStream, cancellationToken))));
             }, cancellationToken);
-        }
-
-        private async Task ReInvokeAsync(CancellationToken cancellationToken)
-        {
-            var streamsCache = _ignite.GetCache<string, StreamData>("streams");
-            await foreach (var streams in streamsCache.QueryContinuousAsync(_stream.StreamData.Name, cancellationToken))
-            {
-                var (_, stream) = streams.Last();
-                if (stream.LastModified > _stream.StreamData.LastModified)
-                {
-                    await _transportService.SendAsync(new Notification
-                    {
-                        Type = NotificationType.StreamTrigger,
-                        Stream = _stream.StreamData.Name,
-                        Delegate = _stream.StreamData.Delegate
-                    });
-                }
-                _stream.StreamData.LastModified = stream.LastModified;
-            }
         }
 
         public void Cancel(IServiceContext context)
@@ -77,6 +61,11 @@ namespace Perper.Fabric.Streams
             _task.Wait();
         }
 
+        public async Task UpdateStreamAsync(StreamData streamData)
+        {
+            await _streamUpdates.Writer.WriteAsync(streamData);
+        }
+        
         private async ValueTask InvokeAsync()
         {
             await _transportService.SendAsync(new Notification
@@ -119,51 +108,35 @@ namespace Perper.Fabric.Streams
             }
         }
 
-        private async Task BindOutputAsync(CancellationToken cancellationToken)
+        private async Task UpdateStreamAsync(CancellationToken cancellationToken)
         {
             var streamsCache = _ignite.GetCache<string, StreamData>("streams");
-            var streamName = _stream.StreamData.Name;
-            var itemsCache = _ignite.GetOrCreateBinaryCache<long>(streamName);
-            var outputStreams = new Dictionary<string, Stream>();
-            var deployments = new List<IAsyncDisposable>();
+            var itemsCache = _ignite.GetOrCreateBinaryCache<long>(_stream.StreamData.Name);
+            var outputStreamNames = new HashSet<string>();
             var listenTasks = new List<Task>();
-            try
+
+            await foreach (var streamData in _streamUpdates.Reader.ReadAllAsync(cancellationToken))
             {
-                await foreach (var streams in streamsCache.QueryContinuousAsync(streamName, cancellationToken))
+                if (streamData.LastModified > _stream.StreamData.LastModified)
                 {
-                    var (_, streamObject) = streams.Single();
-                    if (streamObject.StreamParams.TryGetValue("$return", out var outputStreamNames))
+                    _stream.StreamData.LastModified = streamData.LastModified;
+                    await _transportService.SendAsync(new Notification
                     {
-                        var newOutputStreams = new List<Stream>();
-                        foreach (var outputStreamName in outputStreamNames)
-                        {
-                            var outputStream = new Stream(streamsCache[outputStreamName], _ignite);
-
-                            if (outputStreams.TryAdd(outputStreamName, outputStream))
-                            {
-                                var outputStreamServiceDeployment = new StreamServiceDeployment(outputStreamName, _ignite);
-                                await outputStreamServiceDeployment.DeployAsync();
-
-                                deployments.Add(outputStreamServiceDeployment);
-                                newOutputStreams.Add(outputStream);
-                            }
-                        }
-
-                        listenTasks.AddRange(newOutputStreams.Select(stream =>
-                        {
-                            return stream.ListenAsync(cancellationToken).ForEachAsync(
-                                async items =>
-                                {
-                                    await itemsCache.PutAllAsync(items);
-                                }, cancellationToken);
-                        }));
-                    }
+                        Type = NotificationType.StreamTrigger,
+                        Stream = _stream.StreamData.Name,
+                        Delegate = _stream.StreamData.Delegate
+                    });
                 }
+                else if (streamData.StreamParams.TryGetValue("$return", out var names))
+                {
+                    listenTasks.AddRange(
+                        from name in names
+                        where outputStreamNames.Add(name)
+                        select new Stream(streamsCache[name], _ignite).ListenAsync(cancellationToken).ForEachAsync(
+                            async items => { await itemsCache.PutAllAsync(items); }, cancellationToken));
+                }
+
                 await Task.WhenAll(listenTasks);
-            }
-            finally
-            {
-                await Task.WhenAll(deployments.Select(d => d.DisposeAsync().AsTask()));
             }
         }
 
@@ -176,7 +149,7 @@ namespace Perper.Fabric.Streams
                 var itemStreamName = parameterStream.StreamData.Name;
                 return parameterStream.ListenAsync(cancellationToken).ForEachAsync(async items =>
                 {
-                    foreach (var (itemKey, item) in items)
+                    foreach (var (itemKey, _) in items)
                     {
                         await _transportService.SendAsync(new Notification
                         {

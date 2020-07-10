@@ -5,11 +5,9 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
-using Apache.Ignite.Core.Log;
 using Perper.Fabric.Streams;
 using Perper.Fabric.Transport;
 using Perper.Protocol.Cache;
-using LogLevel = Apache.Ignite.Core.Log.LogLevel;
 
 namespace Perper.Fabric
 {
@@ -37,8 +35,7 @@ namespace Perper.Fabric
             {
                 tasks.AddRange(
                     from streamTuple in streamTuples
-                    where streamTuple.Item2.DelegateType == StreamDelegateType.Action
-                    select new Stream(streamTuple.Item2, ignite).ActivateAsync(cancellationToken));
+                    select new Stream(streamTuple.Item2, ignite).UpdateAsync(cancellationToken));
             }
 
             await Task.WhenAll(tasks);

@@ -4,7 +4,7 @@
         <TargetFramework>netcoreapp3.1</TargetFramework>
         <Nullable>enable</Nullable>
         <LangVersion>8</LangVersion>
-        <PackageVersion>0.3.4</PackageVersion>
+        <PackageVersion>0.3.5</PackageVersion>
         <Title>Perper Protocol</Title>
         <Authors>Obecto EOOD</Authors>
         <PackageProjectUrl>https://github.com/obecto/perper</PackageProjectUrl>
@@ -25,7 +25,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Apache.Ignite" Version="2.7.6" />
+      <PackageReference Include="Apache.Ignite" Version="2.8.1" />
     </ItemGroup>
 
 </Project>
