@@ -135,9 +135,8 @@ namespace Perper.Fabric.Streams
                         select new Stream(streamsCache[name], _ignite).ListenAsync(cancellationToken).ForEachAsync(
                             async items => { await itemsCache.PutAllAsync(items); }, cancellationToken));
                 }
-
-                await Task.WhenAll(listenTasks);
             }
+            await Task.WhenAll(listenTasks);
         }
 
         private async Task EngageAsync((string, IEnumerable<Stream>) inputStreams, CancellationToken cancellationToken)

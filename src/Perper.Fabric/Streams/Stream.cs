@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
+using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Cache;
 using Apache.Ignite.Core.Cache.Configuration;
 using Perper.Protocol.Cache;
@@ -38,9 +40,16 @@ namespace Perper.Fabric.Streams
         public async Task UpdateAsync(CancellationToken cancellationToken)
         {
             await using var deployment = new StreamServiceDeployment(StreamData.Name, _ignite);
-            await deployment.UpdateAsync(StreamData, StreamData.DelegateType == StreamDelegateType.Action);
-
-            await Task.Delay(Timeout.Infinite, cancellationToken);
+            var streamService = deployment.GetService();
+            if (streamService != null)
+            {
+                await streamService.UpdateStreamAsync(StreamData);
+            }
+            else if (StreamData.DelegateType == StreamDelegateType.Action)
+            {
+                await deployment.DeployAsync();
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+            }
         }
 
         public async IAsyncEnumerable<IEnumerable<(long, object)>> ListenAsync(

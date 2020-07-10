@@ -2,7 +2,6 @@ using System;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.DataStructures;
-using Perper.Protocol.Cache;
 
 namespace Perper.Fabric.Streams
 {
@@ -11,12 +10,14 @@ namespace Perper.Fabric.Streams
         private readonly string _name;
         private readonly IIgnite _ignite;
         
-        private IAtomicReference<string> _refCountNameReference;
+        private IAtomicReference<string>? _refCountNameReference;
 
         public StreamServiceDeployment(string name, IIgnite ignite)
         {
             _name = name;
             _ignite = ignite;
+
+            _refCountNameReference = null;
         }
 
         public async ValueTask DeployAsync()
@@ -63,26 +64,10 @@ namespace Perper.Fabric.Streams
             }
         }
 
-        public async Task UpdateAsync(StreamData streamData, bool forceDeploy)
+        public StreamService? GetService()
         {
-            _refCountNameReference ??= _ignite.GetAtomicReference(_name, string.Empty, false);
-            if (_refCountNameReference != null)
-            {
-                var refCountName = _refCountNameReference.Read();
-                var streamService = _ignite.GetServices().GetService<StreamService>(refCountName);
-                if (streamService != null)
-                {
-                    await streamService.UpdateStreamAsync(streamData);
-                }
-                else if (forceDeploy)
-                {
-                    await DeployAsync(refCountName);
-                }
-            }
-            else if (forceDeploy)
-            {
-                await DeployAsync();
-            }
+            var refCountNameReference = _ignite.GetAtomicReference(_name, string.Empty, false);
+            return refCountNameReference == null ? null : _ignite.GetServices().GetService<StreamService>(refCountNameReference.Read());
         }
 
         public async ValueTask DisposeAsync()
