@@ -21,9 +21,9 @@ RUN dotnet_version=3.1.0 \
     && ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
 
 # Install Apache Ignite  
-RUN ignite_version=2.7.6 \
+RUN ignite_version=2.8.1 \
     && curl -SL --output ignite.zip https://archive.apache.org/dist/ignite/$ignite_version/apache-ignite-$ignite_version-bin.zip \
-    && ignite_sha512='1cb8480ffe7571aaf99bcafe15cef3b03c8678e0862b7bb4f5b60b4571e358f2e267b9c85481bf345ba66fb7d5d6b71d4e48f9c3855b0244812d6a4405276a8f' \
+    && ignite_sha512='668377f8160633501506d7480784357a3831a8666335dd6c76d041198e76eb602a9c962071b4f92453d3a5662b4da6af8a498740a7a97f8d79ca9e465fcc8905' \
     && echo "$ignite_sha512 ignite.zip" | sha512sum -c - \
     && mkdir -p /usr/share \
     && unzip ignite.zip -d /usr/share \
