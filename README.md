@@ -5,7 +5,7 @@ Stream-based, horizontally scalable framework for asynchronous data
 processing, built on top of [Apache Ignite](https://ignite.apache.org/) 
 and [Azure Functions Host](https://github.com/Azure/azure-functions-host).
 
-**Check the [Apocryph](https://github.com/comrade-coop/apocryph) blockchain project as a use case of the Peper framework.**
+**Check the [Apocryph](https://github.com/comrade-coop/apocryph) blockchain project as a use case of the Perper framework.**
 
 ## Overview
 
