@@ -43,13 +43,14 @@ namespace Perper.WebJobs.Extensions.Bindings
                 }
             }
 
+            var data = _context.GetData(_attribute.Stream);
             if (Type.IsGenericType && Type.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>))
             {
                 var streamType = typeof(PerperStreamAsyncEnumerable<>).MakeGenericType(Type.GenericTypeArguments[0]);
-                return Activator.CreateInstance(streamType, _attribute.Stream, _attribute.Delegate, _attribute.Parameter, _context)!;
+                return Activator.CreateInstance(streamType, _attribute.Stream, _attribute.Delegate, 
+                    _attribute.Parameter, await data.FetchStreamParameterStreamNameAsync(_attribute.Parameter), _context)!;
             }
-
-            var data = _context.GetData(_attribute.Stream);
+            
             var result = _attribute.TriggerAttribute switch
             {
                 nameof(PerperStreamTriggerAttribute) => await data.FetchStreamParameterAsync<object>(_attribute

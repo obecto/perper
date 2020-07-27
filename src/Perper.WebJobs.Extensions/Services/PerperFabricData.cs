@@ -95,6 +95,14 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
+        
+        public async Task<string> FetchStreamParameterStreamNameAsync(string name)
+        {
+            var streamsCacheClient = _igniteClient.GetCache<string, StreamData>("streams");
+            var streamObject = await streamsCacheClient.GetAsync(_streamName);
+            return streamObject.StreamParams[name].Single();
+        }
+        
         public async Task<T> FetchStreamParameterAsync<T>(string name)
         {
             var streamsCacheClient = _igniteClient.GetCache<string, StreamData>("streams");

@@ -13,16 +13,18 @@ namespace Perper.WebJobs.Extensions.Bindings
         private readonly string _streamName;
         private readonly string _delegateName;
         private readonly string _parameterName;
+        private readonly string _parameterStreamName;
         private readonly IPerperFabricContext _context;
 
         private readonly IAsyncEnumerable<T> _impl;
 
-        public PerperStreamAsyncEnumerable(string streamName, string delegateName, string parameterName,
-            IPerperFabricContext context)
+        public PerperStreamAsyncEnumerable(string streamName, string delegateName, 
+            string parameterName, string parameterStreamName, IPerperFabricContext context)
         {
             _streamName = streamName;
             _delegateName = delegateName;
             _parameterName = parameterName;
+            _parameterStreamName = parameterStreamName;
             _context = context;
 
             _impl = Impl();
@@ -35,7 +37,7 @@ namespace Perper.WebJobs.Extensions.Bindings
 
         public string GetStreamName()
         {
-            return _streamName;
+            return _parameterStreamName;
         }
 
         private async IAsyncEnumerable<T> Impl([EnumeratorCancellation] CancellationToken cancellationToken = default)
