@@ -2,13 +2,16 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
+using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -23,7 +26,7 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly ILogger<PerperFabricContext> _logger;
         private readonly string _igniteHost;
 
-        private readonly IIgniteClient _igniteClient;
+        private IIgniteClient _igniteClient;
         
         private readonly Dictionary<string, Dictionary<(NotificationType, string, string), (Type, Channel<Notification>)>> _channels;
 
@@ -37,11 +40,6 @@ namespace Perper.WebJobs.Extensions.Services
         {
             _logger = logger;
             _igniteHost = configOptions.Value.Host ?? IPAddress.Loopback.ToString();
-
-            _igniteClient = Ignition.StartClient(new IgniteClientConfiguration
-            {
-                Endpoints = new List<string> {_igniteHost}
-            });
 
             _channels = new Dictionary<string, Dictionary<(NotificationType, string, string), (Type, Channel<Notification>)>>();
 
@@ -102,6 +100,18 @@ namespace Perper.WebJobs.Extensions.Services
 
         public PerperFabricNotifications GetNotifications(string delegateName)
         {
+            _igniteClient ??= Ignition.StartClient(new IgniteClientConfiguration
+            {
+                Endpoints = new List<string> {_igniteHost},
+                BinaryConfiguration = new BinaryConfiguration
+                {
+                    TypeConfigurations = GetDataTypes().Select(type => new BinaryTypeConfiguration(type)
+                    {
+                        Serializer = new BinaryReflectiveSerializer {ForceTimestamp = true}
+                    }).ToList()
+                }
+            });
+
             if (_notificationsCache.TryGetValue(delegateName, out var result)) return result;
 
             result = new PerperFabricNotifications(delegateName, this);
@@ -141,6 +151,16 @@ namespace Perper.WebJobs.Extensions.Services
                     _listenerCancellationTokenSource.Dispose();
                 }
             }
+        }
+
+        private static IEnumerable<Type> GetDataTypes()
+        {
+            return
+                from assembly in AppDomain.CurrentDomain.GetAssemblies()
+                where assembly.GetCustomAttributes<PerperDataAttribute>().Any()
+                from type in assembly.GetTypes()
+                where type.GetCustomAttributes<PerperDataAttribute>().Any()
+                select type;
         }
 
         private static bool TryParseMessage(ref ReadOnlySequence<byte> buffer, out Notification notification)
