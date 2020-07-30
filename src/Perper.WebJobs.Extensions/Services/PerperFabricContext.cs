@@ -26,7 +26,7 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly ILogger<PerperFabricContext> _logger;
         private readonly string _igniteHost;
 
-        private IIgniteClient _igniteClient;
+        private IIgniteClient? _igniteClient;
         
         private readonly Dictionary<string, Dictionary<(NotificationType, string, string), (Type, Channel<Notification>)>> _channels;
 
@@ -100,18 +100,6 @@ namespace Perper.WebJobs.Extensions.Services
 
         public PerperFabricNotifications GetNotifications(string delegateName)
         {
-            _igniteClient ??= Ignition.StartClient(new IgniteClientConfiguration
-            {
-                Endpoints = new List<string> {_igniteHost},
-                BinaryConfiguration = new BinaryConfiguration
-                {
-                    TypeConfigurations = GetDataTypes().Select(type => new BinaryTypeConfiguration(type)
-                    {
-                        Serializer = new BinaryReflectiveSerializer {ForceTimestamp = true}
-                    }).ToList()
-                }
-            });
-
             if (_notificationsCache.TryGetValue(delegateName, out var result)) return result;
 
             result = new PerperFabricNotifications(delegateName, this);
@@ -123,9 +111,25 @@ namespace Perper.WebJobs.Extensions.Services
         {
             if (_dataCache.TryGetValue(streamName, out var result)) return result;
 
-            result = new PerperFabricData(streamName, _igniteClient, _logger);
+            result = new PerperFabricData(streamName, GetIgniteClient(), _logger);
             _dataCache[streamName] = result;
             return result;
+        }
+
+        private IIgniteClient GetIgniteClient()
+        {
+            _igniteClient ??= Ignition.StartClient(new IgniteClientConfiguration
+            {
+                Endpoints = new List<string> {_igniteHost},
+                BinaryConfiguration = new BinaryConfiguration
+                {
+                    TypeConfigurations = GetDataTypes().Select(type => new BinaryTypeConfiguration(type)
+                    {
+                        Serializer = new BinaryReflectiveSerializer {ForceTimestamp = true}
+                    }).ToList()
+                }
+            });
+            return _igniteClient;
         }
 
         public Channel<Notification> CreateChannel(NotificationType notificationType, string delegateName,
@@ -213,7 +217,7 @@ namespace Perper.WebJobs.Extensions.Services
                 Type? parameterType = default;
                 if (notification.Type == NotificationType.StreamParameterItemUpdate)
                 {
-                    notification.ParameterStreamItem = await _igniteClient
+                    notification.ParameterStreamItem = await GetIgniteClient()
                         .GetCache<long, object>(notification.ParameterStream)
                         .GetAsync(notification.ParameterStreamItemKey);
                     parameterType = notification.ParameterStreamItem.GetType();
