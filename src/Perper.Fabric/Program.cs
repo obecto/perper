@@ -5,7 +5,6 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
-using Apache.Ignite.Core.Events;
 using Perper.Fabric.Streams;
 using Perper.Fabric.Transport;
 using Perper.Protocol.Cache;
@@ -21,10 +20,11 @@ namespace Perper.Fabric
 
             using var ignite = Ignition.Start(new IgniteConfiguration
             {
-                IgniteHome = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "C:\\Ignite" : "/usr/share/apache-ignite",
+                IgniteHome = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "C:\\Ignite" : "/usr/share/apache-ignite"
             });
 
             await ignite.GetServices().DeployNodeSingletonAsync(nameof(TransportService), new TransportService());
+            await ignite.GetServices().DeployNodeSingletonAsync(nameof(StreamService), new StreamService());
 
             var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
@@ -33,11 +33,11 @@ namespace Perper.Fabric
             var tasks = new List<Task>();
             var streams = ignite.GetOrCreateCache<string, StreamData>("streams");
 
-           await foreach (var streamTuples in streams.QueryContinuousAsync(cancellationToken))
+            await foreach (var streamTuples in streams.QueryContinuousAsync(cancellationToken))
             {
                 tasks.AddRange(
                     from streamTuple in streamTuples
-                    select new Stream(streamTuple.Item2, ignite).UpdateAsync(cancellationToken));
+                    select new Stream(streamTuple.Item2, ignite).UpdateAsync());
             }
 
             await Task.WhenAll(tasks);

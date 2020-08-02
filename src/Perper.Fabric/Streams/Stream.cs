@@ -1,13 +1,12 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
-using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Cache;
 using Apache.Ignite.Core.Cache.Configuration;
+using Apache.Ignite.Core.Cache.Event;
+using Apache.Ignite.Core.Cache.Query.Continuous;
+using Apache.Ignite.Core.Resource;
 using Perper.Protocol.Cache;
 
 namespace Perper.Fabric.Streams
@@ -37,39 +36,25 @@ namespace Perper.Fabric.Streams
             }
         }
 
-        public async Task UpdateAsync(CancellationToken cancellationToken)
+        public async Task UpdateAsync()
         {
-            await using var deployment = new StreamServiceDeployment(StreamData.Name, _ignite);
-            var streamService = deployment.GetService();
-            if (streamService != null)
+            if (StreamData.DelegateType == StreamDelegateType.Action)
             {
-                await streamService.UpdateStreamAsync(StreamData);
+                await EngageStreamAsync();
             }
-            else if (StreamData.DelegateType == StreamDelegateType.Action)
-            {
-                CreateCache();
-                
-                await deployment.DeployAsync();
-                await Task.Delay(Timeout.Infinite, cancellationToken);
-            }
+            await _ignite.GetServices().GetService<StreamService>(nameof(StreamService)).UpdateStreamAsync(this);
         }
 
-        public async IAsyncEnumerable<IEnumerable<(long, object)>> ListenAsync(
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public async Task EngageStreamAsync()
         {
-            var cache = CreateCache();
+            CreateCache();
+            await _ignite.GetServices().GetService<StreamService>(nameof(StreamService)).EngageStreamAsync(this);
+        }
 
-            await using var deployment = new StreamServiceDeployment(StreamData.Name, _ignite);
-            await deployment.DeployAsync();
+        private void CreateCache()
+        {
+            if (_ignite.GetCacheNames().Contains(StreamData.Name)) return;
             
-            await foreach (var items in cache.QueryContinuousAsync(cancellationToken))
-            {
-                yield return items;
-            }
-        }
-
-        private ICache<long, object> CreateCache()
-        {
             ICache<long, object>? cache;
             if (!string.IsNullOrEmpty(StreamData.IndexType) && StreamData.IndexFields != null &&
                 StreamData.IndexFields.Any())
@@ -90,7 +75,37 @@ namespace Perper.Fabric.Streams
                 cache = _ignite.CreateBinaryCache<long>(StreamData.Name);
             }
 
-            return cache;
+            //Dispose handle?
+            cache.QueryContinuous(new ContinuousQuery<long, object>(new EmptyListener())
+            {
+                Filter = new RemoteFilter(StreamData.Name)
+            });
+        }
+    }
+
+    public class EmptyListener : ICacheEntryEventListener<long, object>
+    {
+        public void OnEvent(IEnumerable<ICacheEntryEvent<long, object>> evts)
+        {
+        }
+    }
+
+    public class RemoteFilter : ICacheEntryEventFilter<long, object>
+    {
+        [InstanceResource] private IIgnite _ignite;
+        
+        private readonly string _stream;
+
+        public RemoteFilter(string stream)
+        {
+            _stream = stream;
+        }
+
+        public bool Evaluate(ICacheEntryEvent<long, object> evt)
+        {
+            _ignite.GetServices().GetService<StreamService>(nameof(StreamService))
+                .UpdateStreamItemAsync(_stream, evt.Key);
+            return false;
         }
     }
 }
