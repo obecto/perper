@@ -48,7 +48,6 @@ namespace Perper.Fabric.Streams
                 await InvokeAsync();
                 await Task.WhenAll(new[]
                 {
-                    InvokeWorkerAsync(cancellationToken), 
                     UpdateStreamAsync(cancellationToken)
                 }.Union(
                     _stream.GetInputStreams().Select(inputStream => EngageAsync(inputStream, cancellationToken))));
@@ -74,44 +73,17 @@ namespace Perper.Fabric.Streams
                 Stream = _stream.StreamData.Name,
                 Delegate = _stream.StreamData.Delegate
             });
-        }
-
-        private async Task InvokeWorkerAsync(CancellationToken cancellationToken)
-        {
-            var streamName = _stream.StreamData.Name;
-            var workersCache = _ignite.GetOrCreateCache<string, WorkerData>($"{streamName}_workers");
-            await foreach (var workers in workersCache.QueryContinuousAsync(cancellationToken))
+            
+            if (_stream.StreamData.Workers.Any())
             {
-                foreach (var (_, workerObject) in workers)
-                {
-                    if (workerObject.Params.HasField("$return"))
-                    {
-                        await _transportService.SendAsync(new Notification
-                        {
-                            Type = NotificationType.WorkerResult,
-                            Stream = streamName,
-                            Worker = workerObject.Name,
-                            Delegate = workerObject.Caller
-                        });
-                    }
-                    else
-                    {
-                        await _transportService.SendAsync(new Notification
-                        {
-                            Type = NotificationType.WorkerTrigger,
-                            Stream = streamName,
-                            Worker = workerObject.Name,
-                            Delegate = workerObject.Delegate
-                        });
-                    }
-                }
+                await InvokeWorker(_stream.StreamData);
             }
         }
 
         private async Task UpdateStreamAsync(CancellationToken cancellationToken)
         {
             var streamsCache = _ignite.GetCache<string, StreamData>("streams");
-            var itemsCache = _ignite.GetOrCreateBinaryCache<long>(_stream.StreamData.Name);
+            var itemsCache = _ignite.GetBinaryCache<long>(_stream.StreamData.Name);
             var outputStreamNames = new HashSet<string>();
             var listenTasks = new List<Task>();
 
@@ -135,8 +107,37 @@ namespace Perper.Fabric.Streams
                         select new Stream(streamsCache[name], _ignite).ListenAsync(cancellationToken).ForEachAsync(
                             async items => { await itemsCache.PutAllAsync(items); }, cancellationToken));
                 }
+                else if (streamData.Workers.Any())
+                {
+                    await InvokeWorker(streamData);
+                }
             }
             await Task.WhenAll(listenTasks);
+        }
+
+        private async Task InvokeWorker(StreamData streamData)
+        {
+            var workerObject = streamData.Workers.First().Value;
+            if (workerObject.Params.HasField("$return"))
+            {
+                await _transportService.SendAsync(new Notification
+                {
+                    Type = NotificationType.WorkerResult,
+                    Stream = _stream.StreamData.Name,
+                    Worker = workerObject.Name,
+                    Delegate = workerObject.Caller
+                });
+            }
+            else
+            {
+                await _transportService.SendAsync(new Notification
+                {
+                    Type = NotificationType.WorkerTrigger,
+                    Stream = _stream.StreamData.Name,
+                    Worker = workerObject.Name,
+                    Delegate = workerObject.Delegate
+                });
+            }
         }
 
         private async Task EngageAsync((string, IEnumerable<Stream>) inputStreams, CancellationToken cancellationToken)

@@ -18,6 +18,8 @@ namespace Perper.Protocol.Cache
         public string? IndexType { get; set; }
         public IEnumerable<KeyValuePair<string, string>>? IndexFields { get; set; }
 
+        public Dictionary<string, WorkerData> Workers { get; set; }
+
         public StreamData(string name, string delegateName, StreamDelegateType delegateType, IBinaryObject dataParams, Dictionary<string, string[]> streamParams, string? indexType = null, IEnumerable<KeyValuePair<string, string>>? indexFields = null)
         {
             Name = name;
@@ -27,6 +29,8 @@ namespace Perper.Protocol.Cache
             StreamParams = streamParams;
             IndexType = indexType;
             IndexFields = indexFields;
+
+            Workers = new Dictionary<string, WorkerData>();
         }
     }
 }

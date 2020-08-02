@@ -47,6 +47,8 @@ namespace Perper.Fabric.Streams
             }
             else if (StreamData.DelegateType == StreamDelegateType.Action)
             {
+                CreateCache();
+                
                 await deployment.DeployAsync();
                 await Task.Delay(Timeout.Infinite, cancellationToken);
             }
@@ -55,29 +57,40 @@ namespace Perper.Fabric.Streams
         public async IAsyncEnumerable<IEnumerable<(long, object)>> ListenAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            var cache = CreateCache();
+
             await using var deployment = new StreamServiceDeployment(StreamData.Name, _ignite);
             await deployment.DeployAsync();
-
-            ICache<long, object>? cache = null;
-            if (!string.IsNullOrEmpty(StreamData.IndexType) && StreamData.IndexFields != null && StreamData.IndexFields.Count() > 0)
-            {
-                QueryEntity queryEntity = new QueryEntity();
-                queryEntity.KeyType = typeof(long);
-                queryEntity.ValueTypeName = StreamData.IndexType;
-                queryEntity.Fields = StreamData.IndexFields.Select(item => new QueryField() { Name = item.Key, FieldTypeName = item.Value }).ToList();
-
-                CacheConfiguration cacheConfiguration = new CacheConfiguration(StreamData.Name, queryEntity);
-                cache = _ignite.GetOrCreateBinaryCache<long>(cacheConfiguration);
-            }
-            else
-            {
-                cache = _ignite.GetOrCreateBinaryCache<long>(StreamData.Name);
-            }
-
+            
             await foreach (var items in cache.QueryContinuousAsync(cancellationToken))
             {
                 yield return items;
             }
+        }
+
+        private ICache<long, object> CreateCache()
+        {
+            ICache<long, object>? cache;
+            if (!string.IsNullOrEmpty(StreamData.IndexType) && StreamData.IndexFields != null &&
+                StreamData.IndexFields.Any())
+            {
+                QueryEntity queryEntity = new QueryEntity
+                {
+                    KeyType = typeof(long),
+                    ValueTypeName = StreamData.IndexType,
+                    Fields = StreamData.IndexFields
+                        .Select(item => new QueryField {Name = item.Key, FieldTypeName = item.Value}).ToList()
+                };
+
+                CacheConfiguration cacheConfiguration = new CacheConfiguration(StreamData.Name, queryEntity);
+                cache = _ignite.CreateBinaryCache<long>(cacheConfiguration);
+            }
+            else
+            {
+                cache = _ignite.CreateBinaryCache<long>(StreamData.Name);
+            }
+
+            return cache;
         }
     }
 }

@@ -6,14 +6,19 @@ namespace Perper.Fabric
 {
     public static class IgniteExtensions
     {
-        public static ICache<T, object> GetOrCreateBinaryCache<T>(this IIgnite ignite, string name)
+        public static ICache<T, object> GetBinaryCache<T>(this IIgnite ignite, string name)
         {
-            return ignite.GetOrCreateCache<T, object>(name).WithKeepBinary<T, object>();
+            return ignite.GetCache<T, object>(name).WithKeepBinary<T, object>();
+        }
+        
+        public static ICache<T, object> CreateBinaryCache<T>(this IIgnite ignite, string name)
+        {
+            return ignite.CreateCache<T, object>(name).WithKeepBinary<T, object>();
         }
 
-        public static ICache<T, object> GetOrCreateBinaryCache<T>(this IIgnite ignite, CacheConfiguration cacheConfiguration)
+        public static ICache<T, object> CreateBinaryCache<T>(this IIgnite ignite, CacheConfiguration cacheConfiguration)
         {
-            return ignite.GetOrCreateCache<T, object>(cacheConfiguration).WithKeepBinary<T, object>();
+            return ignite.CreateCache<T, object>(cacheConfiguration).WithKeepBinary<T, object>();
         }
     }
 }

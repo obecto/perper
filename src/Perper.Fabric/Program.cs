@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
+using Apache.Ignite.Core.Events;
 using Perper.Fabric.Streams;
 using Perper.Fabric.Transport;
 using Perper.Protocol.Cache;
@@ -31,7 +32,8 @@ namespace Perper.Fabric
 
             var tasks = new List<Task>();
             var streams = ignite.GetOrCreateCache<string, StreamData>("streams");
-            await foreach (var streamTuples in streams.QueryContinuousAsync(cancellationToken))
+
+           await foreach (var streamTuples in streams.QueryContinuousAsync(cancellationToken))
             {
                 tasks.AddRange(
                     from streamTuple in streamTuples

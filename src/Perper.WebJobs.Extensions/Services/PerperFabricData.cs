@@ -149,16 +149,21 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task<string> CallWorkerAsync(string workerName, string delegateName, string caller, object parameters)
         {
+            var streamsCacheClient = _igniteClient.GetCache<string, StreamData>("streams");
+            var streamObject = await streamsCacheClient.GetAsync(_streamName);
+            
             var workerObject = new WorkerData(workerName, delegateName, caller, CreateDelegateParameters(parameters).Item1);
-            var workersCache = _igniteClient.GetOrCreateCache<string, WorkerData>($"{_streamName}_workers");
-            await workersCache.PutAsync(workerObject.Name, workerObject);
+            streamObject.Workers[workerObject.Name] = workerObject;
+            
+            await streamsCacheClient.ReplaceAsync(_streamName, streamObject);
             return workerObject.Name;
         }
 
         public async Task<T> FetchWorkerParameterAsync<T>(string workerName, string name)
         {
-            var workersCache = _igniteClient.GetCache<string, WorkerData>($"{_streamName}_workers");
-            var workerObject = await workersCache.GetAsync(workerName);
+            var streamsCacheClient = _igniteClient.GetCache<string, StreamData>("streams");
+            var streamObject = await streamsCacheClient.GetAsync(_streamName);
+            var workerObject = streamObject.Workers[workerName];
             var field = workerObject.Params.GetField<object>(name);
 
             if (field is IBinaryObject binaryObject)
@@ -171,17 +176,21 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task SubmitWorkerResultAsync<T>(string workerName, T value)
         {
-            var workersCache = _igniteClient.GetCache<string, WorkerData>($"{_streamName}_workers");
-            var workerObject = await workersCache.GetAsync(workerName);
+            var streamsCacheClient = _igniteClient.GetCache<string, StreamData>("streams");
+            var streamObject = await streamsCacheClient.GetAsync(_streamName);
+            var workerObject = streamObject.Workers[workerName];
             workerObject.Params = workerObject.Params.ToBuilder().SetField("$return", value).Build();
-            await workersCache.ReplaceAsync(workerName, workerObject);
+            await streamsCacheClient.ReplaceAsync(_streamName, streamObject);
         }
 
         public async Task<T> ReceiveWorkerResultAsync<T>(string workerName)
         {
-            var workersCache = _igniteClient.GetCache<string, WorkerData>($"{_streamName}_workers");
-            var workerObject = await workersCache.GetAndRemoveAsync(workerName);
-            var field = workerObject.Value.Params.GetField<object>("$return");
+            var streamsCacheClient = _igniteClient.GetCache<string, StreamData>("streams");
+            var streamObject = await streamsCacheClient.GetAsync(_streamName);
+            streamObject.Workers.Remove(workerName, out var workerObject);
+            await streamsCacheClient.ReplaceAsync(_streamName, streamObject);
+            
+            var field = workerObject!.Params.GetField<object>("$return");
             if (field is IBinaryObject binaryObject)
             {
                 return binaryObject.Deserialize<T>();
