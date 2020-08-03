@@ -23,6 +23,8 @@ namespace Perper.Fabric.Streams
         [NonSerialized] private IDictionary<string, IList<(string, Stream)>> _liveStreamGraph;
         [NonSerialized] private Channel<(string, long)> _streamItemsUpdates;
         
+        [NonSerialized] private HashSet<string> _liveWorkers;
+        
         [NonSerialized] private TransportService _transportService;
         
         [NonSerialized] private Task _task;
@@ -33,6 +35,8 @@ namespace Perper.Fabric.Streams
             _liveStreams = new Dictionary<string, Stream>();
             _liveStreamGraph = new Dictionary<string, IList<(string, Stream)>>();
             _streamItemsUpdates = Channel.CreateUnbounded<(string, long)>();
+
+            _liveWorkers = new HashSet<string>();
             
             _transportService = _ignite.GetServices().GetService<TransportService>(nameof(TransportService));
         }
@@ -148,26 +152,30 @@ namespace Perper.Fabric.Streams
         
         private async Task InvokeWorker(StreamData streamData)
         {
-            var workerObject = streamData.Workers.First().Value;
-            if (workerObject.Params.HasField("$return"))
+            foreach (var workerObject in streamData.Workers.Values)
             {
-                await _transportService.SendAsync(new Notification
+                if (workerObject.Params.HasField("$return") && _liveWorkers.Contains(workerObject.Name))
                 {
-                    Type = NotificationType.WorkerResult,
-                    Stream = streamData.Name,
-                    Worker = workerObject.Name,
-                    Delegate = workerObject.Caller
-                });
-            }
-            else
-            {
-                await _transportService.SendAsync(new Notification
+                    _liveWorkers.Remove(workerObject.Name);
+                    await _transportService.SendAsync(new Notification
+                    {
+                        Type = NotificationType.WorkerResult,
+                        Stream = streamData.Name,
+                        Worker = workerObject.Name,
+                        Delegate = workerObject.Caller
+                    });
+                }
+                else if (!workerObject.Params.HasField("$return") && !_liveWorkers.Contains(workerObject.Name))
                 {
-                    Type = NotificationType.WorkerTrigger,
-                    Stream = streamData.Name,
-                    Worker = workerObject.Name,
-                    Delegate = workerObject.Delegate
-                });
+                    _liveWorkers.Add(workerObject.Name);
+                    await _transportService.SendAsync(new Notification
+                    {
+                        Type = NotificationType.WorkerTrigger,
+                        Stream = streamData.Name,
+                        Worker = workerObject.Name,
+                        Delegate = workerObject.Delegate
+                    });
+                }
             }
         }
     }
