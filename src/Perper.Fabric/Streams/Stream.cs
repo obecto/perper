@@ -40,7 +40,7 @@ namespace Perper.Fabric.Streams
         {
             if (StreamData.DelegateType == StreamDelegateType.Action)
             {
-                await EngageStreamAsync();
+                await _ignite.GetServices().GetService<StreamService>(nameof(StreamService)).EngageStreamAsync(this);
             }
             await _ignite.GetServices().GetService<StreamService>(nameof(StreamService)).UpdateStreamAsync(this);
         }
