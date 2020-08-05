@@ -75,11 +75,15 @@ namespace Perper.Fabric.Streams
                 cache = _ignite.CreateBinaryCache<long>(StreamData.Name);
             }
 
-            //Dispose handle?
-            cache.QueryContinuous(new ContinuousQuery<long, object>(new EmptyListener())
+            // Consider alternative implementation
+            if (_ignite.GetAtomicLong($"{StreamData.Name}_Query", 0, true).CompareExchange(1, 0) == 0)
             {
-                Filter = new RemoteFilter(StreamData.Name)
-            });
+                //Dispose handle?
+                cache.QueryContinuous(new ContinuousQuery<long, object>(new EmptyListener())
+                {
+                    Filter = new RemoteFilter(StreamData.Name)
+                });
+            }
         }
     }
 
