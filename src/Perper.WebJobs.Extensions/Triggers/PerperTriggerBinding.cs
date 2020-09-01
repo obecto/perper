@@ -41,7 +41,7 @@ namespace Perper.WebJobs.Extensions.Triggers
                 PerperWorkerTriggerAttribute workerAttribute => new PerperWorkerListener(workerAttribute,
                     context.Descriptor.FullName, _workerTriggerValueConverter, context.Executor, _fabricContext),
                 PerperModuleTriggerAttribute moduleAttribute => new PerperModuleListener(moduleAttribute,
-                    context.Descriptor.ShortName, context.Executor, _fabricContext),
+                    context.Descriptor.FullName, context.Executor, _fabricContext),
                 _ => throw new ArgumentException()
             });
         }

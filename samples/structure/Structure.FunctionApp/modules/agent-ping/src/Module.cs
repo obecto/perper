@@ -6,13 +6,12 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Config;
 using Perper.WebJobs.Extensions.Model;
-using StructureLib;
 
 namespace AgentPing
 {
     public class Module
     {
-        [FunctionName(Modules.AgentPing)]
+        [FunctionName(nameof(Module))]
         [return: Perper("$return")]
         public async Task<IPerperStream> StartAsync(
             [PerperModuleTrigger] PerperModuleContext context,

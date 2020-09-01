@@ -17,6 +17,5 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\..\..\src\Perper.WebJobs.Extensions\Perper.WebJobs.Extensions.csproj" />
-    <ProjectReference Include="..\..\..\..\StructureLib\StructureLib.csproj" />
   </ItemGroup>
 </Project>
