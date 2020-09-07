@@ -1,8 +1,6 @@
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Config;
 using Perper.WebJobs.Extensions.Model;
@@ -21,10 +19,10 @@ namespace Structure
             logger.LogInformation("Started Perper Structure sample application...");
 
             var pingInputStream = context.DeclareStream(typeof(InputProviderStream));
-            var pingOutputStream = await context.StartChildModuleAsync("ping", pingInputStream, cancellationToken);
+            var pingOutputStream = await context.StartChildModuleAsync<IPerperStream>("ping", new {input = pingInputStream}, cancellationToken);
 
             var pongInputStream = context.DeclareStream(typeof(InputProviderStream));
-            var pongOutputStream = await context.StartChildModuleAsync("pong", pongInputStream, cancellationToken);
+            var pongOutputStream = await context.StartChildModuleAsync<IPerperStream>("pong", new {input = pongInputStream}, cancellationToken);
 
             await context.StreamFunctionAsync(pingInputStream, new {input = pongOutputStream});
             await context.StreamFunctionAsync(pongInputStream, new {input = pingOutputStream});

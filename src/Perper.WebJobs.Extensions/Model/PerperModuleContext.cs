@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -15,11 +14,11 @@ namespace Perper.WebJobs.Extensions.Model
             WorkerName = workerName;
         }
 
-        public string WorkerName { get; set; }
+        public string WorkerName { get; }
 
-        public async Task<IPerperStream> StartChildModuleAsync(string postfix, IPerperStream input, CancellationToken cancellationToken)
+        public async Task<T> StartChildModuleAsync<T>(string postfix, object parameters, CancellationToken cancellationToken)
         {
-            return await CallWorkerAsync<IPerperStream>(ResolveChildModuleName(postfix), new { input }, cancellationToken);
+            return await CallWorkerAsync<T>(ResolveChildModuleName(postfix),  parameters, cancellationToken);
         }
 
         private static string ResolveChildModuleName(string postfix)
