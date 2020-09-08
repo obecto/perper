@@ -1,5 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
+# 
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0C1B132E-1677-46B6-9EF5-B306558045E8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perper.WebJobs.Extensions", "src\Perper.WebJobs.Extensions\Perper.WebJobs.Extensions.csproj", "{9D6B115C-3B6D-4E41-92B0-69AE3EB7926C}"
@@ -15,17 +16,17 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perper.Protocol", "src\Perper.Protocol\Perper.Protocol.csproj", "{4F999EBD-26F4-4EF7-B492-7D85583291C5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docker", "docker", "{4E442550-F0DE-476C-A348-F484A081CFD5}"
-ProjectSection(SolutionItems) = preProject
-	docker\Dockerfile = docker\Dockerfile
-EndProjectSection
+	ProjectSection(SolutionItems) = preProject
+		docker\Dockerfile = docker\Dockerfile
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "python-binding", "python-binding", "{7F7D6C67-3E15-4BD1-8745-3A2E7A7E386A}"
-ProjectSection(SolutionItems) = preProject
-	python-binding\setup.py = python-binding\setup.py
-	python-binding\azure_functions\perper\perper.py = python-binding\azure_functions\perper\perper.py
-	python-binding\azure_functions\perper\__init__.py = python-binding\azure_functions\perper\__init__.py
-	python-binding\azure_functions\perper\_perper.py = python-binding\azure_functions\perper\_perper.py
-EndProjectSection
+	ProjectSection(SolutionItems) = preProject
+		python-binding\setup.py = python-binding\setup.py
+		python-binding\azure_functions\perper\perper.py = python-binding\azure_functions\perper\perper.py
+		python-binding\azure_functions\perper\__init__.py = python-binding\azure_functions\perper\__init__.py
+		python-binding\azure_functions\perper\_perper.py = python-binding\azure_functions\perper\_perper.py
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "structure", "structure", "{4EFF2890-070B-4232-9240-6C824AFD0A7A}"
 EndProject
@@ -39,6 +40,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgentPing", "samples\struct
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgentPong", "samples\structure\Structure.FunctionApp\modules\agent-pong\src\AgentPong.csproj", "{6990B408-AF95-4339-95DE-A21254290187}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmarks", "benchmarks", "{EE3DCED0-30E2-4E5D-9407-7F057AFDE5CA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Messaging_FunctionApp", "samples\benchmarks\Messaging.FunctionApp\Messaging_FunctionApp.csproj", "{F3188C2F-294E-4B1A-82D0-FD93AED0A717}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -50,13 +55,14 @@ Global
 		{76B3F8CB-9BB7-43F1-84E4-B421E76E7EDF} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
 		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
 		{4F999EBD-26F4-4EF7-B492-7D85583291C5} = {0C1B132E-1677-46B6-9EF5-B306558045E8}
-		{33563688-812A-419F-8336-C09F7C35386A} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
 		{4EFF2890-070B-4232-9240-6C824AFD0A7A} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
 		{10B60903-4AC8-48DA-A81F-C7C8E883EF16} = {4EFF2890-070B-4232-9240-6C824AFD0A7A}
 		{39309781-5B47-4401-8AC7-3087E7FC523A} = {4EFF2890-070B-4232-9240-6C824AFD0A7A}
 		{3A5CF177-6624-4254-9C7B-DBB34DBC7C38} = {4EFF2890-070B-4232-9240-6C824AFD0A7A}
 		{0125CF8D-4E71-4E78-B70A-2BB87572F85E} = {39309781-5B47-4401-8AC7-3087E7FC523A}
 		{6990B408-AF95-4339-95DE-A21254290187} = {3A5CF177-6624-4254-9C7B-DBB34DBC7C38}
+		{EE3DCED0-30E2-4E5D-9407-7F057AFDE5CA} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
+		{F3188C2F-294E-4B1A-82D0-FD93AED0A717} = {EE3DCED0-30E2-4E5D-9407-7F057AFDE5CA}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{9D6B115C-3B6D-4E41-92B0-69AE3EB7926C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -79,10 +85,6 @@ Global
 		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Release|Any CPU.Build.0 = Release|Any CPU
-		{33563688-812A-419F-8336-C09F7C35386A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{33563688-812A-419F-8336-C09F7C35386A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{33563688-812A-419F-8336-C09F7C35386A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{33563688-812A-419F-8336-C09F7C35386A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{10B60903-4AC8-48DA-A81F-C7C8E883EF16}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{10B60903-4AC8-48DA-A81F-C7C8E883EF16}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{10B60903-4AC8-48DA-A81F-C7C8E883EF16}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -95,5 +97,9 @@ Global
 		{6990B408-AF95-4339-95DE-A21254290187}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6990B408-AF95-4339-95DE-A21254290187}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6990B408-AF95-4339-95DE-A21254290187}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3188C2F-294E-4B1A-82D0-FD93AED0A717}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3188C2F-294E-4B1A-82D0-FD93AED0A717}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3188C2F-294E-4B1A-82D0-FD93AED0A717}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3188C2F-294E-4B1A-82D0-FD93AED0A717}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

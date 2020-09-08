@@ -29,9 +29,9 @@ namespace Perper.WebJobs.Extensions.Services
             return new PerperFabricStream(_streamName);
         }
 
-        public IPerperStream DeclareStream(string streamName, string delegateName)
+        public IPerperStream DeclareStream(string streamName, string delegateName, Type? indexType = null)
         {
-            return new PerperFabricStream(streamName, false, delegateName, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
+            return new PerperFabricStream(streamName, false, delegateName, indexType, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
         }
 
         public async Task<IPerperStream> StreamFunctionAsync(string streamName, string delegateName, object parameters, Type? indexType = null)
@@ -48,13 +48,13 @@ namespace Perper.WebJobs.Extensions.Services
 
             streamObject.LastModified = DateTime.UtcNow;
             await streamsCache.PutAsync(streamObject.Name, streamObject);
-            return new PerperFabricStream(streamObject.Name, false, "", () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
+            return new PerperFabricStream(streamObject.Name, false, "", null, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
         }
 
         public async Task<IPerperStream> StreamFunctionAsync(IPerperStream declaration, object parameters)
         {
             var streamObject = ((PerperFabricStream)declaration);
-            await StreamFunctionAsync(streamObject.StreamName, streamObject.DeclaredDelegate, parameters);
+            await StreamFunctionAsync(streamObject.StreamName, streamObject.DeclaredDelegate, parameters, streamObject.DeclaredType);
             return declaration;
         }
 
@@ -72,7 +72,7 @@ namespace Perper.WebJobs.Extensions.Services
 
             streamObject.LastModified = DateTime.UtcNow;
             await streamsCache.PutAsync(streamObject.Name, streamObject);
-            return new PerperFabricStream(streamObject.Name, false, "", () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
+            return new PerperFabricStream(streamObject.Name, false, "", null, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
         }
 
         public async Task<IPerperStream> StreamActionAsync(IPerperStream declaration, object parameters)

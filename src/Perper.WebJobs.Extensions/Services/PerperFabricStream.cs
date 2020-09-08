@@ -12,14 +12,17 @@ namespace Perper.WebJobs.Extensions.Services
 
         public string DeclaredDelegate { get; }
 
+        public Type? DeclaredType { get; }
+
         [NonSerialized]
         private Func<Task>? _dispose;
 
-        public PerperFabricStream(string streamName, bool subscribed = false, string declaredDelegate = "", Func<Task>? dispose = null)
+        public PerperFabricStream(string streamName, bool subscribed = false, string declaredDelegate = "", Type? declaredType = null, Func<Task>? dispose = null)
         {
             StreamName = streamName;
             Subscribed = subscribed;
             DeclaredDelegate = declaredDelegate;
+            DeclaredType = declaredType;
 
             _dispose = dispose;
         }
