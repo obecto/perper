@@ -31,7 +31,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public IPerperStream DeclareStream(string streamName, string delegateName, Type? indexType = null)
         {
-            return new PerperFabricStream(streamName, false, delegateName, indexType, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
+            return new PerperFabricStream(streamName, false, null, null, delegateName, indexType, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
         }
 
         public async Task<IPerperStream> StreamFunctionAsync(string streamName, string delegateName, object parameters, Type? indexType = null)
@@ -48,7 +48,7 @@ namespace Perper.WebJobs.Extensions.Services
 
             streamObject.LastModified = DateTime.UtcNow;
             await streamsCache.PutAsync(streamObject.Name, streamObject);
-            return new PerperFabricStream(streamObject.Name, false, "", null, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
+            return new PerperFabricStream(streamObject.Name, false, null, null, "", null, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
         }
 
         public async Task<IPerperStream> StreamFunctionAsync(IPerperStream declaration, object parameters)
@@ -72,7 +72,7 @@ namespace Perper.WebJobs.Extensions.Services
 
             streamObject.LastModified = DateTime.UtcNow;
             await streamsCache.PutAsync(streamObject.Name, streamObject);
-            return new PerperFabricStream(streamObject.Name, false, "", null, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
+            return new PerperFabricStream(streamObject.Name, false, null, null, "", null, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
         }
 
         public async Task<IPerperStream> StreamActionAsync(IPerperStream declaration, object parameters)
@@ -84,7 +84,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task BindStreamOutputAsync(IEnumerable<IPerperStream> streams)
         {
-            var streamsNames = streams.Select(s => ((PerperFabricStream)s).StreamName).ToArray();
+            var streamsNames = streams.Cast<PerperFabricStream>().Select(s => (s.StreamName, s.FilterField, s.FilterValue)).ToArray();
 
             if (streamsNames.Any())
             {
@@ -95,14 +95,14 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        
+
         public async Task<string> FetchStreamParameterStreamNameAsync(string name)
         {
             var streamsCacheClient = _igniteClient.GetCache<string, StreamData>("streams");
             var streamObject = await streamsCacheClient.GetAsync(_streamName);
-            return streamObject.StreamParams[name].Single();
+            return streamObject.StreamParams[name].Single().Item1;
         }
-        
+
         public async Task<T> FetchStreamParameterAsync<T>(string name)
         {
             var streamsCacheClient = _igniteClient.GetCache<string, StreamData>("streams");
@@ -151,10 +151,10 @@ namespace Perper.WebJobs.Extensions.Services
         {
             var streamsCacheClient = _igniteClient.GetCache<string, StreamData>("streams");
             var streamObject = await streamsCacheClient.GetAsync(_streamName);
-            
+
             var workerObject = new WorkerData(workerName, delegateName, caller, CreateDelegateParameters(parameters).Item1);
             streamObject.Workers[workerObject.Name] = workerObject;
-            
+
             await streamsCacheClient.ReplaceAsync(_streamName, streamObject);
             return workerObject.Name;
         }
@@ -189,7 +189,7 @@ namespace Perper.WebJobs.Extensions.Services
             var streamObject = await streamsCacheClient.GetAsync(_streamName);
             streamObject.Workers.Remove(workerName, out var workerObject);
             await streamsCacheClient.ReplaceAsync(_streamName, streamObject);
-            
+
             var field = workerObject!.Params.GetField<object>("$return");
             if (field is IBinaryObject binaryObject)
             {
@@ -199,10 +199,10 @@ namespace Perper.WebJobs.Extensions.Services
             return (T)field;
         }
 
-        private (IBinaryObject, Dictionary<string, string[]>) CreateDelegateParameters(object parameters)
+        private (IBinaryObject, Dictionary<string, (string, string?, object?)[]>) CreateDelegateParameters(object parameters)
         {
             var builder = _igniteClient.GetBinary().GetBuilder($"stream{Guid.NewGuid():N}");
-            var streamParameters = new Dictionary<string, string[]>();
+            var streamParameters = new Dictionary<string, (string, string?, object?)[]>();
 
             var properties = parameters.GetType().GetProperties();
             foreach (var propertyInfo in properties)
@@ -214,7 +214,7 @@ namespace Perper.WebJobs.Extensions.Services
                     case PerperFabricStream stream:
                         if (stream.Subscribed)
                         {
-                            streamParameters.Add(propertyInfo.Name, new[] { stream.StreamName });
+                            streamParameters.Add(propertyInfo.Name, new[] { (stream.StreamName, stream.FilterField, stream.FilterValue) });
                         }
                         break;
                     case IEnumerable<IPerperStream> streams:
@@ -222,7 +222,7 @@ namespace Perper.WebJobs.Extensions.Services
                             from s in streams
                             let stream = s as PerperFabricStream
                             where stream != null && stream.Subscribed
-                            select stream.StreamName).ToArray();
+                            select (stream.StreamName, stream.FilterField, stream.FilterValue)).ToArray();
                         if (filteredStreams.Length > 0)
                         {
                             streamParameters.Add(propertyInfo.Name, filteredStreams);

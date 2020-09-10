@@ -34,7 +34,13 @@ namespace Perper.WebJobs.Extensions.Model
 
         public IQueryable<T> Query<T>(IPerperStream stream)
         {
-            var streamName = (stream as PerperFabricStream)!.StreamName;
+            var perperFabricStream = stream as PerperFabricStream;
+            if (perperFabricStream!.FilterField != null)
+            {
+                throw new NotImplementedException("Querying filtered streams is not supported in this version of Perper.");
+            }
+
+            var streamName = perperFabricStream!.StreamName;
             var data = _context.GetData(streamName);
 
             return data.QueryStreamItemsAsync<T>();

@@ -42,7 +42,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgentPong", "samples\struct
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmarks", "benchmarks", "{EE3DCED0-30E2-4E5D-9407-7F057AFDE5CA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Messaging_FunctionApp", "samples\benchmarks\Messaging.FunctionApp\Messaging_FunctionApp.csproj", "{F3188C2F-294E-4B1A-82D0-FD93AED0A717}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Messaging.FunctionApp", "samples\benchmarks\Messaging.FunctionApp\Messaging.FunctionApp.csproj", "{F3188C2F-294E-4B1A-82D0-FD93AED0A717}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

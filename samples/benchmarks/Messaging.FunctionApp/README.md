@@ -8,6 +8,7 @@ For sake of completeness, there are multiple strategies implemented for filterin
 | Method | Description | Performance (i7-4790K, 8 core) |
 | - | - |
 | Enumeration | Use IAsyncEnumerable to receive messages, filter using an `if` | ~15000 operations/second, ~1500 reads/second for 10 nodes |
+| Filtering | Use IAsyncEnumerable to receive messages, filter using IPerperStream.Filter | ~13000 operations/second and reads/second for 10 nodes |
 | Querying | Wait for all messages to be written out, filter using PerperStreamContext.Query | ~500000 operations/second and reads/second for 10 nodes |
 
 ## Settings
@@ -18,8 +19,9 @@ The benchmark can be configured by changing the settings in the `settings` regio
 | - | - |
 | MessageCount | The amount of messages to send before stopping. Useful in order to be able to measure read speed when not writing. Set to `-1` for an unlimited amount of messages. |
 | NodeCount | The amount of nodes sending messages to each other. Lower numbers might be unable to fill up the pipe, while larger numbers need to filter out a larger percentage of messages. |
-| QueryMessages | Use the Querying method for receiving messages. |
 | EnumerateMessages | Use the Enumeration method for receiving messages. |
+| FilterMessages | Use the Filtering method for receiving messages. |
+| QueryMessages | Use the Querying method for receiving messages. |
 
 Note that if multiple methods of receiving messages are on, the messages would just be processed multiple times.
 
@@ -31,7 +33,8 @@ The benchmark outputs a table consisiting of multiple counters measuring the amo
 | - | - |
 | Sent | The amount of messages written to the outputs of all of the nodes. |
 | Enumerated | The amount of messages received by the Enumeration method. |
-| Queried | The amount of messages received by the Querying method. Note that no messages are received before all messages are written out. |
+| Filtered | The amount of messages received by the Filtering method. |
+| Queried | The amount of messages received by the Querying method. Note that querying runs only once after all messages have been sent. |
 | Processed | The amount of messages processed either by sending or receiving. |
 
 ## Code structure
@@ -42,4 +45,4 @@ The `Node` stream starts up asynchronous workers for each of the receiving metho
 
 The `Peering` stream is pretty basic, just rebinding its output to that of all the `Node`s.
 
-`Node`s communicate back to the `Launcher` stream using static instances of the `Stat` class. That way, messages containing statistical information do not have to propagate through Perper. The `Stat` class is designed for multithreaded usage, and contains utilities for computing changes in the total value, necessary for displaying per-second values in the `Launcher`.
+`Node`s communicate back to the `Launcher` stream using static instances of the `Stat` class. That way, statistical information does not have to propagate through Perper, and thus interfere with the benchmark. The `Stat` class is designed for multithreaded usage, and contains utilities for computing changes in the total value, necessary for displaying per-second values in the `Launcher`.

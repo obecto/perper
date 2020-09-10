@@ -12,24 +12,24 @@ namespace Messaging.FunctionApp
     {
         [FunctionName(nameof(Node))]
         public async Task Run([PerperStreamTrigger] PerperStreamContext context,
-            [Perper("peering")] IAsyncEnumerable<Message> peering,
-            [Perper("streams")] IPerperStream[] streams,
+            [Perper("enumerated")] IAsyncEnumerable<Message> enumerated,
+            [Perper("filtered")] IAsyncEnumerable<Message> filtered,
+            [Perper("queried")] IPerperStream[] queried,
             [Perper("i")] int i,
             [Perper("n")] int n,
             [Perper("output")] IAsyncCollector<Message> output)
         {
             await Task.WhenAll(
-                EnumerateInput(i, peering),
-                QueryInput(i, streams.Select(stream => context.Query<Message>(stream))),
+                ProcessEnumerated(i, enumerated),
+                ProcessFiltered(i, filtered),
+                ProcessQueried(i, queried.Select(stream => context.Query<Message>(stream))),
                 SendOutput(i, n, output)
             );
         }
 
-        private async Task EnumerateInput(int i, IAsyncEnumerable<Message> peering)
+        private async Task ProcessEnumerated(int i, IAsyncEnumerable<Message> enumerated)
         {
-            if (!Launcher.EnumerateMessages) return;
-
-            await foreach (var item in peering)
+            await foreach (var item in enumerated)
             {
                 Launcher.MessagesProcessed.Increment();
                 if (item.To == i)
@@ -39,17 +39,25 @@ namespace Messaging.FunctionApp
             }
         }
 
-        private async Task QueryInput(int i, IEnumerable<IQueryable<Message>> streams)
+        private async Task ProcessFiltered(int i, IAsyncEnumerable<Message> filtered)
         {
-            if (!Launcher.QueryMessages) return;
+            await foreach (var item in filtered)
+            {
+                Launcher.MessagesProcessed.Increment();
+                Launcher.MessagesFiltered.Increment();
+                if (item.To != i) System.Console.WriteLine("!!!!!");
+            }
+        }
 
+        private async Task ProcessQueried(int i, IEnumerable<IQueryable<Message>> queried)
+        {
             while (!Launcher.MessagesSent.IsMax())
             {
                 await Task.Delay(100);
             }
 
             var tasks = new List<Task>();
-            foreach (var stream in streams)
+            foreach (var stream in queried)
             {
                 tasks.Add(Task.Run(() =>
                 {
