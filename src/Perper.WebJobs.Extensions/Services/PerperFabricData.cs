@@ -201,7 +201,8 @@ namespace Perper.WebJobs.Extensions.Services
 
         private (IBinaryObject, Dictionary<string, (string, string?, object?)[]>) CreateDelegateParameters(object parameters)
         {
-            var builder = _igniteClient.GetBinary().GetBuilder($"stream{Guid.NewGuid():N}");
+            var binary = _igniteClient.GetBinary();
+            var builder = binary.GetBuilder($"stream{Guid.NewGuid():N}");
             var streamParameters = new Dictionary<string, (string, string?, object?)[]>();
 
             var properties = parameters.GetType().GetProperties();
@@ -214,7 +215,7 @@ namespace Perper.WebJobs.Extensions.Services
                     case PerperFabricStream stream:
                         if (stream.Subscribed)
                         {
-                            streamParameters.Add(propertyInfo.Name, new[] { (stream.StreamName, stream.FilterField, stream.FilterValue) });
+                            streamParameters.Add(propertyInfo.Name, new[] { (stream.StreamName, stream.FilterField, binary.ToBinary<object>(stream.FilterValue)) });
                         }
                         break;
                     case IEnumerable<IPerperStream> streams:
@@ -222,7 +223,7 @@ namespace Perper.WebJobs.Extensions.Services
                             from s in streams
                             let stream = s as PerperFabricStream
                             where stream != null && stream.Subscribed
-                            select (stream.StreamName, stream.FilterField, stream.FilterValue)).ToArray();
+                            select (stream.StreamName, stream.FilterField, binary.ToBinary<object>(stream.FilterValue))).ToArray();
                         if (filteredStreams.Length > 0)
                         {
                             streamParameters.Add(propertyInfo.Name, filteredStreams);

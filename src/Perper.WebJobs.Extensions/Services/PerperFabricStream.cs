@@ -44,6 +44,7 @@ namespace Perper.WebJobs.Extensions.Services
             {
                 throw new NotImplementedException("Filtering on multiple fields is not supported in this version of Perper.");
             }
+
             return new PerperFabricStream(StreamName, Subscribed, fieldName, value);
         }
 
