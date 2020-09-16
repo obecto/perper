@@ -108,7 +108,7 @@ namespace Perper.Fabric.Streams
         public bool Evaluate(ICacheEntryEvent<long, object> evt)
         {
             _ignite.GetServices().GetService<StreamService>(nameof(StreamService))
-                .UpdateStreamItemAsync(_stream, evt.Key, evt.Value);
+                .UpdateStreamItemAsync(_stream, evt.Key);
             return false;
         }
     }

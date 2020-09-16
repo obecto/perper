@@ -18,11 +18,20 @@ namespace Perper.Fabric.Streams
     {
         private const string ForwardFieldName = "$forward";
 
+        private class Ref<T>
+        {
+            public T Value;
+            public Ref(T value)
+            {
+                Value = value;
+            }
+        }
+
         [InstanceResource] private IIgnite _ignite;
 
         [NonSerialized] private IDictionary<string, Stream> _liveStreams;
         [NonSerialized] private IDictionary<string, IList<(string, string?, object?, Stream)>> _liveStreamGraph;
-        [NonSerialized] private Channel<(string, long, object)> _streamItemsUpdates;
+        [NonSerialized] private Channel<(string, long)> _streamItemsUpdates;
 
         [NonSerialized] private HashSet<string> _liveWorkers;
 
@@ -35,7 +44,7 @@ namespace Perper.Fabric.Streams
         {
             _liveStreams = new Dictionary<string, Stream>();
             _liveStreamGraph = new Dictionary<string, IList<(string, string?, object?, Stream)>>();
-            _streamItemsUpdates = Channel.CreateUnbounded<(string, long, object)>();
+            _streamItemsUpdates = Channel.CreateUnbounded<(string, long)>();
 
             _liveWorkers = new HashSet<string>();
 
@@ -114,29 +123,36 @@ namespace Perper.Fabric.Streams
             }
         }
 
-        public void UpdateStreamItemAsync(string stream, long itemKey, object itemValue)
+        public void UpdateStreamItemAsync(string stream, long itemKey)
         {
-            _streamItemsUpdates.Writer.TryWrite((stream, itemKey, itemValue));
+            _streamItemsUpdates.Writer.TryWrite((stream, itemKey));
         }
 
         private async Task InvokeStreamItemUpdates()
         {
-            await foreach (var (stream, itemKey, itemValue) in _streamItemsUpdates.Reader.ReadAllAsync())
+            await foreach (var (stream, itemKey) in _streamItemsUpdates.Reader.ReadAllAsync())
             {
-                await InvokeStreamItemUpdates(stream, stream, itemKey, itemValue);
+                await InvokeStreamItemUpdates(stream, stream, itemKey, new Ref<object?>(null));
             }
         }
 
-        private async Task InvokeStreamItemUpdates(string targetStream, string stream, long itemKey, object itemValue)
+        private async Task InvokeStreamItemUpdates(string targetStream, string stream, long itemKey, Ref<object?> itemValue)
         {
             var streamsToUpdate = _liveStreamGraph[targetStream];
             foreach (var (field, filterField, filterValue, value) in streamsToUpdate)
             {
-                if (filterField != null && itemValue is IBinaryObject binaryObject)
+                if (filterField != null && filterValue != null)
                 {
-                    if (!filterValue.Equals(binaryObject.GetField<object>(filterField)))
+                    if (itemValue.Value == null)
                     {
-                        continue;
+                        itemValue.Value = _ignite.GetBinaryCache<long>(stream)[itemKey];
+                    }
+                    if (itemValue.Value is IBinaryObject binaryObject)
+                    {
+                        if (!filterValue.Equals(binaryObject.GetField<object>(filterField)))
+                        {
+                            continue;
+                        }
                     }
                 }
 
