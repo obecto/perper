@@ -23,14 +23,14 @@ namespace Perper.Fabric.Streams
             _ignite = ignite;
         }
 
-        public IEnumerable<(string, IEnumerable<Stream>)> GetInputStreams()
+        public IEnumerable<(string, IEnumerable<(Stream, string?, object?)>)> GetInputStreams()
         {
             var streamsCache = _ignite.GetCache<string, StreamData>("streams");
 
             var streamParams = StreamData.StreamParams;
             foreach (var (field, streamNames) in streamParams)
             {
-                var streams = streamNames.Select(name => new Stream(streamsCache[name], _ignite));
+                var streams = streamNames.Select(name => (new Stream(streamsCache[name.Item1], _ignite), name.Item2, name.Item3));
 
                 yield return (field, streams);
             }
@@ -54,7 +54,7 @@ namespace Perper.Fabric.Streams
         private void CreateCache()
         {
             if (_ignite.GetCacheNames().Contains(StreamData.Name)) return;
-            
+
             ICache<long, object>? cache;
             if (!string.IsNullOrEmpty(StreamData.IndexType) && StreamData.IndexFields != null &&
                 StreamData.IndexFields.Any())
@@ -97,7 +97,7 @@ namespace Perper.Fabric.Streams
     public class RemoteFilter : ICacheEntryEventFilter<long, object>
     {
         [InstanceResource] private IIgnite _ignite;
-        
+
         private readonly string _stream;
 
         public RemoteFilter(string stream)

@@ -32,6 +32,20 @@ namespace Perper.WebJobs.Extensions.Model
             return data.QueryStreamItemsAsync<T>();
         }
 
+        public IQueryable<T> Query<T>(IPerperStream stream)
+        {
+            var perperFabricStream = stream as PerperFabricStream;
+            if (perperFabricStream!.FilterField != null)
+            {
+                throw new NotImplementedException("Querying filtered streams is not supported in this version of Perper.");
+            }
+
+            var streamName = perperFabricStream!.StreamName;
+            var data = _context.GetData(streamName);
+
+            return data.QueryStreamItemsAsync<T>();
+        }
+
         public Task<T> FetchStateAsync<T>()
         {
             var data = _context.GetData(StreamName);
@@ -57,10 +71,10 @@ namespace Perper.WebJobs.Extensions.Model
         }
 
         #region DeclareStream
-        public IPerperStream DeclareStream(string streamName, string delegateName)
+        public IPerperStream DeclareStream(string streamName, string delegateName, Type? indexType = null)
         {
             var data = _context.GetData(StreamName);
-            return data.DeclareStream(streamName, delegateName);
+            return data.DeclareStream(streamName, delegateName, indexType);
         }
 
         public IPerperStream DeclareStream(string name)
@@ -68,9 +82,9 @@ namespace Perper.WebJobs.Extensions.Model
             return DeclareStream(GenerateName(name), name);
         }
 
-        public IPerperStream DeclareStream(string streamName, MethodInfo method)
+        public IPerperStream DeclareStream(string streamName, MethodInfo method, Type? indexType = null)
         {
-            return DeclareStream(streamName, method.GetFullName());
+            return DeclareStream(streamName, method.GetFullName(), indexType);
         }
 
         public IPerperStream DeclareStream(MethodInfo method)
@@ -78,9 +92,9 @@ namespace Perper.WebJobs.Extensions.Model
             return DeclareStream(method.GetFullName());
         }
 
-        public IPerperStream DeclareStream(string streamName, Type type)
+        public IPerperStream DeclareStream(string streamName, Type type, Type? indexType = null)
         {
-            return DeclareStream(streamName, type.GetFunctionMethod());
+            return DeclareStream(streamName, type.GetFunctionMethod(), indexType);
         }
 
         public IPerperStream DeclareStream(Type type)

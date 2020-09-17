@@ -11,7 +11,7 @@ namespace Perper.Protocol.Cache
         public StreamDelegateType DelegateType { get; set; }
 
         public IBinaryObject Params { get; set; }
-        public Dictionary<string, string[]> StreamParams { get; set; }
+        public Dictionary<string, (string, string?, object?)[]> StreamParams { get; set; }
 
         public DateTime LastModified { get; set; } = DateTime.UtcNow;
 
@@ -20,7 +20,7 @@ namespace Perper.Protocol.Cache
 
         public Dictionary<string, WorkerData> Workers { get; set; }
 
-        public StreamData(string name, string delegateName, StreamDelegateType delegateType, IBinaryObject dataParams, Dictionary<string, string[]> streamParams, string? indexType = null, IEnumerable<KeyValuePair<string, string>>? indexFields = null)
+        public StreamData(string name, string delegateName, StreamDelegateType delegateType, IBinaryObject dataParams, Dictionary<string, (string, string?, object?)[]> streamParams, string? indexType = null, IEnumerable<KeyValuePair<string, string>>? indexFields = null)
         {
             Name = name;
             Delegate = delegateName;
