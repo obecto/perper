@@ -2,8 +2,10 @@ name: Perper Fabric
 
 on:
   push:
-    paths: 
+    paths:
       - 'src/Perper.Fabric/**'
+    branches:
+      - master
 
 jobs:
   build:

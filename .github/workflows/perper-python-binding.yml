@@ -2,8 +2,10 @@ name: Perper Python Binding
 
 on:
   push:
-    paths: 
+    paths:
       - 'python-binding/**'
+    branches:
+      - master
 
 jobs:
   deploy:

@@ -2,8 +2,10 @@ name: Perper Protocol
 
 on:
   push:
-    paths: 
+    paths:
       - 'src/Perper.Protocol/**'
+    branches:
+      - master
 
 jobs:
   build:

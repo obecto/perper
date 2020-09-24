@@ -2,8 +2,10 @@ name: Perper Functions
 
 on:
   push:
-    paths: 
+    paths:
       - 'src/Perper.WebJobs.Extensions/**'
+    branches:
+      - master
 
 jobs:
   build:
