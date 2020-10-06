@@ -1,4 +1,5 @@
 package com.obecto.perper.fabric
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -19,8 +20,8 @@ abstract class JobService : Service {
     }
 
     override fun execute(ctx: ServiceContext) {
-        job = GlobalScope.launch { executeJob(ctx) }
+        job = GlobalScope.launch { execute(ctx) }
     }
 
-    abstract suspend fun executeJob(ctx: ServiceContext)
+    abstract suspend fun CoroutineScope.execute(ctx: ServiceContext)
 }

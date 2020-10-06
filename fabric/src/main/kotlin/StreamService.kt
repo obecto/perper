@@ -1,6 +1,9 @@
 package com.obecto.perper.fabric
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
+import javax.cache.event.CacheEntryUpdatedListener
 import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteCache
 import org.apache.ignite.binary.BinaryObject
@@ -31,11 +34,23 @@ class StreamService : JobService() {
 
     override fun init(ctx: ServiceContext) {
         streamItemUpdates = Channel(Channel.UNLIMITED)
-        streamsCache = ignite.cache("streams")
+        streamsCache = ignite.getOrCreateCache("streams")
+
         super.init(ctx)
     }
 
-    override suspend fun executeJob(ctx: ServiceContext) {
+    override suspend fun CoroutineScope.execute(ctx: ServiceContext) {
+        launch {
+            val query = ContinuousQuery<String, StreamData>()
+            query.localListener = CacheEntryUpdatedListener { events ->
+                for (event in events) {
+                    updateStream(event.value)
+                }
+            }
+
+            streamsCache.query(query)
+        }
+
         for ((stream, itemKey) in streamItemUpdates) {
             invokeStreamItemUpdates(stream, stream, itemKey)
         }
