@@ -114,7 +114,7 @@ class StreamService : JobService() {
                         transportService.sendWorkerResult(streamData.name, worker.caller, worker.name)
                     } else if (!worker.params.hasField(returnFieldName) && !liveWorkers.contains(worker.name)) {
                         liveWorkers.add(worker.name)
-                        transportService.sendWorkerTrigger(streamData.name, worker.caller, worker.name)
+                        transportService.sendWorkerTrigger(streamData.name, worker.delegate, worker.name)
                     }
                 }
             }

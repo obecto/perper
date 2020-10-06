@@ -13,7 +13,7 @@ fun main() {
 
     val streams: IgniteCache<String, StreamData> = ignite.getOrCreateCache("streams")
 
-    ignite.services().deployNodeSingleton("TransportService", TransportService())
+    ignite.services().deployNodeSingleton("TransportService", TransportService(40400))
     ignite.services().deployNodeSingleton("StreamService", StreamService())
 
     val streamService = ignite.services().service<StreamService>("StreamService")
