@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -34,12 +36,12 @@ namespace Perper.WebJobs.Extensions.Triggers
         {
             _context.StartListen(_delegateName);
             _listenTask = ListenAsync(_listenCancellationTokenSource.Token);
-            
+
             if (_attribute.RunOnStartup)
             {
                 var data = _context.GetData($"$launcher.{_delegateName}");
                 await data.StreamActionAsync($"$launcher.{_delegateName}", "", new {});
-                await data.CallWorkerAsync($"$launcher.{_delegateName}", _delegateName, "", new {});
+                await data.CallWorkerAsync($"$launcher.{_delegateName}-{Guid.NewGuid().ToString()}", _delegateName, "", new {});
             }
         }
 
@@ -61,14 +63,21 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         private async Task ListenAsync(CancellationToken cancellationToken)
         {
+            var executions = new List<Task>();
             var triggers = _context.GetNotifications(_delegateName).WorkerTriggers(cancellationToken);
             await foreach (var (streamName, workerName) in triggers.WithCancellation(cancellationToken))
             {
-                var triggerValue = new PerperModuleContext(streamName, _delegateName, workerName, _context);
-                await _executor.TryExecuteAsync(
-                    new TriggeredFunctionData { TriggerValue = triggerValue },
-                    cancellationToken);
+                executions.Add(ExecuteAsync(streamName, workerName, cancellationToken));
             }
+            await Task.WhenAll(executions);
+        }
+
+        private async Task ExecuteAsync(string streamName, string workerName, CancellationToken cancellationToken)
+        {
+            var triggerValue = new PerperModuleContext(streamName, _delegateName, workerName, _context);
+            await _executor.TryExecuteAsync(
+                new TriggeredFunctionData { TriggerValue = triggerValue },
+                cancellationToken);
         }
     }
 }

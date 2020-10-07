@@ -1,4 +1,4 @@
-using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
@@ -22,7 +22,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         private Task _listenTask;
 
-        public PerperWorkerListener(PerperWorkerTriggerAttribute attribute, string delegateName, 
+        public PerperWorkerListener(PerperWorkerTriggerAttribute attribute, string delegateName,
             IConverter<PerperWorkerContext, object> triggerValueConverter,
             ITriggeredFunctionExecutor executor, IPerperFabricContext context)
         {
@@ -61,14 +61,21 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         private async Task ListenAsync(CancellationToken cancellationToken)
         {
+            var executions = new List<Task>();
             var triggers = _context.GetNotifications(_delegateName).WorkerTriggers(cancellationToken);
             await foreach (var (streamName, workerName) in triggers.WithCancellation(cancellationToken))
             {
-                var triggerValue = new PerperWorkerContext {StreamName = streamName, WorkerName = workerName};
-                await _executor.TryExecuteAsync(
-                    new TriggeredFunctionData {TriggerValue = _triggerValueConverter.Convert(triggerValue)},
-                    cancellationToken);
+                executions.Add(ExecuteAsync(streamName, workerName, cancellationToken));
             }
+            await Task.WhenAll(executions);
+        }
+
+        private async Task ExecuteAsync(string streamName, string workerName, CancellationToken cancellationToken)
+        {
+            var triggerValue = new PerperWorkerContext {StreamName = streamName, WorkerName = workerName};
+            await _executor.TryExecuteAsync(
+                new TriggeredFunctionData {TriggerValue = _triggerValueConverter.Convert(triggerValue)},
+                cancellationToken);
         }
     }
 }
