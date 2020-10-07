@@ -9,5 +9,9 @@ namespace DotNet.FunctionApp.Model
         public int Value { get; set; }
 
         public string Description { get; set; }
+
+        override public string ToString() {
+            return $"{Value} ({Description})";
+        }
     }
 }

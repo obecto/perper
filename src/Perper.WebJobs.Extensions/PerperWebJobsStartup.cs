@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Hosting;
 using Perper.WebJobs.Extensions;
@@ -10,6 +11,7 @@ namespace Perper.WebJobs.Extensions
     {
         public void Configure(IWebJobsBuilder builder)
         {
+            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
             builder.AddPerper();
         }
     }

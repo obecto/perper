@@ -235,20 +235,20 @@ namespace Perper.WebJobs.Extensions.Services
             return (builder.Build(), streamParameters);
         }
 
-        private IEnumerable<KeyValuePair<string, string>>? GetIndexFields(Type? indexType)
+        private Dictionary<string, string>? GetIndexFields(Type? indexType)
         {
             if (indexType == null)
             {
                 return null;
             }
 
-            List<KeyValuePair<string, string>> indexFields = new List<KeyValuePair<string, string>>();
+            Dictionary<string, string> indexFields = new Dictionary<string, string>();
             foreach (var item in indexType.GetProperties())
             {
                 string javaType = JavaTypeMappingHelper.GetJavaTypeAsString(item.PropertyType);
                 if (!String.IsNullOrEmpty(javaType))
                 {
-                    indexFields.Add(new KeyValuePair<string, string>(item.Name, javaType));
+                    indexFields[item.Name] = javaType;
                 }
             }
 

@@ -13,10 +13,14 @@ using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
+using Grpc.Core;
+using Grpc.Net.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Perper.Protocol.Cache;
 using Perper.Protocol.Notifications;
+using Perper.Protocol.Protobuf;
 using Perper.WebJobs.Extensions.Config;
 
 namespace Perper.WebJobs.Extensions.Services
@@ -27,7 +31,7 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly string _igniteHost;
 
         private IIgniteClient? _igniteClient;
-        
+
         private readonly Dictionary<string, Dictionary<(NotificationType, string, string), (Type, Channel<Notification>)>> _channels;
 
         private readonly Dictionary<string, PerperFabricNotifications> _notificationsCache;
@@ -35,7 +39,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         private Task _listener;
         private CancellationTokenSource _listenerCancellationTokenSource;
-        
+
         public PerperFabricContext(ILogger<PerperFabricContext> logger, IOptions<PerperFabricConfig> configOptions)
         {
             _logger = logger;
@@ -50,52 +54,73 @@ namespace Perper.WebJobs.Extensions.Services
         public void StartListen(string delegateName)
         {
             _channels.TryAdd(delegateName, new Dictionary<(NotificationType, string, string), (Type, Channel<Notification>)>());
-            
+
             if (_listener != null) return;
 
             _listenerCancellationTokenSource = new CancellationTokenSource();
-            
+
             var cancellationToken = _listenerCancellationTokenSource.Token;
             _listener = Task.Run(async () =>
             {
-                using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                await socket.ConnectAsync(_igniteHost, 40400);
-                await using var networkStream = new NetworkStream(socket);
-                var reader = PipeReader.Create(networkStream);
-                try
-                {
-                    while (true)
-                    {
-                        var readResult = await reader.ReadAsync(cancellationToken);
-                        var buffer = readResult.Buffer;
-                        try
+                var port = 40400;
+                using var channel = GrpcChannel.ForAddress($"http://{_igniteHost}:{port}");
+                var client = new Fabric.FabricClient(channel);
+
+                var tasks = new List<Task>();
+
+                tasks.Add(Task.Run(async () => {
+                    using var streamTriggers = client.StreamTriggers(new StreamTriggerFilter(), null, null, cancellationToken);
+                    await foreach (var trigger in streamTriggers.ResponseStream.ReadAllAsync()) {
+                        await RouteNotification(new Notification
                         {
-                            if (readResult.IsCanceled)
-                            {
-                                break;
-                            }
+                            Type = NotificationType.StreamTrigger,
+                            Stream = trigger.Stream,
+                            Delegate = trigger.Delegate
+                        });
+                    }
+                }));
 
-                            while (TryParseMessage(ref buffer, out var notification))
-                            {
-                                await RouteNotification(notification);
-                            }
+                tasks.Add(Task.Run(async () => {
+                    using var workerTriggers = client.WorkerTriggers(new WorkerTriggerFilter(), null, null, cancellationToken);
+                    await foreach (var trigger in workerTriggers.ResponseStream.ReadAllAsync()) {
+                        await RouteNotification(new Notification
+                        {
+                            Type = NotificationType.WorkerTrigger,
+                            Stream = trigger.Stream,
+                            Worker = trigger.Worker,
+                            Delegate = trigger.WorkerDelegate
+                        });
+                    }
+                }));
 
-                            if (readResult.IsCompleted)
+                tasks.Add(Task.Run(async () => {
+                    using var streamUpdates = client.StreamUpdates(new StreamUpdateFilter(), null, null, cancellationToken);
+                    await foreach (var trigger in streamUpdates.ResponseStream.ReadAllAsync()) {
+                        if (trigger.ItemUpdate != null) {
+                            await RouteNotification(new Notification
                             {
-                                break;
-                            }
+                                Type = NotificationType.StreamParameterItemUpdate,
+                                Stream = trigger.Stream,
+                                Delegate = trigger.Delegate,
+                                Parameter = trigger.ItemUpdate.Parameter,
+                                ParameterStream = trigger.ItemUpdate.ParameterStream,
+                                ParameterStreamItemKey = trigger.ItemUpdate.ParameterStreamItem
+                            });
                         }
-                        finally
-                        {
-                            reader.AdvanceTo(buffer.Start, buffer.End);
+                        if (trigger.WorkerResult != null) {
+                            await RouteNotification(new Notification
+                            {
+                                Type = NotificationType.WorkerResult,
+                                Stream = trigger.Stream,
+                                Delegate = trigger.Delegate,
+                                Worker = trigger.WorkerResult.Worker,
+                            });
                         }
                     }
-                }
-                finally
-                {
-                    await reader.CompleteAsync();
-                }
-            }, cancellationToken);
+                }));
+
+                await Task.WhenAll(tasks);
+            });
         }
 
         public PerperFabricNotifications GetNotifications(string delegateName)
@@ -123,9 +148,14 @@ namespace Perper.WebJobs.Extensions.Services
                 Endpoints = new List<string> {_igniteHost},
                 BinaryConfiguration = new BinaryConfiguration
                 {
-                    TypeConfigurations = GetDataTypes().Select(type => new BinaryTypeConfiguration(type)
+                    TypeConfigurations = GetDataTypes().Concat(new[] {
+                        typeof(StreamData),
+                        typeof(StreamDelegateType),
+                        typeof(WorkerData)
+                    }).Select(type => new BinaryTypeConfiguration(type)
                     {
-                        Serializer = new BinaryReflectiveSerializer {ForceTimestamp = true}
+                        Serializer = typeof(IBinarizable).IsAssignableFrom(type) ? null : new BinaryReflectiveSerializer {ForceTimestamp = true},
+                        NameMapper = new BinaryBasicNameMapper {IsSimpleName = true}
                     }).ToList()
                 }
             });
@@ -209,7 +239,7 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        private async ValueTask WriteNotificationToChannel(Notification notification, string streamName = default, 
+        private async ValueTask WriteNotificationToChannel(Notification notification, string streamName = default,
             string parameterName = default)
         {
             if (_channels.TryGetValue(notification.Delegate, out var streamChannels))

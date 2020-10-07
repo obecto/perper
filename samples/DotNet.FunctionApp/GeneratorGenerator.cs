@@ -22,7 +22,7 @@ namespace DotNet.FunctionApp
             {
                 await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
                 logger.LogInformation($"Generator Generator generates: {i}");
-                var stream = await context.StreamFunctionAsync("NamedGenerator-" + i, typeof(Generator), new {count = 10, tag = "first" ?? "xx-" + i}, typeof(Data));
+                var stream = await context.StreamFunctionAsync("NamedGenerator-" + i, typeof(Generator), new {count = 10, tag = "xx-" + i}, typeof(Data));
                 await output.AddAsync(stream, cancellationToken);
 
                 state.Value = i;

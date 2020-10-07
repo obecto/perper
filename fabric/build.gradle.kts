@@ -1,6 +1,6 @@
 import com.google.protobuf.gradle.*
 
-val igniteVersion = "2.8.0"
+val igniteVersion = "2.8.1"
 val grpcVersion = "1.31.1"
 val grpcKotlinVersion = "0.2.0"
 val protobufVersion = "3.13.0"
@@ -21,6 +21,7 @@ dependencies {
     implementation(kotlin("stdlib"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
     implementation("org.apache.ignite:ignite-core:$igniteVersion")
+    runtimeOnly("org.apache.ignite:ignite-indexing:$igniteVersion")
     implementation("javax.annotation:javax.annotation-api:1.2")
     implementation("com.google.protobuf:protobuf-java-util:$protobufVersion")
     implementation("io.grpc:grpc-protobuf:$grpcVersion")

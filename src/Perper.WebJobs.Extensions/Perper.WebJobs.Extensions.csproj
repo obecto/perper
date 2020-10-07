@@ -5,7 +5,7 @@
         <LangVersion>8</LangVersion>
         <Nullable>enable</Nullable>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageVersion>0.4.0</PackageVersion>
+        <PackageVersion>0.5.0</PackageVersion>
         <Authors>Obecto EOOD</Authors>
         <RepositoryUrl>https://github.com/obecto/perper</RepositoryUrl>
         <Title>Perper Functions</Title>
@@ -20,8 +20,12 @@
       <IncludeSymbols>true</IncludeSymbols>
       <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
-    
+
     <ItemGroup>
+      <PackageReference Include="Grpc.Tools" Version="2.32.0">
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
       <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
     </ItemGroup>
 
@@ -31,10 +35,16 @@
       <PackageReference Include="System.IO.Pipelines" Version="4.6.0" />
       <PackageReference Include="System.Linq.Async" Version="4.1.1" />
       <PackageReference Include="System.Threading.Channels" Version="4.7.0" />
+      <PackageReference Include="Google.Protobuf" Version="3.13.0" />
+      <PackageReference Include="Grpc.Net.Client" Version="2.32.0" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\Perper.Protocol\Perper.Protocol.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Protobuf Include="..\..\protobuf\fabric.proto" />
     </ItemGroup>
 
 </Project>

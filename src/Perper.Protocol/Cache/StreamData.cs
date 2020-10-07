@@ -1,26 +1,31 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using Apache.Ignite.Core.Binary;
 
 namespace Perper.Protocol.Cache
 {
-    public class StreamData
+    public class StreamData : IBinarizable
     {
         public string Name { get; set; }
         public string Delegate { get; set; }
         public StreamDelegateType DelegateType { get; set; }
 
-        public IBinaryObject Params { get; set; }
+        public IBinaryObject? Params { get; set; }
         public Dictionary<string, (string, string?, object?)[]> StreamParams { get; set; }
 
         public DateTime LastModified { get; set; } = DateTime.UtcNow;
 
         public string? IndexType { get; set; }
-        public IEnumerable<KeyValuePair<string, string>>? IndexFields { get; set; }
+        public Dictionary<string, string>? IndexFields { get; set; }
 
         public Dictionary<string, WorkerData> Workers { get; set; }
 
-        public StreamData(string name, string delegateName, StreamDelegateType delegateType, IBinaryObject dataParams, Dictionary<string, (string, string?, object?)[]> streamParams, string? indexType = null, IEnumerable<KeyValuePair<string, string>>? indexFields = null)
+        public StreamData() : this("", "", StreamDelegateType.Function, null, new Dictionary<string, (string, string?, object?)[]>(), null, null)
+        {
+        }
+
+        public StreamData(string name, string delegateName, StreamDelegateType delegateType, IBinaryObject? dataParams, Dictionary<string, (string, string?, object?)[]> streamParams, string? indexType = null, Dictionary<string, string>? indexFields = null)
         {
             Name = name;
             Delegate = delegateName;
@@ -31,6 +36,35 @@ namespace Perper.Protocol.Cache
             IndexFields = indexFields;
 
             Workers = new Dictionary<string, WorkerData>();
+        }
+
+        public void WriteBinary(IBinaryWriter writer)
+        {
+            writer.WriteString("delegate", Delegate);
+            writer.WriteEnum("delegateType", DelegateType);
+            writer.WriteDictionary("indexFields", IndexFields);
+            writer.WriteString("indexType", IndexType);
+            writer.WriteTimestamp("lastModified", LastModified);
+            writer.WriteString("name", Name);
+            writer.WriteObject("params", Params);
+            writer.WriteDictionary("streamParams", StreamParams.ToDictionary(x => x.Key, x => x.Value.Select(y => y.Item1).ToArray()));
+            writer.WriteDictionary("workers", Workers);
+        }
+
+        public void ReadBinary(IBinaryReader reader)
+        {
+            Delegate = reader.ReadString("delegate");
+            DelegateType = reader.ReadEnum<StreamDelegateType>("delegateType");
+            IndexFields = (Dictionary<string, string>)reader.ReadDictionary("indexFields", s => new Dictionary<string, string>(s));
+            IndexType = reader.ReadString("indexType");
+            LastModified = reader.ReadTimestamp("lastModified")!.Value;
+            Name = reader.ReadString("name");
+            Params = reader.ReadObject<IBinaryObject>("params");
+            StreamParams = ((Dictionary<string, string[]>)reader.ReadDictionary("streamParams", s => new Dictionary<string, string[]>(s))).ToDictionary(
+                x => x.Key,
+                x => x.Value.Select(y => (y, (string?)null, (object?)null)).ToArray()
+            );
+            Workers = (Dictionary<string, WorkerData>)reader.ReadDictionary("workers", s => new Dictionary<string, WorkerData>(s));
         }
     }
 }
