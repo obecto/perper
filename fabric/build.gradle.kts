@@ -1,4 +1,5 @@
 import com.google.protobuf.gradle.*
+import java.net.URI
 
 val igniteVersion = "2.8.1"
 val grpcVersion = "1.31.1"
@@ -16,6 +17,7 @@ plugins {
 
 repositories {
     mavenCentral()
+    maven { url = URI("https://kotlin.bintray.com/kotlinx") }
 }
 
 dependencies {
@@ -31,6 +33,7 @@ dependencies {
     implementation("io.grpc:grpc-stub:$grpcVersion")
     implementation("io.grpc:grpc-kotlin-stub:$grpcKotlinVersion")
     runtimeOnly("io.grpc:grpc-netty-shaded:$grpcVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3")
     testImplementation("junit:junit:4.12")
 }
 
