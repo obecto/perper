@@ -5,6 +5,7 @@ val grpcVersion = "1.31.1"
 val grpcKotlinVersion = "0.2.0"
 val protobufVersion = "3.13.0"
 val coroutinesVersion = "1.3.9"
+val slf4jVersion = "1.7.28"
 
 plugins {
     id("org.gradle.application")
@@ -22,6 +23,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
     implementation("org.apache.ignite:ignite-core:$igniteVersion")
     runtimeOnly("org.apache.ignite:ignite-indexing:$igniteVersion")
+    implementation("org.apache.ignite:ignite-slf4j:$igniteVersion")
+    runtimeOnly("org.slf4j:slf4j-simple:$slf4jVersion")
     implementation("javax.annotation:javax.annotation-api:1.2")
     implementation("com.google.protobuf:protobuf-java-util:$protobufVersion")
     implementation("io.grpc:grpc-protobuf:$grpcVersion")
@@ -34,7 +37,7 @@ dependencies {
 application {
     version = "0.1.1"
     mainClass.set("com.obecto.perper.fabric.Main")
-    description = "My Application"
+    description = "Perper Fabric"
 }
 
 java {

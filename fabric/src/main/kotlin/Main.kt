@@ -7,9 +7,12 @@ import org.apache.ignite.binary.BinaryReflectiveSerializer
 import org.apache.ignite.binary.BinaryTypeConfiguration
 import org.apache.ignite.configuration.BinaryConfiguration
 import org.apache.ignite.configuration.IgniteConfiguration
+import org.apache.ignite.logger.slf4j.Slf4jLogger
 
 fun main() {
-//     System.setProperty("IGNITE_QUIET", "false")
+    System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "warn")
+    System.setProperty("org.slf4j.simpleLogger.log.com.obecto.perper", "debug")
+    System.setProperty("org.slf4j.simpleLogger.levelInBrackets", "true")
 
     val cfg = IgniteConfiguration().also {
         it.binaryConfiguration = BinaryConfiguration().also {
@@ -22,6 +25,7 @@ fun main() {
             it.serializer = BinaryReflectiveSerializer()
             it.nameMapper = BinaryBasicNameMapper(true)
         }
+        it.gridLogger = Slf4jLogger()
     }
     val ignite = Ignition.start(cfg)
 

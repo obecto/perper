@@ -6,8 +6,7 @@ inline fun IgniteLogger.info(f: () -> String) {
 }
 
 inline fun IgniteLogger.debug(f: () -> String) {
-    if (isInfoEnabled()) info(f()) // FIXME: Change logging to something which supports logging levels..
-//     if (isDebugEnabled()) debug(f())
+    if (isDebugEnabled()) debug(f())
 }
 
 inline fun IgniteLogger.trace(f: () -> String) {
