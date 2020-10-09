@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
+using System.Collections.Generic;
 using Perper.WebJobs.Extensions.Model;
 using Perper.Protocol.Cache;
 
@@ -12,9 +13,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public bool Subscribed { get; private set; }
 
-        public IBinaryObject FilterObject { get; private set; }
-
-        public bool IsFiltered { get; private set; }
+        public Dictionary<string, object?> Filter { get; private set; }
 
         public string DeclaredDelegate { get; }
 
@@ -22,12 +21,11 @@ namespace Perper.WebJobs.Extensions.Services
 
         private Func<Task>? _dispose;
 
-        public PerperFabricStream(string streamName, IBinaryObject filterObject, bool filtered, bool subscribed, string declaredDelegate = "", Type? declaredType = null, Func<Task>? dispose = null)
+        public PerperFabricStream(string streamName, bool subscribed = false, Dictionary<string, object?>? filter = null, string declaredDelegate = "", Type? declaredType = null, Func<Task>? dispose = null)
         {
             StreamName = streamName;
             Subscribed = subscribed;
-            FilterObject = filterObject;
-            IsFiltered = filtered;
+            Filter = filter ?? new Dictionary<string, object?>();
             DeclaredDelegate = declaredDelegate;
             DeclaredType = declaredType;
 
@@ -36,18 +34,22 @@ namespace Perper.WebJobs.Extensions.Services
 
         public IPerperStream Subscribe()
         {
-            return new PerperFabricStream(StreamName, FilterObject, IsFiltered, true);
+            return new PerperFabricStream(StreamName, true, Filter);
         }
 
-        public IPerperStream Filter<T>(string fieldName, T value)
+        IPerperStream IPerperStream.Filter<T>(string fieldName, T value)
         {
-            var newFilter = FilterObject.ToBuilder().SetField(fieldName, value).Build();
-            return new PerperFabricStream(StreamName, newFilter, true, Subscribed);
+            if (JavaTypeMappingHelper.GetJavaTypeAsString(typeof(T)) == null) {
+                throw new NotImplementedException("Object filters are not supported in this version of Perper. Use dotted property names instead.");
+            }
+            var newFilter = new Dictionary<string, object?>(Filter);
+            newFilter[fieldName] = value;
+            return new PerperFabricStream(StreamName, Subscribed, newFilter);
         }
 
         public StreamParam AsStreamParam()
         {
-            return new StreamParam(StreamName, IsFiltered ? FilterObject : null);
+            return new StreamParam(StreamName, Filter);
         }
 
         public ValueTask DisposeAsync()
@@ -57,16 +59,14 @@ namespace Perper.WebJobs.Extensions.Services
 
         public void WriteBinary(IBinaryWriter writer)
         {
-            writer.WriteBoolean("filtered", IsFiltered);
-            writer.WriteObject("filterObject", FilterObject);
+            writer.WriteDictionary("filter", Filter);
             writer.WriteString("streamName", StreamName);
             writer.WriteBoolean("subscribed", Subscribed);
         }
 
         public void ReadBinary(IBinaryReader reader)
         {
-            IsFiltered = reader.ReadBoolean("filtered");
-            FilterObject = reader.ReadObject<IBinaryObject>("filterObject");
+            Filter = (Dictionary<string, object?>)reader.ReadDictionary("filter", s => new Dictionary<string, object?>(s));
             StreamName = reader.ReadString("streamName");
             Subscribed = reader.ReadBoolean("subscribed");
         }

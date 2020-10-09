@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Apache.Ignite.Core.Binary;
 
 namespace Perper.Protocol.Cache
@@ -9,30 +10,35 @@ namespace Perper.Protocol.Cache
 
         public string Caller { get; set; }
 
-        public IBinaryObject Params { get; set; }
+        public Dictionary<string, object?> Params { get; set; }
 
-        public WorkerData(string name, string delegateName, string caller, IBinaryObject dataParams)
+        public bool Finished { get; set; }
+
+        public WorkerData(string name, string delegateName, string caller, Dictionary<string, object?> dataParams, bool finished = false)
         {
             Name = name;
             Delegate = delegateName;
             Caller = caller;
             Params = dataParams;
+            Finished = false;
         }
 
         public void WriteBinary(IBinaryWriter writer)
         {
             writer.WriteString("caller", Caller);
             writer.WriteString("delegate", Delegate);
+            writer.WriteBoolean("finished", Finished);
             writer.WriteString("name", Name);
-            writer.WriteObject("params", Params);
+            writer.WriteDictionary("params", Params);
         }
 
         public void ReadBinary(IBinaryReader reader)
         {
             Caller = reader.ReadString("caller");
             Delegate = reader.ReadString("delegate");
+            Finished = reader.ReadBoolean("finished");
             Name = reader.ReadString("name");
-            Params = reader.ReadObject<IBinaryObject>("params");
+            Params = ((Dictionary<string, object?>)reader.ReadDictionary("params", s => new Dictionary<string, object?>(s)));
         }
     }
 }

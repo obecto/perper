@@ -63,7 +63,7 @@ namespace Perper.WebJobs.Extensions.Bindings
 
             if (Type == typeof(IPerperStream[]) && result is object[] binaryObjects)
             {
-                result = binaryObjects.OfType<IBinaryObject>().Select(x => data.DeserializeBinaryObject<PerperFabricStream>(x)).ToArray();
+                result = binaryObjects.OfType<IBinaryObject>().Select(x => x.Deserialize<PerperFabricStream>()).ToArray();
             }
 
             return result;

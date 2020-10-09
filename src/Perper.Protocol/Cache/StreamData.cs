@@ -10,7 +10,7 @@ namespace Perper.Protocol.Cache
         public string Delegate { get; set; }
         public StreamDelegateType DelegateType { get; set; }
 
-        public IBinaryObject Params { get; set; }
+        public Dictionary<string, object?> Params { get; set; }
         public Dictionary<string, StreamParam[]> StreamParams { get; set; }
 
         public DateTime LastModified { get; set; } = DateTime.UtcNow;
@@ -24,7 +24,7 @@ namespace Perper.Protocol.Cache
         {
         }
 
-        public StreamData(string name, string delegateName, StreamDelegateType delegateType, IBinaryObject dataParams, Dictionary<string, StreamParam[]> streamParams, string? indexType = null, Dictionary<string, string>? indexFields = null)
+        public StreamData(string name, string delegateName, StreamDelegateType delegateType, Dictionary<string, object?> dataParams, Dictionary<string, StreamParam[]> streamParams, string? indexType = null, Dictionary<string, string>? indexFields = null)
         {
             Name = name;
             Delegate = delegateName;
@@ -45,7 +45,7 @@ namespace Perper.Protocol.Cache
             writer.WriteString("indexType", IndexType);
             writer.WriteTimestamp("lastModified", LastModified);
             writer.WriteString("name", Name);
-            writer.WriteObject("params", Params);
+            writer.WriteDictionary("params", Params);
             writer.WriteDictionary("streamParams", StreamParams);
             writer.WriteDictionary("workers", Workers);
         }
@@ -58,7 +58,7 @@ namespace Perper.Protocol.Cache
             IndexType = reader.ReadString("indexType");
             LastModified = reader.ReadTimestamp("lastModified")!.Value;
             Name = reader.ReadString("name");
-            Params = reader.ReadObject<IBinaryObject>("params");
+            Params = ((Dictionary<string, object?>)reader.ReadDictionary("params", s => new Dictionary<string, object?>(s)));
             StreamParams = ((Dictionary<string, StreamParam[]>)reader.ReadDictionary("streamParams", s => new Dictionary<string, StreamParam[]>(s)));
             Workers = (Dictionary<string, WorkerData>)reader.ReadDictionary("workers", s => new Dictionary<string, WorkerData>(s));
         }

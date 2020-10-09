@@ -19,7 +19,7 @@ import javax.cache.event.CacheEntryEventFilter
 import javax.cache.event.CacheEntryUpdatedListener
 
 class StreamService : JobService() {
-    data class StreamOutput(val streamData: StreamData, val parameter: String, val filter: BinaryObject?)
+    data class StreamOutput(val streamData: StreamData, val parameter: String, val filter: Map<List<String>, Any?>?)
 
     val returnFieldName = "\$return"
     val forwardFieldName = "\$forward"
@@ -90,7 +90,7 @@ class StreamService : JobService() {
                         continue
                     }
                     val outputs = liveStreamGraph.getOrPut(inputStream.name, { LinkedHashSet<StreamOutput>() })
-                    outputs.add(StreamOutput(streamData, parameter, streamParam.filter))
+                    outputs.add(StreamOutput(streamData, parameter, convertFilter(streamParam.filter)))
                     log.debug({ "Subscribing '${streamData.name}' to '${inputStream.name}'" })
                     engageStream(inputStream)
                 }
@@ -144,9 +144,9 @@ class StreamService : JobService() {
         } else {
             val returnStreams = streamData.streamParams.get(returnFieldName) ?: emptyList()
             if (!returnStreams.isEmpty()) {
-                for (name in returnStreams) {
-                    val outputs = liveStreamGraph.getOrPut(name.stream, { LinkedHashSet<StreamOutput>() })
-                    outputs.add(StreamOutput(streamData, forwardFieldName, name.filter))
+                for (returnParam in returnStreams) {
+                    val outputs = liveStreamGraph.getOrPut(returnParam.stream, { LinkedHashSet<StreamOutput>() })
+                    outputs.add(StreamOutput(streamData, forwardFieldName, convertFilter(returnParam.filter)))
                 }
                 var allReturnStreams = returnStreams.map({ streamsCache.get(it.stream) })
                 allReturnStreams.forEach({ engageStream(it) }) // TODO: Make parallel
@@ -154,10 +154,10 @@ class StreamService : JobService() {
 
             if (!streamData.workers.isEmpty()) {
                 for (worker in streamData.workers.values) {
-                    if (worker.params.hasField(returnFieldName) && liveWorkers.contains(worker.name)) {
+                    if (worker.finished && liveWorkers.contains(worker.name)) {
                         liveWorkers.remove(worker.name)
                         transportService.sendWorkerResult(streamData.name, worker.caller, worker.name)
-                    } else if (!worker.params.hasField(returnFieldName) && !liveWorkers.contains(worker.name)) {
+                    } else if (!worker.finished && !liveWorkers.contains(worker.name)) {
                         liveWorkers.add(worker.name)
                         transportService.sendWorkerTrigger(streamData.name, worker.delegate, worker.name)
                     }
@@ -181,14 +181,27 @@ class StreamService : JobService() {
         }
     }
 
-    fun testFilter(filter: BinaryObject, item: BinaryObject): Boolean {
-        for (field in filter.type().fieldNames()) {
-            if (filter.hasField(field) && filter.field<Any?>(field) != item.field<Any?>(field)) {
+    fun testFilter(filter: Map<List<String>, Any?>, item: BinaryObject): Boolean {
+        for ((path, expectedValue) in filter.entries) {
+            var finalItem: BinaryObject? = item
+            for (segment in path.dropLast(1)) {
+                finalItem = finalItem?.field<BinaryObject?>(segment)
+            }
+            if (expectedValue != finalItem?.field<Any?>(path.last())) {
                 return false
             }
         }
 
         return true
+    }
+
+    fun convertFilter(filter: Map<String, Any?>): Map<List<String>, Any?>? {
+        var result = HashMap<List<String>, Any?>()
+        for ((field, expectedValue) in filter.entries) {
+            result.put(field.split('.'), expectedValue)
+        }
+
+        return if (result.isEmpty()) null else result
     }
 
     fun updateStreamItem(stream: String, itemKey: Long) {
