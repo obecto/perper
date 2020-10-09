@@ -1,32 +1,33 @@
 using System;
 using System.Threading.Tasks;
+using Apache.Ignite.Core.Binary;
 using Perper.WebJobs.Extensions.Model;
+using Perper.Protocol.Cache;
 
 namespace Perper.WebJobs.Extensions.Services
 {
-    public class PerperFabricStream : IPerperStream
+    public class PerperFabricStream : IPerperStream, IBinarizable
     {
-        public string StreamName { get; }
+        public string StreamName { get; private set; }
 
-        public bool Subscribed { get; }
+        public bool Subscribed { get; private set; }
 
-        public string? FilterField { get; }
+        public IBinaryObject FilterObject { get; private set; }
 
-        public object? FilterValue { get; }
+        public bool IsFiltered { get; private set; }
 
         public string DeclaredDelegate { get; }
 
         public Type? DeclaredType { get; }
 
-        [NonSerialized]
         private Func<Task>? _dispose;
 
-        public PerperFabricStream(string streamName, bool subscribed = false, string? filterField = null, object? filterValue = null, string declaredDelegate = "", Type? declaredType = null, Func<Task>? dispose = null)
+        public PerperFabricStream(string streamName, IBinaryObject filterObject, bool filtered, bool subscribed, string declaredDelegate = "", Type? declaredType = null, Func<Task>? dispose = null)
         {
             StreamName = streamName;
             Subscribed = subscribed;
-            FilterField = filterField;
-            FilterValue = filterValue;
+            FilterObject = filterObject;
+            IsFiltered = filtered;
             DeclaredDelegate = declaredDelegate;
             DeclaredType = declaredType;
 
@@ -35,22 +36,39 @@ namespace Perper.WebJobs.Extensions.Services
 
         public IPerperStream Subscribe()
         {
-            return new PerperFabricStream(StreamName, true, FilterField, FilterValue);
+            return new PerperFabricStream(StreamName, FilterObject, IsFiltered, true);
         }
 
-        public IPerperStream Filter(string fieldName, object value)
+        public IPerperStream Filter<T>(string fieldName, T value)
         {
-            if (FilterField != null)
-            {
-                throw new NotImplementedException("Filtering on multiple fields is not supported in this version of Perper.");
-            }
+            var newFilter = FilterObject.ToBuilder().SetField(fieldName, value).Build();
+            return new PerperFabricStream(StreamName, newFilter, true, Subscribed);
+        }
 
-            return new PerperFabricStream(StreamName, Subscribed, fieldName, value);
+        public StreamParam AsStreamParam()
+        {
+            return new StreamParam(StreamName, IsFiltered ? FilterObject : null);
         }
 
         public ValueTask DisposeAsync()
         {
             return _dispose == null ? default : new ValueTask(_dispose());
+        }
+
+        public void WriteBinary(IBinaryWriter writer)
+        {
+            writer.WriteBoolean("filtered", IsFiltered);
+            writer.WriteObject("filterObject", FilterObject);
+            writer.WriteString("streamName", StreamName);
+            writer.WriteBoolean("subscribed", Subscribed);
+        }
+
+        public void ReadBinary(IBinaryReader reader)
+        {
+            IsFiltered = reader.ReadBoolean("filtered");
+            FilterObject = reader.ReadObject<IBinaryObject>("filterObject");
+            StreamName = reader.ReadString("streamName");
+            Subscribed = reader.ReadBoolean("subscribed");
         }
     }
 }

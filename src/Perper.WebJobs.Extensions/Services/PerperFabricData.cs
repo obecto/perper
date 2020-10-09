@@ -26,12 +26,12 @@ namespace Perper.WebJobs.Extensions.Services
 
         public IPerperStream GetStream()
         {
-            return new PerperFabricStream(_streamName);
+            return new PerperFabricStream(_streamName, CreateEmptyFilter(), false, false);
         }
 
         public IPerperStream DeclareStream(string streamName, string delegateName, Type? indexType = null)
         {
-            return new PerperFabricStream(streamName, false, null, null, delegateName, indexType, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
+            return new PerperFabricStream(streamName, CreateEmptyFilter(), false, false, delegateName, indexType, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
         }
 
         public async Task<IPerperStream> StreamFunctionAsync(string streamName, string delegateName, object parameters, Type? indexType = null)
@@ -47,8 +47,9 @@ namespace Perper.WebJobs.Extensions.Services
             }
 
             streamObject.LastModified = DateTime.UtcNow;
+
             await streamsCache.PutAsync(streamObject.Name, streamObject);
-            return new PerperFabricStream(streamObject.Name, false, null, null, "", null, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
+            return new PerperFabricStream(streamObject.Name, CreateEmptyFilter(), false, false, "", null, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
         }
 
         public async Task<IPerperStream> StreamFunctionAsync(IPerperStream declaration, object parameters)
@@ -71,8 +72,9 @@ namespace Perper.WebJobs.Extensions.Services
             }
 
             streamObject.LastModified = DateTime.UtcNow;
+
             await streamsCache.PutAsync(streamObject.Name, streamObject);
-            return new PerperFabricStream(streamObject.Name, false, null, null, "", null, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
+            return new PerperFabricStream(streamObject.Name, CreateEmptyFilter(), false, false, "", null, () => _igniteClient.GetCache<string, StreamData>("streams").RemoveAsync(streamName));
         }
 
         public async Task<IPerperStream> StreamActionAsync(IPerperStream declaration, object parameters)
@@ -84,7 +86,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task BindStreamOutputAsync(IEnumerable<IPerperStream> streams)
         {
-            var streamsNames = streams.Cast<PerperFabricStream>().Select(s => (s.StreamName, s.FilterField, s.FilterValue)).ToArray();
+            var streamsNames = streams.Cast<PerperFabricStream>().Select(s => s.AsStreamParam()).ToArray();
 
             if (streamsNames.Any())
             {
@@ -100,7 +102,7 @@ namespace Perper.WebJobs.Extensions.Services
         {
             var streamsCacheClient = _igniteClient.GetCache<string, StreamData>("streams");
             var streamObject = await streamsCacheClient.GetAsync(_streamName);
-            return streamObject.StreamParams[name].Single().Item1;
+            return streamObject.StreamParams[name].Single().Stream;
         }
 
         public async Task<T> FetchStreamParameterAsync<T>(string name)
@@ -120,7 +122,7 @@ namespace Perper.WebJobs.Extensions.Services
 
             if (field is IBinaryObject binaryObject)
             {
-                return binaryObject.Deserialize<T>();
+                return DeserializeBinaryObject<T>(binaryObject);
             }
 
             return (T)field!;
@@ -168,7 +170,7 @@ namespace Perper.WebJobs.Extensions.Services
 
             if (field is IBinaryObject binaryObject)
             {
-                return binaryObject.Deserialize<T>();
+                return DeserializeBinaryObject<T>(binaryObject);
             }
 
             return (T)field;
@@ -193,29 +195,35 @@ namespace Perper.WebJobs.Extensions.Services
             var field = workerObject!.Params.GetField<object>("$return");
             if (field is IBinaryObject binaryObject)
             {
-                return binaryObject.Deserialize<T>();
+                return DeserializeBinaryObject<T>(binaryObject);
             }
 
             return (T)field;
         }
 
-        private (IBinaryObject, Dictionary<string, (string, string?, object?)[]>) CreateDelegateParameters(object parameters)
+        private (IBinaryObject, Dictionary<string, StreamParam[]>) CreateDelegateParameters(object parameters)
         {
             var binary = _igniteClient.GetBinary();
             var builder = binary.GetBuilder($"stream{Guid.NewGuid():N}");
-            var streamParameters = new Dictionary<string, (string, string?, object?)[]>();
+            var streamParameters = new Dictionary<string, StreamParam[]>();
 
             var properties = parameters.GetType().GetProperties();
             foreach (var propertyInfo in properties)
             {
                 var propertyValue = propertyInfo.GetValue(parameters);
-                builder.SetField(propertyInfo.Name, propertyValue);
+
+                // HACK: Needed to serialize PerperFabricStream properly; Passing propertyValue directly to SetField
+                // causes WriteObject<IBinaryObject> called by PerperFabricStream.WriteBinary to misbehave,
+                // writing the object without the BinaryTypeId.Binary tag in front.
+                var propertyValueSerialized = binary.ToBinary<object>(propertyValue);
+
+                builder.SetField(propertyInfo.Name, propertyValueSerialized);
                 switch (propertyValue)
                 {
                     case PerperFabricStream stream:
                         if (stream.Subscribed)
                         {
-                            streamParameters.Add(propertyInfo.Name, new[] { (stream.StreamName, stream.FilterField, binary.ToBinary<object>(stream.FilterValue)) });
+                            streamParameters.Add(propertyInfo.Name, new[] { stream.AsStreamParam() });
                         }
                         break;
                     case IEnumerable<IPerperStream> streams:
@@ -223,7 +231,7 @@ namespace Perper.WebJobs.Extensions.Services
                             from s in streams
                             let stream = s as PerperFabricStream
                             where stream != null && stream.Subscribed
-                            select (stream.StreamName, stream.FilterField, binary.ToBinary<object>(stream.FilterValue))).ToArray();
+                            select stream.AsStreamParam()).ToArray();
                         if (filteredStreams.Length > 0)
                         {
                             streamParameters.Add(propertyInfo.Name, filteredStreams);
@@ -253,6 +261,27 @@ namespace Perper.WebJobs.Extensions.Services
             }
 
             return indexFields;
+        }
+
+        private IBinaryObject CreateEmptyFilter()
+        {
+            return _igniteClient.GetBinary().GetBuilder($"filter{Guid.NewGuid():N}").Build();
+        }
+
+        public T DeserializeBinaryObject<T>(IBinaryObject binary)
+        {
+            // HACK: Workaround for IGNITE-13563 in Ignite 2.8.1
+            var methods = binary.GetType().GetMethods(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            foreach (var method in methods)
+            {
+                if (method.Name == "Deserialize" && method.IsPrivate)
+                {
+                    var methodT = method.MakeGenericMethod(typeof(T));
+                    // var paramType = methodT.GetParameters()[0].ParameterType;
+                    return (T) methodT.Invoke(binary, new object[] {1})!;
+                }
+            }
+            return binary.Deserialize<T>();
         }
     }
 }

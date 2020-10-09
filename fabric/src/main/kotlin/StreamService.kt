@@ -17,9 +17,10 @@ import org.apache.ignite.services.ServiceContext
 import javax.cache.configuration.Factory
 import javax.cache.event.CacheEntryEventFilter
 import javax.cache.event.CacheEntryUpdatedListener
-import kotlin.collections.ArrayList
 
 class StreamService : JobService() {
+    data class StreamOutput(val streamData: StreamData, val parameter: String, val filter: BinaryObject?)
+
     val returnFieldName = "\$return"
     val forwardFieldName = "\$forward"
 
@@ -36,7 +37,7 @@ class StreamService : JobService() {
     lateinit var streamItemUpdates: Channel<Pair<String, Long>>
 
     var liveStreams = HashMap<String, StreamData>()
-    var liveStreamGraph = HashMap<String, ArrayList<Pair<String, StreamData>>>() // producer => [(parameter, consumer)]
+    var liveStreamGraph = HashMap<String, LinkedHashSet<StreamOutput>>()
     var liveWorkers = HashSet<String>()
 
     override fun init(ctx: ServiceContext) {
@@ -47,6 +48,7 @@ class StreamService : JobService() {
     }
 
     override suspend fun CoroutineScope.execute(ctx: ServiceContext) {
+        // FIXME: updateStream and invokeStreamItemUpdates both use liveStreamGraph, creating a race condition
         launch {
             var updates = Channel<StreamData>(Channel.UNLIMITED)
             val query = ContinuousQuery<String, StreamData>()
@@ -67,7 +69,8 @@ class StreamService : JobService() {
         launch {
             for ((stream, itemKey) in streamItemUpdates) {
                 log.trace({ "Invoking stream updates on '$stream'" })
-                invokeStreamItemUpdates(stream, stream, itemKey)
+                val itemValue = lazy { ignite.cache<Long, BinaryObject>(stream).withKeepBinary<Long, BinaryObject>().get(itemKey) }
+                invokeStreamItemUpdates(stream, stream, itemKey, itemValue)
             }
         }
     }
@@ -79,11 +82,11 @@ class StreamService : JobService() {
             log.debug({ "Starting stream '${streamData.name}'" })
             transportService.sendStreamTrigger(streamData.name, streamData.delegate)
 
-            var allInputStreams = streamData.streamParams.mapValues({ it.value.map({ streamsCache.get(it) }) })
+            var allInputStreams = streamData.streamParams.mapValues({ it.value.map({ Pair(streamsCache.get(it.stream), it) }) })
             for ((parameter, inputStreams) in allInputStreams) {
-                for (inputStream in inputStreams) {
-                    val list = liveStreamGraph.getOrPut(inputStream.name, { ArrayList<Pair<String, StreamData>>() })
-                    list.add(Pair(parameter, streamData))
+                for ((inputStream, streamParam) in inputStreams) {
+                    val outputs = liveStreamGraph.getOrPut(inputStream.name, { LinkedHashSet<StreamOutput>() })
+                    outputs.add(StreamOutput(streamData, parameter, streamParam.filter))
                     log.debug({ "Subscribing '${streamData.name}' to '${inputStream.name}'" })
                     engageStream(inputStream)
                 }
@@ -138,21 +141,19 @@ class StreamService : JobService() {
             val returnStreams = streamData.streamParams.get(returnFieldName) ?: emptyList()
             if (!returnStreams.isEmpty()) {
                 for (name in returnStreams) {
-                    val list = liveStreamGraph.getOrPut(name, { ArrayList<Pair<String, StreamData>>() })
-                    if (!list.any({ it.first == forwardFieldName && it.second.name == streamData.name })) {
-                        list.add(Pair(forwardFieldName, streamData))
-                    }
+                    val outputs = liveStreamGraph.getOrPut(name.stream, { LinkedHashSet<StreamOutput>() })
+                    outputs.add(StreamOutput(streamData, forwardFieldName, name.filter))
                 }
-                var allReturnStreams = returnStreams.map({ streamsCache.get(it) })
+                var allReturnStreams = returnStreams.map({ streamsCache.get(it.stream) })
                 allReturnStreams.forEach({ engageStream(it) }) // TODO: Make parallel
             }
 
             if (!streamData.workers.isEmpty()) {
                 for (worker in streamData.workers.values) {
-                    if ((worker.params?.hasField(returnFieldName) ?: false) && liveWorkers.contains(worker.name)) {
+                    if (worker.params.hasField(returnFieldName) && liveWorkers.contains(worker.name)) {
                         liveWorkers.remove(worker.name)
                         transportService.sendWorkerResult(streamData.name, worker.caller, worker.name)
-                    } else if (!(worker.params?.hasField(returnFieldName) ?: false) && !liveWorkers.contains(worker.name)) {
+                    } else if (!worker.params.hasField(returnFieldName) && !liveWorkers.contains(worker.name)) {
                         liveWorkers.add(worker.name)
                         transportService.sendWorkerTrigger(streamData.name, worker.delegate, worker.name)
                     }
@@ -161,16 +162,29 @@ class StreamService : JobService() {
         }
     }
 
-    suspend fun invokeStreamItemUpdates(targetStream: String, stream: String, itemKey: Long) {
+    suspend fun invokeStreamItemUpdates(targetStream: String, stream: String, itemKey: Long, itemValue: Lazy<BinaryObject>) {
         val streamsToUpdate = liveStreamGraph[targetStream] ?: return
         log.trace({ "Invoking stream updates for '$targetStream'; listeners: $streamsToUpdate" })
-        for ((field, streamData) in streamsToUpdate) {
-            if (field == forwardFieldName) {
-                invokeStreamItemUpdates(streamData.name, stream, itemKey)
+        for (output in streamsToUpdate) {
+            if (output.filter != null) {
+                if (!testFilter(output.filter, itemValue.value)) continue
+            }
+            if (output.parameter == forwardFieldName) {
+                invokeStreamItemUpdates(output.streamData.name, stream, itemKey, itemValue)
             } else {
-                transportService.sendItemUpdate(streamData.name, streamData.delegate, field, stream, itemKey)
+                transportService.sendItemUpdate(output.streamData.name, output.streamData.delegate, output.parameter, stream, itemKey)
             }
         }
+    }
+
+    fun testFilter(filter: BinaryObject, item: BinaryObject): Boolean {
+        for (field in filter.type().fieldNames()) {
+            if (filter.hasField(field) && filter.field<Any?>(field) != item.field<Any?>(field)) {
+                return false
+            }
+        }
+
+        return true
     }
 
     fun updateStreamItem(stream: String, itemKey: Long) {

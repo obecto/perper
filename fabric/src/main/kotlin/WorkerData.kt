@@ -8,7 +8,7 @@ class WorkerData(
     var name: String,
     var delegate: String,
     var caller: String,
-    var params: BinaryObject?,
+    var params: BinaryObject,
 ) : Binarylizable {
     override fun writeBinary(writer: BinaryWriter) {
         writer.writeString("caller", caller)

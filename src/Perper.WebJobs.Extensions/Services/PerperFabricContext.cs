@@ -151,6 +151,7 @@ namespace Perper.WebJobs.Extensions.Services
                     TypeConfigurations = GetDataTypes().Concat(new[] {
                         typeof(StreamData),
                         typeof(StreamDelegateType),
+                        typeof(StreamParam),
                         typeof(WorkerData)
                     }).Select(type => new BinaryTypeConfiguration(type)
                     {

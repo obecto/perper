@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Collections.Generic;
 using Apache.Ignite.Core.Binary;
 
@@ -11,8 +10,8 @@ namespace Perper.Protocol.Cache
         public string Delegate { get; set; }
         public StreamDelegateType DelegateType { get; set; }
 
-        public IBinaryObject? Params { get; set; }
-        public Dictionary<string, (string, string?, object?)[]> StreamParams { get; set; }
+        public IBinaryObject Params { get; set; }
+        public Dictionary<string, StreamParam[]> StreamParams { get; set; }
 
         public DateTime LastModified { get; set; } = DateTime.UtcNow;
 
@@ -21,11 +20,11 @@ namespace Perper.Protocol.Cache
 
         public Dictionary<string, WorkerData> Workers { get; set; }
 
-        public StreamData() : this("", "", StreamDelegateType.Function, null, new Dictionary<string, (string, string?, object?)[]>(), null, null)
+        public StreamData() : this("", "", StreamDelegateType.Function, null!, new Dictionary<string, StreamParam[]>(), null, null)
         {
         }
 
-        public StreamData(string name, string delegateName, StreamDelegateType delegateType, IBinaryObject? dataParams, Dictionary<string, (string, string?, object?)[]> streamParams, string? indexType = null, Dictionary<string, string>? indexFields = null)
+        public StreamData(string name, string delegateName, StreamDelegateType delegateType, IBinaryObject dataParams, Dictionary<string, StreamParam[]> streamParams, string? indexType = null, Dictionary<string, string>? indexFields = null)
         {
             Name = name;
             Delegate = delegateName;
@@ -47,7 +46,7 @@ namespace Perper.Protocol.Cache
             writer.WriteTimestamp("lastModified", LastModified);
             writer.WriteString("name", Name);
             writer.WriteObject("params", Params);
-            writer.WriteDictionary("streamParams", StreamParams.ToDictionary(x => x.Key, x => x.Value.Select(y => y.Item1).ToArray()));
+            writer.WriteDictionary("streamParams", StreamParams);
             writer.WriteDictionary("workers", Workers);
         }
 
@@ -60,10 +59,7 @@ namespace Perper.Protocol.Cache
             LastModified = reader.ReadTimestamp("lastModified")!.Value;
             Name = reader.ReadString("name");
             Params = reader.ReadObject<IBinaryObject>("params");
-            StreamParams = ((Dictionary<string, string[]>)reader.ReadDictionary("streamParams", s => new Dictionary<string, string[]>(s))).ToDictionary(
-                x => x.Key,
-                x => x.Value.Select(y => (y, (string?)null, (object?)null)).ToArray()
-            );
+            StreamParams = ((Dictionary<string, StreamParam[]>)reader.ReadDictionary("streamParams", s => new Dictionary<string, StreamParam[]>(s)));
             Workers = (Dictionary<string, WorkerData>)reader.ReadDictionary("workers", s => new Dictionary<string, WorkerData>(s));
         }
     }

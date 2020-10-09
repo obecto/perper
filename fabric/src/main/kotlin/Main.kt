@@ -15,6 +15,8 @@ fun main() {
         it.binaryConfiguration = BinaryConfiguration().also {
             it.typeConfigurations = listOf(
                 BinaryTypeConfiguration(StreamData::class.qualifiedName),
+                BinaryTypeConfiguration(StreamParam::class.qualifiedName),
+                BinaryTypeConfiguration(StreamDelegateType::class.qualifiedName).setEnum(true),
                 BinaryTypeConfiguration(WorkerData::class.qualifiedName),
             )
             it.serializer = BinaryReflectiveSerializer()

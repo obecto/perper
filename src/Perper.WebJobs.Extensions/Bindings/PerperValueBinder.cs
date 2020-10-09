@@ -47,10 +47,10 @@ namespace Perper.WebJobs.Extensions.Bindings
             if (Type.IsGenericType && Type.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>))
             {
                 var streamType = typeof(PerperStreamAsyncEnumerable<>).MakeGenericType(Type.GenericTypeArguments[0]);
-                return Activator.CreateInstance(streamType, _attribute.Stream, _attribute.Delegate, 
+                return Activator.CreateInstance(streamType, _attribute.Stream, _attribute.Delegate,
                     _attribute.Parameter, await data.FetchStreamParameterStreamNameAsync(_attribute.Parameter), _context)!;
             }
-            
+
             var result = _attribute.TriggerAttribute switch
             {
                 nameof(PerperStreamTriggerAttribute) => await data.FetchStreamParameterAsync<object>(_attribute
@@ -63,7 +63,7 @@ namespace Perper.WebJobs.Extensions.Bindings
 
             if (Type == typeof(IPerperStream[]) && result is object[] binaryObjects)
             {
-                result = binaryObjects.OfType<IBinaryObject>().Select(x => x.Deserialize<PerperFabricStream>()).ToArray();
+                result = binaryObjects.OfType<IBinaryObject>().Select(x => data.DeserializeBinaryObject<PerperFabricStream>(x)).ToArray();
             }
 
             return result;

@@ -10,8 +10,8 @@ class StreamData(
     var name: String,
     var delegate: String,
     var delegateType: StreamDelegateType,
-    var params: BinaryObject?,
-    var streamParams: Map<String, List<String>>,
+    var params: BinaryObject,
+    var streamParams: Map<String, List<StreamParam>>,
     var indexType: String?,
     var indexFields: LinkedHashMap<String, String>?,
     var workers: Map<String, WorkerData>,
@@ -38,7 +38,7 @@ class StreamData(
         lastModified = reader.readTimestamp("lastModified")
         name = reader.readString("name")
         params = reader.readObject("params")
-        streamParams = reader.readMap<String, Array<String>>("streamParams").entries.associateBy({ it.key }, { it.value.toList() })
+        streamParams = reader.readMap<String, Array<StreamParam>>("streamParams").entries.associateBy({ it.key }, { it.value.toList() })
         workers = reader.readMap("workers")
     }
 }
