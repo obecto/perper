@@ -82,9 +82,13 @@ class StreamService : JobService() {
             log.debug({ "Starting stream '${streamData.name}'" })
             transportService.sendStreamTrigger(streamData.name, streamData.delegate)
 
-            var allInputStreams = streamData.streamParams.mapValues({ it.value.map({ Pair(streamsCache.get(it.stream), it) }) })
+            var allInputStreams = streamData.streamParams.mapValues({ it.value.map({ Pair(streamsCache.get(it.stream) ?: null, it) }) })
             for ((parameter, inputStreams) in allInputStreams) {
                 for ((inputStream, streamParam) in inputStreams) {
+                    if (inputStream == null) {
+                        log.warning("Tried engaging non-initialized stream '${streamParam.stream}' as part of '${streamData.name}'s '$parameter' input")
+                        continue
+                    }
                     val outputs = liveStreamGraph.getOrPut(inputStream.name, { LinkedHashSet<StreamOutput>() })
                     outputs.add(StreamOutput(streamData, parameter, streamParam.filter))
                     log.debug({ "Subscribing '${streamData.name}' to '${inputStream.name}'" })
