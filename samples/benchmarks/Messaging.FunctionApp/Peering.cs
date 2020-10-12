@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
@@ -10,7 +11,7 @@ namespace Messaging.FunctionApp
     {
         [FunctionName(nameof(Peering))]
         public async Task Run([PerperStreamTrigger] PerperStreamContext context,
-            [Perper("streams")] IPerperStream[] streams,
+            [Perper("streams")] List<IPerperStream> streams,
             CancellationToken cancellationToken)
         {
             await context.BindOutput(streams, cancellationToken);

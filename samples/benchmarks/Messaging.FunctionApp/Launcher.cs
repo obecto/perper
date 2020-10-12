@@ -40,7 +40,7 @@ namespace Messaging.FunctionApp
 
             var peering = await context.StreamFunctionAsync("Peering", typeof(Peering), new
             {
-                streams = streams.ToArray()
+                streams = streams.ToList()
             }, typeof(Message));
 
             var dummy = await context.StreamFunctionAsync("DummyInput", "Dummy", new { }, typeof(Message));
@@ -50,7 +50,7 @@ namespace Messaging.FunctionApp
                 await context.StreamFunctionAsync(streams[i], new
                 {
                     enumerated = (EnumerateMessages ? peering : dummy).Subscribe(),
-                    filtered = (FilterMessages ? peering : dummy).Filter("To", i).Subscribe(),
+                    filtered = (FilterMessages ? peering : dummy).Filter<Message>(x => x.To == i).Subscribe(),
                     queried = (QueryMessages ? streams.ToArray() : new IPerperStream[0] { }),
                     i,
                     n = NodeCount,

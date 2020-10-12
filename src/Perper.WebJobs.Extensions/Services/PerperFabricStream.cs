@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using System.Linq.Expressions;
 using Apache.Ignite.Core.Binary;
 using System.Collections.Generic;
 using Perper.WebJobs.Extensions.Model;
@@ -37,13 +38,69 @@ namespace Perper.WebJobs.Extensions.Services
             return new PerperFabricStream(StreamName, true, Filter);
         }
 
-        IPerperStream IPerperStream.Filter<T>(string fieldName, T value)
+        IPerperStream IPerperStream.Filter<T>(Expression<Func<T, bool>> expression)
         {
-            if (JavaTypeMappingHelper.GetJavaTypeAsString(typeof(T)) == null) {
-                throw new NotImplementedException("Object filters are not supported in this version of Perper. Use dotted property names instead.");
-            }
             var newFilter = new Dictionary<string, object?>(Filter);
-            newFilter[fieldName] = value;
+            string? parseFieldName(Expression subexpression) {
+                switch (subexpression) {
+                    case MemberExpression member:
+                        var left = parseFieldName(member.Expression);
+                        return left != null ? left + member.Member.Name : null;
+                    case ParameterExpression parameter:
+                        return parameter.Name == expression.Parameters[0].Name ? "" : null;
+                    case ConstantExpression constant:
+                        return null;
+                    default:
+                        throw new NotImplementedException("Support for " + subexpression.GetType() + " in IPerperStream.Filter is not implemented yet.");
+                }
+            }
+            object? parseFieldValue(Expression subexpression) {
+                switch (subexpression) {
+                    case ConstantExpression constant:
+                        return constant.Value;
+                    default:
+                        // Ugly way to read FieldExpression-s (used by e.g. local variables)
+                        return Expression.Lambda(subexpression).Compile().DynamicInvoke();
+                }
+            }
+            void addSubexpressionToFilter(Expression subexpression) {
+                switch (subexpression) {
+                    case BinaryExpression binary:
+                        switch (binary.NodeType) {
+                            case ExpressionType.And:
+                                addSubexpressionToFilter(binary.Left);
+                                addSubexpressionToFilter(binary.Right);
+                                break;
+
+                            case ExpressionType.Equal:
+                                var fieldNameLeft = parseFieldName(binary.Left);
+                                var fieldNameRight = parseFieldName(binary.Right);
+                                if (fieldNameLeft != null && fieldNameRight != null)
+                                    throw new NotImplementedException("Support for comparing two fields in IPerperStream.Filter is not implemented yet.");
+                                if (fieldNameLeft == null && fieldNameRight == null)
+                                    throw new NotImplementedException("Expected a field/property on one side of the expression.");
+                                var fieldName = (fieldNameLeft != null ? fieldNameLeft : fieldNameRight)!;
+                                var fieldValue = fieldNameLeft != null ? parseFieldValue(binary.Right) : parseFieldValue(binary.Left);
+
+                                if (fieldValue == null || JavaTypeMappingHelper.GetJavaTypeAsString(fieldValue.GetType()) == null) {
+                                    throw new NotImplementedException("Comparision with custom types in filters is not implemented yet.");
+                                }
+
+                                newFilter[fieldName] = fieldValue;
+                                break;
+
+                            default:
+                                throw new NotImplementedException("Support for " + binary.NodeType + " in IPerperStream.Filter is not implemented yet.");
+                        }
+                        break;
+
+                    default:
+                        throw new NotImplementedException("Support for " + subexpression.GetType() + " in IPerperStream.Filter is not implemented yet.");
+                }
+            }
+
+            addSubexpressionToFilter(expression.Body);
+
             return new PerperFabricStream(StreamName, Subscribed, newFilter);
         }
 
