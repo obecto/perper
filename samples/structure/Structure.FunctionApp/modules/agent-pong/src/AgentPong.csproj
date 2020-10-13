@@ -16,6 +16,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\..\src\Perper.WebJobs.Extensions\Perper.WebJobs.Extensions.csproj" />
+    <ProjectReference Include="..\..\..\..\..\..\functions\runtime\src\Perper.WebJobs.Extensions\Perper.WebJobs.Extensions.csproj" />
   </ItemGroup>
 </Project>

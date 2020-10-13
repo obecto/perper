@@ -51,7 +51,7 @@ java {
 sourceSets {
   main {
     proto {
-      srcDir("../protobuf")
+      srcDir("../proto")
     }
   }
 }
