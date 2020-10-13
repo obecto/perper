@@ -1,0 +1,15 @@
+{
+  "bindings": [
+    {
+      "type": "perperStreamTrigger",
+      "direction": "in",
+      "name": "context"
+    },
+    {
+      "type": "perper",
+      "direction": "in",
+      "name": "processor",
+      "parameter": "processor"
+    }
+  ]
+}

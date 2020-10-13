@@ -11,11 +11,13 @@ namespace Perper.WebJobs.Extensions.Model
 {
     public class PerperStreamContext
     {
-        public string StreamName { get; }
-        public string DelegateName { get; }
+        public string StreamName { get; set;}
+        public string DelegateName { get; set;}
 
         private readonly IPerperFabricContext _context;
 
+        public PerperStreamContext() { }
+        
         public PerperStreamContext(string streamName, string delegateName, IPerperFabricContext context)
         {
             StreamName = streamName;

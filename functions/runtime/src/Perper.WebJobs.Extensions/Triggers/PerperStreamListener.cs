@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Extensions.Logging;
@@ -18,19 +19,22 @@ namespace Perper.WebJobs.Extensions.Triggers
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly IPerperFabricContext _context;
         private readonly ILogger _logger;
+        private readonly IConverter<PerperStreamContext, object> _triggerValueConverter;
 
         private readonly CancellationTokenSource _listenCancellationTokenSource;
 
         private Task _listenTask;
 
         public PerperStreamListener(PerperStreamTriggerAttribute attribute, string delegateName,
-            ITriggeredFunctionExecutor executor, IPerperFabricContext context, ILogger logger)
+            ITriggeredFunctionExecutor executor, IPerperFabricContext context, ILogger logger,
+            IConverter<PerperStreamContext, object> triggerValueConverter)
         {
             _attribute = attribute;
             _delegateName = delegateName;
             _executor = executor;
             _context = context;
             _logger = logger;
+            _triggerValueConverter = triggerValueConverter;
 
             _listenCancellationTokenSource = new CancellationTokenSource();
         }
@@ -75,7 +79,7 @@ namespace Perper.WebJobs.Extensions.Triggers
         {
             _logger.LogInformation($"Starting '{_delegateName}' as '{streamName}'");
             var triggerValue = new PerperStreamContext(streamName, _delegateName, _context);
-            var result = await _executor.TryExecuteAsync(new TriggeredFunctionData {TriggerValue = triggerValue}, cancellationToken);
+            var result = await _executor.TryExecuteAsync(new TriggeredFunctionData {TriggerValue = _triggerValueConverter.Convert(triggerValue)}, cancellationToken);
             if (result.Exception != null && !(result.Exception is OperationCanceledException))
             {
                 _logger.LogError($"Exception while executing '{streamName}': {result.Exception.ToString()}");

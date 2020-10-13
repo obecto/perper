@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Listeners;
@@ -18,7 +17,6 @@ namespace Perper.WebJobs.Extensions.Triggers
         private readonly Attribute _attribute;
         private readonly IPerperFabricContext _fabricContext;
         private readonly ILogger _logger;
-        private readonly PerperWorkerTriggerValueConverter _workerTriggerValueConverter;
         public Type TriggerValueType { get; }
 
         public PerperTriggerBinding(Attribute attribute, Type triggerValueType,
@@ -27,8 +25,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             _attribute = attribute;
             _fabricContext = fabricContext;
             _logger = logger;
-            _workerTriggerValueConverter = new PerperWorkerTriggerValueConverter(triggerValueType);
-
+            
             TriggerValueType = triggerValueType;
         }
 
@@ -37,11 +34,14 @@ namespace Perper.WebJobs.Extensions.Triggers
             return Task.FromResult<IListener>(_attribute switch
             {
                 PerperStreamTriggerAttribute streamAttribute => new PerperStreamListener(streamAttribute,
-                    context.Descriptor.FullName, context.Executor, _fabricContext, _logger),
+                    context.Descriptor.FullName, context.Executor, _fabricContext, _logger,
+                    new PerperTriggerValueConverter<PerperStreamContext>(TriggerValueType)),
                 PerperWorkerTriggerAttribute workerAttribute => new PerperWorkerListener(workerAttribute,
-                    context.Descriptor.FullName, _workerTriggerValueConverter, context.Executor, _fabricContext),
+                    context.Descriptor.FullName, context.Executor, _fabricContext, _logger,
+                    new PerperTriggerValueConverter<PerperWorkerContext>(TriggerValueType)),
                 PerperModuleTriggerAttribute moduleAttribute => new PerperModuleListener(moduleAttribute,
-                    context.Descriptor.FullName, context.Executor, _fabricContext),
+                    context.Descriptor.FullName, context.Executor, _fabricContext, _logger,
+                    new PerperTriggerValueConverter<PerperModuleContext>(TriggerValueType)),
                 _ => throw new ArgumentException()
             });
         }
@@ -78,17 +78,17 @@ namespace Perper.WebJobs.Extensions.Triggers
             {
                 case PerperStreamTriggerAttribute _:
                 {
-                    var context = (PerperStreamContext) value;
+                    var context = new PerperTriggerValueConverter<PerperStreamContext>(TriggerValueType).ConvertBack(value);
                     return (context.StreamName, null, context.DelegateName, nameof(PerperStreamTriggerAttribute));
                 }
                 case PerperWorkerTriggerAttribute _:
                 {
-                    var context = _workerTriggerValueConverter.ConvertBack(value);
+                    var context = new PerperTriggerValueConverter<PerperWorkerContext>(TriggerValueType).ConvertBack(value);
                     return (context.StreamName, context.WorkerName, null, nameof(PerperWorkerTriggerAttribute));
                 }
                 case PerperModuleTriggerAttribute _:
                 {
-                    var context = (PerperModuleContext) value;
+                    var context = new PerperTriggerValueConverter<PerperModuleContext>(TriggerValueType).ConvertBack(value);
                     return (context.StreamName, context.WorkerName, context.DelegateName, nameof(PerperModuleTriggerAttribute));
                 }
                 default:

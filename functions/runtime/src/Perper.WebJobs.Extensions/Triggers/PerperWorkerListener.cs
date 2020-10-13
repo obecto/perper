@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Config;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
@@ -17,21 +18,23 @@ namespace Perper.WebJobs.Extensions.Triggers
         private readonly IConverter<PerperWorkerContext, object> _triggerValueConverter;
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly IPerperFabricContext _context;
+        private readonly ILogger _logger;
 
         private readonly CancellationTokenSource _listenCancellationTokenSource;
 
         private Task _listenTask;
 
         public PerperWorkerListener(PerperWorkerTriggerAttribute attribute, string delegateName,
-            IConverter<PerperWorkerContext, object> triggerValueConverter,
-            ITriggeredFunctionExecutor executor, IPerperFabricContext context)
+            ITriggeredFunctionExecutor executor, IPerperFabricContext context,
+            ILogger logger, IConverter<PerperWorkerContext, object> triggerValueConverter)
         {
             _attribute = attribute;
             _delegateName = delegateName;
-            _triggerValueConverter = triggerValueConverter;
             _executor = executor;
             _context = context;
-
+            _logger = logger;
+            _triggerValueConverter = triggerValueConverter;
+            
             _listenCancellationTokenSource = new CancellationTokenSource();
         }
 

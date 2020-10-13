@@ -25,5 +25,20 @@ namespace DotNet.FunctionApp
 
             await context.BindOutput(cancellationToken);
         }
+        
+        /*
+         * Uncomment to test Custom Handler
+         *
+            [FunctionName("Launcher")]
+            public static async Task RunAsync([PerperModuleTrigger(RunOnStartup = true)]
+                PerperModuleContext context,
+                CancellationToken cancellationToken)
+            {
+                var generator = await context.StreamFunctionAsync(typeof(Generator), new {count = 10, tag = "xx-0"});
+                var consumer =
+                    await context.StreamActionAsync("Host.Functions.SimpleHttpTrigger", new {processor = generator.Subscribe()});
+            }
+         *
+         */
     }
 }

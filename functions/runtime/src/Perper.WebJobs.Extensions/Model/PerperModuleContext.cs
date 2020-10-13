@@ -8,13 +8,15 @@ namespace Perper.WebJobs.Extensions.Model
 {
     public class PerperModuleContext : PerperStreamContext
     {
+        public PerperModuleContext() { }
+        
         public PerperModuleContext(string streamName, string delegateName, string workerName, IPerperFabricContext context) :
             base(streamName, delegateName, context)
         {
             WorkerName = workerName;
         }
 
-        public string WorkerName { get; }
+        public string WorkerName { get; set; }
 
         public async Task<T> StartChildModuleAsync<T>(string postfix, object parameters, CancellationToken cancellationToken)
         {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
@@ -64,6 +65,11 @@ namespace Perper.WebJobs.Extensions.Bindings
             if (Type == typeof(IPerperStream[]) && result is object[] binaryObjects)
             {
                 result = binaryObjects.OfType<IBinaryObject>().Select(x => x.Deserialize<PerperFabricStream>()).ToArray();
+            }
+
+            if (Type == typeof(string) && !(result is string))
+            {
+                result = JsonSerializer.Serialize(result);
             }
 
             return result;

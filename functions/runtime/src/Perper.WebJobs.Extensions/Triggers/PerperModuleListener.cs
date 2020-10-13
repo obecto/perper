@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Config;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
@@ -16,18 +17,23 @@ namespace Perper.WebJobs.Extensions.Triggers
         private readonly string _delegateName;
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly IPerperFabricContext _context;
+        private readonly ILogger _logger;
+        private readonly PerperTriggerValueConverter<PerperModuleContext> _triggerValueConverter;
 
         private readonly CancellationTokenSource _listenCancellationTokenSource;
 
         private Task _listenTask;
 
         public PerperModuleListener(PerperModuleTriggerAttribute attribute, string delegateName,
-            ITriggeredFunctionExecutor executor, IPerperFabricContext context)
+            ITriggeredFunctionExecutor executor, IPerperFabricContext context,
+            ILogger logger, PerperTriggerValueConverter<PerperModuleContext> triggerValueConverter)
         {
             _attribute = attribute;
             _delegateName = delegateName;
             _executor = executor;
             _context = context;
+            _logger = logger;
+            _triggerValueConverter = triggerValueConverter;
 
             _listenCancellationTokenSource = new CancellationTokenSource();
         }
@@ -76,7 +82,7 @@ namespace Perper.WebJobs.Extensions.Triggers
         {
             var triggerValue = new PerperModuleContext(streamName, _delegateName, workerName, _context);
             await _executor.TryExecuteAsync(
-                new TriggeredFunctionData { TriggerValue = triggerValue },
+                new TriggeredFunctionData { TriggerValue = _triggerValueConverter.Convert(triggerValue) },
                 cancellationToken);
         }
     }
