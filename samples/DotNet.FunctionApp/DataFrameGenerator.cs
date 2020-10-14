@@ -18,7 +18,7 @@ namespace DotNet.FunctionApp
         {
             foreach (var index in indices)
             {
-                await output.AddAsync(new Hashtable {{"Index", index}, {"Index2", index}}, cancellationToken);
+                await output.AddAsync(new Hashtable { { "Index", index }, { "Index2", index } }, cancellationToken);
             }
 
             var result = await context.CallWorkerAsync<string>("Host.Functions.PythonWorker", new

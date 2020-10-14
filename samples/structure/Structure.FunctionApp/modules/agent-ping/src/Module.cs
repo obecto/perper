@@ -21,7 +21,7 @@ namespace AgentPing
         {
             logger.LogInformation("Started AgentPing module...");
 
-            var runtimeStream = await context.StreamFunctionAsync(typeof(AgentPingRuntimeStream), new {input = input.Subscribe()});
+            var runtimeStream = await context.StreamFunctionAsync(typeof(AgentPingRuntimeStream), new { input = input.Subscribe() });
             return runtimeStream;
         }
     }

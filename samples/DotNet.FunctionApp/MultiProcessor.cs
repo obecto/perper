@@ -22,7 +22,8 @@ namespace DotNet.FunctionApp
             await foreach (var generator in generators.WithCancellation(cancellationToken))
             {
                 logger.LogInformation($"Multi Processor receives generator: {0}", i);
-                var stream = await context.StreamFunctionAsync("NamedProcessor-" + i, typeof(Processor), new {
+                var stream = await context.StreamFunctionAsync("NamedProcessor-" + i, typeof(Processor), new
+                {
                     generator = new[] { generator.Subscribe() },
                     multiplier = 10
                 }, typeof(Data));

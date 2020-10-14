@@ -30,8 +30,8 @@ namespace DotNet.FunctionApp
                 }, cancellationToken);
                 state.Add(int.Parse(result));
                 await context.UpdateStateAsync(state);
-                
-                await output.AddAsync(new Data {Value = int.Parse(result)}, cancellationToken);
+
+                await output.AddAsync(new Data { Value = int.Parse(result) }, cancellationToken);
             }
         }
     }

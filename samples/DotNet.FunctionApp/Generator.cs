@@ -18,13 +18,13 @@ namespace DotNet.FunctionApp
             [Perper("output")] IAsyncCollector<Data> output,
             ILogger logger, CancellationToken cancellationToken)
         {
-            var lastData = await context.FetchStateAsync<Data>() ?? new Data {Value = 0};
+            var lastData = await context.FetchStateAsync<Data>() ?? new Data { Value = 0 };
             for (var i = lastData.Value; i < count; i++)
             {
                 await context.UpdateStateAsync(lastData);
                 logger.LogInformation($"[{tag}] Generator generates: {i}");
-                if(tag == "first") await Task.Delay(TimeSpan.FromMilliseconds(1000), cancellationToken);
-                lastData = new Data {Value = i, Description = $"Description {i}" };
+                if (tag == "first") await Task.Delay(TimeSpan.FromMilliseconds(1000), cancellationToken);
+                lastData = new Data { Value = i, Description = $"Description {i}" };
                 await output.AddAsync(lastData, cancellationToken);
             }
         }

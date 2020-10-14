@@ -19,7 +19,7 @@ namespace AgentPing.Streams
             CancellationToken cancellationToken)
         {
             var agentInput = await input.FirstAsync(cancellationToken);
-            var agentStream = await context.StreamFunctionAsync(typeof(AgentPingStream), new {input = agentInput.Subscribe()});
+            var agentStream = await context.StreamFunctionAsync(typeof(AgentPingStream), new { input = agentInput.Subscribe() });
             await context.BindOutput(agentStream, cancellationToken);
         }
     }
