@@ -6,7 +6,7 @@ with open("README.md") as f:
 
 setup(
     name='azure-functions-perper-binding',
-    version='0.3.16',
+    version='0.5.1',
     packages=['azure_functions.perper'],
     long_description=long_description,
     long_description_content_type='text/markdown',

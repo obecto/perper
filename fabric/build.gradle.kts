@@ -38,7 +38,7 @@ dependencies {
 }
 
 application {
-    version = "0.1.1"
+    version = "0.5.1"
     mainClass.set("com.obecto.perper.fabric.Main")
     description = "Perper Fabric"
 }
