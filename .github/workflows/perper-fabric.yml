@@ -3,7 +3,7 @@ name: Perper Fabric
 on:
   push:
     paths:
-      - 'src/Perper.Fabric/**'
+      - 'fabric/**'
     branches:
       - master
 

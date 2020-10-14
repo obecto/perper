@@ -3,7 +3,7 @@ name: Perper Functions
 on:
   push:
     paths:
-      - 'src/Perper.WebJobs.Extensions/**'
+      - 'functions/runtime/**'
     branches:
       - master
 
@@ -15,9 +15,9 @@ jobs:
       - uses: actions/checkout@v1
 
       - name: Build with dotnet
-        working-directory: ./src/Perper.WebJobs.Extensions
+        working-directory: ./functions/runtime/src/Perper.WebJobs.Extensions
         run: dotnet build --configuration Release  
 
       - name: Push generated package to nuget.org
-        working-directory: ./src/Perper.WebJobs.Extensions/bin/Release
+        working-directory: ./functions/runtime/src/Perper.WebJobs.Extensions/bin/Release
         run: dotnet nuget push *.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
