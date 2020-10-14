@@ -17,12 +17,12 @@ namespace DotNet.FunctionApp
             [Perper("output")] IAsyncCollector<IPerperStream> output,
             ILogger logger, CancellationToken cancellationToken)
         {
-            var state = await context.FetchStateAsync<Data>() ?? new Data {Value = 0};
+            var state = await context.FetchStateAsync<Data>() ?? new Data { Value = 0 };
             for (var i = state.Value; i < count; i++)
             {
                 await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
                 logger.LogInformation($"Generator Generator generates: {i}");
-                var stream = await context.StreamFunctionAsync("NamedGenerator-" + i, typeof(Generator), new {count = 10, tag = "xx-" + i}, typeof(Data));
+                var stream = await context.StreamFunctionAsync("NamedGenerator-" + i, typeof(Generator), new { count = 10, tag = "xx-" + i }, typeof(Data));
                 await output.AddAsync(stream, cancellationToken);
 
                 state.Value = i;

@@ -41,8 +41,10 @@ namespace Perper.WebJobs.Extensions.Services
         IPerperStream IPerperStream.Filter<T>(Expression<Func<T, bool>> expression)
         {
             var newFilter = new Dictionary<string, object?>(Filter);
-            string? parseFieldName(Expression subexpression) {
-                switch (subexpression) {
+            string? parseFieldName(Expression subexpression)
+            {
+                switch (subexpression)
+                {
                     case MemberExpression member:
                         var left = parseFieldName(member.Expression);
                         return left != null ? left + member.Member.Name : null;
@@ -54,8 +56,10 @@ namespace Perper.WebJobs.Extensions.Services
                         throw new NotImplementedException("Support for " + subexpression.GetType() + " in IPerperStream.Filter is not implemented yet.");
                 }
             }
-            object? parseFieldValue(Expression subexpression) {
-                switch (subexpression) {
+            object? parseFieldValue(Expression subexpression)
+            {
+                switch (subexpression)
+                {
                     case ConstantExpression constant:
                         return constant.Value;
                     default:
@@ -63,10 +67,13 @@ namespace Perper.WebJobs.Extensions.Services
                         return Expression.Lambda(subexpression).Compile().DynamicInvoke();
                 }
             }
-            void addSubexpressionToFilter(Expression subexpression) {
-                switch (subexpression) {
+            void addSubexpressionToFilter(Expression subexpression)
+            {
+                switch (subexpression)
+                {
                     case BinaryExpression binary:
-                        switch (binary.NodeType) {
+                        switch (binary.NodeType)
+                        {
                             case ExpressionType.And:
                                 addSubexpressionToFilter(binary.Left);
                                 addSubexpressionToFilter(binary.Right);
@@ -82,7 +89,8 @@ namespace Perper.WebJobs.Extensions.Services
                                 var fieldName = (fieldNameLeft != null ? fieldNameLeft : fieldNameRight)!;
                                 var fieldValue = fieldNameLeft != null ? parseFieldValue(binary.Right) : parseFieldValue(binary.Left);
 
-                                if (fieldValue == null || JavaTypeMappingHelper.GetJavaTypeAsString(fieldValue.GetType()) == null) {
+                                if (fieldValue == null || JavaTypeMappingHelper.GetJavaTypeAsString(fieldValue.GetType()) == null)
+                                {
                                     throw new NotImplementedException("Comparision with custom types in filters is not implemented yet.");
                                 }
 

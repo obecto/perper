@@ -14,7 +14,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
             Type = value.GetType();
         }
-        
+
         public Task<object> GetValueAsync()
         {
             return Task.FromResult(_value);

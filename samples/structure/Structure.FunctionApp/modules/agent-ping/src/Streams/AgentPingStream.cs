@@ -20,7 +20,7 @@ namespace AgentPing.Streams
             CancellationToken cancellationToken)
         {
             await PingAsync(output, cancellationToken);
-            
+
             await foreach (var message in input.WithCancellation(cancellationToken))
             {
                 logger.LogInformation($"AgentPing received {message}");

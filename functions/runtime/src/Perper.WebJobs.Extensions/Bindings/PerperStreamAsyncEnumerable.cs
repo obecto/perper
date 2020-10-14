@@ -18,7 +18,7 @@ namespace Perper.WebJobs.Extensions.Bindings
 
         private readonly IAsyncEnumerable<T> _impl;
 
-        public PerperStreamAsyncEnumerable(string streamName, string delegateName, 
+        public PerperStreamAsyncEnumerable(string streamName, string delegateName,
             string parameterName, string parameterStreamName, IPerperFabricContext context)
         {
             _streamName = streamName;

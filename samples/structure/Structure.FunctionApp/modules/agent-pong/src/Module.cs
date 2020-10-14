@@ -21,7 +21,7 @@ namespace AgentPong
         {
             logger.LogInformation("Started AgentPong module...");
 
-            var runtimeStream = await context.StreamFunctionAsync(typeof(AgentPongRuntimeStream), new {input = input.Subscribe()});
+            var runtimeStream = await context.StreamFunctionAsync(typeof(AgentPongRuntimeStream), new { input = input.Subscribe() });
             return runtimeStream;
         }
     }

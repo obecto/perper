@@ -10,7 +10,8 @@ namespace DotNet.FunctionApp.Model
 
         public string Description { get; set; }
 
-        override public string ToString() {
+        override public string ToString()
+        {
             return $"{Value} ({Description})";
         }
     }

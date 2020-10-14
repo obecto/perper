@@ -34,7 +34,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             _context = context;
             _logger = logger;
             _triggerValueConverter = triggerValueConverter;
-            
+
             _listenCancellationTokenSource = new CancellationTokenSource();
         }
 
@@ -75,9 +75,9 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         private async Task ExecuteAsync(string streamName, string workerName, CancellationToken cancellationToken)
         {
-            var triggerValue = new PerperWorkerContext {StreamName = streamName, WorkerName = workerName};
+            var triggerValue = new PerperWorkerContext { StreamName = streamName, WorkerName = workerName };
             await _executor.TryExecuteAsync(
-                new TriggeredFunctionData {TriggerValue = _triggerValueConverter.Convert(triggerValue)},
+                new TriggeredFunctionData { TriggerValue = _triggerValueConverter.Convert(triggerValue) },
                 cancellationToken);
         }
     }

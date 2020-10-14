@@ -22,7 +22,7 @@ namespace DotNet.FunctionApp
             {
                 logger.LogInformation($"CyclicGenerator stream receives: {data.Value}");
                 await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
-                await output.AddAsync(new Data {Value = data.Value / 10}, cancellationToken);
+                await output.AddAsync(new Data { Value = data.Value / 10 }, cancellationToken);
             }
         }
     }

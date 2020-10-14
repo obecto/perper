@@ -46,8 +46,8 @@ namespace Perper.WebJobs.Extensions.Triggers
             if (_attribute.RunOnStartup)
             {
                 var data = _context.GetData($"$launcher.{_delegateName}");
-                await data.StreamActionAsync($"$launcher.{_delegateName}", "", new {});
-                await data.CallWorkerAsync($"$launcher.{_delegateName}-{Guid.NewGuid().ToString()}", _delegateName, "", new {});
+                await data.StreamActionAsync($"$launcher.{_delegateName}", "", new { });
+                await data.CallWorkerAsync($"$launcher.{_delegateName}-{Guid.NewGuid().ToString()}", _delegateName, "", new { });
             }
         }
 

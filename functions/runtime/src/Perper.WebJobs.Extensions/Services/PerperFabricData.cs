@@ -110,13 +110,18 @@ namespace Perper.WebJobs.Extensions.Services
             var streamsCacheClient = _igniteClient.GetCache<string, StreamData>("streams");
             var streamObject = await streamsCacheClient.GetAsync(_streamName);
 
-            if (streamObject.Params.TryGetValue(name, out var value)) {
-                if (!typeof(T).IsAssignableFrom(value?.GetType())) {
+            if (streamObject.Params.TryGetValue(name, out var value))
+            {
+                if (!typeof(T).IsAssignableFrom(value?.GetType()))
+                {
                     _logger.LogWarning($"Null or mismatching type passed for parameter '{name}' of stream '{_streamName}'");
                 }
                 return (T)value!;
-            } else {
-                if (name != "context") {
+            }
+            else
+            {
+                if (name != "context")
+                {
                     _logger.LogWarning($"No value found for parameter '{name}' of stream '{_streamName}'");
                 }
                 return default(T)!;
@@ -162,12 +167,16 @@ namespace Perper.WebJobs.Extensions.Services
             var streamObject = await streamsCacheClient.GetAsync(_streamName);
             var workerObject = streamObject.Workers[workerName];
 
-            if (workerObject.Params.TryGetValue(name, out var value)) {
-                if (!typeof(T).IsAssignableFrom(value?.GetType())) {
+            if (workerObject.Params.TryGetValue(name, out var value))
+            {
+                if (!typeof(T).IsAssignableFrom(value?.GetType()))
+                {
                     _logger.LogWarning($"Null or mismatching type passed for parameter '{name}' of worker '{_streamName}'");
                 }
                 return (T)value!;
-            } else {
+            }
+            else
+            {
                 return default(T)!;
             }
         }
@@ -195,7 +204,7 @@ namespace Perper.WebJobs.Extensions.Services
         private (Dictionary<string, object?>, Dictionary<string, StreamParam[]>) CreateDelegateParameters(object parameters)
         {
             var binary = _igniteClient.GetBinary();
-            var dataParameters = new Dictionary<string, object?>();;
+            var dataParameters = new Dictionary<string, object?>();
             var streamParameters = new Dictionary<string, StreamParam[]>();
 
             var properties = parameters.GetType().GetProperties();

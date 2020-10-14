@@ -27,7 +27,7 @@ namespace Perper.WebJobs.Extensions.Triggers
         {
             if (_valueType == typeof(string))
             {
-                return JsonSerializer.Deserialize<T>((string) value);
+                return JsonSerializer.Deserialize<T>((string)value);
             }
 
             return (T)value;

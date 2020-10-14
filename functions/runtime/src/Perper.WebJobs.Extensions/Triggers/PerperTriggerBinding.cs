@@ -25,7 +25,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             _attribute = attribute;
             _fabricContext = fabricContext;
             _logger = logger;
-            
+
             TriggerValueType = triggerValueType;
         }
 
@@ -77,20 +77,20 @@ namespace Perper.WebJobs.Extensions.Triggers
             switch (_attribute)
             {
                 case PerperStreamTriggerAttribute _:
-                {
-                    var context = new PerperTriggerValueConverter<PerperStreamContext>(TriggerValueType).ConvertBack(value);
-                    return (context.StreamName, null, context.DelegateName, nameof(PerperStreamTriggerAttribute));
-                }
+                    {
+                        var context = new PerperTriggerValueConverter<PerperStreamContext>(TriggerValueType).ConvertBack(value);
+                        return (context.StreamName, null, context.DelegateName, nameof(PerperStreamTriggerAttribute));
+                    }
                 case PerperWorkerTriggerAttribute _:
-                {
-                    var context = new PerperTriggerValueConverter<PerperWorkerContext>(TriggerValueType).ConvertBack(value);
-                    return (context.StreamName, context.WorkerName, null, nameof(PerperWorkerTriggerAttribute));
-                }
+                    {
+                        var context = new PerperTriggerValueConverter<PerperWorkerContext>(TriggerValueType).ConvertBack(value);
+                        return (context.StreamName, context.WorkerName, null, nameof(PerperWorkerTriggerAttribute));
+                    }
                 case PerperModuleTriggerAttribute _:
-                {
-                    var context = new PerperTriggerValueConverter<PerperModuleContext>(TriggerValueType).ConvertBack(value);
-                    return (context.StreamName, context.WorkerName, context.DelegateName, nameof(PerperModuleTriggerAttribute));
-                }
+                    {
+                        var context = new PerperTriggerValueConverter<PerperModuleContext>(TriggerValueType).ConvertBack(value);
+                        return (context.StreamName, context.WorkerName, context.DelegateName, nameof(PerperModuleTriggerAttribute));
+                    }
                 default:
                     throw new ArgumentException();
             }

@@ -68,9 +68,11 @@ namespace Perper.WebJobs.Extensions.Services
 
                 var tasks = new List<Task>();
 
-                tasks.Add(Task.Run(async () => {
+                tasks.Add(Task.Run(async () =>
+                {
                     using var streamTriggers = client.StreamTriggers(new StreamTriggerFilter(), null, null, cancellationToken);
-                    await foreach (var trigger in streamTriggers.ResponseStream.ReadAllAsync()) {
+                    await foreach (var trigger in streamTriggers.ResponseStream.ReadAllAsync())
+                    {
                         await RouteNotification(new Notification
                         {
                             Type = NotificationType.StreamTrigger,
@@ -80,9 +82,11 @@ namespace Perper.WebJobs.Extensions.Services
                     }
                 }));
 
-                tasks.Add(Task.Run(async () => {
+                tasks.Add(Task.Run(async () =>
+                {
                     using var workerTriggers = client.WorkerTriggers(new WorkerTriggerFilter(), null, null, cancellationToken);
-                    await foreach (var trigger in workerTriggers.ResponseStream.ReadAllAsync()) {
+                    await foreach (var trigger in workerTriggers.ResponseStream.ReadAllAsync())
+                    {
                         await RouteNotification(new Notification
                         {
                             Type = NotificationType.WorkerTrigger,
@@ -93,10 +97,13 @@ namespace Perper.WebJobs.Extensions.Services
                     }
                 }));
 
-                tasks.Add(Task.Run(async () => {
+                tasks.Add(Task.Run(async () =>
+                {
                     using var streamUpdates = client.StreamUpdates(new StreamUpdateFilter(), null, null, cancellationToken);
-                    await foreach (var trigger in streamUpdates.ResponseStream.ReadAllAsync()) {
-                        if (trigger.ItemUpdate != null) {
+                    await foreach (var trigger in streamUpdates.ResponseStream.ReadAllAsync())
+                    {
+                        if (trigger.ItemUpdate != null)
+                        {
                             await RouteNotification(new Notification
                             {
                                 Type = NotificationType.StreamParameterItemUpdate,
@@ -107,7 +114,8 @@ namespace Perper.WebJobs.Extensions.Services
                                 ParameterStreamItemKey = trigger.ItemUpdate.ParameterStreamItem
                             });
                         }
-                        if (trigger.WorkerResult != null) {
+                        if (trigger.WorkerResult != null)
+                        {
                             await RouteNotification(new Notification
                             {
                                 Type = NotificationType.WorkerResult,
@@ -145,7 +153,7 @@ namespace Perper.WebJobs.Extensions.Services
         {
             _igniteClient ??= Ignition.StartClient(new IgniteClientConfiguration
             {
-                Endpoints = new List<string> {_igniteHost},
+                Endpoints = new List<string> { _igniteHost },
                 BinaryConfiguration = new BinaryConfiguration
                 {
                     TypeConfigurations = GetDataTypes().Concat(new[] {
@@ -155,8 +163,8 @@ namespace Perper.WebJobs.Extensions.Services
                         typeof(WorkerData)
                     }).Select(type => new BinaryTypeConfiguration(type)
                     {
-                        Serializer = typeof(IBinarizable).IsAssignableFrom(type) ? null : new BinaryReflectiveSerializer {ForceTimestamp = true},
-                        NameMapper = new BinaryBasicNameMapper {IsSimpleName = true}
+                        Serializer = typeof(IBinarizable).IsAssignableFrom(type) ? null : new BinaryReflectiveSerializer { ForceTimestamp = true },
+                        NameMapper = new BinaryBasicNameMapper { IsSimpleName = true }
                     }).ToList()
                 }
             });

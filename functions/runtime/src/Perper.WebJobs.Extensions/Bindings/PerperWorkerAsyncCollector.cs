@@ -10,7 +10,7 @@ namespace Perper.WebJobs.Extensions.Bindings
         private readonly string _streamName;
         private readonly string _workerName;
         private readonly IPerperFabricContext _context;
-        
+
         public PerperWorkerAsyncCollector(string streamName, string workerName, IPerperFabricContext context)
         {
             _streamName = streamName;

@@ -9,7 +9,7 @@ namespace Perper.WebJobs.Extensions.Model
     public class PerperModuleContext : PerperStreamContext
     {
         public PerperModuleContext() { }
-        
+
         public PerperModuleContext(string streamName, string delegateName, string workerName, IPerperFabricContext context) :
             base(streamName, delegateName, context)
         {
@@ -20,7 +20,7 @@ namespace Perper.WebJobs.Extensions.Model
 
         public async Task<T> StartChildModuleAsync<T>(string postfix, object parameters, CancellationToken cancellationToken)
         {
-            return await CallWorkerAsync<T>(ResolveChildModuleName(postfix),  parameters, cancellationToken);
+            return await CallWorkerAsync<T>(ResolveChildModuleName(postfix), parameters, cancellationToken);
         }
 
         private static string ResolveChildModuleName(string postfix)

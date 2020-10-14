@@ -19,18 +19,18 @@ namespace Structure
             logger.LogInformation("Started Perper Structure sample application...");
 
             var pingInputStream = context.DeclareStream(typeof(InputProviderStream));
-            var pingOutputStream = await context.StartChildModuleAsync<IPerperStream>("ping", new {input = pingInputStream}, cancellationToken);
+            var pingOutputStream = await context.StartChildModuleAsync<IPerperStream>("ping", new { input = pingInputStream }, cancellationToken);
 
             var pongInputStream = context.DeclareStream(typeof(InputProviderStream));
-            var pongOutputStream = await context.StartChildModuleAsync<IPerperStream>("pong", new {input = pongInputStream}, cancellationToken);
+            var pongOutputStream = await context.StartChildModuleAsync<IPerperStream>("pong", new { input = pongInputStream }, cancellationToken);
 
-            await context.StreamFunctionAsync(pingInputStream, new {input = pongOutputStream});
-            await context.StreamFunctionAsync(pongInputStream, new {input = pingOutputStream});
+            await context.StreamFunctionAsync(pingInputStream, new { input = pongOutputStream });
+            await context.StreamFunctionAsync(pongInputStream, new { input = pingOutputStream });
 
             await context.StreamActionAsync(typeof(EnvironmentMonitorStream),
                 new
                 {
-                    agentPingOutput = pingOutputStream.Subscribe(), 
+                    agentPingOutput = pingOutputStream.Subscribe(),
                     agentPongOutput = pongOutputStream.Subscribe()
                 });
         }

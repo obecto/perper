@@ -11,13 +11,13 @@ namespace Perper.WebJobs.Extensions.Model
 {
     public class PerperStreamContext
     {
-        public string StreamName { get; set;}
-        public string DelegateName { get; set;}
+        public string StreamName { get; set; }
+        public string DelegateName { get; set; }
 
         private readonly IPerperFabricContext _context;
 
         public PerperStreamContext() { }
-        
+
         public PerperStreamContext(string streamName, string delegateName, IPerperFabricContext context)
         {
             StreamName = streamName;
@@ -155,7 +155,7 @@ namespace Perper.WebJobs.Extensions.Model
         public async Task<IPerperStream> StreamActionAsync(string name, object parameters)
         {
             var data = _context.GetData(StreamName);
-            return await data.StreamActionAsync(GenerateName(name),name, parameters);
+            return await data.StreamActionAsync(GenerateName(name), name, parameters);
         }
 
         public Task<IPerperStream> StreamActionAsync(string streamName, MethodInfo method, object parameters)
@@ -217,7 +217,7 @@ namespace Perper.WebJobs.Extensions.Model
 
         public Task BindOutput(IPerperStream stream, CancellationToken cancellationToken)
         {
-            return BindOutput(new []{stream}, cancellationToken);
+            return BindOutput(new[] { stream }, cancellationToken);
         }
 
         public async Task BindOutput(IEnumerable<IPerperStream> streams, CancellationToken cancellationToken)

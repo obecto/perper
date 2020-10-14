@@ -6,7 +6,7 @@ namespace Perper.Protocol.Notifications
     public class Notification
     {
         public NotificationType Type { get; set; }
-        
+
         public string Stream { get; set; }
         public string Worker { get; set; }
         public string Delegate { get; set; }

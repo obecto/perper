@@ -17,7 +17,7 @@ namespace DotNet.FunctionApp
         {
             logger.LogInformation($"Starting pass-through consumer");
             await using var consumer =
-                await context.StreamActionAsync("NamedConsumer", typeof(Consumer), new {processor = processor.Subscribe()});
+                await context.StreamActionAsync("NamedConsumer", typeof(Consumer), new { processor = processor.Subscribe() });
 
             await context.BindOutput(cancellationToken);
         }
