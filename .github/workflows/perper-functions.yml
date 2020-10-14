@@ -3,7 +3,7 @@ name: Perper Functions
 on:
   push:
     paths:
-      - 'functions/runtime/**'
+      - 'functions/runtime/src/Perper.WebJobs.Extensions/**'
     branches:
       - master
 
