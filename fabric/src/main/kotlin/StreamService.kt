@@ -17,9 +17,10 @@ import org.apache.ignite.services.ServiceContext
 import javax.cache.configuration.Factory
 import javax.cache.event.CacheEntryEventFilter
 import javax.cache.event.CacheEntryUpdatedListener
+import javax.cache.CacheException
 
 class StreamService : JobService() {
-    data class StreamOutput(val streamData: StreamData, val parameter: String, val filter: Map<List<String>, Any?>?)
+    data class StreamOutput(val streamData: StreamData, val parameter: String, val filter: Map<List<String>, Any?>?, val localToData: Boolean)
 
     val returnFieldName = "\$return"
     val forwardFieldName = "\$forward"
@@ -27,7 +28,6 @@ class StreamService : JobService() {
     @set:IgniteInstanceResource
     lateinit var ignite: Ignite
 
-    @set:ServiceResource(serviceName = "TransportService")
     lateinit var transportService: TransportService
 
     @set:LoggerResource
@@ -41,6 +41,7 @@ class StreamService : JobService() {
     var liveWorkers = HashSet<String>()
 
     override fun init(ctx: ServiceContext) {
+        transportService = ignite.services().service<TransportService>("TransportService")
         streamItemUpdates = Channel(Channel.UNLIMITED)
         streamsCache = ignite.getOrCreateCache("streams")
 
@@ -90,7 +91,7 @@ class StreamService : JobService() {
                         continue
                     }
                     val outputs = liveStreamGraph.getOrPut(inputStream.name, { LinkedHashSet<StreamOutput>() })
-                    outputs.add(StreamOutput(streamData, parameter, convertFilter(streamParam.filter)))
+                    outputs.add(StreamOutput(streamData, parameter, convertFilter(streamParam.filter), streamParam.localToData))
                     log.debug({ "Subscribing '${streamData.name}' to '${inputStream.name}'" })
                     engageStream(inputStream)
                 }
@@ -102,31 +103,34 @@ class StreamService : JobService() {
         if (ignite.cacheNames().contains(streamData.name)) return
         log.debug({ "Creating cache '${streamData.name}'" })
 
-        val cache: IgniteCache<Long, BinaryObject> = if (streamData.indexType != null && streamData.indexFields != null) {
-            log.debug({ "Cache for '${streamData.name}' uses indexing" })
-            val queryEntity = QueryEntity().also {
-                it.keyType = Long::class.qualifiedName
-                it.valueType = streamData.indexType
-                it.fields = streamData.indexFields
-            }
+        val cacheConfiguration = CacheConfiguration<Long, BinaryObject>(streamData.name)
 
-            val cacheConfiguration = CacheConfiguration<Long, BinaryObject>(streamData.name).also {
-                it.queryEntities = listOf(queryEntity)
-            }
-            ignite.createCache(cacheConfiguration).withKeepBinary()
-        } else {
-            ignite.createCache<Long, BinaryObject>(streamData.name).withKeepBinary()
+        if (streamData.indexType != null && streamData.indexFields != null) {
+            log.debug({ "Cache for '${streamData.name}' uses indexing" })
+            cacheConfiguration.queryEntities = listOf(
+                QueryEntity().also {
+                    it.keyType = Long::class.qualifiedName
+                    it.valueType = streamData.indexType
+                    it.fields = streamData.indexFields
+                }
+            )
         }
 
-        // Consider alternative implementation
-        if (ignite.atomicLong("${streamData.name}_Query", 0, true).compareAndSet(0, 1)) {
-            log.debug({ "Starting query on '${streamData.name}'" })
-            val streamName = streamData.name
-            val query = ContinuousQuery<Long, BinaryObject>()
-            query.remoteFilterFactory = Factory<CacheEntryEventFilter<Long, BinaryObject>> { StreamServiceRemoteFilter(streamName) }
+        try {
+            var cache = ignite.createCache(cacheConfiguration).withKeepBinary<Long, BinaryObject>()
 
-            // Dispose handle?
-            cache.query(query)
+            // Consider alternative implementation
+            if (ignite.atomicLong("${streamData.name}_Query", 0, true).compareAndSet(0, 1)) {
+                log.debug({ "Starting query on '${streamData.name}'" })
+                val streamName = streamData.name
+                val query = ContinuousQuery<Long, BinaryObject>()
+                query.remoteFilterFactory = Factory<CacheEntryEventFilter<Long, BinaryObject>> { StreamServiceRemoteFilter(streamName) }
+
+                // Dispose handle?
+                cache.query(query)
+            }
+        } catch (_: CacheException) {
+            return
         }
     }
 
@@ -146,7 +150,7 @@ class StreamService : JobService() {
             if (!returnStreams.isEmpty()) {
                 for (returnParam in returnStreams) {
                     val outputs = liveStreamGraph.getOrPut(returnParam.stream, { LinkedHashSet<StreamOutput>() })
-                    outputs.add(StreamOutput(streamData, forwardFieldName, convertFilter(returnParam.filter)))
+                    outputs.add(StreamOutput(streamData, forwardFieldName, convertFilter(returnParam.filter), returnParam.localToData))
                 }
                 var allReturnStreams = returnStreams.map({ streamsCache.get(it.stream) })
                 allReturnStreams.forEach({ engageStream(it) }) // TODO: Make parallel
@@ -176,7 +180,13 @@ class StreamService : JobService() {
             if (output.parameter == forwardFieldName) {
                 invokeStreamItemUpdates(output.streamData.name, stream, itemKey, itemValue)
             } else {
-                transportService.sendItemUpdate(output.streamData.name, output.streamData.delegate, output.parameter, stream, itemKey)
+                if (output.localToData) {
+                    // We know we are already colocated with the data, as we can enter this function only via the RemoteFilter
+                    transportService.sendItemUpdate(output.streamData.name, output.streamData.delegate, output.parameter, stream, itemKey)
+                } else {
+                    val runnable = StreamServiceItemUpdateRunnable(output.streamData.name, output.streamData.delegate, output.parameter, stream, itemKey)
+                    ignite.compute().affinityRun("streams", targetStream, runnable)
+                }
             }
         }
     }

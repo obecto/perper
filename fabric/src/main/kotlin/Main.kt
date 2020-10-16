@@ -10,6 +10,7 @@ import org.apache.ignite.binary.BinaryReflectiveSerializer
 import org.apache.ignite.binary.BinaryTypeConfiguration
 import org.apache.ignite.configuration.BinaryConfiguration
 import org.apache.ignite.configuration.IgniteConfiguration
+import org.apache.ignite.services.ServiceConfiguration
 import org.apache.ignite.logger.slf4j.Slf4jLogger
 
 fun main(args: Array<String>) {
@@ -33,10 +34,21 @@ fun main(args: Array<String>) {
             it.serializer = BinaryReflectiveSerializer()
             it.nameMapper = BinaryBasicNameMapper(true)
         }
+        it.setServiceConfiguration(
+            ServiceConfiguration().also {
+                it.name = "TransportService"
+                it.service = TransportService(40400)
+                it.maxPerNodeCount = 1
+                it.totalCount = 0
+            },
+            ServiceConfiguration().also {
+                it.name = "StreamService"
+                it.service = StreamService()
+                it.maxPerNodeCount = 1
+                it.totalCount = 0
+            }
+        )
         it.gridLogger = Slf4jLogger()
     }
-    val ignite = Ignition.start(cfg)
-
-    ignite.services().deployNodeSingleton("TransportService", TransportService(40400))
-    ignite.services().deployNodeSingleton("StreamService", StreamService())
+    Ignition.start(cfg)
 }
