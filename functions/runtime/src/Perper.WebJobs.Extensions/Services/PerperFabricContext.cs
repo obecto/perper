@@ -73,12 +73,19 @@ namespace Perper.WebJobs.Extensions.Services
                     using var streamTriggers = client.StreamTriggers(new StreamTriggerFilter(), null, null, cancellationToken);
                     await foreach (var trigger in streamTriggers.ResponseStream.ReadAllAsync())
                     {
-                        await RouteNotification(new Notification
+                        try
                         {
-                            Type = NotificationType.StreamTrigger,
-                            Stream = trigger.Stream,
-                            Delegate = trigger.Delegate
-                        });
+                            await RouteNotification(new Notification
+                            {
+                                Type = NotificationType.StreamTrigger,
+                                Stream = trigger.Stream,
+                                Delegate = trigger.Delegate
+                            });
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.LogError("Received exception while processing stream triggers: " + e);
+                        }
                     }
                 }));
 
@@ -87,13 +94,20 @@ namespace Perper.WebJobs.Extensions.Services
                     using var workerTriggers = client.WorkerTriggers(new WorkerTriggerFilter(), null, null, cancellationToken);
                     await foreach (var trigger in workerTriggers.ResponseStream.ReadAllAsync())
                     {
-                        await RouteNotification(new Notification
+                        try
                         {
-                            Type = NotificationType.WorkerTrigger,
-                            Stream = trigger.Stream,
-                            Worker = trigger.Worker,
-                            Delegate = trigger.WorkerDelegate
-                        });
+                            await RouteNotification(new Notification
+                            {
+                                Type = NotificationType.WorkerTrigger,
+                                Stream = trigger.Stream,
+                                Worker = trigger.Worker,
+                                Delegate = trigger.WorkerDelegate
+                            });
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.LogError("Received exception while processing worker triggers: " + e);
+                        }
                     }
                 }));
 
@@ -102,27 +116,34 @@ namespace Perper.WebJobs.Extensions.Services
                     using var streamUpdates = client.StreamUpdates(new StreamUpdateFilter(), null, null, cancellationToken);
                     await foreach (var trigger in streamUpdates.ResponseStream.ReadAllAsync())
                     {
-                        if (trigger.ItemUpdate != null)
+                        try
                         {
-                            await RouteNotification(new Notification
+                            if (trigger.ItemUpdate != null)
                             {
-                                Type = NotificationType.StreamParameterItemUpdate,
-                                Stream = trigger.Stream,
-                                Delegate = trigger.Delegate,
-                                Parameter = trigger.ItemUpdate.Parameter,
-                                ParameterStream = trigger.ItemUpdate.ParameterStream,
-                                ParameterStreamItemKey = trigger.ItemUpdate.ParameterStreamItem
-                            });
+                                await RouteNotification(new Notification
+                                {
+                                    Type = NotificationType.StreamParameterItemUpdate,
+                                    Stream = trigger.Stream,
+                                    Delegate = trigger.Delegate,
+                                    Parameter = trigger.ItemUpdate.Parameter,
+                                    ParameterStream = trigger.ItemUpdate.ParameterStream,
+                                    ParameterStreamItemKey = trigger.ItemUpdate.ParameterStreamItem
+                                });
+                            }
+                            if (trigger.WorkerResult != null)
+                            {
+                                await RouteNotification(new Notification
+                                {
+                                    Type = NotificationType.WorkerResult,
+                                    Stream = trigger.Stream,
+                                    Delegate = trigger.Delegate,
+                                    Worker = trigger.WorkerResult.Worker,
+                                });
+                            }
                         }
-                        if (trigger.WorkerResult != null)
+                        catch (Exception e)
                         {
-                            await RouteNotification(new Notification
-                            {
-                                Type = NotificationType.WorkerResult,
-                                Stream = trigger.Stream,
-                                Delegate = trigger.Delegate,
-                                Worker = trigger.WorkerResult.Worker,
-                            });
+                            _logger.LogError("Received exception while processing stream updates: " + e);
                         }
                     }
                 }));
