@@ -47,7 +47,7 @@ namespace Perper.WebJobs.Extensions.Services
                 {
                     case MemberExpression member:
                         var left = parseFieldName(member.Expression);
-                        return left != null ? left + member.Member.Name : null;
+                        return left != null ? left + (left != "" ? "." : "") + member.Member.Name : null;
                     case ParameterExpression parameter:
                         return parameter.Name == expression.Parameters[0].Name ? "" : null;
                     case ConstantExpression constant:
@@ -89,7 +89,7 @@ namespace Perper.WebJobs.Extensions.Services
                                 var fieldName = (fieldNameLeft != null ? fieldNameLeft : fieldNameRight)!;
                                 var fieldValue = fieldNameLeft != null ? parseFieldValue(binary.Right) : parseFieldValue(binary.Left);
 
-                                if (fieldValue == null || JavaTypeMappingHelper.GetJavaTypeAsString(fieldValue.GetType()) == null)
+                                if (fieldValue != null && JavaTypeMappingHelper.GetJavaTypeAsString(fieldValue.GetType()) == null)
                                 {
                                     throw new NotImplementedException("Comparision with custom types in filters is not implemented yet.");
                                 }

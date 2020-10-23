@@ -3,6 +3,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.selects.select
 import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteCache
 import org.apache.ignite.IgniteLogger
@@ -49,29 +50,28 @@ class StreamService : JobService() {
     }
 
     override suspend fun CoroutineScope.execute(ctx: ServiceContext) {
-        // FIXME: updateStream and invokeStreamItemUpdates both use liveStreamGraph, creating a race condition
-        launch {
-            var updates = Channel<StreamData>(Channel.UNLIMITED)
-            val query = ContinuousQuery<String, StreamData>()
-            query.localListener = CacheEntryUpdatedListener { events ->
-                for (event in events) {
-                    runBlocking { updates.send(event.value) }
-                }
-            }
-            streamsCache.query(query)
-
-            log.debug({ "Streams listener started!" })
-            for (update in updates) {
-                log.debug({ "Stream object modified '${update.name}'" })
-                updateStream(update)
+        var streamGraphUpdates = Channel<StreamData>(Channel.UNLIMITED)
+        val query = ContinuousQuery<String, StreamData>()
+        query.localListener = CacheEntryUpdatedListener { events ->
+            for (event in events) {
+                runBlocking { streamGraphUpdates.send(event.value) }
             }
         }
+        streamsCache.query(query)
+        log.debug({ "Streams listener started!" })
 
-        launch {
-            for ((stream, itemKey) in streamItemUpdates) {
-                log.trace({ "Invoking stream updates on '$stream'" })
-                val itemValue = lazy { ignite.cache<Long, BinaryObject>(stream).withKeepBinary<Long, BinaryObject>().get(itemKey) }
-                invokeStreamItemUpdates(stream, stream, itemKey, itemValue)
+        // Select used here to avoid race conditions when using liveStreamGraph
+        while (true) {
+            select<Unit> {
+                streamGraphUpdates.onReceive { update ->
+                    log.debug({ "Stream object modified '${update.name}'" })
+                    updateStream(update)
+                }
+                streamItemUpdates.onReceive { (stream, itemKey) ->
+                    log.trace({ "Invoking stream updates on '$stream'" })
+                    val itemValue = lazy { ignite.cache<Long, BinaryObject>(stream).withKeepBinary<Long, BinaryObject>().get(itemKey) }
+                    invokeStreamItemUpdates(stream, stream, itemKey, itemValue)
+                }
             }
         }
     }
@@ -146,14 +146,22 @@ class StreamService : JobService() {
             liveStreams[streamData.name] = streamData
             transportService.sendStreamTrigger(streamData.name, streamData.delegate)
         } else {
-            val returnStreams = streamData.streamParams.get(returnFieldName) ?: emptyList()
-            if (!returnStreams.isEmpty()) {
-                for (returnParam in returnStreams) {
+            val returnStreamParams = streamData.streamParams.get(returnFieldName) ?: emptyList()
+            if (!returnStreamParams.isEmpty()) {
+                for (returnParam in returnStreamParams) {
                     val outputs = liveStreamGraph.getOrPut(returnParam.stream, { LinkedHashSet<StreamOutput>() })
                     outputs.add(StreamOutput(streamData, forwardFieldName, convertFilter(returnParam.filter), returnParam.localToData))
                 }
-                var allReturnStreams = returnStreams.map({ streamsCache.get(it.stream) })
-                allReturnStreams.forEach({ engageStream(it) }) // TODO: Make parallel
+                // TODO: Make parallel
+                var returnStreams = returnStreamParams.map({ Pair(streamsCache.get(it.stream) ?: null, it) })
+
+                for ((returnStream, returnParam) in returnStreams ) {
+                    if (returnStream == null) {
+                        log.warning("Tried engaging non-initialized stream '${returnParam.stream}' as part of '${streamData.name}'s return streams")
+                        continue
+                    }
+                    engageStream(returnStream)
+                }
             }
 
             if (!streamData.workers.isEmpty()) {
@@ -195,7 +203,12 @@ class StreamService : JobService() {
         for ((path, expectedValue) in filter.entries) {
             var finalItem: BinaryObject? = item
             for (segment in path.dropLast(1)) {
-                finalItem = finalItem?.field<BinaryObject?>(segment)
+                if (finalItem != null && finalItem.hasField(segment)) {
+                    finalItem = finalItem.field<BinaryObject?>(segment)
+                } else {
+                    finalItem = null
+                    break
+                }
             }
             if (expectedValue != finalItem?.field<Any?>(path.last())) {
                 return false
