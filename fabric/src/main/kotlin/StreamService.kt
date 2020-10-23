@@ -193,7 +193,12 @@ class StreamService : JobService() {
         for ((path, expectedValue) in filter.entries) {
             var finalItem: BinaryObject? = item
             for (segment in path.dropLast(1)) {
-                finalItem = finalItem?.field<BinaryObject?>(segment)
+                if (finalItem != null && finalItem.hasField(segment)) {
+                    finalItem = finalItem.field<BinaryObject?>(segment)
+                } else {
+                    finalItem = null
+                    break
+                }
             }
             if (expectedValue != finalItem?.field<Any?>(path.last())) {
                 return false
