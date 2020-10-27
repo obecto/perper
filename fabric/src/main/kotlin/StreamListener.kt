@@ -3,10 +3,11 @@ import org.apache.ignite.binary.BinaryReader
 import org.apache.ignite.binary.BinaryWriter
 import org.apache.ignite.binary.Binarylizable
 
-class StreamParam(
+class StreamListener(
     var stream: String,
+    var parameter: String,
     var filter: Map<String, Any?>,
-    var localToData: Boolean
+    var localToData: Boolean,
 ) : Binarylizable {
     override fun writeBinary(writer: BinaryWriter) {
         throw RuntimeException("Did not expect call to writeBinary")
@@ -14,6 +15,7 @@ class StreamParam(
 
     override fun readBinary(reader: BinaryReader) {
         filter = reader.readMap<String, Any?>("filter")
+        parameter = reader.readString("parameter")
         stream = reader.readString("stream")
         localToData = reader.readBoolean("localToData")
     }

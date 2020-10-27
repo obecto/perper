@@ -10,8 +10,8 @@ import org.apache.ignite.binary.BinaryReflectiveSerializer
 import org.apache.ignite.binary.BinaryTypeConfiguration
 import org.apache.ignite.configuration.BinaryConfiguration
 import org.apache.ignite.configuration.IgniteConfiguration
-import org.apache.ignite.services.ServiceConfiguration
 import org.apache.ignite.logger.slf4j.Slf4jLogger
+import org.apache.ignite.services.ServiceConfiguration
 
 fun main(args: Array<String>) {
     val parser = ArgParser("perper-fabric")
@@ -27,7 +27,7 @@ fun main(args: Array<String>) {
         it.binaryConfiguration = BinaryConfiguration().also {
             it.typeConfigurations = listOf(
                 BinaryTypeConfiguration(StreamData::class.qualifiedName),
-                BinaryTypeConfiguration(StreamParam::class.qualifiedName),
+                BinaryTypeConfiguration(StreamListener::class.qualifiedName),
                 BinaryTypeConfiguration(StreamDelegateType::class.qualifiedName).setEnum(true),
                 BinaryTypeConfiguration(WorkerData::class.qualifiedName),
             )

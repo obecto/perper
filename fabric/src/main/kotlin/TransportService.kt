@@ -1,9 +1,7 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.protobuf.FabricGrpcKt
-import com.obecto.perper.protobuf.StreamTrigger
-import com.obecto.perper.protobuf.StreamTriggerFilter
-import com.obecto.perper.protobuf.StreamUpdate
-import com.obecto.perper.protobuf.StreamUpdateFilter
+import com.obecto.perper.protobuf.StreamNotification
+import com.obecto.perper.protobuf.StreamNotificationFilter
 import com.obecto.perper.protobuf.WorkerTrigger
 import com.obecto.perper.protobuf.WorkerTriggerFilter
 import io.grpc.Server
@@ -13,19 +11,29 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
+import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteLogger
+import org.apache.ignite.cache.affinity.AffinityKey
+import org.apache.ignite.cache.query.ContinuousQuery
+import org.apache.ignite.cache.query.ScanQuery
+import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
 import org.apache.ignite.services.Service
 import org.apache.ignite.services.ServiceContext
+import javax.cache.event.CacheEntryUpdatedListener
 
 class TransportService(var port: Int) : Service {
 
     @set:LoggerResource
     lateinit var log: IgniteLogger
 
-    var streamTriggerChannels = HashMap<Channel<StreamTrigger>, StreamTriggerFilter>()
+    @set:IgniteInstanceResource
+    lateinit var ignite: Ignite
+
+    lateinit var streamService: StreamService
+
     var workerTriggerChannels = HashMap<Channel<WorkerTrigger>, WorkerTriggerFilter>()
-    var streamUpdateChannels = HashMap<Channel<StreamUpdate>, StreamUpdateFilter>()
+    var streamNotificationsChannel = HashMap<String, Channel<Long>>()
 
     inner class FabricGrpc : FabricGrpcKt.FabricCoroutineImplBase() {
         fun <F, S> subscribtion(channelMap: MutableMap<Channel<S>, F>, request: F): Flow<S> = flow {
@@ -42,14 +50,51 @@ class TransportService(var port: Int) : Service {
             }
         }
 
-        override fun streamTriggers(request: StreamTriggerFilter): Flow<StreamTrigger> = subscribtion(streamTriggerChannels, request)
         override fun workerTriggers(request: WorkerTriggerFilter): Flow<WorkerTrigger> = subscribtion(workerTriggerChannels, request)
-        override fun streamUpdates(request: StreamUpdateFilter): Flow<StreamUpdate> = subscribtion(streamUpdateChannels, request)
+
+        override fun streamNotifications(request: StreamNotificationFilter) = flow<StreamNotification> {
+            val stream = request.stream
+            val notificationCache = streamService.getNotificationCache(stream)
+
+            val streamNotificationUpdates = Channel<AffinityKey<Long>>(Channel.UNLIMITED)
+            val query = ContinuousQuery<AffinityKey<Long>, StreamNotification>()
+            query.localListener = CacheEntryUpdatedListener { events ->
+                for (event in events) {
+                    if (event.value == null) continue // Removed
+                    runBlocking { streamNotificationUpdates.send(event.key) }
+                }
+            }
+            query.setLocal(true)
+            query.initialQuery = ScanQuery<AffinityKey<Long>, StreamNotification>().also { it.setLocal(true) }
+            val queryCursor = notificationCache.query(query)
+            log.debug({ "Streams notifications listener started for '${request.stream}'!" })
+
+            suspend fun sendNotification(key: AffinityKey<Long>) {
+                log.debug({ "Sending notification for '${request.stream}'.$key" })
+                val notification = StreamNotification.newBuilder().also {
+                    it.stream = stream
+                    it.notificationKey = key.key()
+                    when (val affinityKey = key.affinityKey<Any>()) {
+                        is String -> it.stringAffinity = affinityKey
+                        is Long -> it.intAffinity = affinityKey
+                    }
+                }.build()
+                emit(notification)
+            }
+
+            for (event in queryCursor) {
+                sendNotification(event.key)
+            }
+            for (key in streamNotificationUpdates) {
+                sendNotification(key)
+            }
+        }
     }
 
     lateinit var server: Server
 
     override fun init(ctx: ServiceContext) {
+        streamService = ignite.services().service<StreamService>("StreamService")
         var serverBuilder = ServerBuilder.forPort(port)
         serverBuilder.addService(FabricGrpc())
         server = serverBuilder.build()
@@ -62,22 +107,6 @@ class TransportService(var port: Int) : Service {
     override fun cancel(ctx: ServiceContext) {
         server.shutdown()
         server.awaitTermination()
-    }
-
-    fun sendStreamTrigger(receiverStream: String, receiverDelegate: String) {
-        var trigger = StreamTrigger.newBuilder().also {
-            it.delegate = receiverDelegate
-            it.stream = receiverStream
-        }.build()
-
-        log.debug({ "Sending stream trigger: $trigger" })
-
-        runBlocking {
-            for ((channel, filter) in streamTriggerChannels) {
-                if (filter.hasDelegate() && filter.delegate != receiverDelegate) continue
-                channel.send(trigger)
-            }
-        }
     }
 
     fun sendWorkerTrigger(receiverStream: String, workerDelegate: String, workerName: String) {
@@ -93,48 +122,6 @@ class TransportService(var port: Int) : Service {
             for ((channel, filter) in workerTriggerChannels) {
                 if (filter.hasWorkerDelegate() && filter.workerDelegate != workerDelegate) continue
                 channel.send(trigger)
-            }
-        }
-    }
-
-    fun sendWorkerResult(receiverStream: String, receiverDelegate: String, workerName: String) {
-        var update = StreamUpdate.newBuilder().also {
-            it.delegate = receiverDelegate
-            it.stream = receiverStream
-            it.workerResult = StreamUpdate.WorkerResult.newBuilder().also {
-                it.worker = workerName
-            }.build()
-        }.build()
-
-        log.debug({ "Sending worker result update: $update" })
-
-        runBlocking {
-            for ((channel, filter) in streamUpdateChannels) {
-                if (filter.hasDelegate() && filter.delegate != receiverDelegate) continue
-                if (filter.hasStream() && filter.stream != receiverStream) continue
-                channel.send(update)
-            }
-        }
-    }
-
-    fun sendItemUpdate(receiverStream: String, receiverDelegate: String, receiverParameter: String, senderStream: String, senderItem: Long) {
-        var update = StreamUpdate.newBuilder().also {
-            it.delegate = receiverDelegate
-            it.stream = receiverStream
-            it.itemUpdate = StreamUpdate.ItemUpdate.newBuilder().also {
-                it.parameter = receiverParameter
-                it.parameterStream = senderStream
-                it.parameterStreamItem = senderItem
-            }.build()
-        }.build()
-
-        log.debug({ "Sending stream item update: $update" })
-
-        runBlocking {
-            for ((channel, filter) in streamUpdateChannels) {
-                if (filter.hasDelegate() && filter.delegate != receiverDelegate) continue
-                if (filter.hasStream() && filter.stream != receiverStream) continue
-                channel.send(update)
             }
         }
     }

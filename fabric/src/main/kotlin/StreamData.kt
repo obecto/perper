@@ -1,4 +1,5 @@
 package com.obecto.perper.fabric
+import org.apache.ignite.binary.BinaryCollectionFactory
 import org.apache.ignite.binary.BinaryMapFactory
 import org.apache.ignite.binary.BinaryReader
 import org.apache.ignite.binary.BinaryWriter
@@ -6,10 +7,9 @@ import org.apache.ignite.binary.Binarylizable
 import java.sql.Timestamp
 
 class StreamData(
-    var name: String,
     var delegate: String,
     var delegateType: StreamDelegateType,
-    var streamParams: Map<String, List<StreamParam>>,
+    var listeners: List<StreamListener>,
     var indexType: String?,
     var indexFields: LinkedHashMap<String, String>?,
     var workers: Map<String, WorkerData>,
@@ -26,8 +26,8 @@ class StreamData(
         indexFields = reader.readMap<String, String>("indexFields", BinaryMapFactory { LinkedHashMap(it) }) as LinkedHashMap<String, String>?
         indexType = reader.readString("indexType")
         lastModified = reader.readTimestamp("lastModified")
-        name = reader.readString("name")
-        streamParams = reader.readMap<String, Array<StreamParam>>("streamParams").entries.associateBy({ it.key }, { it.value.toList() })
+        @Suppress("UNCHECKED_CAST")
+        listeners = reader.readCollection("listeners", BinaryCollectionFactory { ArrayList<StreamListener>(it) }) as List<StreamListener>
         workers = reader.readMap("workers")
     }
 }

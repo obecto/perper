@@ -9,7 +9,7 @@ package perper;
 service Fabric {
   rpc StreamTriggers (StreamTriggerFilter) returns (stream StreamTrigger) {}
   rpc WorkerTriggers (WorkerTriggerFilter) returns (stream WorkerTrigger) {}
-  rpc StreamUpdates (StreamUpdateFilter) returns (stream StreamUpdate) {}
+  rpc StreamNotifications (StreamNotificationFilter) returns (stream StreamNotification) {}
 }
 
 message StreamTriggerFilter {
@@ -31,27 +31,16 @@ message WorkerTrigger {
     required string worker = 3;
 }
 
-message StreamUpdateFilter {
-    optional string delegate = 1;
-    optional string stream = 2;
+message StreamNotificationFilter {
+    required string stream = 1;
 }
 
-message StreamUpdate {
-    required string delegate = 1;
-    required string stream = 2;
+message StreamNotification {
+    required string stream = 1;
+    required int64 notificationKey = 2;
 
-    message ItemUpdate {
-        required string parameter = 1;
-        required string parameterStream = 2;
-        required int64 parameterStreamItem = 3;
-    }
-
-    message WorkerResult {
-        required string worker = 1;
-    }
-
-    oneof update {
-        ItemUpdate itemUpdate = 3;
-        WorkerResult workerResult = 4;
+    oneof affinity {
+      string stringAffinity = 3;
+      int64 intAffinity = 4;
     }
 }
