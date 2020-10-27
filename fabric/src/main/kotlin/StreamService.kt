@@ -62,8 +62,7 @@ class StreamService : JobService() {
         launch {
             for ((stream, itemKey) in streamItemUpdates) {
                 log.trace({ "Invoking stream updates on '$stream'" })
-                val itemValue = lazy { ignite.cache<Long, BinaryObject>(stream).withKeepBinary<Long, BinaryObject>().get(itemKey) }
-                invokeStreamItemUpdates(stream, stream, itemKey, itemValue)
+                invokeStreamItemUpdates(stream, itemKey)
             }
         }
     }
@@ -134,18 +133,35 @@ class StreamService : JobService() {
         return true
     }
 
-    suspend fun invokeStreamItemUpdates(targetStream: String, cache: String, itemKey: Long, itemValue: Lazy<BinaryObject>) {
-        val listeners = streamsCache.get(targetStream)?.listeners ?: return
-        log.trace({ "Invoking stream updates for '$targetStream'; listeners: $listeners" })
-        for (listener in listeners) {
-            if (!testFilter(listener.filter, itemValue.value)) continue
+    suspend fun invokeStreamItemUpdates(stream: String, itemKey: Long) {
+        val itemValue = lazy { ignite.cache<Long, BinaryObject>(stream).withKeepBinary<Long, BinaryObject>().get(itemKey) }
+        val ephemeral = streamsCache.get(stream).ephemeral
+        var ephemeralCounter = 0L
 
-            if (listener.parameter == forwardFieldName) {
-                invokeStreamItemUpdates(listener.stream, cache, itemKey, itemValue)
-            } else {
-                val notificationsCache = getNotificationCache(listener.stream)
-                val key = AffinityKey(itemKey, if (listener.localToData) listener.stream else itemKey)
-                notificationsCache.put(key, StreamItemNotification(listener.parameter, cache, itemKey))
+        suspend fun helper(targetStream: String) {
+            val listeners = streamsCache.get(targetStream)?.listeners ?: return
+            log.trace({ "Invoking stream updates for '$targetStream'; listeners: $listeners" })
+            for (listener in listeners) {
+                if (!testFilter(listener.filter, itemValue.value)) continue
+
+                if (listener.parameter == forwardFieldName) {
+                    helper(listener.stream)
+                } else {
+                    ephemeralCounter ++
+                    val notificationsCache = getNotificationCache(listener.stream)
+                    val key = AffinityKey(itemKey, if (listener.localToData) listener.stream else itemKey)
+                    notificationsCache.put(key, StreamItemNotification(listener.parameter, stream, itemKey, ephemeral))
+                }
+            }
+        }
+        helper(stream)
+
+        if (ephemeral) {
+            val counter = ignite.atomicLong("$stream-$itemKey", 0, true)
+            if (counter.addAndGet(ephemeralCounter) == 0L) {
+                // Special case when all notifications are consumed before we finish invoking updates (or when no listeners are present)
+                ignite.cache<Long, BinaryObject>(stream).withKeepBinary<Long, BinaryObject>().remove(itemKey)
+                counter.close()
             }
         }
     }

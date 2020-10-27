@@ -1,6 +1,5 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.protobuf.FabricGrpcKt
-import com.obecto.perper.protobuf.StreamNotification
 import com.obecto.perper.protobuf.StreamNotificationFilter
 import com.obecto.perper.protobuf.WorkerTrigger
 import com.obecto.perper.protobuf.WorkerTriggerFilter
@@ -13,6 +12,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteLogger
+import org.apache.ignite.binary.BinaryObject
 import org.apache.ignite.cache.affinity.AffinityKey
 import org.apache.ignite.cache.query.ContinuousQuery
 import org.apache.ignite.cache.query.ScanQuery
@@ -21,6 +21,7 @@ import org.apache.ignite.resources.LoggerResource
 import org.apache.ignite.services.Service
 import org.apache.ignite.services.ServiceContext
 import javax.cache.event.CacheEntryUpdatedListener
+import com.obecto.perper.protobuf.StreamNotification as StreamNotificationProto
 
 class TransportService(var port: Int) : Service {
 
@@ -52,7 +53,7 @@ class TransportService(var port: Int) : Service {
 
         override fun workerTriggers(request: WorkerTriggerFilter): Flow<WorkerTrigger> = subscribtion(workerTriggerChannels, request)
 
-        override fun streamNotifications(request: StreamNotificationFilter) = flow<StreamNotification> {
+        override fun streamNotifications(request: StreamNotificationFilter) = flow<StreamNotificationProto> {
             val stream = request.stream
             val notificationCache = streamService.getNotificationCache(stream)
 
@@ -60,8 +61,18 @@ class TransportService(var port: Int) : Service {
             val query = ContinuousQuery<AffinityKey<Long>, StreamNotification>()
             query.localListener = CacheEntryUpdatedListener { events ->
                 for (event in events) {
-                    if (event.value == null) continue // Removed
-                    runBlocking { streamNotificationUpdates.send(event.key) }
+                    if (event.value == null) {
+                        val confirmedNotification = event.oldValue
+                        if (confirmedNotification is StreamItemNotification && confirmedNotification.ephemeral) {
+                            val counter = ignite.atomicLong("${confirmedNotification.cache}-${confirmedNotification.index}", 0, true)
+                            if (counter.decrementAndGet() == 0L) {
+                                ignite.cache<Long, BinaryObject>(confirmedNotification.cache).withKeepBinary<Long, BinaryObject>().remove(confirmedNotification.index)
+                                counter.close()
+                            }
+                        }
+                    } else {
+                        runBlocking { streamNotificationUpdates.send(event.key) }
+                    }
                 }
             }
             query.setLocal(true)
@@ -71,7 +82,7 @@ class TransportService(var port: Int) : Service {
 
             suspend fun sendNotification(key: AffinityKey<Long>) {
                 log.debug({ "Sending notification for '${request.stream}'.$key" })
-                val notification = StreamNotification.newBuilder().also {
+                val notification = StreamNotificationProto.newBuilder().also {
                     it.stream = stream
                     it.notificationKey = key.key()
                     when (val affinityKey = key.affinityKey<Any>()) {

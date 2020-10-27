@@ -13,6 +13,7 @@ class StreamData(
     var indexType: String?,
     var indexFields: LinkedHashMap<String, String>?,
     var workers: Map<String, WorkerData>,
+    var ephemeral: Boolean,
 ) : Binarylizable {
     var lastModified: Timestamp = Timestamp(System.currentTimeMillis())
 
@@ -29,5 +30,6 @@ class StreamData(
         @Suppress("UNCHECKED_CAST")
         listeners = reader.readCollection("listeners", BinaryCollectionFactory { ArrayList<StreamListener>(it) }) as List<StreamListener>
         workers = reader.readMap("workers")
+        ephemeral = reader.readBoolean("ephemeral")
     }
 }

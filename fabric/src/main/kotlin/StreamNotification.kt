@@ -3,7 +3,7 @@ import org.apache.ignite.binary.BinaryReader
 import org.apache.ignite.binary.BinaryWriter
 import org.apache.ignite.binary.Binarylizable
 
-open class StreamNotification()
+abstract class StreamNotification()
 
 class StreamTriggerNotification() : StreamNotification(), Binarylizable {
     override fun writeBinary(writer: BinaryWriter) {
@@ -17,15 +17,18 @@ class StreamItemNotification(
     var parameter: String,
     var cache: String,
     var index: Long,
+    var ephemeral: Boolean,
 ) : StreamNotification(), Binarylizable {
     override fun writeBinary(writer: BinaryWriter) {
         writer.writeString("cache", cache)
+        writer.writeBoolean("ephemeral", ephemeral)
         writer.writeLong("index", index)
         writer.writeString("parameter", parameter)
     }
 
     override fun readBinary(reader: BinaryReader) {
         cache = reader.readString("cache")
+        ephemeral = reader.readBoolean("ephemeral")
         index = reader.readLong("index")
         parameter = reader.readString("parameter")
     }
