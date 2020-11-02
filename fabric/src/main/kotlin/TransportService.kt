@@ -5,20 +5,32 @@ import com.obecto.perper.protobuf.FabricGrpcKt
 import com.obecto.perper.protobuf.NotificationFilter
 import io.grpc.Server
 import io.grpc.ServerBuilder
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteLogger
 import org.apache.ignite.binary.BinaryObject
 import org.apache.ignite.cache.affinity.AffinityKey
 import org.apache.ignite.cache.query.ContinuousQuery
+import org.apache.ignite.cache.query.QueryCursor
 import org.apache.ignite.cache.query.ScanQuery
 import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
 import org.apache.ignite.resources.ServiceResource
 import org.apache.ignite.services.Service
 import org.apache.ignite.services.ServiceContext
+import sh.keda.externalscaler.ExternalScalerGrpcKt
+import sh.keda.externalscaler.GetMetricSpecResponse
+import sh.keda.externalscaler.GetMetricsRequest
+import sh.keda.externalscaler.GetMetricsResponse
+import sh.keda.externalscaler.IsActiveResponse
+import sh.keda.externalscaler.ScaledObjectRef
+import javax.cache.Cache.Entry
 import javax.cache.event.CacheEntryUpdatedListener
 import com.obecto.perper.protobuf.Notification as NotificationProto
 
@@ -37,7 +49,8 @@ class TransportService(var port: Int) : Service {
 
     override fun init(ctx: ServiceContext) {
         var serverBuilder = ServerBuilder.forPort(port)
-        serverBuilder.addService(FabricGrpc())
+        serverBuilder.addService(FabricImpl())
+        serverBuilder.addService(ExternalScalerImpl())
         server = serverBuilder.build()
     }
 
@@ -50,7 +63,7 @@ class TransportService(var port: Int) : Service {
         server.awaitTermination()
     }
 
-    inner class FabricGrpc : FabricGrpcKt.FabricCoroutineImplBase() {
+    inner class FabricImpl : FabricGrpcKt.FabricCoroutineImplBase() {
         override fun notifications(request: NotificationFilter) = flow<NotificationProto> {
             val notificationCache = agentService.getNotificationCache(request.agentDelegate)
 
@@ -96,6 +109,67 @@ class TransportService(var port: Int) : Service {
             for (key in streamNotificationUpdates) {
                 sendNotification(key)
             }
+        }
+    }
+
+    inner class ExternalScalerImpl : ExternalScalerGrpcKt.ExternalScalerCoroutineImplBase() {
+        val ScaledObjectRef.delegate
+            get() = scalerMetadataMap.getOrDefault("delegate", name)
+        val ScaledObjectRef.targetNotifications
+            get() = scalerMetadataMap.getOrDefault("targetNotifications", "10").toLong()
+
+        override suspend fun isActive(request: ScaledObjectRef): IsActiveResponse {
+            val notificationCache = agentService.getNotificationCache(request.delegate)
+            val available = notificationCache.localSizeLong()
+            return IsActiveResponse.newBuilder().also {
+                it.result = available > 0
+            }.build()
+        }
+
+        @FlowPreview
+        override fun streamIsActive(request: ScaledObjectRef) = flow<Boolean> {
+            val notificationCache = agentService.getNotificationCache(request.delegate).withKeepBinary<BinaryObject, BinaryObject>()
+
+            lateinit var queryCursor: QueryCursor<Entry<BinaryObject, BinaryObject>>
+            val query = ContinuousQuery<BinaryObject, BinaryObject>().also {
+                it.localListener = CacheEntryUpdatedListener {
+                    val available = notificationCache.localSizeLong()
+                    runBlocking {
+                        try {
+                            emit(available > 0)
+                        } catch (_: CancellationException) {
+                            queryCursor.close()
+                        }
+                    }
+                }
+                it.setLocal(true)
+            }
+            queryCursor = notificationCache.query(query)
+        }.debounce(100).map({ value ->
+            IsActiveResponse.newBuilder().also {
+                it.result = value
+            }.build()
+        })
+
+        override suspend fun getMetricSpec(request: ScaledObjectRef): GetMetricSpecResponse {
+            return GetMetricSpecResponse.newBuilder().also {
+                it.addMetricSpecsBuilder().also {
+                    it.metricName = "${request.delegate}-notifications"
+                    it.targetSize = request.targetNotifications
+                }
+            }.build()
+        }
+
+        override suspend fun getMetrics(request: GetMetricsRequest): GetMetricsResponse {
+            val notificationCache = agentService.getNotificationCache(request.scaledObjectRef.delegate)
+            val available = notificationCache.localSizeLong()
+
+            return GetMetricsResponse.newBuilder().also {
+                it.addMetricValuesBuilder().also {
+                    it.metricName = "${request.scaledObjectRef.delegate}-notifications"
+                    it.metricValue = available
+                }
+            }.build()
         }
     }
 }
