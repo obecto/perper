@@ -18,9 +18,9 @@ using Grpc.Net.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Perper.Protocol.Cache;
-using Perper.Protocol.Notifications;
-using Perper.Protocol.Protobuf;
+using Perper.WebJobs.Extensions.Protocol.Cache;
+using Perper.WebJobs.Extensions.Protocol.Notifications;
+using Perper.WebJobs.Extensions.Protocol.Protobuf;
 using Perper.WebJobs.Extensions.Config;
 
 namespace Perper.WebJobs.Extensions.Services

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Perper.Protocol.Cache;
+using Perper.WebJobs.Extensions.Protocol.Cache;
 using Perper.WebJobs.Extensions.Services;
 using Perper.WebJobs.Extensions.Model;
 
@@ -42,6 +42,8 @@ namespace Perper.WebJobs.Extensions.Bindings
 
         private async IAsyncEnumerable<T> Impl([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            // Engage input stream
+
             var updates = _context.GetNotifications(_delegateName).StreamParameterItemUpdates<T>(
                 _streamName, _parameterName, cancellationToken);
             await foreach (var (_, item) in updates.WithCancellation(cancellationToken))

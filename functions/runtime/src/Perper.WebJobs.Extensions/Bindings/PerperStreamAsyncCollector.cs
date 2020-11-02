@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
-using Perper.Protocol.Cache;
+using Perper.WebJobs.Extensions.Protocol.Cache;
 using Perper.WebJobs.Extensions.Services;
 using Perper.WebJobs.Extensions.Model;
 

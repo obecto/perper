@@ -4,7 +4,7 @@ using System.Linq.Expressions;
 using Apache.Ignite.Core.Binary;
 using System.Collections.Generic;
 using Perper.WebJobs.Extensions.Model;
-using Perper.Protocol.Cache;
+using Perper.WebJobs.Extensions.Protocol.Cache;
 
 namespace Perper.WebJobs.Extensions.Services
 {
