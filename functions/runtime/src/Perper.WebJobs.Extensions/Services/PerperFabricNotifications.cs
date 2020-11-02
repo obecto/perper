@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using Perper.Protocol.Notifications;
+using Perper.WebJobs.Extensions.Protocol.Notifications;
 
 namespace Perper.WebJobs.Extensions.Services
 {

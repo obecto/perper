@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Apache.Ignite.Core.Binary;
 
-namespace Perper.Protocol.Cache
+namespace Perper.WebJobs.Extensions.Protocol.Cache
 {
     public class WorkerData : IBinarizable
     {

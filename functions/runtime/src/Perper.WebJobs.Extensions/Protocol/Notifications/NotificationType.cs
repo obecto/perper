@@ -1,4 +1,4 @@
-namespace Perper.Protocol.Notifications
+namespace Perper.WebJobs.Extensions.Protocol.Notifications
 {
     public enum NotificationType
     {

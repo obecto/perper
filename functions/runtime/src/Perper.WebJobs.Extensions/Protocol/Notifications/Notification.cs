@@ -1,7 +1,6 @@
-using System.Security.Principal;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
-namespace Perper.Protocol.Notifications
+namespace Perper.WebJobs.Extensions.Protocol.Notifications
 {
     public class Notification
     {

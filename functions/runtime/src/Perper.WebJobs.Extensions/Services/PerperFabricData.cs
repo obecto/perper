@@ -6,7 +6,7 @@ using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Linq;
 using Microsoft.Extensions.Logging;
-using Perper.Protocol.Cache;
+using Perper.WebJobs.Extensions.Protocol.Cache;
 using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Services
