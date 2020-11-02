@@ -1,4 +1,8 @@
 package com.obecto.perper.fabric
+import com.obecto.perper.fabric.cache.StreamData
+import com.obecto.perper.fabric.cache.StreamDelegateType
+import com.obecto.perper.fabric.cache.notification.StreamItemNotification
+import com.obecto.perper.fabric.cache.notification.StreamTriggerNotification
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
@@ -13,16 +17,17 @@ import org.apache.ignite.cache.query.ContinuousQuery
 import org.apache.ignite.configuration.CacheConfiguration
 import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
+import org.apache.ignite.resources.ServiceResource
 import org.apache.ignite.services.ServiceContext
 import javax.cache.CacheException
 import javax.cache.configuration.Factory
+import javax.cache.event.CacheEntryEvent
 import javax.cache.event.CacheEntryEventFilter
 import javax.cache.event.CacheEntryUpdatedListener
+import javax.cache.event.EventType
 
 class StreamService : JobService() {
-    data class StreamOutput(val streamData: StreamData, val parameter: String, val filter: Map<List<String>, Any?>?, val localToData: Boolean)
 
-    val returnFieldName = "\$return"
     val forwardFieldName = "\$forward"
 
     @set:LoggerResource
@@ -34,7 +39,8 @@ class StreamService : JobService() {
     lateinit var streamsCache: IgniteCache<String, StreamData>
     lateinit var streamItemUpdates: Channel<Pair<String, Long>>
 
-    var liveWorkers = HashSet<String>()
+    @set:ServiceResource(serviceName = "AgentService")
+    lateinit var agentService: AgentService
 
     override fun init(ctx: ServiceContext) {
         streamItemUpdates = Channel(Channel.UNLIMITED)
@@ -71,28 +77,13 @@ class StreamService : JobService() {
         if (streamData.delegateType == StreamDelegateType.Action || streamData.listeners.size > 0) {
             engageStream(stream, streamData)
         }
-
-        if (!streamData.workers.isEmpty()) {
-            for (worker in streamData.workers.values) {
-                if (worker.finished && liveWorkers.contains(worker.name)) {
-                    liveWorkers.remove(worker.name)
-                    val notificationsCache = getNotificationCache(stream)
-                    val key = AffinityKey(System.currentTimeMillis(), stream)
-                    notificationsCache.put(key, WorkerResultNotification(worker.name))
-                } else if (!worker.finished && !liveWorkers.contains(worker.name)) {
-                    liveWorkers.add(worker.name)
-                    // FIXME
-                    // transportService.sendWorkerTrigger(stream, worker.delegate, worker.name)
-                }
-            }
-        }
     }
 
-    public suspend fun engageStream(stream: String, streamData: StreamData) {
+    suspend fun engageStream(stream: String, streamData: StreamData) {
         if (createCache(stream, streamData)) {
             log.debug({ "Starting stream '$stream'" })
-            val notificationsCache = getNotificationCache(stream)
-            notificationsCache.put(AffinityKey(System.currentTimeMillis(), stream), StreamTriggerNotification())
+            val notificationsCache = agentService.getNotificationCache(streamData.agentDelegate)
+            notificationsCache.put(AffinityKey(System.currentTimeMillis(), stream), StreamTriggerNotification(stream))
         }
     }
 
@@ -115,13 +106,12 @@ class StreamService : JobService() {
 
         try {
             var cache = ignite.createCache(cacheConfiguration).withKeepBinary<Long, BinaryObject>()
-            ignite.getOrCreateCache<AffinityKey<Long>, StreamNotification>("$stream-\$notifications")
 
             // Consider alternative implementation
             if (ignite.atomicLong("${stream}_Query", 0, true).compareAndSet(0, 1)) {
                 log.debug({ "Starting query on '$stream'" })
                 val query = ContinuousQuery<Long, BinaryObject>()
-                query.remoteFilterFactory = Factory<CacheEntryEventFilter<Long, BinaryObject>> { StreamServiceRemoteFilter(stream) }
+                query.remoteFilterFactory = Factory<CacheEntryEventFilter<Long, BinaryObject>> { StreamUpdatesRemoteFilter(stream) }
 
                 // Dispose handle?
                 cache.query(query)
@@ -148,9 +138,9 @@ class StreamService : JobService() {
                     helper(listener.stream)
                 } else {
                     ephemeralCounter ++
-                    val notificationsCache = getNotificationCache(listener.stream)
+                    val notificationsCache = agentService.getNotificationCache(listener.agentDelegate)
                     val key = AffinityKey(itemKey, if (listener.localToData) listener.stream else itemKey)
-                    notificationsCache.put(key, StreamItemNotification(listener.parameter, stream, itemKey, ephemeral))
+                    notificationsCache.put(key, StreamItemNotification(listener.stream, listener.parameter, stream, itemKey, ephemeral))
                 }
             }
         }
@@ -186,10 +176,21 @@ class StreamService : JobService() {
         return true
     }
 
-    fun getNotificationCache(stream: String) = ignite.cache<AffinityKey<Long>, StreamNotification>("$stream-\$notifications")
-
     fun updateStreamItem(stream: String, itemKey: Long) {
         log.trace({ "Queueing stream update on '$stream'" })
         runBlocking { streamItemUpdates.send(Pair(stream, itemKey)) }
+    }
+
+    class StreamUpdatesRemoteFilter(val streamName: String) : CacheEntryEventFilter<Long, BinaryObject> {
+        @set:IgniteInstanceResource
+        lateinit var ignite: Ignite
+
+        override fun evaluate(event: CacheEntryEvent<out Long, out BinaryObject>): Boolean {
+            if (event.eventType == EventType.CREATED) {
+                var service = ignite.services().service<StreamService>("StreamService")
+                service.updateStreamItem(streamName, event.key)
+            }
+            return false
+        }
     }
 }
