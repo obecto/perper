@@ -74,8 +74,10 @@ class StreamService : JobService() {
     }
 
     suspend fun updateStream(stream: String, streamData: StreamData) {
-        if (streamData.delegateType == StreamDelegateType.Action || streamData.listeners.size > 0) {
-            engageStream(stream, streamData)
+        when (streamData.delegateType) {
+            StreamDelegateType.Action -> engageStream(stream, streamData)
+            StreamDelegateType.Function -> if (streamData.listeners.size > 0) engageStream(stream, streamData)
+            StreamDelegateType.External -> createCache(stream, streamData)
         }
     }
 
