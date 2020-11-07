@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
         <LangVersion>8</LangVersion>
         <Nullable>enable</Nullable>
@@ -16,61 +15,62 @@
     </PropertyGroup>
 
     <PropertyGroup>
-      <PublishRepositoryUrl>true</PublishRepositoryUrl>
-      <IncludeSymbols>true</IncludeSymbols>
-      <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Grpc.Tools" Version="2.32.0">
-        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        <PrivateAssets>all</PrivateAssets>
-      </PackageReference>
-      <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
-    </ItemGroup>
-
-    <ItemGroup>
+        <PackageReference Include="Grpc.Tools" Version="2.32.0">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.22" />
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
         <PackageReference Include="Apache.Ignite.Linq" Version="2.8.1">
             <ExcludeAssets>build;buildMultitargeting;buildTransitive</ExcludeAssets>
         </PackageReference>
         <PackageReference Include="Google.Protobuf" Version="3.13.0" />
+        <PackageReference Include="System.Threading.Channels" Version="4.7.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
-        <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.14" />
-        <PackageReference Include="System.IO.Pipelines" Version="4.6.0" />
         <PackageReference Include="System.Linq.Async" Version="4.1.1" />
-        <PackageReference Include="System.Threading.Channels" Version="4.7.0" />
         <PackageReference Include="Grpc.Net.Client" Version="2.32.0" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+        <PackageReference Include="EmbedIO" Version="3.4.3" />
         <PackageReference Include="Grpc.Core" Version="2.33.1" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Protobuf Include="..\..\..\..\proto\fabric.proto" />
+        <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
     </ItemGroup>
 
     <PropertyGroup>
         <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     </PropertyGroup>
-
+    
     <ItemGroup>
-        <Compile Include="**/*.cs" Exclude="Streams/**;CustomHandler/**;**/obj/**/*.cs" Condition="'$(TargetFramework)' == 'netcoreapp3.1'" />
+        <Protobuf Include="..\..\..\..\proto\fabric.proto" />
+        <Compile Include="Cache/**/*.cs" />
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Include="CustomHandler/**" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
+        <Compile Include="Model/**/*.cs" />
+        <Compile Include="Services/**/*.cs" />
     </ItemGroup>
 
-    <ItemGroup>
-        <Compile Include="Streams/**" />
+    <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
+        <Compile Include="Bindings/**/*.cs" />
+        <Compile Include="Config/**/*.cs" />
+        <Compile Include="Triggers/**/*.cs" />
+        <Compile Include="*.cs" />
+
+        <Compile Include="Protocol/**/*.cs" /> <!-- Delete me -->
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Protocol" />
+    <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+        <Compile Include="CustomHandler/**/*.cs" />
     </ItemGroup>
-
 
 </Project>

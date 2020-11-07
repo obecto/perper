@@ -10,6 +10,12 @@
       "direction": "in",
       "name": "processor",
       "parameter": "processor"
+    },
+    {
+      "type": "perper",
+      "direction": "in",
+      "name": "count",
+      "parameter": "count"
     }
   ]
 }

@@ -1,99 +1,77 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Apache.Ignite.Core.Client;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.Extensions.Logging;
-using Perper.WebJobs.Extensions.Config;
-using Perper.WebJobs.Extensions.Model;
+using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
     public class PerperTriggerBinding : ITriggerBinding
     {
-        private readonly Attribute _attribute;
-        private readonly IPerperFabricContext _fabricContext;
+        private readonly FabricService _fabric;
+        private readonly IIgniteClient _ignite;
         private readonly ILogger _logger;
-        public Type TriggerValueType { get; }
 
-        public PerperTriggerBinding(Attribute attribute, Type triggerValueType,
-            IPerperFabricContext fabricContext, ILogger logger)
+        private readonly JObject? _parameterExpression;
+
+        public IReadOnlyDictionary<string, Type> BindingDataContract { get; }
+        public Type TriggerValueType { get; } = typeof(JObject);
+
+        public PerperTriggerBinding(PerperTriggerAttribute attribute,
+            FabricService fabric, IIgniteClient ignite, ILogger logger)
         {
-            _attribute = attribute;
-            _fabricContext = fabricContext;
+            _fabric = fabric;
+            _ignite = ignite;
             _logger = logger;
 
-            TriggerValueType = triggerValueType;
+            _parameterExpression = attribute.ParameterExpression is null
+                ? null
+                : JObject.Parse(attribute.ParameterExpression);
+
+            BindingDataContract = CreateBindingDataContract();
         }
 
         public Task<IListener> CreateListenerAsync(ListenerFactoryContext context)
         {
-            return Task.FromResult<IListener>(_attribute switch
+            return Task.FromResult<IListener>(new PerperTriggerListener(
+                _fabric.GetNotifications(context.Descriptor.ShortName), context.Executor, _logger));
+        }
+
+        public async Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
+        {
+            var trigger = (JObject) value;
+            return new TriggerData(await GetBindingData(trigger))
             {
-                PerperStreamTriggerAttribute streamAttribute => new PerperStreamListener(streamAttribute,
-                    context.Descriptor.FullName, context.Executor, _fabricContext, _logger,
-                    new PerperTriggerValueConverter<PerperStreamContext>(TriggerValueType)),
-                PerperWorkerTriggerAttribute workerAttribute => new PerperWorkerListener(workerAttribute,
-                    context.Descriptor.FullName, context.Executor, _fabricContext, _logger,
-                    new PerperTriggerValueConverter<PerperWorkerContext>(TriggerValueType)),
-                PerperModuleTriggerAttribute moduleAttribute => new PerperModuleListener(moduleAttribute,
-                    context.Descriptor.FullName, context.Executor, _fabricContext, _logger,
-                    new PerperTriggerValueConverter<PerperModuleContext>(TriggerValueType)),
-                _ => throw new ArgumentException()
-            });
+                ReturnValueProvider = new PerperTriggerValueBinder(trigger, _ignite, _logger)
+            };
         }
-
-        public Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
-        {
-            var (streamName, workerName, delegateName, triggerAttributeName) = GetTriggerData(value);
-            return Task.FromResult<ITriggerData>(new TriggerData(new PerperTriggerValueProvider(value),
-                new Dictionary<string, object>
-                {
-                    {"stream", streamName},
-                    {"worker", workerName},
-                    {"delegate", delegateName},
-                    {"triggerAttribute", triggerAttributeName}
-                }));
-        }
-
-        public IReadOnlyDictionary<string, Type> BindingDataContract { get; } = new Dictionary<string, Type>
-        {
-            {"stream", typeof(string)},
-            {"worker", typeof(string)},
-            {"delegate", typeof(string)},
-            {"triggerAttribute", typeof(string)}
-        };
 
         public ParameterDescriptor ToParameterDescriptor()
         {
-            return new ParameterDescriptor();
+            return new TriggerParameterDescriptor();
         }
 
-        private (string, string, string, string) GetTriggerData(object value)
+        private IReadOnlyDictionary<string, Type> CreateBindingDataContract()
         {
-            switch (_attribute)
-            {
-                case PerperStreamTriggerAttribute _:
-                    {
-                        var context = new PerperTriggerValueConverter<PerperStreamContext>(TriggerValueType).ConvertBack(value);
-                        return (context.StreamName, null, context.DelegateName, nameof(PerperStreamTriggerAttribute));
-                    }
-                case PerperWorkerTriggerAttribute _:
-                    {
-                        var context = new PerperTriggerValueConverter<PerperWorkerContext>(TriggerValueType).ConvertBack(value);
-                        return (context.StreamName, context.WorkerName, null, nameof(PerperWorkerTriggerAttribute));
-                    }
-                case PerperModuleTriggerAttribute _:
-                    {
-                        var context = new PerperTriggerValueConverter<PerperModuleContext>(TriggerValueType).ConvertBack(value);
-                        return (context.StreamName, context.WorkerName, context.DelegateName, nameof(PerperModuleTriggerAttribute));
-                    }
-                default:
-                    throw new ArgumentException();
-            }
+            var result = _parameterExpression is null
+                ? new Dictionary<string, Type>()
+                : _parameterExpression.Properties().ToDictionary(property => property.Name, _ => typeof(string));
+            result["$return"] = typeof(object).MakeByRefType();
+            return result;
+        }
+
+        private Task<Dictionary<string, object>> GetBindingData(JObject trigger)
+        {
+            // Use _parameterExpression {parameter_name: index} to extract string
+            // value from Ignite parameters (assume that they are object[])
+            throw new NotImplementedException();
         }
     }
 }

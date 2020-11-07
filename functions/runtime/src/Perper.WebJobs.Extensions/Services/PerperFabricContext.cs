@@ -1,10 +1,8 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.IO.Pipelines;
 using System.Linq;
 using System.Net;
-using System.Net.Sockets;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading;
@@ -15,7 +13,6 @@ using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
 using Grpc.Core;
 using Grpc.Net.Client;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Perper.WebJobs.Extensions.Protocol.Cache;
@@ -25,7 +22,7 @@ using Perper.WebJobs.Extensions.Config;
 
 namespace Perper.WebJobs.Extensions.Services
 {
-    public class PerperFabricContext : IPerperFabricContext, IAsyncDisposable
+    public class PerperFabricContext : IAsyncDisposable
     {
         private readonly ILogger<PerperFabricContext> _logger;
         private readonly string _igniteHost;
@@ -71,6 +68,7 @@ namespace Perper.WebJobs.Extensions.Services
                 tasks.Add(Task.Run(async () =>
                 {
                     using var streamTriggers = client.StreamTriggers(new StreamTriggerFilter(), null, null, cancellationToken);
+                    streamTriggers.ResponseStream.
                     await foreach (var trigger in streamTriggers.ResponseStream.ReadAllAsync())
                     {
                         try

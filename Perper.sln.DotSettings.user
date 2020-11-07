@@ -1,0 +1,13 @@
+﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+	<s:String x:Key="/Default/Environment/AssemblyExplorer/XmlDocument/@EntryValue">&lt;AssemblyExplorer&gt;
+  &lt;Assembly Path="/home/branimir/.nuget/packages/unosquare.swan.lite/3.0.0/lib/netstandard2.0/Swan.Lite.dll" /&gt;
+  &lt;Assembly Path="/home/branimir/.nuget/packages/embedio/3.4.3/lib/netstandard2.0/EmbedIO.dll" /&gt;
+  &lt;Assembly Path="/home/branimir/.nuget/packages/microsoft.azure.webjobs/3.0.22/lib/netstandard2.0/Microsoft.Azure.WebJobs.Host.dll" /&gt;
+&lt;/AssemblyExplorer&gt;</s:String>
+	<s:Boolean x:Key="/Default/UnloadedProject/UnloadedProjects/=0125cf8d_002D4e71_002D4e78_002Db70a_002D2bb87572f85e_0023AgentPing/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/UnloadedProject/UnloadedProjects/=10b60903_002D4ac8_002D48da_002Da81f_002Dc7c8e883ef16_0023Structure/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/UnloadedProject/UnloadedProjects/=6990b408_002Daf95_002D4339_002D95de_002Da21254290187_0023AgentPong/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/UnloadedProject/UnloadedProjects/=7328f9e0_002D43bc_002D4dae_002Dbccd_002D9e6d7d5ecbe2_0023Python_002EFunctionApp/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/UnloadedProject/UnloadedProjects/=76b3f8cb_002D9bb7_002D43f1_002D84e4_002Db421e76e7edf_0023DotNet_002EFunctionApp/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/UnloadedProject/UnloadedProjects/=a959640d_002D0218_002D4851_002Daa5f_002D649250c92688_0023Custom_002EFunctionApp/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/UnloadedProject/UnloadedProjects/=f3188c2f_002D294e_002D4b1a_002D82d0_002Dfd93aed0a717_0023Messaging_002EFunctionApp/@EntryIndexedValue">True</s:Boolean></wpf:ResourceDictionary>
