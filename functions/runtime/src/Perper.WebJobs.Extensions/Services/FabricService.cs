@@ -1,7 +1,8 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using Perper.WebJobs.Extensions.Cache.Notifications;
+using Perper.WebJobs.Extensions.Protobuf;
+using Notification = Perper.WebJobs.Extensions.Cache.Notifications.Notification;
 
 namespace Perper.WebJobs.Extensions.Services
 {

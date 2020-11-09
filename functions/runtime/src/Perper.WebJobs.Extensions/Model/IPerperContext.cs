@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 
 namespace Perper.WebJobs.Extensions.Model
@@ -16,11 +17,11 @@ namespace Perper.WebJobs.Extensions.Model
         Task<TResult> CallFunctionAsync<TResult>(string functionName, object? parameters = default);
         Task CallActionAsync(string actionName, object? parameters = default);
 
-        Task<(IStream<TItem>, string)> StreamExternAsync<TItem>(string externName, bool ephemeral = true);
-        Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default, bool ephemeral = true);
-        Task<IStream> StreamActionAsync(string actionName, object? parameters = default, bool ephemeral = true);
+        Task<(IStream<TItem>, string)> StreamExternalAsync<TItem>(StreamFlags flags = StreamFlags.Default);
+        Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default, StreamFlags flags = StreamFlags.Default);
+        Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamFlags flags = StreamFlags.Default);
 
-        IStream<TItem> DeclareStreamAsync<TItem>(string functionName);
-        Task InitializeStreamAsync(IStream stream, object? parameters = default);
+        IStream<TItem> DeclareStreamFunction<TItem>(string functionName);
+        Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default);
     }
 }

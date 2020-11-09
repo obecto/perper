@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using Apache.Ignite.Core.Client;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -7,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Model;
-using Perper.WebJobs.Extensions.Protobuf;
 using Perper.WebJobs.Extensions.Services;
 using Perper.WebJobs.Extensions.Triggers;
 
@@ -29,17 +27,15 @@ namespace Perper.WebJobs.Extensions.Config
 
         public void Initialize(ExtensionConfigContext context)
         {
-            var rule = context.AddBindingRule<PerperExternStreamAttribute>();
-            rule.BindToValueProvider<OpenType>((attribute, _) =>
-                Task.FromResult<IValueBinder>(new PerperExternStreamValueBinder(attribute.Stream)));
+            var rule = context.AddBindingRule<PerperAttribute>();
+            rule.BindToCollector<OpenType>(attribute => new PerperCollector<OpenType>());
 
             var triggerRule = context.AddBindingRule<PerperTriggerAttribute>();
             triggerRule.BindToTrigger<OpenType>(new PerperTriggerBindingProvider(_fabric, _ignite, _logger));
 
-            context.AddOpenConverter<JObject, IPerperContext<OpenType>>((src, attribute, bindingContext) =>
-            {
+            context.AddOpenConverter<JObject, IPerperContext<OpenType>>((src, attribute, bindingContext) => { });
 
-            });
+            context.AddConverter<JObject, string>((src, attribute, bindingContext) => { });
         }
     }
 }

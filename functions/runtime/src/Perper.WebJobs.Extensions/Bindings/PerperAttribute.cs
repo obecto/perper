@@ -5,7 +5,7 @@ namespace Perper.WebJobs.Extensions.Bindings
 {
     [Binding]
     [AttributeUsage(AttributeTargets.Parameter)]
-    public sealed class PerperExternStreamAttribute : Attribute
+    public sealed class PerperAttribute : Attribute
     {
         [AutoResolve] public string Stream { get; set; } = "{stream}";
     }
