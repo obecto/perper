@@ -41,7 +41,7 @@ namespace Perper.WebJobs.Extensions.Triggers
         public Task<IListener> CreateListenerAsync(ListenerFactoryContext context)
         {
             return Task.FromResult<IListener>(new PerperTriggerListener(
-                _fabric.GetNotifications(context.Descriptor.ShortName), context.Executor, _logger));
+                _fabric.GetNotifications(context.Descriptor.ShortName).Select(x => x.Item2) /* FIXME: ConsumeNotification */, context.Executor, _logger));
         }
 
         public async Task<ITriggerData> BindAsync(object value, ValueBindingContext context)

@@ -1,6 +1,9 @@
 using System;
 #if !NETSTANDARD2_0
 using System.Collections.Generic;
+#else
+using System.Threading;
+using System.Threading.Tasks;
 #endif
 using System.Linq;
 using System.Linq.Expressions;
