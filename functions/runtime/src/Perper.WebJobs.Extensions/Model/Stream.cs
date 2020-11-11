@@ -13,6 +13,15 @@ using Perper.WebJobs.Extensions.Cache.Notifications;
 
 namespace Perper.WebJobs.Extensions.Model
 {
+    public class Stream : IStream
+    {
+        public string StreamName { get; set; }
+
+        [NonSerialized] private readonly string? _parameterName;
+        [NonSerialized] private readonly FabricService _fabric;
+        [NonSerialized] private readonly IIgniteClient _ignite;
+    }
+
     public class Stream<T> : IStream<T>
     {
         public string StreamName { get; set; }

@@ -22,6 +22,6 @@ namespace Perper.WebJobs.Extensions.Model
         Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamFlags flags = StreamFlags.Default);
 
         IStream<TItem> DeclareStreamFunction<TItem>(string functionName);
-        Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default);
+        Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default, StreamFlags flags = StreamFlags.Default);
     }
 }

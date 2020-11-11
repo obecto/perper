@@ -11,5 +11,6 @@ namespace Perper.WebJobs.Extensions.Cache
         public string Caller { get; set; }
         public bool Finished { get; set; }
         public bool LocalToData { get; set; }
+        public object? Parameters { get; set; }
     }
 }
