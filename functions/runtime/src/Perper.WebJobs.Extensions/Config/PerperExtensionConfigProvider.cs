@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using Apache.Ignite.Core.Client;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -33,9 +35,16 @@ namespace Perper.WebJobs.Extensions.Config
             var triggerRule = context.AddBindingRule<PerperTriggerAttribute>();
             triggerRule.BindToTrigger<OpenType>(new PerperTriggerBindingProvider(_fabric, _ignite, _logger));
 
-            context.AddOpenConverter<JObject, IPerperContext<OpenType>>((src, attribute, bindingContext) => { });
+            context.AddOpenConverter<JObject, OpenType>((src, attribute, bindingContext) =>
+            {
+                var perperContext = (Context) bindingContext.FunctionContext.InstanceServices.GetService(typeof(IContext));
+                perperContext.TriggerValue = (JObject) src;
 
-            context.AddConverter<JObject, string>((src, attribute, bindingContext) => { });
+                //Use _ignite to get the parameters
+                return Task.FromResult<object>(default!);
+            });
+
+            context.AddConverter<JObject, string>((src, attribute, bindingContext) => throw new NotImplementedException());
         }
     }
 }

@@ -7,32 +7,22 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Binary;
+using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Services;
 using Perper.WebJobs.Extensions.Cache;
 using Perper.WebJobs.Extensions.Cache.Notifications;
 
 namespace Perper.WebJobs.Extensions.Model
 {
-    public class PerperContext<T>
+    public class Context : IContext
     {
-        public T Parameters { get; }
-
         [NonSerialized] private FabricService _fabric;
         [NonSerialized] private IIgniteClient _ignite;
         [NonSerialized] private Agent _self;
 
-        /*public PerperContext(StreamData stream)
-        {
-            _self = new Agent { AgentName = stream.Agent, AgentDelegate = stream.AgentDelegate };
-            Parameters = (T) stream.Parameters ?? default(T)!;
-        }*/
+        public JObject TriggerValue { get; set; }
 
-        public Task FetchStateAsync(object holder) => Task.CompletedTask;
-        public Task FetchStateAsync(object holder, string name) => Task.CompletedTask;
-        public Task UpdateStateAsync(object holder) => Task.CompletedTask;
-        public Task UpdateStateAsync(object holder, string name) => Task.CompletedTask;
-
-        public async Task<IAgent> StartAgentAsync(string delegateName, object? parameters = default)
+        public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string delegateName, object? parameters = default)
         {
             var agentsCache = _ignite.GetCache<string, AgentData>("agents");
             var agentName = GenerateName(delegateName);
@@ -40,7 +30,7 @@ namespace Perper.WebJobs.Extensions.Model
                 Delegate = delegateName,
             });
 
-            return default!;
+            return (default!, default!);
         }
 
         public Task<TResult> CallFunctionAsync<TResult>(string functionName, object? parameters = default)
@@ -51,13 +41,6 @@ namespace Perper.WebJobs.Extensions.Model
         public Task CallActionAsync(string actionName, object? parameters = default)
         {
             return _self.CallActionAsync(actionName, parameters);
-        }
-
-        public async Task<(IStream<TItem>, string)> StreamExternalAsync<TItem>(StreamFlags flags = StreamFlags.Default)
-        {
-            var streamName = GenerateName();
-            await StartStreamAsync(streamName, StreamDelegateType.External, "", null, typeof(TItem), flags);
-            return (new Stream<TItem>() {StreamName = streamName}, streamName);
         }
 
         public async Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default, StreamFlags flags = StreamFlags.Default)
@@ -84,6 +67,13 @@ namespace Perper.WebJobs.Extensions.Model
         {
             var functionName = default(string)!;
             await StartStreamAsync((stream as Stream<TItem>)!.StreamName, StreamDelegateType.Action, functionName, parameters, null, flags);
+        }
+
+        public async Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Ephemeral)
+        {
+            var streamName = GenerateName();
+            await StartStreamAsync(streamName, StreamDelegateType.External, "", null, typeof(TItem), flags);
+            return (new Stream<TItem> {StreamName = streamName}, streamName);
         }
 
         private async Task StartStreamAsync(string streamName, StreamDelegateType delegateType, string delegateName, object? parameters, Type? type, StreamFlags flags)

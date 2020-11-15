@@ -5,20 +5,22 @@ using System.Threading.Tasks;
 using EmbedIO;
 using EmbedIO.Actions;
 using Newtonsoft.Json;
+using Perper.WebJobs.Extensions.Model;
 using Swan;
 
 namespace Perper.WebJobs.Extensions.CustomHandler
 {
-    public class PerperPerperContext
+    public class PerperContext : IContext
     {
-        private static readonly Lazy<PerperPerperContext> LazyInstance = new Lazy<PerperPerperContext>(() => new PerperPerperContext());
+        private static readonly Lazy<PerperContext> LazyInstance = new Lazy<PerperContext>(() => new PerperContext());
 
-        public static PerperPerperContext Instance => LazyInstance.Value;
+        public static PerperContext Instance => LazyInstance.Value;
 
         private readonly Dictionary<string, Channel<(object, Guid)>> _callParametersChannels;
         private readonly Dictionary<Guid, Channel<object>> _callResultChannels;
+        private IContext _contextImplementation;
 
-        private PerperPerperContext()
+        private PerperContext()
         {
             _callParametersChannels = new Dictionary<string, Channel<(object, Guid)>>();
             _callResultChannels = new Dictionary<Guid, Channel<object>>();
@@ -29,7 +31,12 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             server.RunAsync();
         }
 
-        public Task<T> GetParametersAsync<T>()
+        public Task<TResult> GetParametersAsync<TResult>()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task SetResultAsync(object result)
         {
             throw new NotImplementedException();
         }
@@ -57,44 +64,46 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             throw new NotImplementedException();
         }
 
-        public Task FetchStateAsync(object holder)
+        public Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, object? parameters = default)
         {
-            throw new NotImplementedException();
+            return _contextImplementation.StartAgentAsync<TResult>(name, parameters);
         }
 
-        public Task UpdateStateAsync(object holder)
+        public Task<TResult> CallFunctionAsync<TResult>(string functionName, object? parameters = default)
         {
-            throw new NotImplementedException();
-        }
-
-        public Task<IAgent> StartAgentAsync(string name, object? parameters = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<TItem> CallFunctionAsync<TItem>(string functionName, object? parameters = default)
-        {
-            throw new NotImplementedException();
+            return _contextImplementation.CallFunctionAsync<TResult>(functionName, parameters);
         }
 
         public Task CallActionAsync(string actionName, object? parameters = default)
         {
-            throw new NotImplementedException();
+            return _contextImplementation.CallActionAsync(actionName, parameters);
         }
 
-        public Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default)
+        public Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default,
+            StreamFlags flags = StreamFlags.Ephemeral)
         {
-            throw new NotImplementedException();
+            return _contextImplementation.StreamFunctionAsync<TItem>(functionName, parameters, flags);
         }
 
-        public Task<IStream> StreamActionAsync(string actionName, object? parameters = default)
+        public Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamFlags flags = StreamFlags.Ephemeral)
         {
-            throw new NotImplementedException();
+            return _contextImplementation.StreamActionAsync(actionName, parameters, flags);
         }
 
-        public Task UpdateStreamAsync(IStream stream, object? parameters = default)
+        public IStream<TItem> DeclareStreamFunction<TItem>(string functionName)
         {
-            throw new NotImplementedException();
+            return _contextImplementation.DeclareStreamFunction<TItem>(functionName);
+        }
+
+        public Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default,
+            StreamFlags flags = StreamFlags.Ephemeral)
+        {
+            return _contextImplementation.InitializeStreamFunctionAsync(stream, parameters, flags);
+        }
+
+        public Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Ephemeral)
+        {
+            return _contextImplementation.CreateBlankStreamAsync<TItem>(flags);
         }
 
         private async Task Handler(IHttpContext context)

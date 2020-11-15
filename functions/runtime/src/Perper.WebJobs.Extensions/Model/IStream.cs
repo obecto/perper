@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 #endif
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Perper.WebJobs.Extensions.Model
 {
