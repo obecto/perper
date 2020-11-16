@@ -16,9 +16,12 @@ limitations under the License.
 package fabric
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/docker/docker/client"
 )
 
 // stopCmd represents the stop command
@@ -32,7 +35,7 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("stop called")
+		stopFabricContainer()
 	},
 }
 
@@ -48,4 +51,22 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// stopCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+}
+
+func stopFabricContainer() {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+	containerID := findWorkingFabric(ctx, cli)
+	if containerID == "" {
+		panic("Could not find a fabric container")
+	}
+
+	err = cli.ContainerStop(ctx, containerID, nil)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Fabric Stopped!")
 }

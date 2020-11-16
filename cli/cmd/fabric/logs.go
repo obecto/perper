@@ -18,7 +18,14 @@ package fabric
 import (
 	"fmt"
 
+	"context"
+	"io"
+	"os"
+
 	"github.com/spf13/cobra"
+
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 )
 
 // logsCmd represents the logs command
@@ -33,6 +40,7 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("logs called")
+		getContainerLogs(nil, "", nil)
 	},
 }
 
@@ -48,4 +56,31 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// logsCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+}
+
+func getContainerLogs(ctx context.Context, containerID string, cli *client.Client) {
+	var err error
+	if cli == nil || ctx == nil {
+		ctx = context.Background()
+		cli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		if err != nil {
+			panic(err)
+		}
+		containerID = findWorkingFabric(ctx, cli)
+		if containerID == "" {
+			panic("Could not find a fabric container")
+		}
+	}
+
+	options := types.ContainerLogsOptions{
+		ShowStdout: true,
+		Follow:     true,
+	}
+	// Replace this ID with a container that really exists
+	out, err := cli.ContainerLogs(ctx, containerID, options)
+	if err != nil {
+		panic(err)
+	}
+
+	io.Copy(os.Stdout, out)
 }
