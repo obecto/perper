@@ -27,8 +27,8 @@ class CallService : JobService() {
 
     lateinit var callsCache: IgniteCache<String, CallData>
 
-    @set:ServiceResource(serviceName = "AgentService")
-    lateinit var agentService: AgentService
+    @set:ServiceResource(serviceName = "TransportService")
+    lateinit var transportService: TransportService
 
     override fun init(ctx: ServiceContext) {
         callsCache = ignite.getOrCreateCache("calls")
@@ -54,11 +54,11 @@ class CallService : JobService() {
 
     suspend fun updateCall(call: String, callData: CallData) {
         if (callData.finished) {
-            val notificationsCache = agentService.getNotificationCache(callData.callerAgentDelegate)
+            val notificationsCache = transportService.getNotificationCache(callData.callerAgentDelegate)
             val key = AffinityKey(System.currentTimeMillis(), if (callData.localToData) call else callData.caller)
             notificationsCache.put(key, CallResultNotification(call, callData.caller))
         } else {
-            val notificationsCache = agentService.getNotificationCache(callData.agentDelegate)
+            val notificationsCache = transportService.getNotificationCache(callData.agentDelegate)
             val key = AffinityKey(System.currentTimeMillis(), call)
             notificationsCache.put(key, CallTriggerNotification(call))
         }

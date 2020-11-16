@@ -7,18 +7,29 @@ option csharp_namespace = "Perper.Protocol.Protobuf";
 package perper;
 
 service Fabric {
-  rpc Notifications (NotificationFilter) returns (stream Notification) {}
+  rpc SystemNotifications (SystemNotificationFilter) returns (stream Notification) {}
+  rpc StreamNotifications (StreamNotificationFilter) returns (stream Notification) {}
+  rpc CallResultNotification (CallNotificationFilter) returns (Notification) {}
 }
 
-message NotificationFilter {
+message SystemNotificationFilter {
     required string agentDelegate = 1;
 }
 
+message StreamNotificationFilter {
+    required string streamName = 1;
+}
+
+message CallNotificationFilter {
+    required string agentDelegate = 1;
+    required string callName = 2;
+}
+
 message Notification {
-    required int64 notificationKey = 2;
+    required int64 notificationKey = 1;
 
     oneof affinity {
-      string stringAffinity = 3;
-      int64 intAffinity = 4;
+      string stringAffinity = 2;
+      int64 intAffinity = 3;
     }
 }

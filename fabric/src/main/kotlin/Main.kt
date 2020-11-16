@@ -54,7 +54,6 @@ fun main(args: Array<String>) {
             it.nameMapper = BinaryBasicNameMapper(true)
         }
         it.setServiceConfiguration(
-            singletonServiceConfiguration("AgentService", AgentService()),
             singletonServiceConfiguration("CallService", CallService()),
             singletonServiceConfiguration("StreamService", StreamService()),
             singletonServiceConfiguration("TransportService", TransportService(40400)),

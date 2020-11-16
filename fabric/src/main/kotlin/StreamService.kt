@@ -39,8 +39,8 @@ class StreamService : JobService() {
     lateinit var streamsCache: IgniteCache<String, StreamData>
     lateinit var streamItemUpdates: Channel<Pair<String, Long>>
 
-    @set:ServiceResource(serviceName = "AgentService")
-    lateinit var agentService: AgentService
+    @set:ServiceResource(serviceName = "TransportService")
+    lateinit var transportService: TransportService
 
     override fun init(ctx: ServiceContext) {
         streamItemUpdates = Channel(Channel.UNLIMITED)
@@ -84,7 +84,7 @@ class StreamService : JobService() {
     suspend fun engageStream(stream: String, streamData: StreamData) {
         if (createCache(stream, streamData)) {
             log.debug({ "Starting stream '$stream'" })
-            val notificationsCache = agentService.getNotificationCache(streamData.agentDelegate)
+            val notificationsCache = transportService.getNotificationCache(streamData.agentDelegate)
             notificationsCache.put(AffinityKey(System.currentTimeMillis(), stream), StreamTriggerNotification(stream))
         }
     }
@@ -114,8 +114,7 @@ class StreamService : JobService() {
                 log.debug({ "Starting query on '$stream'" })
                 val query = ContinuousQuery<Long, BinaryObject>()
                 query.remoteFilterFactory = Factory<CacheEntryEventFilter<Long, BinaryObject>> { StreamUpdatesRemoteFilter(stream) }
-
-                // Dispose handle?
+                query.setAutoUnsubscribe(false)
                 cache.query(query)
             }
         } catch (_: CacheException) {
@@ -140,9 +139,11 @@ class StreamService : JobService() {
                     helper(listener.stream)
                 } else {
                     ephemeralCounter ++
-                    val notificationsCache = agentService.getNotificationCache(listener.agentDelegate)
-                    val key = AffinityKey(itemKey, if (listener.localToData) listener.stream else itemKey)
+                    val notificationsCache = transportService.getNotificationCache(listener.agentDelegate)
+                    val notificationsQueue = transportService.getNotificationQueue(listener.stream)
+                    val key = AffinityKey(itemKey, if (listener.localToData) itemKey else listener.stream)
                     notificationsCache.put(key, StreamItemNotification(listener.stream, listener.parameter, stream, itemKey, ephemeral))
+                    notificationsQueue.put(key)
                 }
             }
         }
