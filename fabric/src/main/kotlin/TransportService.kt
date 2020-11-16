@@ -4,11 +4,9 @@ import com.obecto.perper.fabric.cache.notification.Notification
 import com.obecto.perper.fabric.cache.notification.StreamItemNotification
 import com.obecto.perper.protobuf.CallNotificationFilter
 import com.obecto.perper.protobuf.FabricGrpcKt
-import com.obecto.perper.protobuf.StreamNotificationFilter
-import com.obecto.perper.protobuf.SystemNotificationFilter
+import com.obecto.perper.protobuf.NotificationFilter
 import io.grpc.Server
 import io.grpc.ServerBuilder
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
@@ -78,72 +76,71 @@ class TransportService(var port: Int) : Service {
             }
         }.build()
 
-        override fun systemNotifications(request: SystemNotificationFilter) = flow<NotificationProto> {
-            // NOTE: This currently returns CallResultNotification-s as well. Could consider dropping them
+        override fun notifications(request: NotificationFilter) = flow<NotificationProto> {
+            // NOTE: This currently returns CallResultNotification-s as well. Could consider dropping them?
             val notificationCache = getNotificationCache(request.agentDelegate)
+            val notificationAffinity = ignite.affinity<AffinityKey<Long>>(request.agentDelegate)
 
-            val systemNotificationUpdates = Channel<AffinityKey<Long>>(Channel.UNLIMITED)
-            val query = ContinuousQuery<AffinityKey<Long>, Notification>()
-            query.localListener = CacheEntryUpdatedListener { events ->
-                for (event in events) {
-                    if (event.value == null) {
-                        val confirmedNotification = event.oldValue
-                        // NOTE: Probably shouldn't need a gRPC call to systemNotifications to confirm stream notifications
-                        if (confirmedNotification is StreamItemNotification) {
-                            getNotificationQueue(confirmedNotification.stream).remove(event.key)
-                            if (confirmedNotification.ephemeral) {
-                                val counter = ignite.atomicLong("${confirmedNotification.cache}-${confirmedNotification.index}", 0, true)
-                                if (counter.decrementAndGet() == 0L) {
-                                    ignite.cache<Long, BinaryObject>(confirmedNotification.cache).withKeepBinary<Long, BinaryObject>().remove(confirmedNotification.index)
-                                    counter.close()
-                                }
-                            }
-                        }
-                    } else if (event.value !is StreamItemNotification) {
-                        runBlocking { systemNotificationUpdates.send(event.key) }
+            val sentQueueNotificationsMap = HashMap<String, AffinityKey<Long>>()
+
+            fun updateQueue(stream: String) {
+                val queue = getNotificationQueue(stream)
+                val queuedKey = queue.peek()
+                if ((notificationAffinity.mapKeyToNode(queuedKey)?.isLocal) ?: false) {
+                    if (sentQueueNotificationsMap.put(stream, queuedKey) != queuedKey) {
+                        runBlocking { emit(queuedKey.toNotification()) }
                     }
                 }
             }
-            query.setLocal(true)
-            query.initialQuery = ScanQuery<AffinityKey<Long>, Notification>().also { it.setLocal(true) }
-            val queryCursor = notificationCache.query(query)
-            log.debug({ "System notifications listener started for '${request.agentDelegate}'!" })
 
-            for (entry in queryCursor) {
-                 if (entry.value !is StreamItemNotification) {
-                    log.debug({ "Sending system notification for '${request.agentDelegate}': $entry.key" })
-                    emit(entry.key.toNotification())
-                 }
-            }
-            for (key in systemNotificationUpdates) {
-                log.debug({ "Sending system notification for '${request.agentDelegate}': $key" })
-                emit(key.toNotification())
-            }
-        }
-
-        override fun streamNotifications(request: StreamNotificationFilter) = flow<NotificationProto> {
-            val notificationQueue = getNotificationQueue(request.streamName)
-            val affinity = ignite.affinity<AffinityKey<Long>>("ExampleCache")
-            val queueCache = "ignite-sys-atomic-cache@default-ds-group" // HACK: Need a way to receive queue updates
-
-            suspend fun updateQueue() {
-                val next = notificationQueue.peek()
-                if (affinity.mapKeyToNode(next)?.isLocal ?: false) {
-                    val key = notificationQueue.take() // TODO: Likely shouldn't take before confirmation
-                    log.debug({ "Sending notification for '${request.streamName}': $key" })
-                    emit(key.toNotification())
+            fun processNotification(key: AffinityKey<Long>, notification: Notification, confirmed: Boolean) {
+                if (notification is StreamItemNotification) {
+                    if (confirmed) {
+                        getNotificationQueue(notification.stream).remove(key)
+                        if (notification.ephemeral) {
+                            val counter = ignite.atomicLong("${notification.cache}-${notification.index}", 0, true)
+                            if (counter.decrementAndGet() == 0L) {
+                                ignite.cache<Long, BinaryObject>(notification.cache).withKeepBinary<Long, BinaryObject>().remove(notification.index)
+                                counter.close()
+                            }
+                        }
+                    } else {
+                        updateQueue(notification.stream)
+                    }
+                } else if (!confirmed) {
+                    runBlocking { emit(key.toNotification()) }
                 }
             }
 
-            val query = ContinuousQuery<Any?, Any?>()
-            query.localListener = CacheEntryUpdatedListener { _ ->
-                runBlocking { updateQueue() }
+            val remoteConfirmationQuery = ContinuousQuery<AffinityKey<Long>, Notification>()
+            remoteConfirmationQuery.localListener = CacheEntryUpdatedListener { events ->
+                for (event in events) {
+                    updateQueue((event.oldValue as StreamItemNotification).stream)
+                }
             }
 
-            // FIXME: Should close cursor when done
-            ignite.cache<Any?, Any?>(queueCache).query(query)
+            remoteConfirmationQuery.remoteFilterFactory = Factory<CacheEntryEventFilter<AffinityKey<Long>, Notification>> {
+                CacheEntryEventFilter { event -> event.value == null && event.oldValue is StreamItemNotification }
+            }
 
-            log.debug({ "Streams notifications listener started for '${request.streamName}'!" })
+            notificationCache.query(remoteConfirmationQuery)
+
+            val query = ContinuousQuery<AffinityKey<Long>, Notification>()
+            query.localListener = CacheEntryUpdatedListener { events ->
+                for (event in events) {
+                    processNotification(event.key, event.value ?: event.oldValue, event.value == null)
+                }
+            }
+
+            query.setLocal(true)
+            query.initialQuery = ScanQuery<AffinityKey<Long>, Notification>().also { it.setLocal(true) }
+            val queryCursor = notificationCache.query(query)
+
+            log.debug({ "Notifications listener started for '${request.agentDelegate}'!" })
+
+            for (entry in queryCursor) {
+                processNotification(entry.key, entry.value, false)
+            }
         }
 
         override suspend fun callResultNotification(request: CallNotificationFilter) = suspendCoroutine<NotificationProto> { cont ->
@@ -160,10 +157,7 @@ class TransportService(var port: Int) : Service {
             }
 
             query.remoteFilterFactory = Factory<CacheEntryEventFilter<AffinityKey<Long>, Notification>> {
-                CacheEntryEventFilter { event ->
-                    val value = event.value
-                    value is CallResultNotification && value.call == callName
-                }
+                CacheEntryEventFilter { event -> (event.value as? CallResultNotification)?.call == callName }
             }
 
             query.initialQuery = ScanQuery<AffinityKey<Long>, Notification>().also {

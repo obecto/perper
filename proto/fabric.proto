@@ -7,17 +7,12 @@ option csharp_namespace = "Perper.Protocol.Protobuf";
 package perper;
 
 service Fabric {
-  rpc SystemNotifications (SystemNotificationFilter) returns (stream Notification) {}
-  rpc StreamNotifications (StreamNotificationFilter) returns (stream Notification) {}
+  rpc Notifications (NotificationFilter) returns (stream Notification) {}
   rpc CallResultNotification (CallNotificationFilter) returns (Notification) {}
 }
 
-message SystemNotificationFilter {
+message NotificationFilter {
     required string agentDelegate = 1;
-}
-
-message StreamNotificationFilter {
-    required string streamName = 1;
 }
 
 message CallNotificationFilter {
