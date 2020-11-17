@@ -30,10 +30,17 @@ namespace Perper.WebJobs.Extensions.Model
         [NonSerialized] private readonly FabricService _fabric;
         [NonSerialized] private readonly IIgniteClient _ignite;
 
+#if NETSTANDARD2_0
+        public Task ForEachAwaitAsync(Func<T, Task> action, CancellationToken cancellationToken = default)
+        {
+            return new AsyncEnumerable<T>().ForEachAwaitAsync(action, cancellationToken);
+        }
+#else
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
             return new AsyncEnumerable<T>().GetAsyncEnumerator(cancellationToken);
         }
+#endif
 
         public IAsyncEnumerable<T> DataLocal()
         {
@@ -67,7 +74,6 @@ namespace Perper.WebJobs.Extensions.Model
         public Dictionary<string, object> Filter { get; set; }
         public bool LocalToData { get; set; }
 
-        [NonSerialized] private readonly string _delegateName;
         [NonSerialized] private readonly string _streamName; // Listener
         [NonSerialized] private readonly string _parameterName;
         [NonSerialized] private readonly bool _anonymous;
@@ -76,7 +82,7 @@ namespace Perper.WebJobs.Extensions.Model
 
         private StreamListener StreamListener {
             get => new StreamListener {
-                AgentDelegate = _delegateName,
+                AgentDelegate = _fabric.AgentDelegate,
                 Stream = _streamName,
                 Parameter = _parameterName,
                 Filter = Filter,
@@ -84,6 +90,34 @@ namespace Perper.WebJobs.Extensions.Model
             };
         }
 
+#if NETSTANDARD2_0
+        public async Task ForEachAwaitAsync(Func<T, Task> action, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await AddListenerAsync();
+
+                _fabric.GetNotifications(StreamName, _parameterName, cancellationToken).ForEachAwaitAsync(async (item) =>
+                {
+                    var (key, notification) = item;
+                    if (notification is StreamItemNotification si)
+                    {
+                        var cache = _ignite.GetCache<long, T>(si.Cache);
+                        var value = await cache.GetAsync(si.Index);
+                        await action(value);
+                        await _fabric.ConsumeNotification(key);
+                    }
+                });
+            }
+            finally
+            {
+                if (_anonymous)
+                {
+                    await RemoveListenerAsync();
+                }
+            }
+        }
+#else
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken())
         {
             return Impl(cancellationToken).GetAsyncEnumerator(cancellationToken);
@@ -95,15 +129,14 @@ namespace Perper.WebJobs.Extensions.Model
             {
                 await AddListenerAsync();
 
-                await foreach (var (key, notification) in _fabric.GetStreamItemNotifications(_delegateName, StreamName,
-                    _parameterName, cancellationToken))
+                await foreach (var (key, notification) in _fabric.GetNotifications(StreamName, _parameterName, cancellationToken))
                 {
                     if (notification is StreamItemNotification si)
                     {
                         var cache = _ignite.GetCache<long, T>(si.Cache);
                         var value = await cache.GetAsync(si.Index);
                         yield return value;
-                        await _fabric.ConsumeNotification(_delegateName, key);
+                        await _fabric.ConsumeNotification(key);
                     }
                 }
             }
@@ -115,6 +148,7 @@ namespace Perper.WebJobs.Extensions.Model
                 }
             }
         }
+#endif
 
         private async Task ModifyStreamDataAsync(Action<StreamData> modification)
         {

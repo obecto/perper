@@ -1,26 +1,26 @@
 using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Runtime.CompilerServices;
-using System.Threading;
 using Apache.Ignite.Core.Client;
-using Apache.Ignite.Core.Binary;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Services;
 using Perper.WebJobs.Extensions.Cache;
-using Perper.WebJobs.Extensions.Cache.Notifications;
 
 namespace Perper.WebJobs.Extensions.Model
 {
     public class Context : IContext
     {
-        [NonSerialized] private FabricService _fabric;
-        [NonSerialized] private IIgniteClient _ignite;
-        [NonSerialized] private Agent _self;
+        private readonly FabricService _fabric;
+        private readonly IIgniteClient _ignite;
 
+        public IAgent Agent { get; set; }
         public JObject TriggerValue { get; set; }
+
+        public Context(FabricService fabric, IIgniteClient ignite)
+        {
+            _fabric = fabric;
+            _ignite = ignite;
+        }
 
         public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string delegateName, object? parameters = default)
         {
@@ -33,27 +33,17 @@ namespace Perper.WebJobs.Extensions.Model
             return (default!, default!);
         }
 
-        public Task<TResult> CallFunctionAsync<TResult>(string functionName, object? parameters = default)
-        {
-            return _self.CallFunctionAsync<TResult>(functionName, parameters);
-        }
-
-        public Task CallActionAsync(string actionName, object? parameters = default)
-        {
-            return _self.CallActionAsync(actionName, parameters);
-        }
-
         public async Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default, StreamFlags flags = StreamFlags.Default)
         {
             var streamName = GenerateName(functionName);
-            await StartStreamAsync(streamName, StreamDelegateType.Function, functionName, parameters, typeof(TItem), flags);
+            await CreateStreamAsync(streamName, StreamDelegateType.Function, functionName, parameters, typeof(TItem), flags);
             return new Stream<TItem>() {StreamName = streamName};
         }
 
         public async Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamFlags flags = StreamFlags.Default)
         {
             var streamName = GenerateName(actionName);
-            await StartStreamAsync(streamName, StreamDelegateType.Action, actionName, parameters, null, flags);
+            await CreateStreamAsync(streamName, StreamDelegateType.Action, actionName, parameters, null, flags);
             return new Stream() {StreamName = streamName};
         }
 
@@ -66,21 +56,21 @@ namespace Perper.WebJobs.Extensions.Model
         public async Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default, StreamFlags flags = StreamFlags.Default)
         {
             var functionName = default(string)!;
-            await StartStreamAsync((stream as Stream<TItem>)!.StreamName, StreamDelegateType.Action, functionName, parameters, null, flags);
+            await CreateStreamAsync((stream as Stream<TItem>)!.StreamName, StreamDelegateType.Action, functionName, parameters, null, flags);
         }
 
         public async Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Ephemeral)
         {
             var streamName = GenerateName();
-            await StartStreamAsync(streamName, StreamDelegateType.External, "", null, typeof(TItem), flags);
+            await CreateStreamAsync(streamName, StreamDelegateType.External, "", null, typeof(TItem), flags);
             return (new Stream<TItem> {StreamName = streamName}, streamName);
         }
 
-        private async Task StartStreamAsync(string streamName, StreamDelegateType delegateType, string delegateName, object? parameters, Type? type, StreamFlags flags)
+        private async Task CreateStreamAsync(string streamName, StreamDelegateType delegateType, string delegateName, object? parameters, Type? type, StreamFlags flags)
         {
             var streamsCache = _ignite.GetCache<string, StreamData>("streams");
             await streamsCache.PutAsync(streamName, new StreamData {
-                AgentDelegate = _self.AgentDelegate,
+                AgentDelegate = _fabric.AgentDelegate,
                 Delegate = delegateName,
                 DelegateType = delegateType,
                 Parameters = parameters,

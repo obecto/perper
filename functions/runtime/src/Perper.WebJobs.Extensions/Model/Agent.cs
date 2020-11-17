@@ -14,12 +14,11 @@ namespace Perper.WebJobs.Extensions.Model
 
         [NonSerialized] private FabricService _fabric;
         [NonSerialized] private IIgniteClient _ignite;
-        [NonSerialized] private string _callerAgentDelegate;
         [NonSerialized] private string _caller;
 
         public async Task<TResult> CallFunctionAsync<TResult>(string functionName, object? parameters = default)
         {
-            var notification = await _CallActionAsync(functionName, parameters);
+            var notification = await CallAsync(functionName, parameters);
 
             var callsCache = _ignite.GetCache<string, CallData>("calls");
             var resultCall = await callsCache.GetAsync(notification.Call);
@@ -29,10 +28,10 @@ namespace Perper.WebJobs.Extensions.Model
 
         public Task CallActionAsync(string actionName, object? parameters = default)
         {
-            return _CallActionAsync(actionName, parameters);
+            return CallAsync(actionName, parameters);
         }
 
-        private async Task<CallResultNotification> _CallActionAsync(string callDelegate, object? parameters)
+        private async Task<CallResultNotification> CallAsync(string callDelegate, object? parameters)
         {
             var callsCache = _ignite.GetCache<string, CallData>("calls");
             var callName = GenerateName(callDelegate);
@@ -40,15 +39,15 @@ namespace Perper.WebJobs.Extensions.Model
                 Agent = AgentName,
                 AgentDelegate = AgentDelegate,
                 Delegate = callDelegate,
-                CallerAgentDelegate = _callerAgentDelegate,
+                CallerAgentDelegate = _fabric.AgentDelegate,
                 Caller = _caller,
                 Finished = false,
                 LocalToData = true,
                 Parameters = parameters,
             });
 
-            var (key, notification) = await _fabric.GetCallNotification(_callerAgentDelegate, callName);
-            await _fabric.ConsumeNotification(_callerAgentDelegate, key);
+            var (key, notification) = await _fabric.GetCallNotification(callName);
+            await _fabric.ConsumeNotification(key);
 
             return (notification as CallResultNotification)!;
         }

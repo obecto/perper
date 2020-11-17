@@ -64,19 +64,11 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             throw new NotImplementedException();
         }
 
+        public IAgent Agent { get => _contextImplementation.Agent; }
+
         public Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, object? parameters = default)
         {
             return _contextImplementation.StartAgentAsync<TResult>(name, parameters);
-        }
-
-        public Task<TResult> CallFunctionAsync<TResult>(string functionName, object? parameters = default)
-        {
-            return _contextImplementation.CallFunctionAsync<TResult>(functionName, parameters);
-        }
-
-        public Task CallActionAsync(string actionName, object? parameters = default)
-        {
-            return _contextImplementation.CallActionAsync(actionName, parameters);
         }
 
         public Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default,

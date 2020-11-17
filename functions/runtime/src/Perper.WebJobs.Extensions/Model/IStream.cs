@@ -7,8 +7,6 @@ using System.Threading.Tasks;
 #endif
 using System.Linq;
 using System.Linq.Expressions;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Perper.WebJobs.Extensions.Model
 {
@@ -28,7 +26,7 @@ namespace Perper.WebJobs.Extensions.Model
 #if NETSTANDARD2_0
     public interface IAsyncEnumerable<out T>
     {
-        Task ForEachAsync(Action<T> action, CancellationToken cancellationToken = default);
+//         Task ForEachAsync(Action<T> action, CancellationToken cancellationToken = default);
         Task ForEachAwaitAsync(Func<T, Task> action, CancellationToken cancellationToken = default);
     }
 #endif

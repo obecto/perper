@@ -1,34 +1,43 @@
-using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Channels;
+using Microsoft.Extensions.Hosting;
 using Perper.WebJobs.Extensions.Protobuf;
 using Grpc.Core;
 #if NETSTANDARD2_0
+using System;
+using Perper.WebJobs.Extensions.Model;
 using GrpcChannel = Grpc.Core.Channel;
+using Channel = System.Threading.Channels.Channel;
 #else
-using System.Linq;
 using Grpc.Net.Client;
 #endif
 using Perper.WebJobs.Extensions.Cache.Notifications;
+using Apache.Ignite.Core.Client;
+using Apache.Ignite.Core.Client.Cache;
+using Apache.Ignite.Core.Cache.Affinity;
 using Notification = Perper.WebJobs.Extensions.Cache.Notifications.Notification;
 using NotificationProto = Perper.WebJobs.Extensions.Protobuf.Notification;
-using Apache.Ignite.Core.Client;
-using Apache.Ignite.Core.Cache.Affinity;
 
 namespace Perper.WebJobs.Extensions.Services
 {
-    public class FabricService
+    public class FabricService : IHostedService
     {
-        private GrpcChannel _grpcChannel;
-        private Dictionary<(string, string?, string?), Channel<(AffinityKey, Notification)>> _channels = new Dictionary<(string, string?, string?), Channel<(AffinityKey, Notification)>>();
-        private readonly IIgniteClient _ignite;
+        public string AgentDelegate { get; }
 
-        public FabricService(IIgniteClient ignite)
+        private GrpcChannel _grpcChannel;
+        private readonly Dictionary<(string, string?), Channel<(AffinityKey, Notification)>> _channels = new Dictionary<(string, string?), Channel<(AffinityKey, Notification)>>();
+        private readonly IIgniteClient _ignite;
+        private readonly ICacheClient<AffinityKey, Notification> _notificationsCache;
+        private CancellationTokenSource _serviceCancellation = new CancellationTokenSource();
+        private Task? _serviceTask;
+
+        public FabricService(IIgniteClient ignite, string agentDelegate)
         {
+            AgentDelegate = agentDelegate;
             _ignite = ignite;
+            _notificationsCache = _ignite.GetCache<AffinityKey, Notification>($"$notifications-{AgentDelegate}");
             string address = $"http://{ignite.RemoteEndPoint}:40400";
 #if NETSTANDARD2_0
             _grpcChannel = new GrpcChannel(address, ChannelCredentials.Insecure);
@@ -37,7 +46,19 @@ namespace Perper.WebJobs.Extensions.Services
 #endif
         }
 
-#if !NETSTANDARD2_0
+        public Task StartAsync(CancellationToken token)
+        {
+            _serviceCancellation = new CancellationTokenSource();
+            _serviceTask = RunAsync(_serviceCancellation.Token);
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken token)
+        {
+            _serviceCancellation.Cancel();
+            return _serviceTask ?? Task.CompletedTask;
+        }
+
         private AffinityKey GetAffinityKey(NotificationProto notification) {
             return new AffinityKey(
                 notification.NotificationKey,
@@ -48,8 +69,8 @@ namespace Perper.WebJobs.Extensions.Services
                 });
         }
 
-        private Channel<(AffinityKey, Notification)> GetChannel(string agentDelegate, string? stream = null, string? parameter = null) {
-            var key = (agentDelegate, stream, parameter);
+        private Channel<(AffinityKey, Notification)> GetChannel(string instance, string? parameter = null) {
+            var key = (instance, parameter);
             if (_channels.TryGetValue(key, out var channel)) {
                 return channel;
             }
@@ -58,47 +79,76 @@ namespace Perper.WebJobs.Extensions.Services
             return newChannel;
         }
 
-        private async Task RunAsync(string delegateName, CancellationToken cancellationToken = default)
+        private async Task RunAsync(CancellationToken cancellationToken = default)
         {
             var client = new Fabric.FabricClient(_grpcChannel);
-            using var notifications = client.Notifications(new NotificationFilter {AgentDelegate = delegateName}, null, null, cancellationToken);
-            var notificationsCache = _ignite.GetCache<AffinityKey, Notification>($"$notifications-{delegateName}");
-            await foreach (var notification in notifications.ResponseStream.ReadAllAsync(cancellationToken))
+            using var notifications = client.Notifications(new NotificationFilter {AgentDelegate = AgentDelegate}, null, null, cancellationToken);
+            var stream = notifications.ResponseStream;
+            while(await stream.MoveNext())
             {
-                var key = GetAffinityKey(notification);
-                var fullNotification = await notificationsCache.GetAsync(key);
-                var channel = fullNotification switch {
-                    StreamItemNotification si => GetChannel(delegateName, si.Stream, si.Parameter),
-                    CallResultNotification cr => GetChannel(delegateName, null, cr.Call),
-                    _ => GetChannel(delegateName)
-                };
-                await channel.Writer.WriteAsync((key, fullNotification));
+                var key = GetAffinityKey(stream.Current);
+                var notification = await _notificationsCache.GetAsync(key);
+                switch (notification) {
+                    case StreamItemNotification si:
+                        await GetChannel(si.Stream, si.Parameter).Writer.WriteAsync((key, notification));
+                        break;
+                    case StreamTriggerNotification st:
+                        await GetChannel(st.Stream).Writer.WriteAsync((key, notification));
+                        break;
+                    case CallTriggerNotification ct:
+                        await GetChannel(ct.Call).Writer.WriteAsync((key, notification));
+                        break;
+                    case CallResultNotification cr:
+                        // pass
+                        break;
+                }
             }
-            // Hosted: use two separate streams for every delegate - one for runtime and one for model
-            // Workers: separate GRPC connections
         }
 
-        public Task ConsumeNotification(string delegateName, AffinityKey key, CancellationToken cancellationToken = default)
+        public Task ConsumeNotification(AffinityKey key, CancellationToken cancellationToken = default)
         {
-            var notificationsCache = _ignite.GetCache<AffinityKey, Notification>($"$notifications-{delegateName}");
-            return notificationsCache.RemoveAsync(key);
+            return _notificationsCache.RemoveAsync(key);
         }
 
-        public IAsyncEnumerable<(AffinityKey, Notification)> GetNotifications(string delegateName, CancellationToken cancellationToken = default)
+#if NETSTANDARD2_0
+        public class ChannelAsyncEnumerable<T> : IAsyncEnumerable<T>
         {
-            return GetChannel(delegateName).Reader.ReadAllAsync(cancellationToken);
+            ChannelReader<T> _reader;
+            public ChannelAsyncEnumerable(ChannelReader<T> reader)
+            {
+                _reader = reader;
+            }
+
+            public async Task ForEachAwaitAsync(Func<T, Task> action, CancellationToken cancellationToken)
+            {
+                while (true)
+                {
+                    var value = await _reader.ReadAsync(cancellationToken);
+                    await action(value);
+                }
+            }
         }
 
-        public IAsyncEnumerable<(AffinityKey, Notification)> GetStreamItemNotifications(string delegateName, string stream, string parameter,
-            CancellationToken cancellationToken = default)
+        public IAsyncEnumerable<(AffinityKey, Notification)> GetNotifications(string instance, string? parameter = null, CancellationToken cancellationToken = default)
         {
-            return GetChannel(delegateName, stream, parameter).Reader.ReadAllAsync(cancellationToken);
+            return new ChannelAsyncEnumerable<(AffinityKey, Notification)>(GetChannel(instance, parameter).Reader);
         }
-
-        public ValueTask<(AffinityKey, Notification)> GetCallNotification(string delegateName, string call, CancellationToken cancellationToken = default)
+#else
+        public IAsyncEnumerable<(AffinityKey, Notification)> GetNotifications(string instance, string? parameter = null, CancellationToken cancellationToken = default)
         {
-            return GetChannel(delegateName, null, call).Reader.ReadAsync(cancellationToken);
+            return GetChannel(instance, parameter).Reader.ReadAllAsync(cancellationToken);
         }
 #endif
+        public async Task<(AffinityKey, Notification)> GetCallNotification(string call, CancellationToken cancellationToken = default)
+        {
+            var client = new Fabric.FabricClient(_grpcChannel);
+            var notification = await client.CallResultNotificationAsync(new CallNotificationFilter {
+                AgentDelegate = AgentDelegate,
+                CallName = call
+            });
+            var key = GetAffinityKey(notification);
+            var fullNotification = await _notificationsCache.GetAsync(key);
+            return (key, fullNotification);
+        }
     }
 }
