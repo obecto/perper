@@ -1,57 +1,51 @@
 package com.obecto.perper.fabric
+import com.obecto.perper.fabric.cache.notification.CallResultNotification
+import com.obecto.perper.fabric.cache.notification.Notification
+import com.obecto.perper.fabric.cache.notification.StreamItemNotification
+import com.obecto.perper.protobuf.CallNotificationFilter
 import com.obecto.perper.protobuf.FabricGrpcKt
-import com.obecto.perper.protobuf.StreamTrigger
-import com.obecto.perper.protobuf.StreamTriggerFilter
-import com.obecto.perper.protobuf.StreamUpdate
-import com.obecto.perper.protobuf.StreamUpdateFilter
-import com.obecto.perper.protobuf.WorkerTrigger
-import com.obecto.perper.protobuf.WorkerTriggerFilter
+import com.obecto.perper.protobuf.NotificationFilter
 import io.grpc.Server
 import io.grpc.ServerBuilder
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
+import org.apache.ignite.Ignite
+import org.apache.ignite.IgniteCache
 import org.apache.ignite.IgniteLogger
+import org.apache.ignite.IgniteQueue
+import org.apache.ignite.binary.BinaryObject
+import org.apache.ignite.cache.affinity.AffinityKey
+import org.apache.ignite.cache.query.ContinuousQuery
+import org.apache.ignite.cache.query.QueryCursor
+import org.apache.ignite.cache.query.ScanQuery
+import org.apache.ignite.configuration.CollectionConfiguration
+import org.apache.ignite.lang.IgniteBiPredicate
+import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
 import org.apache.ignite.services.Service
 import org.apache.ignite.services.ServiceContext
+import javax.cache.Cache.Entry
+import javax.cache.configuration.Factory
+import javax.cache.event.CacheEntryEventFilter
+import javax.cache.event.CacheEntryUpdatedListener
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
+import com.obecto.perper.protobuf.Notification as NotificationProto
 
 class TransportService(var port: Int) : Service {
 
     @set:LoggerResource
     lateinit var log: IgniteLogger
 
-    var streamTriggerChannels = HashMap<Channel<StreamTrigger>, StreamTriggerFilter>()
-    var workerTriggerChannels = HashMap<Channel<WorkerTrigger>, WorkerTriggerFilter>()
-    var streamUpdateChannels = HashMap<Channel<StreamUpdate>, StreamUpdateFilter>()
-
-    inner class FabricGrpc : FabricGrpcKt.FabricCoroutineImplBase() {
-        fun <F, S> subscribtion(channelMap: MutableMap<Channel<S>, F>, request: F): Flow<S> = flow {
-            var channel = Channel<S>(Channel.UNLIMITED)
-            var originalValue = channelMap.put(channel, request)
-            try {
-                emitAll(channel)
-            } finally {
-                if (originalValue == null) {
-                    channelMap.remove(channel)
-                } else {
-                    channelMap.put(channel, originalValue)
-                }
-            }
-        }
-
-        override fun streamTriggers(request: StreamTriggerFilter): Flow<StreamTrigger> = subscribtion(streamTriggerChannels, request)
-        override fun workerTriggers(request: WorkerTriggerFilter): Flow<WorkerTrigger> = subscribtion(workerTriggerChannels, request)
-        override fun streamUpdates(request: StreamUpdateFilter): Flow<StreamUpdate> = subscribtion(streamUpdateChannels, request)
-    }
+    @set:IgniteInstanceResource
+    lateinit var ignite: Ignite
 
     lateinit var server: Server
 
     override fun init(ctx: ServiceContext) {
         var serverBuilder = ServerBuilder.forPort(port)
-        serverBuilder.addService(FabricGrpc())
+        serverBuilder.addService(FabricImpl())
+        // serverBuilder.addService(ExternalScalerImpl())
         server = serverBuilder.build()
     }
 
@@ -64,78 +58,180 @@ class TransportService(var port: Int) : Service {
         server.awaitTermination()
     }
 
-    fun sendStreamTrigger(receiverStream: String, receiverDelegate: String) {
-        var trigger = StreamTrigger.newBuilder().also {
-            it.delegate = receiverDelegate
-            it.stream = receiverStream
+    fun getNotificationCache(agentDelegate: String): IgniteCache<AffinityKey<Long>, Notification> {
+        return ignite.getOrCreateCache<AffinityKey<Long>, Notification>("$agentDelegate-\$notifications")
+    }
+
+    fun getNotificationQueue(streamName: String): IgniteQueue<AffinityKey<Long>> {
+        return ignite.queue<AffinityKey<Long>>("$streamName-\$notifications", 0, CollectionConfiguration())
+    }
+
+    inner class FabricImpl : FabricGrpcKt.FabricCoroutineImplBase() {
+        fun AffinityKey<Long>.toNotification() = NotificationProto.newBuilder().also {
+            it.notificationKey = key()
+            when (val affinityKey = affinityKey<Any>()) {
+                is String -> it.stringAffinity = affinityKey
+                is Long -> it.intAffinity = affinityKey
+                else -> log.error("Unexpected affinity type ${affinityKey.javaClass}")
+            }
         }.build()
 
-        log.debug({ "Sending stream trigger: $trigger" })
+        override fun notifications(request: NotificationFilter) = flow<NotificationProto> {
+            // NOTE: This currently returns CallResultNotification-s as well. Could consider dropping them?
+            val notificationCache = getNotificationCache(request.agentDelegate)
+            val notificationAffinity = ignite.affinity<AffinityKey<Long>>(request.agentDelegate)
 
-        runBlocking {
-            for ((channel, filter) in streamTriggerChannels) {
-                if (filter.hasDelegate() && filter.delegate != receiverDelegate) continue
-                channel.send(trigger)
+            val sentQueueNotificationsMap = HashMap<String, AffinityKey<Long>>()
+
+            fun updateQueue(stream: String) {
+                val queue = getNotificationQueue(stream)
+                val queuedKey = queue.peek()
+                if ((notificationAffinity.mapKeyToNode(queuedKey)?.isLocal) ?: false) {
+                    if (sentQueueNotificationsMap.put(stream, queuedKey) != queuedKey) {
+                        runBlocking { emit(queuedKey.toNotification()) }
+                    }
+                }
             }
+
+            fun processNotification(key: AffinityKey<Long>, notification: Notification, confirmed: Boolean) {
+                if (notification is StreamItemNotification) {
+                    if (confirmed) {
+                        getNotificationQueue(notification.stream).remove(key)
+                        if (notification.ephemeral) {
+                            val counter = ignite.atomicLong("${notification.cache}-${notification.index}", 0, true)
+                            if (counter.decrementAndGet() == 0L) {
+                                ignite.cache<Long, BinaryObject>(notification.cache).withKeepBinary<Long, BinaryObject>().remove(notification.index)
+                                counter.close()
+                            }
+                        }
+                    } else {
+                        updateQueue(notification.stream)
+                    }
+                } else if (!confirmed) {
+                    runBlocking { emit(key.toNotification()) }
+                }
+            }
+
+            val remoteConfirmationQuery = ContinuousQuery<AffinityKey<Long>, Notification>()
+            remoteConfirmationQuery.localListener = CacheEntryUpdatedListener { events ->
+                for (event in events) {
+                    updateQueue((event.oldValue as StreamItemNotification).stream)
+                }
+            }
+
+            remoteConfirmationQuery.remoteFilterFactory = Factory<CacheEntryEventFilter<AffinityKey<Long>, Notification>> {
+                CacheEntryEventFilter { event -> event.value == null && event.oldValue is StreamItemNotification }
+            }
+
+            notificationCache.query(remoteConfirmationQuery)
+
+            val query = ContinuousQuery<AffinityKey<Long>, Notification>()
+            query.localListener = CacheEntryUpdatedListener { events ->
+                for (event in events) {
+                    processNotification(event.key, event.value ?: event.oldValue, event.value == null)
+                }
+            }
+
+            query.setLocal(true)
+            query.initialQuery = ScanQuery<AffinityKey<Long>, Notification>().also { it.setLocal(true) }
+            val queryCursor = notificationCache.query(query)
+
+            log.debug({ "Notifications listener started for '${request.agentDelegate}'!" })
+
+            for (entry in queryCursor) {
+                processNotification(entry.key, entry.value, false)
+            }
+        }
+
+        override suspend fun callResultNotification(request: CallNotificationFilter) = suspendCoroutine<NotificationProto> { cont ->
+            val callName = request.callName
+            val notificationCache = getNotificationCache(request.agentDelegate)
+            lateinit var queryCursor: QueryCursor<Entry<AffinityKey<Long>, Notification>>
+            val query = ContinuousQuery<AffinityKey<Long>, Notification>()
+
+            query.localListener = CacheEntryUpdatedListener { events ->
+                for (event in events) {
+                    queryCursor.close()
+                    cont.resume(event.key.toNotification())
+                }
+            }
+
+            query.remoteFilterFactory = Factory<CacheEntryEventFilter<AffinityKey<Long>, Notification>> {
+                CacheEntryEventFilter { event -> (event.value as? CallResultNotification)?.call == callName }
+            }
+
+            query.initialQuery = ScanQuery<AffinityKey<Long>, Notification>().also {
+                it.filter = IgniteBiPredicate { _, notification -> notification is CallResultNotification && notification.call == callName }
+            }
+
+            queryCursor = notificationCache.query(query)
+            for (event in queryCursor) {
+                queryCursor.close()
+                cont.resume(event.key.toNotification())
+            }
+
+            log.debug({ "Call result notification listener started for '${request.callName}'!" })
         }
     }
 
-    fun sendWorkerTrigger(receiverStream: String, workerDelegate: String, workerName: String) {
-        var trigger = WorkerTrigger.newBuilder().also {
-            it.workerDelegate = workerDelegate
-            it.stream = receiverStream
-            it.worker = workerName
-        }.build()
+    /*inner class ExternalScalerImpl : ExternalScalerGrpcKt.ExternalScalerCoroutineImplBase() {
+        val ScaledObjectRef.delegate
+            get() = scalerMetadataMap.getOrDefault("delegate", name)
+        val ScaledObjectRef.targetNotifications
+            get() = scalerMetadataMap.getOrDefault("targetNotifications", "10").toLong()
 
-        log.debug({ "Sending worker trigger: $trigger" })
-
-        runBlocking {
-            for ((channel, filter) in workerTriggerChannels) {
-                if (filter.hasWorkerDelegate() && filter.workerDelegate != workerDelegate) continue
-                channel.send(trigger)
-            }
-        }
-    }
-
-    fun sendWorkerResult(receiverStream: String, receiverDelegate: String, workerName: String) {
-        var update = StreamUpdate.newBuilder().also {
-            it.delegate = receiverDelegate
-            it.stream = receiverStream
-            it.workerResult = StreamUpdate.WorkerResult.newBuilder().also {
-                it.worker = workerName
+        override suspend fun isActive(request: ScaledObjectRef): IsActiveResponse {
+            val notificationCache = agentService.getNotificationCache(request.delegate)
+            val available = notificationCache.localSizeLong()
+            return IsActiveResponse.newBuilder().also {
+                it.result = available > 0
             }.build()
-        }.build()
-
-        log.debug({ "Sending worker result update: $update" })
-
-        runBlocking {
-            for ((channel, filter) in streamUpdateChannels) {
-                if (filter.hasDelegate() && filter.delegate != receiverDelegate) continue
-                if (filter.hasStream() && filter.stream != receiverStream) continue
-                channel.send(update)
-            }
         }
-    }
 
-    fun sendItemUpdate(receiverStream: String, receiverDelegate: String, receiverParameter: String, senderStream: String, senderItem: Long) {
-        var update = StreamUpdate.newBuilder().also {
-            it.delegate = receiverDelegate
-            it.stream = receiverStream
-            it.itemUpdate = StreamUpdate.ItemUpdate.newBuilder().also {
-                it.parameter = receiverParameter
-                it.parameterStream = senderStream
-                it.parameterStreamItem = senderItem
+        @FlowPreview
+        override fun streamIsActive(request: ScaledObjectRef) = flow<Boolean> {
+            val notificationCache = agentService.getNotificationCache(request.delegate).withKeepBinary<BinaryObject, BinaryObject>()
+
+            lateinit var queryCursor: QueryCursor<Entry<BinaryObject, BinaryObject>>
+            val query = ContinuousQuery<BinaryObject, BinaryObject>().also {
+                it.localListener = CacheEntryUpdatedListener {
+                    val available = notificationCache.localSizeLong()
+                    runBlocking {
+                        try {
+                            emit(available > 0)
+                        } catch (_: CancellationException) {
+                            queryCursor.close()
+                        }
+                    }
+                }
+                it.setLocal(true)
+            }
+            queryCursor = notificationCache.query(query)
+        }.debounce(100).map({ value ->
+            IsActiveResponse.newBuilder().also {
+                it.result = value
             }.build()
-        }.build()
+        })
 
-        log.debug({ "Sending stream item update: $update" })
-
-        runBlocking {
-            for ((channel, filter) in streamUpdateChannels) {
-                if (filter.hasDelegate() && filter.delegate != receiverDelegate) continue
-                if (filter.hasStream() && filter.stream != receiverStream) continue
-                channel.send(update)
-            }
+        override suspend fun getMetricSpec(request: ScaledObjectRef): GetMetricSpecResponse {
+            return GetMetricSpecResponse.newBuilder().also {
+                it.addMetricSpecsBuilder().also {
+                    it.metricName = "${request.delegate}-notifications"
+                    it.targetSize = request.targetNotifications
+                }
+            }.build()
         }
-    }
+
+        override suspend fun getMetrics(request: GetMetricsRequest): GetMetricsResponse {
+            val notificationCache = agentService.getNotificationCache(request.scaledObjectRef.delegate)
+            val available = notificationCache.localSizeLong()
+
+            return GetMetricsResponse.newBuilder().also {
+                it.addMetricValuesBuilder().also {
+                    it.metricName = "${request.scaledObjectRef.delegate}-notifications"
+                    it.metricValue = available
+                }
+            }.build()
+        }
+    }*/
 }

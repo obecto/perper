@@ -8,17 +8,23 @@ package perper;
 
 service Fabric {
     rpc Notifications (NotificationFilter) returns (stream Notification) {}
+    rpc CallResultNotification (CallNotificationFilter) returns (Notification) {}
 }
 
 message NotificationFilter {
     required string agentDelegate = 1;
 }
 
+message CallNotificationFilter {
+    required string agentDelegate = 1;
+    required string callName = 2;
+}
+
 message Notification {
-    required int64 notificationKey = 2;
+    required int64 notificationKey = 1;
 
     oneof affinity {
-        string stringAffinity = 3;
-        int64 intAffinity = 4;
+      string stringAffinity = 2;
+      int64 intAffinity = 3;
     }
 }
