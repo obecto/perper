@@ -13,33 +13,40 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package fabric
+package agent
 
 import (
-	"context"
+	"io"
+	"log"
+	"os"
+	"os/exec"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 )
 
-// FabricCmd represents the fabric command
-var FabricCmd = &cobra.Command{
-	Use:   "fabric",
-	Short: "Interaction with Perper Fabric",
+// startCmd represents the start command
+var startCmd = &cobra.Command{
+	Use:   "start",
+	Short: "Starts Azure Function",
+	Long:  `Starts Azure Function. Should be executed from functions folder`,
+	Run: func(cmd *cobra.Command, args []string) {
+		startFunc()
+	},
 }
 
-func init() {}
+func init() {
+	AgentCmd.AddCommand(startCmd)
+}
 
-func findWorkingFabric(ctx context.Context, cli *client.Client) string {
-	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
+func startFunc() {
+	cmd := exec.Command("func", "start")
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	for _, elem := range containers {
-		if elem.Image == imageName {
-			return elem.ID
-		}
+	if err := cmd.Start(); err != nil {
+		log.Fatal(err)
 	}
-	return ""
+
+	io.Copy(os.Stdout, stdout)
 }

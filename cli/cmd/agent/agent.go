@@ -13,33 +13,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package fabric
+package agent
 
 import (
-	"context"
+	"fmt"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 )
 
-// FabricCmd represents the fabric command
-var FabricCmd = &cobra.Command{
-	Use:   "fabric",
-	Short: "Interaction with Perper Fabric",
+// agentCmd represents the agent command
+var AgentCmd = &cobra.Command{
+	Use:   "agent",
+	Short: "Interact with perper agents",
+
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("agent called")
+	},
 }
 
 func init() {}
-
-func findWorkingFabric(ctx context.Context, cli *client.Client) string {
-	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
-	if err != nil {
-		panic(err)
-	}
-	for _, elem := range containers {
-		if elem.Image == imageName {
-			return elem.ID
-		}
-	}
-	return ""
-}

@@ -21,19 +21,17 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 )
 
 // stopCmd represents the stop command
 var stopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Kills and removes a container from the docker host.",
+	Long: `Finds a container with Fabric image type, kills and removes it.
+	Returns panic If there is not present Fabric container`,
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		stopFabricContainer()
 	},
@@ -41,16 +39,6 @@ to quickly create a Cobra application.`,
 
 func init() {
 	FabricCmd.AddCommand(stopCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// stopCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// stopCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 func stopFabricContainer() {
@@ -64,7 +52,12 @@ func stopFabricContainer() {
 		panic("Could not find a fabric container")
 	}
 
-	err = cli.ContainerStop(ctx, containerID, nil)
+	err = cli.ContainerStop(ctx, containerID[:12], nil)
+	if err != nil {
+		panic(err)
+	}
+
+	err = cli.ContainerRemove(ctx, containerID[:12], types.ContainerRemoveOptions{})
 	if err != nil {
 		panic(err)
 	}

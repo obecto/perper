@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"context"
 
@@ -37,15 +38,11 @@ var ports []string
 // startCmd represents the start command
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Creates new Fabric container",
+	Long:  `Creates new Fabric container if there is a running Fabric it returns its id`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Starting fabric container ...")
+
 		runFabricContainer()
 	},
 }
@@ -53,16 +50,10 @@ to quickly create a Cobra application.`,
 func init() {
 	FabricCmd.AddCommand(startCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// startCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
 	startCmd.Flags().BoolVarP(&showLogs, "logs", "l", false, "Keep logs open")
 	startCmd.Flags().StringArrayVarP(&ports, "port", "p", nil, "Bind a container’s ports to a specific port ")
+	viper.BindPFlag("port", startCmd.Flags().Lookup("port"))
+
 }
 
 func runFabricContainer() {
@@ -82,12 +73,11 @@ func runFabricContainer() {
 	if err != nil || reader == nil {
 		panic(err)
 	}
-	var portSet nat.PortSet
-	var portMap nat.PortMap
 
-	if ports != nil {
-		portSet, portMap = getExposedPorts(ports)
+	if ports != nil || len(ports) == 0 {
+		ports = []string{"10800:10800", "40400:40400"}
 	}
+	portSet, portMap := getExposedPorts(ports)
 
 	containerConfig := &container.Config{
 		Image:        imageName,
