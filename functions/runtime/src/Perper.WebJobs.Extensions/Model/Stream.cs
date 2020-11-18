@@ -17,7 +17,6 @@ namespace Perper.WebJobs.Extensions.Model
     {
         public string StreamName { get; set; }
 
-        [NonSerialized] private readonly string? _parameterName;
         [NonSerialized] private readonly FabricService _fabric;
         [NonSerialized] private readonly IIgniteClient _ignite;
     }
@@ -26,6 +25,7 @@ namespace Perper.WebJobs.Extensions.Model
     {
         public string StreamName { get; set; }
 
+        [NonSerialized] public string? _functionName; // HACK: Used for Declare/InitiaizeStream
         [NonSerialized] private readonly string? _parameterName;
         [NonSerialized] private readonly FabricService _fabric;
         [NonSerialized] private readonly IIgniteClient _ignite;

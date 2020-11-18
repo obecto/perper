@@ -26,11 +26,15 @@ namespace Perper.WebJobs.Extensions.Model
         {
             var agentsCache = _ignite.GetCache<string, AgentData>("agents");
             var agentName = GenerateName(delegateName);
+
+            var agent = new Agent {AgentName = agentName, AgentDelegate = delegateName};
             await agentsCache.PutAsync(agentName, new AgentData {
                 Delegate = delegateName,
             });
 
-            return (default!, default!);
+            var result = await agent.CallFunctionAsync<TResult>(agentName, parameters);
+
+            return (agent, result);
         }
 
         public async Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default, StreamFlags flags = StreamFlags.Default)
@@ -50,13 +54,12 @@ namespace Perper.WebJobs.Extensions.Model
         public IStream<TItem> DeclareStreamFunction<TItem>(string functionName)
         {
             var streamName = GenerateName(functionName);
-            return new Stream<TItem>() {StreamName = streamName};
+            return new Stream<TItem>() {StreamName = streamName, _functionName = functionName};
         }
 
         public async Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default, StreamFlags flags = StreamFlags.Default)
         {
-            var functionName = default(string)!;
-            await CreateStreamAsync((stream as Stream<TItem>)!.StreamName, StreamDelegateType.Action, functionName, parameters, null, flags);
+            await CreateStreamAsync((stream as Stream<TItem>)!.StreamName, StreamDelegateType.Function, (stream as Stream<TItem>)!._functionName!, parameters, null, flags);
         }
 
         public async Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Ephemeral)
