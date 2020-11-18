@@ -15,6 +15,9 @@ namespace Perper.WebJobs.Extensions
         {
             AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
             builder.Services.AddScoped(typeof(IContext), typeof(Context));
+            builder.Services.AddScoped(typeof(IAgentState), typeof(AgentState));
+            builder.Services.AddScoped(typeof(IStreamState<>), typeof(StreamState<>));
+            builder.Services.AddScoped(typeof(StreamStateManager), typeof(StreamStateManager));
             builder.AddPerper();
         }
     }

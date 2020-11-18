@@ -78,6 +78,7 @@ namespace Perper.WebJobs.Extensions.Model
         [NonSerialized] private readonly string _parameterName;
         [NonSerialized] private readonly bool _anonymous;
         [NonSerialized] private readonly FabricService _fabric;
+        [NonSerialized] private readonly StreamStateManager _streamStateManager;
         [NonSerialized] private readonly IIgniteClient _ignite;
 
         private StreamListener StreamListener {
@@ -104,7 +105,9 @@ namespace Perper.WebJobs.Extensions.Model
                     {
                         var cache = _ignite.GetCache<long, T>(si.Cache);
                         var value = await cache.GetAsync(si.Index);
+                        await _streamStateManager.LoadStreamStates();
                         await action(value);
+                        await _streamStateManager.StoreStreamStates();
                         await _fabric.ConsumeNotification(key);
                     }
                 });
@@ -135,7 +138,9 @@ namespace Perper.WebJobs.Extensions.Model
                     {
                         var cache = _ignite.GetCache<long, T>(si.Cache);
                         var value = await cache.GetAsync(si.Index);
+                        await _streamStateManager.LoadStreamStates();
                         yield return value;
+                        await _streamStateManager.StoreStreamStates();
                         await _fabric.ConsumeNotification(key);
                     }
                 }
