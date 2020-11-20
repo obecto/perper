@@ -1,10 +1,5 @@
 using System;
-#if !NETSTANDARD2_0
 using System.Collections.Generic;
-#else
-using System.Threading;
-using System.Threading.Tasks;
-#endif
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -22,12 +17,4 @@ namespace Perper.WebJobs.Extensions.Model
     public interface IStream
     {
     }
-
-#if NETSTANDARD2_0
-    public interface IAsyncEnumerable<out T>
-    {
-//         Task ForEachAsync(Action<T> action, CancellationToken cancellationToken = default);
-        Task ForEachAwaitAsync(Func<T, Task> action, CancellationToken cancellationToken = default);
-    }
-#endif
 }

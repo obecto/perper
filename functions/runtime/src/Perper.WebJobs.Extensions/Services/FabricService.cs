@@ -1,13 +1,12 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Channels;
 using Microsoft.Extensions.Hosting;
 using Perper.WebJobs.Extensions.Protobuf;
-using Grpc.Core;
 #if NETSTANDARD2_0
-using System;
-using Perper.WebJobs.Extensions.Model;
+using Grpc.Core;
 using GrpcChannel = Grpc.Core.Channel;
 using Channel = System.Threading.Channels.Channel;
 #else
@@ -84,7 +83,7 @@ namespace Perper.WebJobs.Extensions.Services
             var client = new Fabric.FabricClient(_grpcChannel);
             using var notifications = client.Notifications(new NotificationFilter {AgentDelegate = AgentDelegate}, null, null, cancellationToken);
             var stream = notifications.ResponseStream;
-            while(await stream.MoveNext())
+            while(await stream.MoveNext(cancellationToken))
             {
                 var key = GetAffinityKey(stream.Current);
                 var notification = await _notificationsCache.GetAsync(key);
@@ -110,35 +109,17 @@ namespace Perper.WebJobs.Extensions.Services
             return _notificationsCache.RemoveAsync(key);
         }
 
-#if NETSTANDARD2_0
-        public class ChannelAsyncEnumerable<T> : IAsyncEnumerable<T>
+        public async IAsyncEnumerable<(AffinityKey, Notification)> GetNotifications(
+            string instance, string? parameter = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            ChannelReader<T> _reader;
-            public ChannelAsyncEnumerable(ChannelReader<T> reader)
+            var reader = GetChannel(instance, parameter).Reader;
+            while (true)
             {
-                _reader = reader;
-            }
-
-            public async Task ForEachAwaitAsync(Func<T, Task> action, CancellationToken cancellationToken)
-            {
-                while (true)
-                {
-                    var value = await _reader.ReadAsync(cancellationToken);
-                    await action(value);
-                }
+                var value = await reader.ReadAsync(cancellationToken);
+                yield return value;
             }
         }
 
-        public IAsyncEnumerable<(AffinityKey, Notification)> GetNotifications(string instance, string? parameter = null, CancellationToken cancellationToken = default)
-        {
-            return new ChannelAsyncEnumerable<(AffinityKey, Notification)>(GetChannel(instance, parameter).Reader);
-        }
-#else
-        public IAsyncEnumerable<(AffinityKey, Notification)> GetNotifications(string instance, string? parameter = null, CancellationToken cancellationToken = default)
-        {
-            return GetChannel(instance, parameter).Reader.ReadAllAsync(cancellationToken);
-        }
-#endif
         public async Task<(AffinityKey, Notification)> GetCallNotification(string call, CancellationToken cancellationToken = default)
         {
             var client = new Fabric.FabricClient(_grpcChannel);
