@@ -17,18 +17,14 @@ namespace Perper.WebJobs.Extensions.Model
     {
         public string StreamName { get; set; }
 
-        [NonSerialized] private readonly FabricService _fabric;
-        [NonSerialized] private readonly IIgniteClient _ignite;
+        [NonSerialized] protected readonly FabricService _fabric;
+        [NonSerialized] protected readonly IIgniteClient _ignite;
     }
 
-    public class Stream<T> : IStream<T>
+    public class Stream<T> : Stream, IStream<T>
     {
-        public string StreamName { get; set; }
-
         [NonSerialized] public string? _functionName; // HACK: Used for Declare/InitiaizeStream
-        [NonSerialized] private readonly string? _parameterName;
-        [NonSerialized] private readonly FabricService _fabric;
-        [NonSerialized] private readonly IIgniteClient _ignite;
+        [NonSerialized] private readonly string? _parameterName; // FIXME: Change to parameter index
 
 #if NETSTANDARD2_0
         public Task ForEachAwaitAsync(Func<T, Task> action, CancellationToken cancellationToken = default)
@@ -74,17 +70,16 @@ namespace Perper.WebJobs.Extensions.Model
         public Dictionary<string, object> Filter { get; set; }
         public bool LocalToData { get; set; }
 
-        [NonSerialized] private readonly string _streamName; // Listener
         [NonSerialized] private readonly string _parameterName;
-        [NonSerialized] private readonly bool _anonymous;
+        [NonSerialized] private readonly Context _context;
+        [NonSerialized] private readonly State _state;
         [NonSerialized] private readonly FabricService _fabric;
-        [NonSerialized] private readonly StreamStateManager _streamStateManager;
         [NonSerialized] private readonly IIgniteClient _ignite;
 
         private StreamListener StreamListener {
             get => new StreamListener {
                 AgentDelegate = _fabric.AgentDelegate,
-                Stream = _streamName,
+                Stream = _context.InstanceName,
                 Parameter = _parameterName,
                 Filter = Filter,
                 LocalToData = LocalToData,
@@ -105,16 +100,16 @@ namespace Perper.WebJobs.Extensions.Model
                     {
                         var cache = _ignite.GetCache<long, T>(si.Cache);
                         var value = await cache.GetAsync(si.Index);
-                        await _streamStateManager.LoadStreamStates();
+                        await _state.LoadStateEntries();
                         await action(value);
-                        await _streamStateManager.StoreStreamStates();
+                        await _state.StoreStateEntries();
                         await _fabric.ConsumeNotification(key);
                     }
                 });
             }
             finally
             {
-                if (_anonymous)
+                if (_parameterName == "")
                 {
                     await RemoveListenerAsync();
                 }
@@ -138,16 +133,16 @@ namespace Perper.WebJobs.Extensions.Model
                     {
                         var cache = _ignite.GetCache<long, T>(si.Cache);
                         var value = await cache.GetAsync(si.Index);
-                        await _streamStateManager.LoadStreamStates();
+                        await _state.LoadStateEntries();
                         yield return value;
-                        await _streamStateManager.StoreStreamStates();
+                        await _state.StoreStateEntries();
                         await _fabric.ConsumeNotification(key);
                     }
                 }
             }
             finally
             {
-                if (_anonymous)
+                if (_parameterName == "")
                 {
                     await RemoveListenerAsync();
                 }

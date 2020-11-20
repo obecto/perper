@@ -5,6 +5,7 @@ using Apache.Ignite.Core.Client;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Services;
 using Perper.WebJobs.Extensions.Cache;
+using Perper.WebJobs.Extensions.Cache.Notifications;
 
 namespace Perper.WebJobs.Extensions.Model
 {
@@ -13,8 +14,11 @@ namespace Perper.WebJobs.Extensions.Model
         private readonly FabricService _fabric;
         private readonly IIgniteClient _ignite;
 
-        public IAgent Agent { get; set; }
-        public JObject TriggerValue { get; set; }
+        public string AgentName { get => (TriggerValue["agent"])!.ToString(); }
+        public string InstanceName { get => (TriggerValue["stream"] ?? TriggerValue["call"])!.ToString(); }
+
+        public IAgent Agent { get => new Agent(this, _ignite, AgentName, _fabric.AgentDelegate); }
+        public JObject TriggerValue { get; set; } = default!;
 
         public Context(FabricService fabric, IIgniteClient ignite)
         {
@@ -27,7 +31,7 @@ namespace Perper.WebJobs.Extensions.Model
             var agentsCache = _ignite.GetCache<string, AgentData>("agents");
             var agentName = GenerateName(delegateName);
 
-            var agent = new Agent {AgentName = agentName, AgentDelegate = delegateName};
+            var agent = new Agent(this, _ignite, agentName, delegateName);
             await agentsCache.PutAsync(agentName, new AgentData {
                 Delegate = delegateName,
             });
@@ -83,6 +87,29 @@ namespace Perper.WebJobs.Extensions.Model
                 Ephemeral = (flags & StreamFlags.Ephemeral) != 0,
                 LastModified = DateTime.UtcNow
             });
+        }
+
+
+        public async Task<CallResultNotification> CallAsync(string agentName, string agentDelegate, string callDelegate, object? parameters)
+        {
+
+            var callsCache = _ignite.GetCache<string, CallData>("calls");
+            var callName = GenerateName(callDelegate);
+            await callsCache.PutAsync(callName, new CallData {
+                Agent = agentName,
+                AgentDelegate = agentDelegate,
+                Delegate = callDelegate,
+                CallerAgentDelegate = _fabric.AgentDelegate,
+                Caller = InstanceName,
+                Finished = false,
+                LocalToData = true,
+                Parameters = parameters,
+            });
+
+            var (key, notification) = await _fabric.GetCallNotification(callName);
+            await _fabric.ConsumeNotification(key);
+
+            return (notification as CallResultNotification)!;
         }
 
         private string GenerateName(string? baseName = null)
