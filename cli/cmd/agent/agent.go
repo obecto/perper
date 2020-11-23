@@ -16,8 +16,6 @@ limitations under the License.
 package agent
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -26,9 +24,9 @@ var AgentCmd = &cobra.Command{
 	Use:   "agent",
 	Short: "Interact with perper agents",
 
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("agent called")
-	},
+	// Run: func(cmd *cobra.Command, args []string) {
+	// 	fmt.Println("agent called")
+	// },
 }
 
 func init() {}

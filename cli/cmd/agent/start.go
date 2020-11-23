@@ -16,10 +16,11 @@ limitations under the License.
 package agent
 
 import (
-	"io"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"perper/cmd/agent/processes"
 
 	"github.com/spf13/cobra"
 )
@@ -30,7 +31,7 @@ var startCmd = &cobra.Command{
 	Short: "Starts Azure Function",
 	Long:  `Starts Azure Function. Should be executed from functions folder`,
 	Run: func(cmd *cobra.Command, args []string) {
-		startFunc()
+		startSingleAgent("./", 7071)
 	},
 }
 
@@ -38,15 +39,32 @@ func init() {
 	AgentCmd.AddCommand(startCmd)
 }
 
-func startFunc() {
-	cmd := exec.Command("func", "start")
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err := cmd.Start(); err != nil {
-		log.Fatal(err)
-	}
+func startSingleAgent(dirPath string, port int) {
+	if ok, pid := processes.FindProcessesOnPort(port); ok == false {
+		fmt.Printf("Port [%d] already taken, from [PID=%d]\n", port, pid)
+		fmt.Println("Killing the process")
+		proc, err := os.FindProcess(pid)
+		if err != nil {
+			log.Println(err)
+		}
 
-	io.Copy(os.Stdout, stdout)
+		err = proc.Kill()
+		if err != nil {
+			log.Println(err)
+		}
+	}
+	cmd := exec.Command("func", "host", "start", "--script-root", dirPath)
+
+	outfile, err := os.Create(dirPath + logFileName)
+	if err != nil {
+		panic(err)
+	}
+	// defer outfile.Close()
+	cmd.Stdout = outfile
+	cmd.Stderr = outfile
+
+	if err := cmd.Start(); err != nil {
+		panic(err)
+	}
+	fmt.Printf("Started process with PID: %d \n", cmd.Process.Pid)
 }
