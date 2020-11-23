@@ -33,6 +33,7 @@ dependencies {
     implementation("io.grpc:grpc-stub:$grpcVersion")
     implementation("io.grpc:grpc-kotlin-stub:$grpcKotlinVersion")
     runtimeOnly("io.grpc:grpc-netty-shaded:$grpcVersion")
+    implementation("org.apache.commons:commons-lang3:3.11")
     implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3")
     testImplementation("junit:junit:4.12")
 }
