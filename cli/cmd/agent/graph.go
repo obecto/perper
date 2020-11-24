@@ -1,16 +1,12 @@
 package agent
 
-import "fmt"
-
-//
-type Graph struct {
+type graph struct {
 	edges    map[string][]string
 	capacity int
 	sequence []string
 }
 
-//
-func (g *Graph) Add(key, value string) {
+func (g *graph) add(key, value string) {
 	if key == value {
 		g.edges[key] = nil
 		g.capacity++
@@ -20,45 +16,34 @@ func (g *Graph) Add(key, value string) {
 	}
 }
 
-//
-func (g *Graph) HasEdge(key, value string) bool {
-	for _, v := range g.edges[key] {
-		if v == value {
-			return true
-		}
-	}
-	return false
-}
-
-func (g *Graph) generateGraph(dirPath string) {
+func (g *graph) generateGraph(dirPath string) {
 	agents, root := readConfig(dirPath)
 	if len(agents) == 0 {
-		g.Add(root, root)
+		g.add(root, root)
 	}
 	for _, v := range agents {
-		g.Add(v, root)
+		g.add(v, root)
 	}
 	for _, v := range agents {
 		g.generateGraph("../" + v)
 	}
-	fmt.Println(g)
 }
 
 //
-type Visited int
+type visitedColor int
 
 const (
-	white Visited = iota
+	white visitedColor = iota
 	grey
 	black
 )
 
 var visitedIndex int
-var visited map[string]Visited
+var visited map[string]visitedColor
 
-func (g *Graph) topoSortGraph() {
+func (g *graph) topoSortGraph() {
 	visitedIndex = 0
-	visited = make(map[string]Visited, g.capacity)
+	visited = make(map[string]visitedColor, g.capacity)
 	g.sequence = make([]string, g.capacity)
 
 	for i := range g.edges {
@@ -74,7 +59,7 @@ func (g *Graph) topoSortGraph() {
 	// return sequence
 }
 
-func (g *Graph) visit(index string) {
+func (g *graph) visit(index string) {
 	visited[index] = grey
 	if g.edges != nil {
 		for _, v := range g.edges[index] {
@@ -91,7 +76,7 @@ func (g *Graph) visit(index string) {
 	visitedIndex++
 }
 
-func (g *Graph) reverseSequence() {
+func (g *graph) reverseSequence() {
 	i := visitedIndex - 1
 	j := 0
 	for i > j {
@@ -103,7 +88,7 @@ func (g *Graph) reverseSequence() {
 	}
 }
 
-func hasUnvisitedVertex(visited map[string]Visited) string {
+func hasUnvisitedVertex(visited map[string]visitedColor) string {
 	for i, v := range visited {
 		if v == white {
 			return i

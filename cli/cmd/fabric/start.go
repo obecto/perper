@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"context"
 
@@ -35,25 +34,23 @@ const imageName = "obecto/perper-fabric"
 var showLogs bool
 var ports []string
 
-// startCmd represents the start command
-var startCmd = &cobra.Command{
-	Use:   "start",
+// runCmd represents the run command
+var runCmd = &cobra.Command{
+	Use:   "run",
 	Short: "Creates new Fabric container",
 	Long:  `Creates new Fabric container if there is a running Fabric it returns its id`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Starting fabric container ...")
+		fmt.Println("Running fabric container ...")
 
 		runFabricContainer()
 	},
 }
 
 func init() {
-	FabricCmd.AddCommand(startCmd)
+	FabricCmd.AddCommand(runCmd)
 
-	startCmd.Flags().BoolVarP(&showLogs, "logs", "l", false, "Keep logs open")
-	startCmd.Flags().StringArrayVarP(&ports, "port", "p", nil, "Bind a container’s ports to a specific port ")
-	viper.BindPFlag("port", startCmd.Flags().Lookup("port"))
-
+	runCmd.Flags().BoolVarP(&showLogs, "logs", "l", false, "Keep logs open")
+	runCmd.Flags().StringArrayVarP(&ports, "port", "p", nil, "Bind the container’s ports to a specific port ")
 }
 
 func runFabricContainer() {

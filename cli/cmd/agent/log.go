@@ -31,7 +31,7 @@ var logCmd = &cobra.Command{
 	Short: "Gets logs of an agent",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		tail(logFileName, os.Stdout)
+		agentLog(logFileName, os.Stdout)
 	},
 }
 
@@ -39,7 +39,7 @@ func init() {
 	AgentCmd.AddCommand(logCmd)
 }
 
-func tail(filename string, out io.Writer) {
+func agentLog(filename string, out io.Writer) {
 	f, err := os.Open(filename)
 	if err != nil {
 		panic(err)
