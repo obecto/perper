@@ -1,49 +1,36 @@
-using System.Collections.Generic;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
-using DotNet.FunctionApp.Model;
 using Microsoft.Azure.WebJobs;
-using Perper.WebJobs.Extensions.Config;
+using Perper.WebJobs.Extensions.Triggers;
 using Perper.WebJobs.Extensions.Model;
-using Perper.WebJobs.Extensions.Streams;
+using Perper.WebJobs.Extensions.Bindings;
 
 namespace DotNet.FunctionApp
 {
-    public static class Launcher
+    public class Launcher
     {
-        // [FunctionName("Launcher")]
-        // public static async Task RunAsync([PerperModuleTrigger(RunOnStartup = true)]
-        //     PerperModuleContext context,
-        //     CancellationToken cancellationToken)
-        // {
-        //     await using var multiGenerator =
-        //         await context.StreamFunctionAsync("NamedGeneratorGenerator", typeof(GeneratorGenerator), new { count = 40 });
-        //     await using var multiProcessor =
-        //         await context.StreamFunctionAsync("NamedMultiProcessor", typeof(MultiProcessor), new { generators = multiGenerator.Subscribe() });
-        //     await using var coallator =
-        //         await context.StreamFunctionAsync("NamedCoallator", typeof(Coallator), new { inputs = multiProcessor.Subscribe() });
-        //     await using var consumer =
-        //         await context.StreamActionAsync("NamedPassthroughConsumer", typeof(PassthroughConsumer), new { processor = coallator });
-        //
-        //     await context.BindOutput(cancellationToken);
-        // }
+        private IContext _context;
+        public Launcher(IContext context)
+        {
+            _context = context;
+        }
 
-            [FunctionName("Launcher")]
-            public static async Task<string> RunAsync([PerperModuleTrigger(RunOnStartup = true)]
-                PerperModuleContext context,
-                CancellationToken cancellationToken)
-            {
-                var generator = await context.StreamFunctionAsync(typeof(Generator), new {count = 10, tag = "xx-0"});
-                var consumer =
-                    await context.StreamActionAsync("Host.Functions.SimpleHttpTrigger", new {processor = generator.Subscribe()});
+        [FunctionName("DotNet")]
+        public async Task RunAsync([PerperTrigger] object parameters, CancellationToken cancellationToken)
+        {
+            Console.WriteLine("So far, so good: {0}!", _context);
+            var result = await _context.CallFunctionAsync<int>("Called", (1, 2));
+            Console.WriteLine("And the result is... {0}", result);
+            await Task.Yield();
+        }
 
-                return "hello";
-            }
-
-            public static void Test(
-                IPerperContext<(string a, int b)> s)
-            {
-
-            }
+        [FunctionName("Called")]
+        [return: Perper()] // HACK!
+        public int Called([PerperTrigger] (int a, int b) parameters, CancellationToken cancellationToken)
+        {
+            Console.WriteLine("Got: {0} and {1}!", parameters.a, parameters.b);
+            return parameters.a + parameters.b;
+        }
     }
 }

@@ -7,7 +7,10 @@ import com.obecto.perper.protobuf.FabricGrpcKt
 import com.obecto.perper.protobuf.NotificationFilter
 import io.grpc.Server
 import io.grpc.ServerBuilder
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteCache
@@ -28,11 +31,20 @@ import javax.cache.Cache.Entry
 import javax.cache.configuration.Factory
 import javax.cache.event.CacheEntryEventFilter
 import javax.cache.event.CacheEntryUpdatedListener
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
+import javax.cache.event.EventType
 import com.obecto.perper.protobuf.Notification as NotificationProto
 
 class TransportService(var port: Int) : Service {
+
+    companion object Caches {
+        fun getNotificationCache(ignite: Ignite, agentDelegate: String): IgniteCache<AffinityKey<Long>, Notification> {
+            return ignite.getOrCreateCache<AffinityKey<Long>, Notification>("$agentDelegate-\$notifications")
+        }
+
+        fun getNotificationQueue(ignite: Ignite, streamName: String): IgniteQueue<AffinityKey<Long>> {
+            return ignite.queue<AffinityKey<Long>>("$streamName-\$notifications", 0, CollectionConfiguration())
+        }
+    }
 
     @set:LoggerResource
     lateinit var log: IgniteLogger
@@ -51,19 +63,12 @@ class TransportService(var port: Int) : Service {
 
     override fun execute(ctx: ServiceContext) {
         server.start()
+        log.debug({ "Transport service started!" })
     }
 
     override fun cancel(ctx: ServiceContext) {
         server.shutdown()
         server.awaitTermination()
-    }
-
-    fun getNotificationCache(agentDelegate: String): IgniteCache<AffinityKey<Long>, Notification> {
-        return ignite.getOrCreateCache<AffinityKey<Long>, Notification>("$agentDelegate-\$notifications")
-    }
-
-    fun getNotificationQueue(streamName: String): IgniteQueue<AffinityKey<Long>> {
-        return ignite.queue<AffinityKey<Long>>("$streamName-\$notifications", 0, CollectionConfiguration())
     }
 
     inner class FabricImpl : FabricGrpcKt.FabricCoroutineImplBase() {
@@ -76,27 +81,30 @@ class TransportService(var port: Int) : Service {
             }
         }.build()
 
-        override fun notifications(request: NotificationFilter) = flow<NotificationProto> {
-            // NOTE: This currently returns CallResultNotification-s as well. Could consider dropping them?
-            val notificationCache = getNotificationCache(request.agentDelegate)
+        @kotlinx.coroutines.ExperimentalCoroutinesApi
+        override fun notifications(request: NotificationFilter) = channelFlow<NotificationProto> {
+            val notificationCache = getNotificationCache(ignite, request.agentDelegate)
             val notificationAffinity = ignite.affinity<AffinityKey<Long>>(request.agentDelegate)
+            val finishChannel = Channel<Exception>(Channel.CONFLATED)
 
             val sentQueueNotificationsMap = HashMap<String, AffinityKey<Long>>()
 
             fun updateQueue(stream: String) {
-                val queue = getNotificationQueue(stream)
+                val queue = getNotificationQueue(ignite, stream)
                 val queuedKey = queue.peek()
                 if ((notificationAffinity.mapKeyToNode(queuedKey)?.isLocal) ?: false) {
                     if (sentQueueNotificationsMap.put(stream, queuedKey) != queuedKey) {
-                        runBlocking { emit(queuedKey.toNotification()) }
+                        runBlocking { send(queuedKey.toNotification()) }
                     }
                 }
             }
 
             fun processNotification(key: AffinityKey<Long>, notification: Notification, confirmed: Boolean) {
-                if (notification is StreamItemNotification) {
+                if (notification is CallResultNotification) {
+                    // pass, handled by callResultNotification below
+                } else if (notification is StreamItemNotification) {
                     if (confirmed) {
-                        getNotificationQueue(notification.stream).remove(key)
+                        getNotificationQueue(ignite, notification.stream).remove(key)
                         if (notification.ephemeral) {
                             val counter = ignite.atomicLong("${notification.cache}-${notification.index}", 0, true)
                             if (counter.decrementAndGet() == 0L) {
@@ -108,14 +116,18 @@ class TransportService(var port: Int) : Service {
                         updateQueue(notification.stream)
                     }
                 } else if (!confirmed) {
-                    runBlocking { emit(key.toNotification()) }
+                    runBlocking { send(key.toNotification()) }
                 }
             }
 
             val remoteConfirmationQuery = ContinuousQuery<AffinityKey<Long>, Notification>()
             remoteConfirmationQuery.localListener = CacheEntryUpdatedListener { events ->
-                for (event in events) {
-                    updateQueue((event.oldValue as StreamItemNotification).stream)
+                try {
+                    for (event in events) {
+                        updateQueue((event.oldValue as StreamItemNotification).stream)
+                    }
+                } catch (e: Exception) {
+                    runBlocking { finishChannel.send(e) }
                 }
             }
 
@@ -123,12 +135,16 @@ class TransportService(var port: Int) : Service {
                 CacheEntryEventFilter { event -> event.value == null && event.oldValue is StreamItemNotification }
             }
 
-            notificationCache.query(remoteConfirmationQuery)
+            val remoteQueryCursor = notificationCache.query(remoteConfirmationQuery)
 
             val query = ContinuousQuery<AffinityKey<Long>, Notification>()
             query.localListener = CacheEntryUpdatedListener { events ->
-                for (event in events) {
-                    processNotification(event.key, event.value ?: event.oldValue, event.value == null)
+                try {
+                    for (event in events) {
+                        processNotification(event.key, event.value ?: event.oldValue, event.eventType == EventType.REMOVED)
+                    }
+                } catch (e: Exception) {
+                    runBlocking { finishChannel.send(e) }
                 }
             }
 
@@ -138,21 +154,32 @@ class TransportService(var port: Int) : Service {
 
             log.debug({ "Notifications listener started for '${request.agentDelegate}'!" })
 
-            for (entry in queryCursor) {
-                processNotification(entry.key, entry.value, false)
+            try {
+                for (entry in queryCursor) {
+                    processNotification(entry.key, entry.value, false)
+                }
+
+                throw finishChannel.receive()
+            } catch (e: Exception) {
+                log.error(e.toString())
+            } finally {
+                remoteQueryCursor.close()
+                queryCursor.close()
+
+                log.debug({ "Notifications listener finished for '${request.agentDelegate}'!" })
             }
         }
 
-        override suspend fun callResultNotification(request: CallNotificationFilter) = suspendCoroutine<NotificationProto> { cont ->
+        override suspend fun callResultNotification(request: CallNotificationFilter): NotificationProto {
             val callName = request.callName
-            val notificationCache = getNotificationCache(request.agentDelegate)
+            val notificationCache = getNotificationCache(ignite, request.agentDelegate)
             lateinit var queryCursor: QueryCursor<Entry<AffinityKey<Long>, Notification>>
             val query = ContinuousQuery<AffinityKey<Long>, Notification>()
+            val resultChannel = Channel<AffinityKey<Long>>(Channel.CONFLATED)
 
             query.localListener = CacheEntryUpdatedListener { events ->
                 for (event in events) {
-                    queryCursor.close()
-                    cont.resume(event.key.toNotification())
+                    runBlocking { resultChannel.send(event.key) }
                 }
             }
 
@@ -165,12 +192,19 @@ class TransportService(var port: Int) : Service {
             }
 
             queryCursor = notificationCache.query(query)
-            for (event in queryCursor) {
-                queryCursor.close()
-                cont.resume(event.key.toNotification())
+            GlobalScope.launch {
+                for (event in queryCursor) {
+                    resultChannel.send(event.key)
+                }
             }
 
             log.debug({ "Call result notification listener started for '${request.callName}'!" })
+
+            val result = resultChannel.receive()
+
+            log.debug({ "Call result notification listener completed for '${request.callName}'!" })
+            queryCursor.close()
+            return result.toNotification()
         }
     }
 

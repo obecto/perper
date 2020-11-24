@@ -6,7 +6,6 @@ import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import org.apache.ignite.Ignition
 import org.apache.ignite.binary.BinaryBasicNameMapper
-import org.apache.ignite.binary.BinaryReflectiveSerializer
 import org.apache.ignite.binary.BinaryTypeConfiguration
 import org.apache.ignite.configuration.BinaryConfiguration
 import org.apache.ignite.configuration.IgniteConfiguration
@@ -29,8 +28,11 @@ fun main(args: Array<String>) {
 
     val debug by parser.option(ArgType.Boolean, shortName = "d", description = "Show debug logs").default(false)
     val verbose by parser.option(ArgType.Boolean, shortName = "v", description = "Show Ignite information logs").default(false)
+    val startDelegate by parser.option(ArgType.String, shortName = "s", description = "Set initial agent delegate to call").default("")
 
     parser.parse(args)
+
+    val startCall = if (startDelegate == "") null else Pair(startDelegate, startDelegate)
 
     System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", if (verbose) "info" else "warn")
     System.setProperty("org.slf4j.simpleLogger.log.com.obecto.perper", if (debug) "debug" else "info")
@@ -50,16 +52,17 @@ fun main(args: Array<String>) {
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.StreamItemNotification>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.StreamTriggerNotification>(),
             )
-            it.serializer = BinaryReflectiveSerializer()
+            it.serializer = PerperBinarySerializer()
             it.nameMapper = BinaryBasicNameMapper(true)
         }
         it.setServiceConfiguration(
-            singletonServiceConfiguration("CallService", CallService()),
+            singletonServiceConfiguration("AgentService", AgentService()),
+            singletonServiceConfiguration("CallService", CallService(startCall)),
             singletonServiceConfiguration("StreamService", StreamService()),
             singletonServiceConfiguration("TransportService", TransportService(40400)),
         )
         it.gridLogger = Slf4jLogger()
     }
 
-    Ignition.start(igniteConfiguration)
+    val ignite = Ignition.start(igniteConfiguration)
 }

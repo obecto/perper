@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
+using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Triggers
@@ -41,15 +42,29 @@ namespace Perper.WebJobs.Extensions.Triggers
         public Task<IListener> CreateListenerAsync(ListenerFactoryContext context)
         {
             return Task.FromResult<IListener>(new PerperTriggerListener(
-                _fabric.GetNotifications(context.Descriptor.ShortName).Select(x => x.Item2) /* FIXME: ConsumeNotification */, context.Executor, _logger));
+                _fabric, context.Descriptor.ShortName, _ignite, context.Executor, _logger));
+        }
+
+        class DummyClass {
+            public IContext Context { get; }
+            public DummyClass(IContext context) {
+                Context = context;
+            }
         }
 
         public async Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
             var trigger = (JObject) value;
+
+            // HACK: Apparently context.FunctionContext.InstanceServices is never set by the WebJobs SDK.
+            // So we create a dummy object and extract the wanted services through it.
+            var perperContext = (Context) context.FunctionContext.CreateObjectInstance<DummyClass>().Context;
+            await perperContext.SetTriggerValue(trigger);
+
+            var returnProvider = new PerperTriggerValueBinder(trigger, _ignite, _logger);
             return new TriggerData(await GetBindingData(trigger))
             {
-                ReturnValueProvider = new PerperTriggerValueBinder(trigger, _ignite, _logger)
+                ReturnValueProvider = returnProvider
             };
         }
 
@@ -61,9 +76,10 @@ namespace Perper.WebJobs.Extensions.Triggers
         private IReadOnlyDictionary<string, Type> CreateBindingDataContract()
         {
             var result = _parameterExpression is null
-                ? new Dictionary<string, Type>()
+                ? new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase)
                 : _parameterExpression.Properties().ToDictionary(property => property.Name, _ => typeof(string));
             result["$return"] = typeof(object).MakeByRefType();
+            result["stream"] = typeof(string); // HACK!
             return result;
         }
 
@@ -71,7 +87,11 @@ namespace Perper.WebJobs.Extensions.Triggers
         {
             // Use _parameterExpression {parameter_name: index} to extract string
             // value from Ignite parameters (assume that they are object[])
-            throw new NotImplementedException();
+            var result = _parameterExpression is null
+                ? new Dictionary<string, object>()
+                : _parameterExpression.Properties().ToDictionary(property => property.Name, (Func<JProperty, object>)(_ => throw new System.Exception("123")));
+            result["stream"] = trigger.ToString(); // HACK!
+            return Task.FromResult(result);
         }
     }
 }

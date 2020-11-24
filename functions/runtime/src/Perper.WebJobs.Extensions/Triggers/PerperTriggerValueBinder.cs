@@ -5,6 +5,7 @@ using Apache.Ignite.Core.Client;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
+using Perper.WebJobs.Extensions.Cache;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
@@ -14,7 +15,7 @@ namespace Perper.WebJobs.Extensions.Triggers
         private readonly IIgniteClient _ignite;
         private readonly ILogger _logger;
 
-        public Type Type { get; } = typeof(JObject);
+        public Type Type { get; } = typeof(object).MakeByRefType();
 
         public PerperTriggerValueBinder(JObject trigger, IIgniteClient ignite, ILogger logger)
         {
@@ -28,12 +29,14 @@ namespace Perper.WebJobs.Extensions.Triggers
             throw new NotSupportedException();
         }
 
-        public Task SetValueAsync(object value, CancellationToken cancellationToken)
+        public async Task SetValueAsync(object value, CancellationToken cancellationToken)
         {
-            // Delete (Consume) Notification from Ignite
-            // Value should be logged
-
-            throw new NotImplementedException();
+            var call = (string) _trigger["Call"]!;
+            var callsCache = _ignite.GetCache<string, CallData>("calls");
+            var callData = await callsCache.GetAsync(call);
+            callData.Result = value;
+            callData.Finished = true;
+            await callsCache.ReplaceAsync(call, callData);
         }
 
         public string ToInvokeString()

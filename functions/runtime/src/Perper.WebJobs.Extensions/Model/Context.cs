@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Apache.Ignite.Core.Client;
@@ -14,16 +15,33 @@ namespace Perper.WebJobs.Extensions.Model
         private readonly FabricService _fabric;
         private readonly IIgniteClient _ignite;
 
-        public string AgentName { get => (TriggerValue["agent"])!.ToString(); }
-        public string InstanceName { get => (TriggerValue["stream"] ?? TriggerValue["call"])!.ToString(); }
+        public string AgentName { get; private set; } = default!;
+        public string InstanceName { get; private set; } = default!;
 
         public IAgent Agent { get => new Agent(this, _ignite, AgentName, _fabric.AgentDelegate); }
-        public JObject TriggerValue { get; set; } = default!;
 
         public Context(FabricService fabric, IIgniteClient ignite)
         {
             _fabric = fabric;
             _ignite = ignite;
+        }
+
+        public async Task SetTriggerValue(JObject triggerValue)
+        {
+            if (triggerValue.ContainsKey("Call"))
+            {
+                InstanceName = (string) triggerValue["Call"]!;
+                var callsCache = _ignite.GetCache<string, CallData>("calls");
+                var callData = await callsCache.GetAsync(InstanceName);
+                AgentName = callData.Agent!;
+            }
+            else
+            {
+                InstanceName = (string) triggerValue["Stream"]!;
+                var streamsCache = _ignite.GetCache<string, StreamData>("streams");
+                var streamData = await streamsCache.GetAsync(InstanceName);
+                AgentName = streamData.Agent!;
+            }
         }
 
         public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string delegateName, object? parameters = default)
@@ -80,7 +98,7 @@ namespace Perper.WebJobs.Extensions.Model
                 AgentDelegate = _fabric.AgentDelegate,
                 Delegate = delegateName,
                 DelegateType = delegateType,
-                Parameters = parameters,
+                Parameters = ConvertParameters(parameters),
                 Listeners = new List<StreamListener>(),
                 IndexType = null,
                 IndexFields = null,
@@ -103,7 +121,7 @@ namespace Perper.WebJobs.Extensions.Model
                 Caller = InstanceName,
                 Finished = false,
                 LocalToData = true,
-                Parameters = parameters,
+                Parameters = ConvertParameters(parameters),
             });
 
             var (key, notification) = await _fabric.GetCallNotification(callName);
@@ -111,6 +129,29 @@ namespace Perper.WebJobs.Extensions.Model
 
             return (notification as CallResultNotification)!;
         }
+
+        private object?[] ConvertParameters(object? parameters)
+        {
+            if (parameters is ITuple tuple)
+            {
+                var result = new object?[tuple.Length];
+                for (var i = 0; i < result.Length; i++)
+                {
+                    result[i] = tuple[i];
+                }
+                return result;
+            }
+            else if (parameters is object?[] array)
+            {
+                return array;
+            }
+            else
+            {
+                // Shouldn't happen
+                return new object?[] {parameters};
+            }
+        }
+
 
         private string GenerateName(string? baseName = null)
         {

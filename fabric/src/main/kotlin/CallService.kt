@@ -4,6 +4,7 @@ import com.obecto.perper.fabric.cache.notification.CallResultNotification
 import com.obecto.perper.fabric.cache.notification.CallTriggerNotification
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteCache
@@ -12,11 +13,10 @@ import org.apache.ignite.cache.affinity.AffinityKey
 import org.apache.ignite.cache.query.ContinuousQuery
 import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
-import org.apache.ignite.resources.ServiceResource
 import org.apache.ignite.services.ServiceContext
 import javax.cache.event.CacheEntryUpdatedListener
 
-class CallService : JobService() {
+class CallService(val startCall: Pair<String, String>?) : JobService() {
     val returnFieldName = "\$return"
 
     @set:LoggerResource
@@ -27,9 +27,6 @@ class CallService : JobService() {
 
     lateinit var callsCache: IgniteCache<String, CallData>
 
-    @set:ServiceResource(serviceName = "TransportService")
-    lateinit var transportService: TransportService
-
     override fun init(ctx: ServiceContext) {
         callsCache = ignite.getOrCreateCache("calls")
 
@@ -37,6 +34,24 @@ class CallService : JobService() {
     }
 
     override suspend fun CoroutineScope.execute(ctx: ServiceContext) {
+        if (startCall != null) launch {
+            val (startAgentDelegate, startCallDelegate) = startCall
+            val agentName = startAgentDelegate + "-launchAgent"
+            val callName = startCallDelegate + "-launchCall"
+            callsCache.putIfAbsent(
+                callName,
+                CallData(
+                    agent = agentName,
+                    agentDelegate = startAgentDelegate,
+                    delegate = startCallDelegate,
+                    callerAgentDelegate = startAgentDelegate,
+                    caller = "",
+                    finished = false,
+                    localToData = false
+                )
+            )
+        }
+
         var streamGraphUpdates = Channel<Pair<String, CallData>>(Channel.UNLIMITED)
         val query = ContinuousQuery<String, CallData>()
         query.localListener = CacheEntryUpdatedListener { events ->
@@ -54,13 +69,13 @@ class CallService : JobService() {
 
     suspend fun updateCall(call: String, callData: CallData) {
         if (callData.finished) {
-            val notificationsCache = transportService.getNotificationCache(callData.callerAgentDelegate)
+            val notificationsCache = TransportService.getNotificationCache(ignite, callData.callerAgentDelegate)
             val key = AffinityKey(System.currentTimeMillis(), if (callData.localToData) call else callData.caller)
             notificationsCache.put(key, CallResultNotification(call, callData.caller))
         } else {
-            val notificationsCache = transportService.getNotificationCache(callData.agentDelegate)
+            val notificationsCache = TransportService.getNotificationCache(ignite, callData.agentDelegate)
             val key = AffinityKey(System.currentTimeMillis(), call)
-            notificationsCache.put(key, CallTriggerNotification(call))
+            notificationsCache.put(key, CallTriggerNotification(call, callData.delegate))
         }
     }
 }

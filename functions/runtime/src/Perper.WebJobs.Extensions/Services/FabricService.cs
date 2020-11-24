@@ -1,10 +1,13 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Net;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Threading.Channels;
-using Microsoft.Extensions.Hosting;
-using Perper.WebJobs.Extensions.Protobuf;
+using System.Threading.Tasks;
+using Apache.Ignite.Core.Cache.Affinity;
+using Apache.Ignite.Core.Client;
+using Apache.Ignite.Core.Client.Cache;
 #if NETSTANDARD2_0
 using Grpc.Core;
 using GrpcChannel = Grpc.Core.Channel;
@@ -12,10 +15,10 @@ using Channel = System.Threading.Channels.Channel;
 #else
 using Grpc.Net.Client;
 #endif
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Cache.Notifications;
-using Apache.Ignite.Core.Client;
-using Apache.Ignite.Core.Client.Cache;
-using Apache.Ignite.Core.Cache.Affinity;
+using Perper.WebJobs.Extensions.Protobuf;
 using Notification = Perper.WebJobs.Extensions.Cache.Notifications.Notification;
 using NotificationProto = Perper.WebJobs.Extensions.Protobuf.Notification;
 
@@ -25,19 +28,38 @@ namespace Perper.WebJobs.Extensions.Services
     {
         public string AgentDelegate { get; }
 
-        private GrpcChannel _grpcChannel;
-        private readonly Dictionary<(string, string?), Channel<(AffinityKey, Notification)>> _channels = new Dictionary<(string, string?), Channel<(AffinityKey, Notification)>>();
         private readonly IIgniteClient _ignite;
+        private ILogger _logger;
+
+        private GrpcChannel _grpcChannel;
         private readonly ICacheClient<AffinityKey, Notification> _notificationsCache;
+        private readonly Dictionary<(string, string?), Channel<(AffinityKey, Notification)>> _channels = new Dictionary<(string, string?), Channel<(AffinityKey, Notification)>>();
+
         private CancellationTokenSource _serviceCancellation = new CancellationTokenSource();
         private Task? _serviceTask;
 
-        public FabricService(IIgniteClient ignite, string agentDelegate)
+        public FabricService(IIgniteClient ignite, ILogger<FabricService> logger)
         {
+            var agentDelegate = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(Directory.GetCurrentDirectory())))!;
+            var suffix = ".FunctionApp";
+            if (agentDelegate.EndsWith(suffix))
+            {
+                agentDelegate = agentDelegate.Substring(0, agentDelegate.Length - suffix.Length);
+            }
+
             AgentDelegate = agentDelegate;
             _ignite = ignite;
-            _notificationsCache = _ignite.GetCache<AffinityKey, Notification>($"$notifications-{AgentDelegate}");
-            string address = $"http://{ignite.RemoteEndPoint}:40400";
+            _logger = logger;
+
+            _notificationsCache = _ignite.GetCache<AffinityKey, Notification>($"{AgentDelegate}-$notifications");
+
+            var host = ignite.RemoteEndPoint switch {
+                IPEndPoint ip => ip.Address.ToString(),
+                DnsEndPoint dns => dns.Host,
+                _ => ""
+            };
+            var address = $"http://{host}:40400";
+
 #if NETSTANDARD2_0
             _grpcChannel = new GrpcChannel(address, ChannelCredentials.Insecure);
 #else
@@ -49,6 +71,9 @@ namespace Perper.WebJobs.Extensions.Services
         {
             _serviceCancellation = new CancellationTokenSource();
             _serviceTask = RunAsync(_serviceCancellation.Token);
+            _serviceTask.ContinueWith(t => {
+                _logger.LogError("Fatal FabricService error: " + t.Exception!.ToString());
+            }, TaskContinuationOptions.OnlyOnFaulted);
             return Task.CompletedTask;
         }
 
@@ -83,19 +108,21 @@ namespace Perper.WebJobs.Extensions.Services
             var client = new Fabric.FabricClient(_grpcChannel);
             using var notifications = client.Notifications(new NotificationFilter {AgentDelegate = AgentDelegate}, null, null, cancellationToken);
             var stream = notifications.ResponseStream;
-            while(await stream.MoveNext(cancellationToken))
+            while (await stream.MoveNext(cancellationToken))
             {
                 var key = GetAffinityKey(stream.Current);
+                _logger.LogDebug($"FabricService Received: {key}");
                 var notification = await _notificationsCache.GetAsync(key);
+                _logger.LogDebug($"FabricService Received: {notification}");
                 switch (notification) {
                     case StreamItemNotification si:
                         await GetChannel(si.Stream, si.Parameter).Writer.WriteAsync((key, notification));
                         break;
                     case StreamTriggerNotification st:
-                        await GetChannel(st.Stream).Writer.WriteAsync((key, notification));
+                        await GetChannel(st.Delegate).Writer.WriteAsync((key, notification));
                         break;
                     case CallTriggerNotification ct:
-                        await GetChannel(ct.Call).Writer.WriteAsync((key, notification));
+                        await GetChannel(ct.Delegate).Writer.WriteAsync((key, notification));
                         break;
                     case CallResultNotification cr:
                         // pass
@@ -116,6 +143,7 @@ namespace Perper.WebJobs.Extensions.Services
             while (true)
             {
                 var value = await reader.ReadAsync(cancellationToken);
+                _logger.LogDebug($"FabricService sent: {value}");
                 yield return value;
             }
         }

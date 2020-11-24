@@ -28,7 +28,7 @@ namespace Perper.WebJobs.Extensions.Model
             var callsCache = _ignite.GetCache<string, CallData>("calls");
             var resultCall = await callsCache.GetAsync(notification.Call);
 
-            return (TResult)resultCall.Parameters!;
+            return (TResult)resultCall.Result!;
         }
 
         public Task CallActionAsync(string actionName, object? parameters = default)
