@@ -13,6 +13,6 @@ namespace Perper.WebJobs.Extensions.Cache
         public bool LocalToData { get; set; }
         public object?[]? Parameters { get; set; }
         public object? Result { get; set; }
-        public object? Exception { get; set; }
+        public string? Error { get; set; }
     }
 }

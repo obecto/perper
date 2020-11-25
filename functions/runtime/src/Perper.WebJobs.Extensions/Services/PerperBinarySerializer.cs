@@ -1,18 +1,22 @@
 using System;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
 using Apache.Ignite.Core.Binary;
 
 namespace Perper.WebJobs.Extensions.Services
 {
     public class PerperBinarySerializer : IBinarySerializer
     {
+        [ThreadStatic] static public IServiceProvider? Services;
+
         #region GetProperties
         private interface IPropertyInfo
         {
-            Type Type { get; }
+            Type? Type { get; } // Null means that the property is not part of the final serialized form
             object? Get(object obj);
             void Set(object obj, object? value);
         }
@@ -25,10 +29,9 @@ namespace Perper.WebJobs.Extensions.Services
                 Field = field;
             }
 
-            public Type Type { get => Field.FieldType; }
+            public Type? Type { get => Field.FieldType; }
             public object? Get(object obj) => Field.GetValue(obj);
             public void Set(object obj, object? value) => Field.SetValue(obj, value);
-
         }
 
         private class PropertyPropertyInfo : IPropertyInfo
@@ -39,10 +42,27 @@ namespace Perper.WebJobs.Extensions.Services
                 Property = property;
             }
 
-            public Type Type { get => Property.PropertyType; }
+            public Type? Type { get => Property.PropertyType; }
             public object? Get(object obj) => Property.GetValue(obj);
             public void Set(object obj, object? value) => Property.SetValue(obj, value);
+        }
 
+        private class ServicePropertyInfoDecorator : IPropertyInfo
+        {
+            public IPropertyInfo WrappedProperty { get; }
+            public Type ServiceType { get; }
+            public ServicePropertyInfoDecorator(IPropertyInfo wrappedProperty, Type serviceType)
+            {
+                WrappedProperty = wrappedProperty;
+                ServiceType = serviceType;
+            }
+
+            public Type? Type { get => null; }
+            public object? Get(object obj) => null;
+            public void Set(object obj, object? value)
+            {
+                WrappedProperty.Set(obj, PerperBinarySerializer.Services?.GetService(ServiceType));
+            }
         }
 
         private readonly Dictionary<Type, Dictionary<String, IPropertyInfo>> PropertiesCache = new Dictionary<Type, Dictionary<String, IPropertyInfo>>();
@@ -56,16 +76,39 @@ namespace Perper.WebJobs.Extensions.Services
 
             var result = new Dictionary<String, IPropertyInfo>();
 
-            foreach (var field in type.GetFields())
+            foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
             {
+                if (field.GetCustomAttributes<NonSerializedAttribute>().Any() ||
+                    field.GetCustomAttributes<IgnoreDataMemberAttribute>().Any() ||
+                    field.IsPrivate)
+                {
+                    continue;
+                }
+
                 result[field.Name] = new FieldPropertyInfo(field);
+
+                if (field.GetCustomAttributes<PerperInjectAttribute>().Any())
+                {
+                    result[field.Name] = new ServicePropertyInfoDecorator(result[field.Name], field.FieldType);
+                }
             }
 
             // Unlike the Java version, we do not implement getters/setters here, as those are represented by properties in C#
 
-            foreach (var property in type.GetProperties())
+            foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
             {
+                if (property.GetCustomAttributes<IgnoreDataMemberAttribute>().Any() ||
+                    !property.CanWrite)
+                {
+                    continue;
+                }
+
                 result[property.Name] = new PropertyPropertyInfo(property);
+
+                if (property.GetCustomAttributes<PerperInjectAttribute>().Any())
+                {
+                    result[property.Name] = new ServicePropertyInfoDecorator(result[property.Name], property.PropertyType);
+                }
             }
 
             PropertiesCache[type] = result;
@@ -121,7 +164,7 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        private void ConvertCollection<S, D>(bool toCommon, ICollection<S> source, ICollection<D> destination)
+        private void ConvertCollection<S, D>(bool toCommon, IEnumerable source, ICollection<D> destination)
         {
             foreach (var value in source)
             {
@@ -166,6 +209,7 @@ namespace Perper.WebJobs.Extensions.Services
                 return null;
             }
 
+            // FIXME: Get `method` below to use the same dictionary as ConvertedCollectionType
             var convertedType = ConvertedCollectionType(type);
             if (type == convertedType)
             {
@@ -179,6 +223,7 @@ namespace Perper.WebJobs.Extensions.Services
             {
                 var destination = Array.CreateInstance(toType.GetElementType()!, ((Array)source!).Length);
 
+                // , BindingFlags.NonPublic | BindingFlags.Instance
                 var method = typeof(PerperBinarySerializer).GetMethod("ConvertArray", new Type[] { typeof(bool), fromType, toType })!;
                 method.Invoke(this, new object?[] { toCommon, source, destination });
 
@@ -191,12 +236,19 @@ namespace Perper.WebJobs.Extensions.Services
                 MethodInfo method;
                 if (convertedType.GetGenericTypeDefinition() == typeof(Dictionary<,>))
                 {
-                    method = typeof(PerperBinarySerializer).GetMethod("ConvertDictionary", new Type[] { typeof(bool), fromType, toType })!;
+                    var fromTypeArguments = GetGenericInterface(fromType, typeof(IDictionary<,>))!.GetGenericArguments();
+                    var toTypeArguments = GetGenericInterface(toType, typeof(IDictionary<,>))!.GetGenericArguments();
+                    method = typeof(PerperBinarySerializer).GetMethod("ConvertDictionary", BindingFlags.NonPublic | BindingFlags.Instance)!.MakeGenericMethod(
+                        fromTypeArguments[0], fromTypeArguments[1],
+                        toTypeArguments[0], toTypeArguments[1]);
                 }
-                else
-                { // if (convertedType.GetGenericTypeDefinition() == typeof(List<>))
-                    method = typeof(PerperBinarySerializer).GetMethod("ConvertCollection", new Type[] { typeof(bool), fromType, toType })!;
+                else // if (convertedType.GetGenericTypeDefinition() == typeof(List<>))
+                {
+                    var fromTypeArguments = GetGenericInterface(fromType, typeof(ICollection<>))!.GetGenericArguments();
+                    var toTypeArguments = GetGenericInterface(toType, typeof(ICollection<>))!.GetGenericArguments();
+                    method = typeof(PerperBinarySerializer).GetMethod("ConvertCollection", BindingFlags.NonPublic | BindingFlags.Instance)!.MakeGenericMethod(fromTypeArguments[0], toTypeArguments[0]);
                 }
+
                 method.Invoke(this, new object?[] { toCommon, source, destination });
 
                 return destination;
@@ -244,6 +296,7 @@ namespace Perper.WebJobs.Extensions.Services
             {
                 var value = property.Get(obj);
                 var type = property.Type;
+                if (type == null) continue;
                 if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
                 {
                     type = type.GetGenericArguments()[0];
@@ -283,7 +336,7 @@ namespace Perper.WebJobs.Extensions.Services
                     }
                     else if (GetGenericInterface(type, typeof(IDictionary<,>)) != null)
                     {
-                        writer.WriteDictionary(name, (Dictionary<object, object>)ConvertCollections(true, type, value)!);
+                        writer.WriteDictionary(name, (IDictionary)ConvertCollections(true, type, value)!);
                     }
                     else if (GetGenericInterface(type, typeof(ICollection<>)) != null)
                     {
@@ -314,6 +367,13 @@ namespace Perper.WebJobs.Extensions.Services
             {
                 object? value;
                 var type = property.Type;
+
+                if (type == null)
+                {
+                    property.Set(obj, null);
+                    continue;
+                }
+
                 if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
                 {
                     type = type.GetGenericArguments()[0];
@@ -351,11 +411,20 @@ namespace Perper.WebJobs.Extensions.Services
                     }
                     else if (GetGenericInterface(type, typeof(IDictionary<,>)) != null)
                     {
-                        value = ConvertCollections(false, type, reader.ReadDictionary(name));
+                        var convertedType = ConvertedCollectionType(type);
+                        value = ConvertCollections(false, type, reader.ReadDictionary(name, s => (IDictionary)Activator.CreateInstance(convertedType)!));
                     }
                     else if (GetGenericInterface(type, typeof(ICollection<>)) != null)
                     {
-                        value = ConvertCollections(false, type, reader.ReadCollection(name));
+                        var convertedType = ConvertedCollectionType(type);
+                        // FIXME: This addMethod should probably go in the ConvertedCollectionType dictionary
+                        var addMethod = convertedType.GetMethod(nameof(ICollection<object>.Add))!;
+                        var values = reader.ReadCollection(name,
+                            s => (ICollection)Activator.CreateInstance(convertedType)!,
+                            (c, v) => {
+                                addMethod.Invoke(c, new object[] { v });
+                            });
+                        value = ConvertCollections(false, type, values);
                     }
                     else if (typeof(ITuple).IsAssignableFrom(type))
                     {

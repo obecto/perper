@@ -14,16 +14,19 @@ namespace Perper.WebJobs.Extensions.Model
     {
         private readonly FabricService _fabric;
         private readonly IIgniteClient _ignite;
+        private IServiceProvider _services;
 
         public string AgentName { get; private set; } = default!;
         public string InstanceName { get; private set; } = default!;
+        public int NextLocalStreamParameterIndex = -1;
 
-        public IAgent Agent { get => new Agent(this, _ignite, AgentName, _fabric.AgentDelegate); }
+        public IAgent Agent { get; private set; } = default!;
 
-        public Context(FabricService fabric, IIgniteClient ignite)
+        public Context(FabricService fabric, IIgniteClient ignite, IServiceProvider services)
         {
             _fabric = fabric;
             _ignite = ignite;
+            _services = services;
         }
 
         public async Task SetTriggerValue(JObject triggerValue)
@@ -32,16 +35,18 @@ namespace Perper.WebJobs.Extensions.Model
             {
                 InstanceName = (string) triggerValue["Call"]!;
                 var callsCache = _ignite.GetCache<string, CallData>("calls");
-                var callData = await callsCache.GetAsync(InstanceName);
+                var callData = await callsCache.GetWithServicesAsync(InstanceName, _services);
                 AgentName = callData.Agent!;
             }
             else
             {
                 InstanceName = (string) triggerValue["Stream"]!;
                 var streamsCache = _ignite.GetCache<string, StreamData>("streams");
-                var streamData = await streamsCache.GetAsync(InstanceName);
+                var streamData = await streamsCache.GetWithServicesAsync(InstanceName, _services);
                 AgentName = streamData.Agent!;
             }
+
+            Agent = new Agent(AgentName, _fabric.AgentDelegate, this, _ignite, _services);
         }
 
         public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string delegateName, object? parameters = default)
@@ -49,7 +54,7 @@ namespace Perper.WebJobs.Extensions.Model
             var agentsCache = _ignite.GetCache<string, AgentData>("agents");
             var agentName = GenerateName(delegateName);
 
-            var agent = new Agent(this, _ignite, agentName, delegateName);
+            var agent = new Agent(agentName, delegateName, this, _ignite, _services);
             await agentsCache.PutAsync(agentName, new AgentData {
                 Delegate = delegateName,
             });
@@ -63,32 +68,38 @@ namespace Perper.WebJobs.Extensions.Model
         {
             var streamName = GenerateName(functionName);
             await CreateStreamAsync(streamName, StreamDelegateType.Function, functionName, parameters, typeof(TItem), flags);
-            return new Stream<TItem>() {StreamName = streamName};
+            return new Stream<TItem>(streamName, _fabric, _ignite, this, _services);
         }
 
         public async Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamFlags flags = StreamFlags.Default)
         {
             var streamName = GenerateName(actionName);
             await CreateStreamAsync(streamName, StreamDelegateType.Action, actionName, parameters, null, flags);
-            return new Stream() {StreamName = streamName};
+            return new Stream(streamName, _fabric, _ignite);
         }
 
         public IStream<TItem> DeclareStreamFunction<TItem>(string functionName)
         {
             var streamName = GenerateName(functionName);
-            return new Stream<TItem>() {StreamName = streamName, _functionName = functionName};
+             return new Stream<TItem>(streamName, _fabric, _ignite, this, _services) { FunctionName = functionName };
         }
 
         public async Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default, StreamFlags flags = StreamFlags.Default)
         {
-            await CreateStreamAsync((stream as Stream<TItem>)!.StreamName, StreamDelegateType.Function, (stream as Stream<TItem>)!._functionName!, parameters, null, flags);
+            var streamInstance = (stream as Stream<TItem>)!;
+            if (streamInstance.FunctionName == null)
+            {
+                throw new InvalidOperationException("Stream is already initialized");
+            }
+            await CreateStreamAsync(streamInstance.StreamName, StreamDelegateType.Function, streamInstance.FunctionName!, parameters, null, flags);
+            streamInstance.FunctionName = null;
         }
 
         public async Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Ephemeral)
         {
             var streamName = GenerateName();
             await CreateStreamAsync(streamName, StreamDelegateType.External, "", null, typeof(TItem), flags);
-            return (new Stream<TItem> {StreamName = streamName}, streamName);
+            return (new Stream<TItem>(streamName, _fabric, _ignite, this, _services), streamName);
         }
 
         private async Task CreateStreamAsync(string streamName, StreamDelegateType delegateType, string delegateName, object? parameters, Type? type, StreamFlags flags)
@@ -107,8 +118,7 @@ namespace Perper.WebJobs.Extensions.Model
             });
         }
 
-
-        public async Task<CallResultNotification> CallAsync(string agentName, string agentDelegate, string callDelegate, object? parameters)
+        public async Task<CallData> CallAsync(string agentName, string agentDelegate, string callDelegate, object? parameters)
         {
 
             var callsCache = _ignite.GetCache<string, CallData>("calls");
@@ -127,7 +137,17 @@ namespace Perper.WebJobs.Extensions.Model
             var (key, notification) = await _fabric.GetCallNotification(callName);
             await _fabric.ConsumeNotification(key);
 
-            return (notification as CallResultNotification)!;
+            var callResult = await callsCache.GetAndRemoveWithServicesAsync(notification.Call, _services);
+            var call = callResult.Value;
+
+            if (call.Error != null)
+            {
+                throw new Exception(call.Error);
+            }
+            else
+            {
+                return call;
+            }
         }
 
         private object?[] ConvertParameters(object? parameters)
@@ -147,7 +167,6 @@ namespace Perper.WebJobs.Extensions.Model
             }
             else
             {
-                // Shouldn't happen
                 return new object?[] {parameters};
             }
         }

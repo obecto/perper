@@ -2,8 +2,8 @@ package com.obecto.perper.fabric.cache.notification
 
 class StreamItemNotification(
     var stream: String,
-    var parameter: String,
+    var parameter: Int,
     var cache: String,
-    var index: Long,
+    var key: Long,
     var ephemeral: Boolean,
 ) : Notification()

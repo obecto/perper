@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Client;
 using Perper.WebJobs.Extensions.Cache;
+using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Model
 {
@@ -10,30 +11,35 @@ namespace Perper.WebJobs.Extensions.Model
         public string AgentName { get; set; }
         public string AgentDelegate { get; set; }
 
-        [NonSerialized] private IIgniteClient _ignite;
-        [NonSerialized] private Context _context;
+        [PerperInject] private IContext _context;
+        [PerperInject] private IIgniteClient _ignite;
+        [PerperInject] private IServiceProvider _services;
 
-        public Agent(IContext context, IIgniteClient ignite, string agentName, string agentDelegate)
+        public Agent(string agentName, string agentDelegate, IContext context, IIgniteClient ignite, IServiceProvider services)
         {
             AgentName = agentName;
             AgentDelegate = agentDelegate;
+            _context = context;
             _ignite = ignite;
-            _context = (Context) context;
+            _services = services;
         }
 
         public async Task<TResult> CallFunctionAsync<TResult>(string functionName, object? parameters = default)
         {
-            var notification = await _context.CallAsync(AgentName, AgentDelegate, functionName, parameters);
+            var callData = await ((Context)_context).CallAsync(AgentName, AgentDelegate, functionName, parameters);
 
-            var callsCache = _ignite.GetCache<string, CallData>("calls");
-            var resultCall = await callsCache.GetAsync(notification.Call);
+            if (callData.Result == null)
+            {
+                // throw new InvalidOperationException($"Called function '{functionName}' did not return a result, did you mean CallActionAsync?");
+                return default(TResult)!;
+            }
 
-            return (TResult)resultCall.Result!;
+            return (TResult)callData.Result;
         }
 
         public Task CallActionAsync(string actionName, object? parameters = default)
         {
-            return _context.CallAsync(AgentName, AgentDelegate, actionName, parameters);
+            return ((Context)_context).CallAsync(AgentName, AgentDelegate, actionName, parameters);
         }
     }
 }

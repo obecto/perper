@@ -47,8 +47,10 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         class DummyClass {
             public IContext Context { get; }
-            public DummyClass(IContext context) {
+            public IServiceProvider Services { get; }
+            public DummyClass(IContext context, IServiceProvider services) {
                 Context = context;
+                Services = services;
             }
         }
 
@@ -58,8 +60,13 @@ namespace Perper.WebJobs.Extensions.Triggers
 
             // HACK: Apparently context.FunctionContext.InstanceServices is never set by the WebJobs SDK.
             // So we create a dummy object and extract the wanted services through it.
-            var perperContext = (Context) context.FunctionContext.CreateObjectInstance<DummyClass>().Context;
-            await perperContext.SetTriggerValue(trigger);
+            var dummy = context.FunctionContext.CreateObjectInstance<DummyClass>();
+
+            // HACK: Also, we cannot access the services in the async converter for JObject.
+            // So we just plug them in here; see PerperExtensionConfigProvider
+            trigger.AddAnnotation(dummy.Services);
+
+            await ((Context) dummy.Context).SetTriggerValue(trigger);
 
             var returnProvider = new PerperTriggerValueBinder(trigger, _ignite, _logger);
             return new TriggerData(await GetBindingData(trigger))

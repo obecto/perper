@@ -3,27 +3,30 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Client;
+using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Model
 {
     public class State : IState
     {
-        public State(IIgniteClient ignite, string cacheName)
-        {
-            CacheName = cacheName;
-            _ignite = ignite;
-        }
-
         public string CacheName { get; }
 
-        [NonSerialized] private IIgniteClient _ignite;
+        [PerperInject] private IIgniteClient _ignite;
+        [PerperInject] private IServiceProvider _services;
 
         [NonSerialized] private List<StateEntry> _entries = new List<StateEntry>();
+
+        public State(IContext context, IIgniteClient ignite, IServiceProvider services)
+        {
+            CacheName = ((Context) context).InstanceName;
+            _services = services;
+            _ignite = ignite;
+        }
 
         public async Task<T> GetValue<T>(string key, Func<T> defaultValueFactory)
         {
             var cache = _ignite.GetOrCreateCache<string, T>(CacheName);
-            var result = await cache.TryGetAsync(key);
+            var result = await cache.TryGetWithServicesAsync(key, _services);
             if (!result.Success)
             {
                 var defaultValue = defaultValueFactory();

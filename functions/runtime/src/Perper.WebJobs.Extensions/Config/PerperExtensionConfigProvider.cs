@@ -14,6 +14,7 @@ using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
 using Perper.WebJobs.Extensions.Triggers;
 using Perper.WebJobs.Extensions.Cache;
+using ITuple = System.Runtime.CompilerServices.ITuple;
 
 namespace Perper.WebJobs.Extensions.Config
 {
@@ -23,6 +24,7 @@ namespace Perper.WebJobs.Extensions.Config
         public class ParameterJObjectConverter<T> : IAsyncConverter<JObject, T>
         {
             private readonly IIgniteClient _ignite;
+
             public ParameterJObjectConverter(IIgniteClient ignite)
             {
                 _ignite = ignite;
@@ -30,23 +32,24 @@ namespace Perper.WebJobs.Extensions.Config
 
             public async Task<T> ConvertAsync(JObject source, CancellationToken cancellationToken)
             {
+                // HACK: We cannot pass the function instance services here through the constructor,
+                // since AddOpenConverter does not perform dependency injection, and we lack the
+                // real IServiceProvider instance when calling AddOpenConverter.
+                // So we pass the IServiceProvider via annotations on the JObject, see also PerperTriggerBinding
+                var services = source.Annotation<IServiceProvider>()!;
+
                 object?[]? parameters;
                 if (source.ContainsKey("Call"))
                 {
                     var callsCache = _ignite.GetCache<string, CallData>("calls");
-                    var callData = await callsCache.GetAsync((string)source["Call"]!);
+                    var callData = await callsCache.GetWithServicesAsync((string)source["Call"]!, services);
                     parameters = callData.Parameters!;
                 }
                 else
                 {
                     var streamsCache = _ignite.GetCache<string, StreamData>("streams");
-                    var streamData = await streamsCache.GetAsync((string)source["Stream"]!);
+                    var streamData = await streamsCache.GetWithServicesAsync((string)source["Stream"]!, services);
                     parameters = streamData.Parameters!;
-                }
-
-                if (typeof(T) == typeof(object))
-                {
-                    if (parameters != null && parameters.Length == 1) return (T) parameters[0]!;
                 }
 
                 if (typeof(T).IsAssignableFrom(typeof(object[])))
@@ -54,7 +57,12 @@ namespace Perper.WebJobs.Extensions.Config
                     return (T) (object?) parameters!;
                 }
 
-                return (T) Activator.CreateInstance(typeof(T), parameters)!;
+                if (typeof(ITuple).IsAssignableFrom(typeof(T)))
+                {
+                    return (T) Activator.CreateInstance(typeof(T), parameters)!;
+                }
+
+                return (T) parameters[0]!;
             }
         }
 

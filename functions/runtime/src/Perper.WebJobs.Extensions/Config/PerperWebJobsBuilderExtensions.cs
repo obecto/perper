@@ -52,6 +52,7 @@ namespace Perper.WebJobs.Extensions.Config
                     BinaryConfiguration = new BinaryConfiguration()
                     {
                         NameMapper = new Binary​Basic​Name​Mapper() {IsSimpleName = true},
+                        Serializer = serializer,
                         TypeConfigurations = types.Select(type => new BinaryTypeConfiguration(type) {
                             Serializer = serializer,
                         }).ToList()

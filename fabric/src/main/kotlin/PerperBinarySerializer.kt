@@ -92,7 +92,12 @@ class PerperBinarySerializer : BinarySerializer {
         if (mapTypeArguments != null) {
             val keyType = mapTypeArguments[mapClassKeyType] ?: objectClass
             val valueType = mapTypeArguments[mapClassValueType] ?: objectClass
-            val map = if (toCommon) null else TypeUtils.getRawType(type, null)?.getConstructor()?.newInstance() as? MutableMap<Any?, Any?>
+            val map = if (toCommon) {
+                null
+            } else {
+                val wantedClass = TypeUtils.getRawType(type, null)
+                if (wantedClass.isAssignableFrom(HashMap::class.java)) null else  wantedClass.getConstructor()?.newInstance() as? MutableMap<Any?, Any?>
+            }
             return (value as Map<*, *>)
                 .mapKeys({ convertCollections(toCommon, keyType, it) })
                 .mapValuesTo(map ?: HashMap(), { convertCollections(toCommon, valueType, it) })
@@ -100,7 +105,12 @@ class PerperBinarySerializer : BinarySerializer {
         val collectionTypeArguments = TypeUtils.getTypeArguments(type, collectionClass)
         if (collectionTypeArguments != null) {
             val elementType = collectionTypeArguments[collectionClassElementType] ?: objectClass
-            val collection = if (toCommon) null else TypeUtils.getRawType(type, null)?.getConstructor()?.newInstance() as? MutableCollection<Any?>
+            val collection = if (toCommon) {
+                null
+            } else {
+                val wantedClass = TypeUtils.getRawType(type, null)
+                if (wantedClass.isAssignableFrom(ArrayList::class.java)) null else wantedClass.getConstructor()?.newInstance() as? MutableCollection<Any?>
+            }
             return (value as Collection<*>)
                 .mapTo(collection ?: ArrayList(), { convertCollections(toCommon, elementType, it) })
         }
@@ -159,7 +169,6 @@ class PerperBinarySerializer : BinarySerializer {
                     else -> when {
                         prop.type.isEnum() -> writer.writeEnum(name, value as Enum<*>)
                         mapClass.isAssignableFrom(prop.type) -> writer.writeMap(name, convertCollections(true, prop.genericType, value) as Map<Any?, Any?>)
-                        collectionClass.isAssignableFrom(prop.type) -> writer.writeCollection(name, convertCollections(true, prop.genericType, value) as Collection<Any?>)
                         collectionClass.isAssignableFrom(prop.type) -> writer.writeCollection(name, convertCollections(true, prop.genericType, value) as Collection<Any?>)
                         // NOTE: C# version supportsarbitrary tuples; here we support only Pair, as java lacks a native tuple type
                         pairClass.isAssignableFrom(prop.type) -> {

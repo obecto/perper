@@ -27,7 +27,7 @@ import javax.cache.event.EventType
 
 class StreamService : JobService() {
 
-    val forwardFieldName = "\$forward"
+    val forwardParameterIndex = Int.MIN_VALUE
 
     @set:LoggerResource
     lateinit var log: IgniteLogger
@@ -129,9 +129,9 @@ class StreamService : JobService() {
             val listeners = streamsCache.get(targetStream)?.listeners ?: return
             log.trace({ "Invoking stream updates for '$targetStream'; listeners: $listeners" })
             for (listener in listeners) {
-                if (!testFilter(listener.filter, itemValue.value)) continue
+                if (!testFilter(listener.filter, itemValue)) continue
 
-                if (listener.parameter == forwardFieldName) {
+                if (listener.parameter == forwardParameterIndex) {
                     helper(listener.stream)
                 } else {
                     ephemeralCounter ++
@@ -155,10 +155,10 @@ class StreamService : JobService() {
         }
     }
 
-    fun testFilter(filter: Map<String, Any?>, item: BinaryObject): Boolean {
+    fun testFilter(filter: Map<String, Any?>, item: Lazy<BinaryObject>): Boolean {
         for ((field, expectedValue) in filter.entries) {
             val path = field.split('.')
-            var finalItem: BinaryObject? = item
+            var finalItem: BinaryObject? = item.value
             for (segment in path.dropLast(1)) {
                 if (finalItem != null && finalItem.hasField(segment)) {
                     finalItem = finalItem.field<BinaryObject?>(segment)

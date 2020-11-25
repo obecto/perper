@@ -33,7 +33,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         private GrpcChannel _grpcChannel;
         private readonly ICacheClient<AffinityKey, Notification> _notificationsCache;
-        private readonly Dictionary<(string, string?), Channel<(AffinityKey, Notification)>> _channels = new Dictionary<(string, string?), Channel<(AffinityKey, Notification)>>();
+        private readonly Dictionary<(string, int?), Channel<(AffinityKey, Notification)>> _channels = new Dictionary<(string, int?), Channel<(AffinityKey, Notification)>>();
 
         private CancellationTokenSource _serviceCancellation = new CancellationTokenSource();
         private Task? _serviceTask;
@@ -93,7 +93,7 @@ namespace Perper.WebJobs.Extensions.Services
                 });
         }
 
-        private Channel<(AffinityKey, Notification)> GetChannel(string instance, string? parameter = null) {
+        private Channel<(AffinityKey, Notification)> GetChannel(string instance, int? parameter = null) {
             var key = (instance, parameter);
             if (_channels.TryGetValue(key, out var channel)) {
                 return channel;
@@ -111,9 +111,16 @@ namespace Perper.WebJobs.Extensions.Services
             while (await stream.MoveNext(cancellationToken))
             {
                 var key = GetAffinityKey(stream.Current);
-                _logger.LogDebug($"FabricService Received: {key}");
-                var notification = await _notificationsCache.GetAsync(key);
-                _logger.LogDebug($"FabricService Received: {notification}");
+                var notificationResult = await _notificationsCache.TryGetAsync(key);
+
+                if (!notificationResult.Success)
+                {
+                    _logger.LogDebug($"FabricService failed to read notification: {key}");
+                    continue;
+                }
+                var notification = notificationResult.Value;
+                _logger.LogTrace($"FabricService received: {key} {notification}");
+
                 switch (notification) {
                     case StreamItemNotification si:
                         await GetChannel(si.Stream, si.Parameter).Writer.WriteAsync((key, notification));
@@ -137,8 +144,9 @@ namespace Perper.WebJobs.Extensions.Services
         }
 
         public async IAsyncEnumerable<(AffinityKey, Notification)> GetNotifications(
-            string instance, string? parameter = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            string instance, int? parameter = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            _logger.LogDebug($"FabricService listen on: {instance} {parameter}");
             var reader = GetChannel(instance, parameter).Reader;
             while (true)
             {
@@ -148,7 +156,7 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        public async Task<(AffinityKey, Notification)> GetCallNotification(string call, CancellationToken cancellationToken = default)
+        public async Task<(AffinityKey, CallResultNotification)> GetCallNotification(string call, CancellationToken cancellationToken = default)
         {
             var client = new Fabric.FabricClient(_grpcChannel);
             var notification = await client.CallResultNotificationAsync(new CallNotificationFilter {
@@ -157,7 +165,7 @@ namespace Perper.WebJobs.Extensions.Services
             });
             var key = GetAffinityKey(notification);
             var fullNotification = await _notificationsCache.GetAsync(key);
-            return (key, fullNotification);
+            return (key, (CallResultNotification)fullNotification);
         }
     }
 }

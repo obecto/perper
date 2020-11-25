@@ -27,6 +27,7 @@ import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
 import org.apache.ignite.services.Service
 import org.apache.ignite.services.ServiceContext
+import java.util.concurrent.CancellationException
 import javax.cache.Cache.Entry
 import javax.cache.configuration.Factory
 import javax.cache.event.CacheEntryEventFilter
@@ -42,7 +43,9 @@ class TransportService(var port: Int) : Service {
         }
 
         fun getNotificationQueue(ignite: Ignite, streamName: String): IgniteQueue<AffinityKey<Long>> {
-            return ignite.queue<AffinityKey<Long>>("$streamName-\$notifications", 0, CollectionConfiguration())
+            return ignite.queue<AffinityKey<Long>>("$streamName-\$notifications", 0, CollectionConfiguration().also {
+                it.backups = 1 // Workaround IGNITE-7789
+            })
         }
     }
 
@@ -85,17 +88,27 @@ class TransportService(var port: Int) : Service {
         override fun notifications(request: NotificationFilter) = channelFlow<NotificationProto> {
             val notificationCache = getNotificationCache(ignite, request.agentDelegate)
             val notificationAffinity = ignite.affinity<AffinityKey<Long>>(request.agentDelegate)
-            val finishChannel = Channel<Exception>(Channel.CONFLATED)
+            val localNode = ignite.cluster().localNode()
+            val finishChannel = Channel<Throwable>(Channel.CONFLATED)
 
             val sentQueueNotificationsMap = HashMap<String, AffinityKey<Long>>()
 
             fun updateQueue(stream: String) {
                 val queue = getNotificationQueue(ignite, stream)
-                val queuedKey = queue.peek()
-                if ((notificationAffinity.mapKeyToNode(queuedKey)?.isLocal) ?: false) {
-                    if (sentQueueNotificationsMap.put(stream, queuedKey) != queuedKey) {
-                        runBlocking { send(queuedKey.toNotification()) }
+                val queuedKey: AffinityKey<Long>? = queue.peek()
+
+                if (queuedKey == null) {
+                    return
+                }
+
+                try {
+                    if (!notificationAffinity.isPrimary(localNode, queuedKey)) {
+                        return
                     }
+                } catch (e: Exception) { } // Necessitated by IGNITE-8978
+
+                if (sentQueueNotificationsMap.put(stream, queuedKey) != queuedKey) {
+                    runBlocking { send(queuedKey.toNotification()) }
                 }
             }
 
@@ -106,9 +119,9 @@ class TransportService(var port: Int) : Service {
                     if (confirmed) {
                         getNotificationQueue(ignite, notification.stream).remove(key)
                         if (notification.ephemeral) {
-                            val counter = ignite.atomicLong("${notification.cache}-${notification.index}", 0, true)
+                            val counter = ignite.atomicLong("${notification.cache}-${notification.key}", 0, true)
                             if (counter.decrementAndGet() == 0L) {
-                                ignite.cache<Long, BinaryObject>(notification.cache).withKeepBinary<Long, BinaryObject>().remove(notification.index)
+                                ignite.cache<Long, BinaryObject>(notification.cache).withKeepBinary<Long, BinaryObject>().remove(notification.key)
                                 counter.close()
                             }
                         }
@@ -154,14 +167,20 @@ class TransportService(var port: Int) : Service {
 
             log.debug({ "Notifications listener started for '${request.agentDelegate}'!" })
 
+            invokeOnClose({ runBlocking { finishChannel.send(it ?: CancellationException()) } })
+
             try {
                 for (entry in queryCursor) {
                     processNotification(entry.key, entry.value, false)
                 }
 
                 throw finishChannel.receive()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 log.error(e.toString())
+                e.printStackTrace()
+                throw e
             } finally {
                 remoteQueryCursor.close()
                 queryCursor.close()
