@@ -79,19 +79,24 @@ namespace Perper.WebJobs.Extensions.Triggers
             var input = new TriggeredFunctionData {TriggerValue = trigger};
             var result = await _executor.TryExecuteAsync(input, cancellationToken);
 
-            // TODO: Can we somehow detect that PerperTriggerValueBinder was already invoked for this?
-            var call = (string) trigger["Call"]!;
-            var callsCache = _ignite.GetCache<string, CallData>("calls");
-            var callData = await callsCache.GetAsync(call);
+            string? error = null;
 
             if (result.Exception != null && !(result.Exception is OperationCanceledException))
             {
-                _logger.LogDebug($"Exception during execution: {result.Exception}");
-                callData.Error = (result.Exception.InnerException ?? result.Exception).Message;
+                _logger.LogError($"Exception during execution: {result.Exception}");
+                error = (result.Exception.InnerException ?? result.Exception).Message;
             }
 
-            callData.Finished = true;
-            await callsCache.ReplaceAsync(call, callData);
+            if (trigger.ContainsKey("Call"))
+            {
+                // TODO: Can we somehow detect that PerperTriggerValueBinder was already invoked for this?
+                var call = (string) trigger["Call"]!;
+                var callsCache = _ignite.GetCache<string, CallData>("calls");
+                var callData = await callsCache.GetAsync(call);
+                callData.Finished = true;
+                callData.Error = error;
+                await callsCache.ReplaceAsync(call, callData);
+            }
         }
     }
 }

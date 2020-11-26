@@ -28,6 +28,7 @@ import org.apache.ignite.resources.LoggerResource
 import org.apache.ignite.services.Service
 import org.apache.ignite.services.ServiceContext
 import java.util.concurrent.CancellationException
+import java.util.concurrent.ConcurrentHashMap
 import javax.cache.Cache.Entry
 import javax.cache.configuration.Factory
 import javax.cache.event.CacheEntryEventFilter
@@ -91,7 +92,7 @@ class TransportService(var port: Int) : Service {
             val localNode = ignite.cluster().localNode()
             val finishChannel = Channel<Throwable>(Channel.CONFLATED)
 
-            val sentQueueNotificationsMap = HashMap<String, AffinityKey<Long>>()
+            val sentQueueNotificationsMap = ConcurrentHashMap<String, AffinityKey<Long>>()
 
             fun updateQueue(stream: String) {
                 val queue = getNotificationQueue(ignite, stream)
@@ -125,9 +126,8 @@ class TransportService(var port: Int) : Service {
                                 counter.close()
                             }
                         }
-                    } else {
-                        updateQueue(notification.stream)
                     }
+                    updateQueue(notification.stream)
                 } else if (!confirmed) {
                     runBlocking { send(key.toNotification()) }
                 }

@@ -17,7 +17,7 @@ import org.apache.ignite.services.ServiceContext
 import javax.cache.event.CacheEntryUpdatedListener
 
 class CallService(val startCall: Pair<String, String>?) : JobService() {
-    val returnFieldName = "\$return"
+    val systemAgentDelegate = "\$system"
 
     @set:LoggerResource
     lateinit var log: IgniteLogger
@@ -36,16 +36,16 @@ class CallService(val startCall: Pair<String, String>?) : JobService() {
     override suspend fun CoroutineScope.execute(ctx: ServiceContext) {
         if (startCall != null) launch {
             val (startAgentDelegate, startCallDelegate) = startCall
-            val agentName = startAgentDelegate + "-launchAgent"
-            val callName = startCallDelegate + "-launchCall"
+            val agentName = startAgentDelegate + "-\$launchAgent"
+            val callName = startCallDelegate + "-\$launchCall"
             callsCache.putIfAbsent(
                 callName,
                 CallData(
                     agent = agentName,
                     agentDelegate = startAgentDelegate,
                     delegate = startCallDelegate,
-                    callerAgentDelegate = startAgentDelegate,
-                    caller = "",
+                    callerAgentDelegate = systemAgentDelegate,
+                    caller = "\$launch",
                     finished = false,
                     localToData = false
                 )
@@ -56,6 +56,10 @@ class CallService(val startCall: Pair<String, String>?) : JobService() {
         val query = ContinuousQuery<String, CallData>()
         query.localListener = CacheEntryUpdatedListener { events ->
             for (event in events) {
+                if (event.isOldValueAvailable && event.oldValue.finished == event.value.finished)
+                {
+                    continue
+                }
                 runBlocking { streamGraphUpdates.send(Pair(event.key, event.value)) }
             }
         }
@@ -69,6 +73,8 @@ class CallService(val startCall: Pair<String, String>?) : JobService() {
 
     suspend fun updateCall(call: String, callData: CallData) {
         if (callData.finished) {
+            if (callData.callerAgentDelegate == systemAgentDelegate) return
+
             val notificationsCache = TransportService.getNotificationCache(ignite, callData.callerAgentDelegate)
             val key = AffinityKey(System.currentTimeMillis(), if (callData.localToData) call else callData.caller)
             notificationsCache.put(key, CallResultNotification(call, callData.caller))
