@@ -19,7 +19,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// agentCmd represents the agent command
+// AgentCmd represents the agent command
 var AgentCmd = &cobra.Command{
 	Use:   "agent",
 	Short: "Interact with perper agents",

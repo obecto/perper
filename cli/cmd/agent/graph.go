@@ -8,24 +8,11 @@ type graph struct {
 
 func (g *graph) add(key, value string) {
 	if key == value {
-		g.edges[key] = nil
+		g.edges[key] = append(g.edges[key])
 		g.capacity++
 	} else {
 		g.edges[key] = append(g.edges[key], value)
 		g.capacity += 2
-	}
-}
-
-func (g *graph) generateGraph(dirPath string) {
-	agents, root := readConfig(dirPath)
-	if len(agents) == 0 {
-		g.add(root, root)
-	}
-	for _, v := range agents {
-		g.add(v, root)
-	}
-	for _, v := range agents {
-		g.generateGraph("../" + v)
 	}
 }
 
@@ -55,8 +42,8 @@ func (g *graph) topoSortGraph() {
 		g.visit(index)
 		index = hasUnvisitedVertex(visited)
 	}
+	g.sequence = g.sequence[:visitedIndex]
 	g.reverseSequence()
-	// return sequence
 }
 
 func (g *graph) visit(index string) {
