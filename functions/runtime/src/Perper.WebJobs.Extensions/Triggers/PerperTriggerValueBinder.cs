@@ -57,11 +57,10 @@ namespace Perper.WebJobs.Extensions.Triggers
                     .MakeGenericMethod(cacheType);
 
                 await (Task) processMethod.Invoke(this, new object[] { stream, value, cancellationToken })!;
-
             }
         }
 
-        private async Task ProcessAsyncEnumerable<T>(string stream, IAsyncEnumerable<T> values, CancellationToken cancellationToken)
+        private async void ProcessAsyncEnumerable<T>(string stream, IAsyncEnumerable<T> values, CancellationToken cancellationToken)
         {
             // FIXME: Use PerperCollector?
             var cache = _ignite.GetCache<long, T>(stream);

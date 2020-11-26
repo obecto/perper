@@ -12,14 +12,12 @@ namespace DotNet.FunctionApp
 {
     public class Launcher
     {
-        private static DateTime _firstGenerated;
-        private static DateTime _lastGenerated;
-        private static DateTime _lastProcessed;
-
         private IContext _context;
-        public Launcher(IContext context)
+        private IState _state;
+        public Launcher(IContext context, IState state)
         {
             _context = context;
+            _state = state;
         }
 
         [FunctionName("DotNet")]
@@ -30,14 +28,19 @@ namespace DotNet.FunctionApp
             var result = await _context.CallFunctionAsync<int>("Called", (8, 3));
             Console.WriteLine("Result from function call is... {0}", result);
 
+            var sum1 = await _context.CallFunctionAsync<int>("StatefulSum", 4);
+            Console.WriteLine("First sum is: {0}", sum1);
+            var sum2 = await _context.CallFunctionAsync<int>("StatefulSum", 6);
+            Console.WriteLine("Second sum is: {0}", sum2);
+            var sum = await _state.GetValue("StatefulSum", () => -1);
+            Console.WriteLine("Total sum is: {0}", sum);
+
             var count = 250;
             var multiplier = 7;
             var expectedFinalValue = count * (count + 1) / 2 * multiplier;
 
             var generator = await _context.StreamFunctionAsync<int>("Generator", count);
-
             var processor = await _context.StreamFunctionAsync<int>("Processor", (generator, multiplier));
-
             await _context.StreamActionAsync("Consumer", (processor, expectedFinalValue));
         }
 
@@ -54,16 +57,24 @@ namespace DotNet.FunctionApp
             return parameters.a / parameters.b;
         }
 
+        [FunctionName("StatefulSum")]
+        [return: Perper()] // HACK!
+        public async Task<int> StatefulSum([PerperTrigger] int n, CancellationToken cancellationToken)
+        {
+            var statefulSum = await _state.Entry("StatefulSum", () => 0);
+            statefulSum.Value += n;
+            await statefulSum.Store(); // Would be nice if all entries are automatically stored at function end..
+            return statefulSum.Value;
+        }
+
         [FunctionName("Generator")]
         [return: Perper()] // HACK!
         public async IAsyncEnumerable<int> Generator([PerperTrigger] int to, ILogger logger)
         {
-            _firstGenerated = DateTime.Now;
             for (var i = 0; i <= to; i ++)
             {
                 logger.LogDebug("Generating: {0}", i);
                 yield return i;
-                _lastGenerated = DateTime.Now;
             }
             await Task.Delay(1000000);
         }
@@ -76,31 +87,34 @@ namespace DotNet.FunctionApp
             {
                 logger.LogDebug($"Processing: {i}");
                 yield return i * paramters.x;
-                _lastProcessed = DateTime.Now;
             }
+        }
+    }
+
+    public class Consumer
+    {
+        private IStateEntry<int> _total;
+        public Consumer(IContext context, IStateEntry<int> total)
+        {
+            _total = total;
         }
 
         [FunctionName("Consumer")]
         [return: Perper()] // HACK!
-        public async Task Consumer([PerperTrigger] (IAsyncEnumerable<int> processor, int expectedFinal) parameters, ILogger logger)
+        public async Task RunAsync([PerperTrigger] (IAsyncEnumerable<int> processor, int expectedFinal) parameters, ILogger logger)
         {
-            var result = 0;
             var lastI = -1;
             await foreach (var i in parameters.processor)
             {
                 if (i <= lastI) throw new Exception("Incorrect order of received items!");
                 lastI = i;
 
-                result += i;
-                logger.LogDebug($"Rolling sum is: {result}");
+                _total.Value += i;
+                logger.LogDebug($"Rolling sum is: {_total.Value}");
 
-                if (result == parameters.expectedFinal)
+                if (_total.Value == parameters.expectedFinal)
                 {
-                    var _lastConsumed = DateTime.Now;
-                    Console.WriteLine("Generate step: {0}", _lastGenerated - _firstGenerated);
-                    Console.WriteLine("Process step: {0}", _lastProcessed - _lastGenerated);
-                    Console.WriteLine("Consume step: {0}", _lastConsumed - _lastProcessed);
-                    Console.WriteLine("Total pipeline: {0}", _lastConsumed - _firstGenerated);
+                    Console.WriteLine("Consumer finished successfully");
                 }
             }
         }

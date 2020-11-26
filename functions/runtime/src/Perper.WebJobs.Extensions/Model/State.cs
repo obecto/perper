@@ -9,23 +9,24 @@ namespace Perper.WebJobs.Extensions.Model
 {
     public class State : IState
     {
-        public string CacheName { get; }
+        private Context context { get => ((Context) _context); }
 
-        [PerperInject] private IIgniteClient _ignite;
-        [PerperInject] private IServiceProvider _services;
+        [PerperInject] protected IContext _context;
+        [PerperInject] protected IIgniteClient _ignite;
+        [PerperInject] protected IServiceProvider _services;
 
-        [NonSerialized] private List<StateEntry> _entries = new List<StateEntry>();
+        [NonSerialized] public List<StateEntry> Entries = new List<StateEntry>();
 
         public State(IContext context, IIgniteClient ignite, IServiceProvider services)
         {
-            CacheName = ((Context) context).InstanceName;
-            _services = services;
+            _context = context;
             _ignite = ignite;
+            _services = services;
         }
 
         public async Task<T> GetValue<T>(string key, Func<T> defaultValueFactory)
         {
-            var cache = _ignite.GetOrCreateCache<string, T>(CacheName);
+            var cache = _ignite.GetOrCreateCache<string, T>(context.AgentName);
             var result = await cache.TryGetWithServicesAsync(key, _services);
             if (!result.Success)
             {
@@ -38,7 +39,7 @@ namespace Perper.WebJobs.Extensions.Model
 
         public Task SetValue<T>(string key, T value)
         {
-            var cache = _ignite.GetOrCreateCache<string, T>(CacheName);
+            var cache = _ignite.GetOrCreateCache<string, T>(context.AgentName);
             return cache.PutAsync(key, value);
         }
 
@@ -51,19 +52,17 @@ namespace Perper.WebJobs.Extensions.Model
 
         public StateEntry<T> UnloadedEntry<T>(string key, Func<T> defaultValueFactory)
         {
-            var entry = new StateEntry<T>(this, key, defaultValueFactory);
-            _entries.Add(entry);
-            return entry;
+            return new StateEntry<T>(this, key, defaultValueFactory);
         }
 
         public Task LoadStateEntries()
         {
-            return Task.WhenAll(_entries.Select(x => x.Load()));
+            return Task.WhenAll(Entries.Select(x => x.Load()));
         }
 
         public Task StoreStateEntries()
         {
-            return Task.WhenAll(_entries.Select(x => x.Store()));
+            return Task.WhenAll(Entries.Select(x => x.Store()));
         }
     }
 }

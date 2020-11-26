@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Cache;
 using Perper.WebJobs.Extensions.Cache.Notifications;
+using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Triggers
@@ -66,8 +67,16 @@ namespace Perper.WebJobs.Extensions.Triggers
             await foreach (var (key, notification) in _fabric.GetNotifications(_delegate).WithCancellation(cancellationToken))
             {
                 taskCollection.Add(async () => {
-                    await ExecuteAsync(notification, cancellationToken);
-                    await _fabric.ConsumeNotification(key);
+                    if (notification is StreamTriggerNotification)
+                    {
+                        await _fabric.ConsumeNotification(key); // Consume first, since execution might never end in this case
+                        await ExecuteAsync(notification, cancellationToken);
+                    }
+                    else
+                    {
+                        await ExecuteAsync(notification, cancellationToken);
+                        await _fabric.ConsumeNotification(key);
+                    }
                 });
             }
             await taskCollection.GetTask();
