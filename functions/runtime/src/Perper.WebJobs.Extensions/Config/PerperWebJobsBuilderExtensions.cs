@@ -4,9 +4,11 @@ using System.Linq;
 using System.Net;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Extensions.DependencyInjection;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
+using Perper.WebJobs.Extensions.Bindings;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
@@ -21,12 +23,23 @@ namespace Perper.WebJobs.Extensions.Config
             builder.Services.AddScoped(typeof(IState), typeof(State));
             builder.Services.AddScoped(typeof(IStateEntry<>), typeof(StateEntry<>));
             builder.Services.AddScoped(typeof(StreamParameterIndexHelper), typeof(StreamParameterIndexHelper));
-            builder.Services.AddSingleton(services => {
+
+            builder.Services.AddSingleton<IBindingProvider>(services => new ServiceBindingProvider(new HashSet<Type>
+            {
+                typeof(IContext),
+                typeof(IState),
+                typeof(IStateEntry<>)
+            }, services));
+
+            builder.Services.AddSingleton(services =>
+            {
                 var fabric = ActivatorUtilities.CreateInstance<FabricService>(services);
                 fabric.StartAsync(default).Wait();
                 return fabric;
             });
-            builder.Services.AddSingleton(services => {
+
+            builder.Services.AddSingleton(services =>
+            {
                 var igniteHost = IPAddress.Loopback.ToString();
 
                 /*var types = from assembly in AppDomain.CurrentDomain.GetAssemblies()
@@ -61,10 +74,13 @@ namespace Perper.WebJobs.Extensions.Config
                 });
                 return ignite;
             });
+
             builder.Services.Configure<ServiceProviderOptions>(options => {
                 options.ValidateScopes = true;
             });
+
             builder.AddExtension<PerperExtensionConfigProvider>();
+
             return builder;
         }
     }
