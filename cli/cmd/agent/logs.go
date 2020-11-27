@@ -27,7 +27,7 @@ import (
 
 // logCmd represents the log command
 var logCmd = &cobra.Command{
-	Use:   "log",
+	Use:   "logs",
 	Short: "Gets logs of an agent",
 
 	Run: func(cmd *cobra.Command, args []string) {
