@@ -60,7 +60,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             }
         }
 
-        private async void ProcessAsyncEnumerable<T>(string stream, IAsyncEnumerable<T> values, CancellationToken cancellationToken)
+        private async Task ProcessAsyncEnumerable<T>(string stream, IAsyncEnumerable<T> values, CancellationToken cancellationToken)
         {
             // FIXME: Use PerperCollector?
             var cache = _ignite.GetCache<long, T>(stream);

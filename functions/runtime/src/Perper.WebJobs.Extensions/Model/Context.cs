@@ -14,18 +14,19 @@ namespace Perper.WebJobs.Extensions.Model
     {
         private readonly FabricService _fabric;
         private readonly IIgniteClient _ignite;
-        private IServiceProvider _services;
+        private readonly StreamParameterIndexHelper _streamHelper;
+        private readonly IServiceProvider _services;
 
         public string AgentName { get; private set; } = default!;
         public string InstanceName { get; private set; } = default!;
-        public int NextLocalStreamParameterIndex = -1;
 
         public IAgent Agent { get; private set; } = default!;
 
-        public Context(FabricService fabric, IIgniteClient ignite, IServiceProvider services)
+        public Context(FabricService fabric, StreamParameterIndexHelper helper, IIgniteClient ignite, IServiceProvider services)
         {
             _fabric = fabric;
             _ignite = ignite;
+            _streamHelper = helper;
             _services = services;
         }
 
@@ -68,7 +69,7 @@ namespace Perper.WebJobs.Extensions.Model
         {
             var streamName = GenerateName(functionName);
             await CreateStreamAsync(streamName, StreamDelegateType.Function, functionName, parameters, typeof(TItem), flags);
-            return new Stream<TItem>(streamName, _fabric, _ignite, this, _services);
+            return new Stream<TItem>(streamName, _streamHelper, _fabric, _ignite, this, _services);
         }
 
         public async Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamFlags flags = StreamFlags.Default)
@@ -81,7 +82,7 @@ namespace Perper.WebJobs.Extensions.Model
         public IStream<TItem> DeclareStreamFunction<TItem>(string functionName)
         {
             var streamName = GenerateName(functionName);
-             return new Stream<TItem>(streamName, _fabric, _ignite, this, _services) { FunctionName = functionName };
+             return new Stream<TItem>(streamName, _streamHelper, _fabric, _ignite, this, _services) { FunctionName = functionName };
         }
 
         public async Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default, StreamFlags flags = StreamFlags.Default)
@@ -99,13 +100,14 @@ namespace Perper.WebJobs.Extensions.Model
         {
             var streamName = GenerateName();
             await CreateStreamAsync(streamName, StreamDelegateType.External, "", null, typeof(TItem), flags);
-            return (new Stream<TItem>(streamName, _fabric, _ignite, this, _services), streamName);
+            return (new Stream<TItem>(streamName, _streamHelper, _fabric, _ignite, this, _services), streamName);
         }
 
         private async Task CreateStreamAsync(string streamName, StreamDelegateType delegateType, string delegateName, object? parameters, Type? type, StreamFlags flags)
         {
             var streamsCache = _ignite.GetCache<string, StreamData>("streams");
             await streamsCache.PutAsync(streamName, new StreamData {
+                Agent = AgentName,
                 AgentDelegate = _fabric.AgentDelegate,
                 Delegate = delegateName,
                 DelegateType = delegateType,

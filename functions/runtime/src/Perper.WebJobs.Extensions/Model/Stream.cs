@@ -13,6 +13,25 @@ using Perper.WebJobs.Extensions.Cache.Notifications;
 
 namespace Perper.WebJobs.Extensions.Model
 {
+    public class StreamParameterIndexHelper
+    {
+        private int _nextStreamParameterIndex = 0;
+        private int _nextAnonymousStreamParameterIndex = 0;
+        public bool Anonymous = false;
+
+        public int GetStreamParameterIndex()
+        {
+            if (Anonymous)
+            {
+                return Interlocked.Decrement(ref _nextAnonymousStreamParameterIndex);
+            }
+            else
+            {
+                return Interlocked.Increment(ref _nextStreamParameterIndex);
+            }
+        }
+    }
+
     public class Stream : IStream
     {
         public string StreamName { get; protected set; }
@@ -30,20 +49,26 @@ namespace Perper.WebJobs.Extensions.Model
     public class Stream<T> : Stream, IStream<T>
     {
         [NonSerialized] public string? FunctionName; // HACK: Used for Declare/InitiaizeStream
-        [NonSerialized] public int? ParameterIndex;
+        [NonSerialized] private int _parameterIndex;
+        [PerperInject] protected StreamParameterIndexHelper _helper { set { // Setter used so that it gets triggered on deserialization
+           if (value != null) _parameterIndex = value.GetStreamParameterIndex();
+        } }
         [PerperInject] protected readonly IContext _context;
         [PerperInject] protected readonly IServiceProvider _services;
 
-        public Stream(string streamName, FabricService fabric, IIgniteClient ignite, IContext context, IServiceProvider services)
+
+        public Stream(string streamName, StreamParameterIndexHelper helper, FabricService fabric, IIgniteClient ignite, IContext context, IServiceProvider services)
             : base(streamName, fabric, ignite)
         {
+            _helper = helper;
             _context = context;
             _services = services;
         }
 
         private StreamAsyncEnumerable<T> GetEnumerable(Dictionary<string, object> filter, bool localToData)
         {
-            return new StreamAsyncEnumerable<T>(StreamName, ParameterIndex, filter, localToData, _context, _fabric, _ignite, _services);
+            var state = (IState) _services.GetService(typeof(IState));
+            return new StreamAsyncEnumerable<T>(StreamName, _parameterIndex, filter, localToData, state, _context, _fabric, _ignite, _services);
         }
 
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
@@ -83,19 +108,24 @@ namespace Perper.WebJobs.Extensions.Model
         public Dictionary<string, object> Filter { get; protected set; }
         public bool LocalToData { get; protected set; }
 
-        [NonSerialized] private readonly int? _parameterIndex;
+        [NonSerialized] private int _parameterIndex;
+        [PerperInject] protected StreamParameterIndexHelper _helper { set { // Setter used so that it gets triggered on deserialization
+            if (value != null) _parameterIndex = value.GetStreamParameterIndex();
+        } }
+
         [PerperInject] protected readonly IContext _context;
-//         [PerperInject] protected readonly State _state;
+        [PerperInject] protected readonly IState _state;
         [PerperInject] protected readonly FabricService _fabric;
         [PerperInject] protected readonly IIgniteClient _ignite;
         [PerperInject] protected readonly IServiceProvider _services;
+
         private Context context { get => (Context)_context; }
 
-        public StreamAsyncEnumerable(string streamName, int? parameterIndex, Dictionary<string, object> filter, bool localToData, IContext context, FabricService fabric, IIgniteClient ignite, IServiceProvider services) {
+        public StreamAsyncEnumerable(string streamName, int parameterIndex, Dictionary<string, object> filter, bool localToData, IState state, IContext context, FabricService fabric, IIgniteClient ignite, IServiceProvider services) {
             StreamName = streamName;
-            _parameterIndex = parameterIndex;
             Filter = filter;
             LocalToData = localToData;
+            _state = state;
             _context = context;
             _fabric = fabric;
             _ignite = ignite;
@@ -109,29 +139,28 @@ namespace Perper.WebJobs.Extensions.Model
 
         private async IAsyncEnumerable<T> Impl([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var parameterIndex = _parameterIndex ?? Interlocked.Decrement(ref context.NextLocalStreamParameterIndex);
             try
             {
-                await AddListenerAsync(parameterIndex);
+                await AddListenerAsync();
 
-                await foreach (var (key, notification) in _fabric.GetNotifications(context.InstanceName, parameterIndex, cancellationToken))
+                await foreach (var (key, notification) in _fabric.GetNotifications(context.InstanceName, _parameterIndex, cancellationToken))
                 {
                     if (notification is StreamItemNotification si)
                     {
                         var cache = _ignite.GetCache<long, T>(si.Cache);
                         var value = await cache.GetWithServicesAsync(si.Key, _services);
-//                         await _state.LoadStateEntries();
+                        await ((State)_state).LoadStateEntries();
                         yield return value;
-//                         await _state.StoreStateEntries();
+                        await ((State)_state).StoreStateEntries();
                         await _fabric.ConsumeNotification(key);
                     }
                 }
             }
             finally
             {
-                if (_parameterIndex == null)
+                if (_parameterIndex < 0)
                 {
-                    await RemoveListenerAsync(parameterIndex);
+                    await RemoveListenerAsync();
                 }
             }
         }
@@ -151,12 +180,12 @@ namespace Perper.WebJobs.Extensions.Model
             }
         }
 
-        private Task AddListenerAsync(int parameterIndex)
+        private Task AddListenerAsync()
         {
             var streamListener = new StreamListener {
                 AgentDelegate = _fabric.AgentDelegate,
                 Stream = context.InstanceName,
-                Parameter = parameterIndex,
+                Parameter = _parameterIndex,
                 Filter = Filter,
                 LocalToData = LocalToData,
             };
@@ -165,11 +194,11 @@ namespace Perper.WebJobs.Extensions.Model
             });
         }
 
-        private Task RemoveListenerAsync(int parameterIndex)
+        private Task RemoveListenerAsync()
         {
             // If listener is anonymous (_parameter is null) then remove the listener
             return ModifyStreamDataAsync(streamData => {
-                var index = streamData.Listeners.FindIndex(x => x.Parameter == parameterIndex);
+                var index = streamData.Listeners.FindIndex(x => x.Parameter == _parameterIndex);
                 if (index >= 0) streamData.Listeners.RemoveAt(index);
             });
         }

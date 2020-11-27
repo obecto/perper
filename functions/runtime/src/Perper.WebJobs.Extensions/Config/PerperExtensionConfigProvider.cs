@@ -52,6 +52,9 @@ namespace Perper.WebJobs.Extensions.Config
                     parameters = streamData.Parameters!;
                 }
 
+                var streamHelper = (StreamParameterIndexHelper) services.GetService(typeof(StreamParameterIndexHelper));
+                streamHelper.Anonymous = true;
+
                 if (typeof(T).IsAssignableFrom(typeof(object[])))
                 {
                     return (T) (object?) parameters!;

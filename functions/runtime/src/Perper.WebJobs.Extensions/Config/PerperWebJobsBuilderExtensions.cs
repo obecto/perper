@@ -20,6 +20,7 @@ namespace Perper.WebJobs.Extensions.Config
             builder.Services.AddScoped(typeof(IContext), typeof(Context));
             builder.Services.AddScoped(typeof(IState), typeof(State));
             builder.Services.AddScoped(typeof(IStateEntry<>), typeof(StateEntry<>));
+            builder.Services.AddScoped(typeof(StreamParameterIndexHelper), typeof(StreamParameterIndexHelper));
             builder.Services.AddSingleton(services => {
                 var fabric = ActivatorUtilities.CreateInstance<FabricService>(services);
                 fabric.StartAsync(default).Wait();
@@ -59,6 +60,9 @@ namespace Perper.WebJobs.Extensions.Config
                     }
                 });
                 return ignite;
+            });
+            builder.Services.Configure<ServiceProviderOptions>(options => {
+                options.ValidateScopes = true;
             });
             builder.AddExtension<PerperExtensionConfigProvider>();
             return builder;

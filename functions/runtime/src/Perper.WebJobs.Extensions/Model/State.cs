@@ -52,7 +52,7 @@ namespace Perper.WebJobs.Extensions.Model
 
         public StateEntry<T> UnloadedEntry<T>(string key, Func<T> defaultValueFactory)
         {
-            return new StateEntry<T>(this, key, defaultValueFactory);
+            return new StateEntry<T>(this, _context) { Name = key, DefaultValueFactory = defaultValueFactory };
         }
 
         public Task LoadStateEntries()
