@@ -36,18 +36,18 @@ namespace Perper.WebJobs.Extensions.Model
             {
                 InstanceName = (string) triggerValue["Call"]!;
                 var callsCache = _ignite.GetCache<string, CallData>("calls");
-                var callData = await callsCache.GetWithServicesAsync(InstanceName, _services);
+                var callData = await callsCache.GetAsync(InstanceName);
                 AgentName = callData.Agent!;
             }
             else
             {
                 InstanceName = (string) triggerValue["Stream"]!;
                 var streamsCache = _ignite.GetCache<string, StreamData>("streams");
-                var streamData = await streamsCache.GetWithServicesAsync(InstanceName, _services);
+                var streamData = await streamsCache.GetAsync(InstanceName);
                 AgentName = streamData.Agent!;
             }
 
-            Agent = new Agent(AgentName, _fabric.AgentDelegate, this, _ignite, _services);
+            Agent = new Agent(AgentName, _fabric.AgentDelegate, this, _ignite);
         }
 
         public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string delegateName, object? parameters = default)
@@ -55,7 +55,7 @@ namespace Perper.WebJobs.Extensions.Model
             var agentsCache = _ignite.GetCache<string, AgentData>("agents");
             var agentName = GenerateName(delegateName);
 
-            var agent = new Agent(agentName, delegateName, this, _ignite, _services);
+            var agent = new Agent(agentName, delegateName, this, _ignite);
             await agentsCache.PutAsync(agentName, new AgentData {
                 Delegate = delegateName,
             });
@@ -69,7 +69,7 @@ namespace Perper.WebJobs.Extensions.Model
         {
             var streamName = GenerateName(functionName);
             await CreateStreamAsync(streamName, StreamDelegateType.Function, functionName, parameters, typeof(TItem), flags);
-            return new Stream<TItem>(streamName, _streamHelper, _fabric, _ignite, this, _services);
+            return new Stream<TItem>(streamName, _streamHelper, _fabric, _ignite, this, (IState)_services.GetService(typeof(IState)));
         }
 
         public async Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamFlags flags = StreamFlags.Default)
@@ -82,7 +82,7 @@ namespace Perper.WebJobs.Extensions.Model
         public IStream<TItem> DeclareStreamFunction<TItem>(string functionName)
         {
             var streamName = GenerateName(functionName);
-             return new Stream<TItem>(streamName, _streamHelper, _fabric, _ignite, this, _services) { FunctionName = functionName };
+             return new Stream<TItem>(streamName, _streamHelper, _fabric, _ignite, this, (IState)_services.GetService(typeof(IState))) { FunctionName = functionName };
         }
 
         public async Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default, StreamFlags flags = StreamFlags.Default)
@@ -100,7 +100,7 @@ namespace Perper.WebJobs.Extensions.Model
         {
             var streamName = GenerateName();
             await CreateStreamAsync(streamName, StreamDelegateType.External, "", null, typeof(TItem), flags);
-            return (new Stream<TItem>(streamName, _streamHelper, _fabric, _ignite, this, _services), streamName);
+            return (new Stream<TItem>(streamName, _streamHelper, _fabric, _ignite, this, (IState)_services.GetService(typeof(IState))), streamName);
         }
 
         private async Task CreateStreamAsync(string streamName, StreamDelegateType delegateType, string delegateName, object? parameters, Type? type, StreamFlags flags)
@@ -139,7 +139,7 @@ namespace Perper.WebJobs.Extensions.Model
             var (key, notification) = await _fabric.GetCallNotification(callName);
             await _fabric.ConsumeNotification(key);
 
-            var callResult = await callsCache.GetAndRemoveWithServicesAsync(notification.Call, _services);
+            var callResult = await callsCache.GetAndRemoveAsync(notification.Call);
             var call = callResult.Value;
 
             if (call.Error != null)

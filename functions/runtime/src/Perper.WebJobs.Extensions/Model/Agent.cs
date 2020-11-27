@@ -13,15 +13,13 @@ namespace Perper.WebJobs.Extensions.Model
 
         [PerperInject] private IContext _context;
         [PerperInject] private IIgniteClient _ignite;
-        [PerperInject] private IServiceProvider _services;
 
-        public Agent(string agentName, string agentDelegate, IContext context, IIgniteClient ignite, IServiceProvider services)
+        public Agent(string agentName, string agentDelegate, IContext context, IIgniteClient ignite)
         {
             AgentName = agentName;
             AgentDelegate = agentDelegate;
             _context = context;
             _ignite = ignite;
-            _services = services;
         }
 
         public async Task<TResult> CallFunctionAsync<TResult>(string functionName, object? parameters = default)

@@ -24,35 +24,31 @@ namespace Perper.WebJobs.Extensions.Config
         public class ParameterJObjectConverter<T> : IAsyncConverter<JObject, T>
         {
             private readonly IIgniteClient _ignite;
+            private readonly IServiceProvider _services;
 
-            public ParameterJObjectConverter(IIgniteClient ignite)
+            public ParameterJObjectConverter(IIgniteClient ignite, IServiceProvider services)
             {
                 _ignite = ignite;
+                _services = services;
             }
 
             public async Task<T> ConvertAsync(JObject source, CancellationToken cancellationToken)
             {
-                // HACK: We cannot pass the function instance services here through the constructor,
-                // since AddOpenConverter does not perform dependency injection, and we lack the
-                // real IServiceProvider instance when calling AddOpenConverter.
-                // So we pass the IServiceProvider via annotations on the JObject, see also PerperTriggerBinding
-                var services = source.Annotation<IServiceProvider>()!;
-
                 object?[]? parameters;
                 if (source.ContainsKey("Call"))
                 {
                     var callsCache = _ignite.GetCache<string, CallData>("calls");
-                    var callData = await callsCache.GetWithServicesAsync((string)source["Call"]!, services);
+                    var callData = await callsCache.GetAsync((string)source["Call"]!);
                     parameters = callData.Parameters!;
                 }
                 else
                 {
                     var streamsCache = _ignite.GetCache<string, StreamData>("streams");
-                    var streamData = await streamsCache.GetWithServicesAsync((string)source["Stream"]!, services);
+                    var streamData = await streamsCache.GetAsync((string)source["Stream"]!);
                     parameters = streamData.Parameters!;
                 }
 
-                var streamHelper = (StreamParameterIndexHelper) services.GetService(typeof(StreamParameterIndexHelper));
+                var streamHelper = (StreamParameterIndexHelper) _services.GetService(typeof(StreamParameterIndexHelper));
                 streamHelper.Anonymous = true;
 
                 if (typeof(T).IsAssignableFrom(typeof(object[])))
@@ -78,12 +74,14 @@ namespace Perper.WebJobs.Extensions.Config
 
         private readonly FabricService _fabric;
         private readonly IIgniteClient _ignite;
+        private readonly IServiceProvider _services;
         private readonly ILogger _logger;
 
-        public PerperExtensionConfigProvider(FabricService fabric, IIgniteClient ignite, ILogger<PerperExtensionConfigProvider> logger)
+        public PerperExtensionConfigProvider(FabricService fabric, IIgniteClient ignite, IServiceProvider services, ILogger<PerperExtensionConfigProvider> logger)
         {
             _fabric = fabric;
             _ignite = ignite;
+            _services = services;
             _logger = logger;
         }
 
@@ -102,7 +100,7 @@ namespace Perper.WebJobs.Extensions.Config
                 return Task.FromResult<DirectInvokeString>(new DirectInvokeString(src.ToString(Formatting.None)));
             });
 
-            context.AddOpenConverter<JObject, OpenType>(typeof(ParameterJObjectConverter<>), _ignite);
+            context.AddOpenConverter<JObject, OpenType>(typeof(ParameterJObjectConverter<>), _ignite, _services);
         }
     }
 }

@@ -13,21 +13,19 @@ namespace Perper.WebJobs.Extensions.Model
 
         [PerperInject] protected IContext _context;
         [PerperInject] protected IIgniteClient _ignite;
-        [PerperInject] protected IServiceProvider _services;
 
         [NonSerialized] public List<StateEntry> Entries = new List<StateEntry>();
 
-        public State(IContext context, IIgniteClient ignite, IServiceProvider services)
+        public State(IContext context, IIgniteClient ignite)
         {
             _context = context;
             _ignite = ignite;
-            _services = services;
         }
 
         public async Task<T> GetValue<T>(string key, Func<T> defaultValueFactory)
         {
             var cache = _ignite.GetOrCreateCache<string, T>(context.AgentName);
-            var result = await cache.TryGetWithServicesAsync(key, _services);
+            var result = await cache.TryGetAsync(key);
             if (!result.Success)
             {
                 var defaultValue = defaultValueFactory();

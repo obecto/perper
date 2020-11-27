@@ -54,21 +54,20 @@ namespace Perper.WebJobs.Extensions.Model
            if (value != null) _parameterIndex = value.GetStreamParameterIndex();
         } }
         [PerperInject] protected readonly IContext _context;
-        [PerperInject] protected readonly IServiceProvider _services;
+        [PerperInject] protected readonly IState _state;
 
 
-        public Stream(string streamName, StreamParameterIndexHelper helper, FabricService fabric, IIgniteClient ignite, IContext context, IServiceProvider services)
+        public Stream(string streamName, StreamParameterIndexHelper helper, FabricService fabric, IIgniteClient ignite, IContext context, IState state)
             : base(streamName, fabric, ignite)
         {
             _helper = helper;
             _context = context;
-            _services = services;
+            _state = state;
         }
 
         private StreamAsyncEnumerable<T> GetEnumerable(Dictionary<string, object> filter, bool localToData)
         {
-            var state = (IState) _services.GetService(typeof(IState));
-            return new StreamAsyncEnumerable<T>(StreamName, _parameterIndex, filter, localToData, state, _context, _fabric, _ignite, _services);
+            return new StreamAsyncEnumerable<T>(StreamName, _parameterIndex, filter, localToData, _state, _context, _fabric, _ignite);
         }
 
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
@@ -117,11 +116,10 @@ namespace Perper.WebJobs.Extensions.Model
         [PerperInject] protected readonly IState _state;
         [PerperInject] protected readonly FabricService _fabric;
         [PerperInject] protected readonly IIgniteClient _ignite;
-        [PerperInject] protected readonly IServiceProvider _services;
 
         private Context context { get => (Context)_context; }
 
-        public StreamAsyncEnumerable(string streamName, int parameterIndex, Dictionary<string, object> filter, bool localToData, IState state, IContext context, FabricService fabric, IIgniteClient ignite, IServiceProvider services) {
+        public StreamAsyncEnumerable(string streamName, int parameterIndex, Dictionary<string, object> filter, bool localToData, IState state, IContext context, FabricService fabric, IIgniteClient ignite) {
             StreamName = streamName;
             Filter = filter;
             LocalToData = localToData;
@@ -129,7 +127,6 @@ namespace Perper.WebJobs.Extensions.Model
             _context = context;
             _fabric = fabric;
             _ignite = ignite;
-            _services = services;
         }
 
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken())
@@ -148,7 +145,7 @@ namespace Perper.WebJobs.Extensions.Model
                     if (notification is StreamItemNotification si)
                     {
                         var cache = _ignite.GetCache<long, T>(si.Cache);
-                        var value = await cache.GetWithServicesAsync(si.Key, _services);
+                        var value = await cache.GetAsync(si.Key);
                         await ((State)_state).LoadStateEntries();
                         yield return value;
                         await ((State)_state).StoreStateEntries();

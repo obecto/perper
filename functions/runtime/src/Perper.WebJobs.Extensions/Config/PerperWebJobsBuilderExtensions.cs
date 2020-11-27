@@ -45,7 +45,7 @@ namespace Perper.WebJobs.Extensions.Config
                     typeof(Perper.WebJobs.Extensions.Cache.StreamDelegateType),
                     typeof(Perper.WebJobs.Extensions.Cache.StreamListener),
                 };
-                var serializer = new PerperBinarySerializer();
+                var serializer = ActivatorUtilities.CreateInstance<PerperBinarySerializer>(services);
 
                 var ignite = Ignition.StartClient(new IgniteClientConfiguration
                 {

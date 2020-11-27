@@ -11,7 +11,12 @@ namespace Perper.WebJobs.Extensions.Services
 {
     public class PerperBinarySerializer : IBinarySerializer
     {
-        [ThreadStatic] static public IServiceProvider? Services;
+        private readonly IServiceProvider _services;
+
+        public PerperBinarySerializer(IServiceProvider services)
+        {
+            _services = services;
+        }
 
         #region GetProperties
         private interface IPropertyInfo
@@ -50,10 +55,12 @@ namespace Perper.WebJobs.Extensions.Services
         private class ServicePropertyInfoDecorator : IPropertyInfo
         {
             public IPropertyInfo WrappedProperty { get; }
+            public IServiceProvider ServiceProvider { get; }
             public Type ServiceType { get; }
-            public ServicePropertyInfoDecorator(IPropertyInfo wrappedProperty, Type serviceType)
+            public ServicePropertyInfoDecorator(IPropertyInfo wrappedProperty, IServiceProvider serviceProvider, Type serviceType)
             {
                 WrappedProperty = wrappedProperty;
+                ServiceProvider = serviceProvider;
                 ServiceType = serviceType;
             }
 
@@ -61,7 +68,7 @@ namespace Perper.WebJobs.Extensions.Services
             public object? Get(object obj) => null;
             public void Set(object obj, object? value)
             {
-                WrappedProperty.Set(obj, PerperBinarySerializer.Services?.GetService(ServiceType));
+                WrappedProperty.Set(obj, ServiceProvider.GetService(ServiceType));
             }
         }
 
@@ -89,7 +96,7 @@ namespace Perper.WebJobs.Extensions.Services
 
                 if (field.GetCustomAttributes<PerperInjectAttribute>().Any())
                 {
-                    result[field.Name] = new ServicePropertyInfoDecorator(result[field.Name], field.FieldType);
+                    result[field.Name] = new ServicePropertyInfoDecorator(result[field.Name], _services, field.FieldType);
                 }
             }
 
@@ -107,7 +114,7 @@ namespace Perper.WebJobs.Extensions.Services
 
                 if (property.GetCustomAttributes<PerperInjectAttribute>().Any())
                 {
-                    result[property.Name] = new ServicePropertyInfoDecorator(result[property.Name], property.PropertyType);
+                    result[property.Name] = new ServicePropertyInfoDecorator(result[property.Name], _services, property.PropertyType);
                 }
             }
 
