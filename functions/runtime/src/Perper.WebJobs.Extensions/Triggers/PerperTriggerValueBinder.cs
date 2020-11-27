@@ -8,6 +8,8 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Cache;
+using Perper.WebJobs.Extensions.Model;
+using ITuple = System.Runtime.CompilerServices.ITuple;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
@@ -26,9 +28,9 @@ namespace Perper.WebJobs.Extensions.Triggers
             _logger = logger;
         }
 
-        public Task<object> GetValueAsync()
+        public Task<object?> GetValueAsync()
         {
-            throw new NotSupportedException();
+            return Task.FromResult<object?>(null);
         }
 
         public async Task SetValueAsync(object value, CancellationToken cancellationToken)
@@ -49,7 +51,7 @@ namespace Perper.WebJobs.Extensions.Triggers
                 var asyncEnumerableInterface = GetGenericInterface(value.GetType(), typeof(IAsyncEnumerable<>));
                 if (asyncEnumerableInterface == null)
                 {
-                    throw new NotSupportedException("Expected IAsyncEnumerable<*> return from stream function.");
+                    throw new NotSupportedException($"Expected IAsyncEnumerable<*> return from stream function, got: {value.GetType()}.");
                 }
 
                 var cacheType = asyncEnumerableInterface.GetGenericArguments()[0];

@@ -144,7 +144,7 @@ namespace Perper.WebJobs.Extensions.Model
 
             if (call.Error != null)
             {
-                throw new Exception(call.Error);
+                throw new Exception("Exception in call: " + call.Error);
             }
             else
             {

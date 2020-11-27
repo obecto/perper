@@ -12,12 +12,14 @@ namespace Perper.WebJobs.Extensions.Triggers
     {
         private readonly FabricService _fabric;
         private readonly IIgniteClient _ignite;
+        private readonly IServiceProvider _services;
         private readonly ILogger _logger;
 
-        public PerperTriggerBindingProvider(FabricService fabric, IIgniteClient ignite, ILogger logger)
+        public PerperTriggerBindingProvider(FabricService fabric, IIgniteClient ignite, IServiceProvider services, ILogger logger)
         {
             _fabric = fabric;
             _ignite = ignite;
+            _services = services;
             _logger = logger;
         }
 
@@ -27,7 +29,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             return Task.FromResult<ITriggerBinding?>(attribute switch
             {
                 null => null,
-                _ => new PerperTriggerBinding(attribute, _fabric, _ignite, _logger)
+                _ => new PerperTriggerBinding(context.Parameter, attribute, _fabric, _ignite, _services, _logger)
             });
         }
     }
