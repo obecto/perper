@@ -23,10 +23,6 @@ import (
 var AgentCmd = &cobra.Command{
 	Use:   "agent",
 	Short: "Interact with perper agents",
-
-	// Run: func(cmd *cobra.Command, args []string) {
-	// 	fmt.Println("agent called")
-	// },
 }
 
 func init() {}

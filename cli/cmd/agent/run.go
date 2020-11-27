@@ -61,6 +61,7 @@ var runCmd = &cobra.Command{
 		generateGraph(path)
 		g.topoSortGraph()
 
+		fmt.Printf("Initialization order: ")
 		fmt.Println(g.sequence)
 		runMultipleAgents()
 	},
@@ -105,7 +106,6 @@ func generateGraph(dirPath string) {
 	}
 	for _, v := range agents {
 		if _, err := os.Stat(addSlash(agentsParentDir+v) + configFileName); os.IsNotExist(err) {
-			fmt.Println("zashtooo")
 			fmt.Println(addSlash(agentsParentDir+v) + configFileName)
 			cloneGitRepository(v)
 		}
@@ -115,9 +115,12 @@ func generateGraph(dirPath string) {
 
 func runMultipleAgents() {
 	for i, agent := range g.sequence {
-		dirPath := agentsParentDir + agent
 
 		port := 7071 + i
+		dirPath := agentsParentDir + agent
+		if _, err := os.Stat(addSlash(dirPath) + "src"); err == nil {
+			dirPath = addSlash(dirPath) + "src"
+		}
 		runSingleAgent(dirPath, port)
 	}
 	if !keepLogs {
@@ -125,7 +128,7 @@ func runMultipleAgents() {
 		signal.Notify(sigs, syscall.SIGINT)
 		go clearLogs(sigs)
 	}
-	fmt.Println(addSlash(path) + logFileName)
+
 	agentLog(addSlash(path)+logFileName, os.Stdout)
 }
 
@@ -191,7 +194,6 @@ func getAgentNameFromPath(dirPath string) string {
 		index := strings.LastIndex(dir, "/")
 		return dirPath[index+1:]
 	}
-	fmt.Println(dirPath)
 	index := strings.LastIndex(dirPath, "/")
 	if index == -1 {
 		return dirPath
