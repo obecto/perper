@@ -1,8 +1,10 @@
 using System.Collections.Generic;
+using Perper.WebJobs.Extensions.Config;
 
 namespace Perper.WebJobs.Extensions.Cache
 {
     #pragma warning disable 8618
+    [PerperData]
     public class StreamListener
     {
         public string AgentDelegate { get; set; }

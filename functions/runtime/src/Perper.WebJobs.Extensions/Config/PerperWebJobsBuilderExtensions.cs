@@ -9,9 +9,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
 using Perper.WebJobs.Extensions.Bindings;
+using Perper.WebJobs.Extensions.Config;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
+
+[assembly: PerperData]
 
 namespace Perper.WebJobs.Extensions.Config
 {
@@ -43,22 +46,15 @@ namespace Perper.WebJobs.Extensions.Config
             {
                 var igniteHost = IPAddress.Loopback.ToString();
 
-                /*var types = from assembly in AppDomain.CurrentDomain.GetAssemblies()
+                // NOTE: The check for assembly.GetCustomAttributes<PerperDataAttribute>().Any() means that
+                // users need to use [assembly: PerperDataAttribute]. This isn't much of a problem, however,
+                // since this is used only for types that cross language boundaries.
+                var types = from assembly in AppDomain.CurrentDomain.GetAssemblies()
                     where assembly.GetCustomAttributes<PerperDataAttribute>().Any()
                     from type in assembly.GetTypes()
                     where type.GetCustomAttributes<PerperDataAttribute>().Any()
-                    select type;*/
-                var types = new Type[] {
-                    typeof(Perper.WebJobs.Extensions.Cache.Notifications.CallResultNotification),
-                    typeof(Perper.WebJobs.Extensions.Cache.Notifications.CallTriggerNotification),
-                    typeof(Perper.WebJobs.Extensions.Cache.Notifications.StreamItemNotification),
-                    typeof(Perper.WebJobs.Extensions.Cache.Notifications.StreamTriggerNotification),
-                    typeof(Perper.WebJobs.Extensions.Cache.AgentData),
-                    typeof(Perper.WebJobs.Extensions.Cache.CallData),
-                    typeof(Perper.WebJobs.Extensions.Cache.StreamData),
-                    typeof(Perper.WebJobs.Extensions.Cache.StreamDelegateType),
-                    typeof(Perper.WebJobs.Extensions.Cache.StreamListener),
-                };
+                    select type;
+
                 var serializer = ActivatorUtilities.CreateInstance<PerperBinarySerializer>(services);
 
                 var ignite = Ignition.StartClient(new IgniteClientConfiguration

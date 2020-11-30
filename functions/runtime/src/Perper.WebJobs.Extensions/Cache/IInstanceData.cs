@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-
 namespace Perper.WebJobs.Extensions.Cache
 {
     public interface IInstanceData
