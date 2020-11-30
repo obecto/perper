@@ -24,7 +24,6 @@ func newGraph() *graph {
 	return g
 }
 
-//
 type visitedColor int
 
 const (
