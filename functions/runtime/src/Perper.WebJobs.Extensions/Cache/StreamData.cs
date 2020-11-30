@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace Perper.WebJobs.Extensions.Cache
 {
+    #pragma warning disable 8618
     public class StreamData : IInstanceData
     {
         public string Agent { get; set; }

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 
 namespace Perper.WebJobs.Extensions.Cache
 {
+    #pragma warning disable 8618
     public class StreamListener
     {
         public string AgentDelegate { get; set; }

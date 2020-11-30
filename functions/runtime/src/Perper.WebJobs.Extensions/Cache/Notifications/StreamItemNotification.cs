@@ -1,5 +1,6 @@
 namespace Perper.WebJobs.Extensions.Cache.Notifications
 {
+    #pragma warning disable 8618
     public class StreamItemNotification : Notification
     {
         public string Stream { get; set; }

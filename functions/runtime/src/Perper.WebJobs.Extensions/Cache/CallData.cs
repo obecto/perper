@@ -1,5 +1,6 @@
 namespace Perper.WebJobs.Extensions.Cache
 {
+    #pragma warning disable 8618
     public class CallData : IInstanceData
     {
         public string Agent { get; set; }

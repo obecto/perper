@@ -8,8 +8,8 @@
         <RepositoryUrl>https://github.com/obecto/perper</RepositoryUrl>
         <Title>Perper Functions</Title>
         <Description>Azure Functions Extension for Perper</Description>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/obecto/perper</PackageProjectUrl>
-        <PackageLicenseUrl>https://github.com/obecto/perper/blob/master/LICENSE</PackageLicenseUrl>
         <RepositoryType>Git</RepositoryType>
         <TargetFrameworks>netstandard2.0;netcoreapp3.1</TargetFrameworks>
     </PropertyGroup>

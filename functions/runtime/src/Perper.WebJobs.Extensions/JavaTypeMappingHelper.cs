@@ -26,7 +26,7 @@ namespace Perper.WebJobs.Extensions
             {typeof (DateTime), "java.sql.Timestamp"}
         };
 
-        public static string GetJavaTypeAsString(Type type)
+        public static string? GetJavaTypeAsString(Type type)
         {
             if (mappings.ContainsKey(type))
             {
