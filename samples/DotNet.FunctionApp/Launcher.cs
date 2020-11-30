@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Triggers;
 using Perper.WebJobs.Extensions.Model;
+using Perper.WebJobs.Extensions.Bindings;
 
 namespace DotNet.FunctionApp
 {
@@ -30,9 +31,15 @@ namespace DotNet.FunctionApp
             var multiplier = 7;
             var expectedFinalValue = count * (count + 1) / 2 * multiplier;
 
-            var generator = await context.StreamFunctionAsync<int>("Generator", count);
+            // var generator = await context.StreamFunctionAsync<int>("Generator", count);
+            var (generator, generatorName) = await context.CreateBlankStreamAsync<int>();
+
             var processor = await context.StreamFunctionAsync<int>("Processor", (generator, multiplier));
             await context.StreamActionAsync("Consumer", (processor, expectedFinalValue));
+
+            await Task.Delay(1000); // UGLY: Make sure Consumer/Processor are up
+
+            await context.CallActionAsync("BlankGenerator", (generatorName, count));
         }
 
         [FunctionName("Log")]
@@ -54,6 +61,20 @@ namespace DotNet.FunctionApp
             statefulSum.Value += n;
             await statefulSum.Store(); // Would be nice if all entries are automatically stored at function end..
             return statefulSum.Value;
+        }
+
+        [FunctionName("BlankGenerator")]
+        public static async Task BlankGenerator(
+            [PerperTrigger(ParameterExpression="{\"stream\":0}")] (string _, int to) parameters,
+            [Perper] IAsyncCollector<int> output,
+            ILogger logger)
+        {
+            for (var i = 0; i <= parameters.to; i ++)
+            {
+                logger.LogDebug("Generating: {0}", i);
+                await output.AddAsync(i);
+            }
+            await output.FlushAsync();
         }
 
         [FunctionName("Generator")]

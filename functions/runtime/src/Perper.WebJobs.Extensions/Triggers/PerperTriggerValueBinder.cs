@@ -8,8 +8,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Cache;
-using Perper.WebJobs.Extensions.Model;
-using ITuple = System.Runtime.CompilerServices.ITuple;
+using Perper.WebJobs.Extensions.Bindings;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
@@ -64,12 +63,10 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         private async Task ProcessAsyncEnumerable<T>(string stream, IAsyncEnumerable<T> values, CancellationToken cancellationToken)
         {
-            // FIXME: Use PerperCollector?
-            var cache = _ignite.GetCache<long, T>(stream);
+            var collector = new PerperCollector<T>(_ignite, stream);
             await foreach (var value in values)
             {
-                // NOTE: Should probably be made to use the same time format as fabric
-                await cache.PutAsync(DateTime.UtcNow.Ticks, value);
+                await collector.AddAsync(value);
             }
         }
 

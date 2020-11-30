@@ -38,13 +38,13 @@ namespace Perper.WebJobs.Extensions.Triggers
             {
                 var callsCache = _ignite.GetCache<string, CallData>("calls");
                 var callData = await callsCache.GetAsync((string)_trigger["Call"]!);
-                parameters = callData.Parameters!;
+                parameters = callData.Parameters;
             }
             else
             {
                 var streamsCache = _ignite.GetCache<string, StreamData>("streams");
                 var streamData = await streamsCache.GetAsync((string)_trigger["Stream"]!);
-                parameters = streamData.Parameters!;
+                parameters = streamData.Parameters;
             }
 
             var streamHelper = (StreamParameterIndexHelper) _services.GetService(typeof(StreamParameterIndexHelper));
@@ -60,7 +60,7 @@ namespace Perper.WebJobs.Extensions.Triggers
                 return Activator.CreateInstance(Type, parameters)!;
             }
 
-            return parameters[0]!;
+            return parameters?[0];
         }
 
         public string ToInvokeString()

@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
+using Perper.WebJobs.Extensions.Cache;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
@@ -81,14 +82,38 @@ namespace Perper.WebJobs.Extensions.Triggers
             return result;
         }
 
-        private Task<Dictionary<string, object>> GetBindingData(JObject trigger)
+        private async Task<Dictionary<string, object>> GetBindingData(JObject trigger)
         {
             // Use _parameterExpression {parameter_name: index} to extract string
             // value from Ignite parameters (assume that they are object[])
-            var result = _parameterExpression is null
-                ? new Dictionary<string, object>()
-                : _parameterExpression.Properties().ToDictionary(property => property.Name, (Func<JProperty, object>)(_ => throw new System.Exception("123")));
-            return Task.FromResult(result);
+            var result = new Dictionary<string, object>();
+            if (_parameterExpression != null)
+            {
+                // FIXME: DRY this code
+                object?[] parameters;
+
+                if (trigger.ContainsKey("Call"))
+                {
+                    var callsCache = _ignite.GetCache<string, CallData>("calls");
+                    var callData = await callsCache.GetAsync((string)trigger["Call"]!);
+                    parameters = callData.Parameters!;
+                }
+                else
+                {
+                    var streamsCache = _ignite.GetCache<string, StreamData>("streams");
+                    var streamData = await streamsCache.GetAsync((string)trigger["Stream"]!);
+                    parameters = streamData.Parameters!;
+                }
+
+                foreach (var property in _parameterExpression.Properties())
+                {
+                    if (property.Value.Type == JTokenType.Integer)
+                    {
+                        result[property.Name] = parameters[(int)property.Value!]!;
+                    }
+                }
+            }
+            return result;
         }
     }
 }
