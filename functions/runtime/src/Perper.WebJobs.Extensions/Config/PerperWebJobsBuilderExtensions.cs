@@ -1,18 +1,18 @@
 using System;
-using System.Reflection;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Collections.Generic;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Extensions.DependencyInjection;
-using Perper.WebJobs.Extensions.Model;
-using Perper.WebJobs.Extensions.Services;
-using Perper.WebJobs.Extensions.Bindings;
-using Perper.WebJobs.Extensions.Config;
+using System.Reflection;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Extensions.DependencyInjection;
+using Perper.WebJobs.Extensions.Bindings;
+using Perper.WebJobs.Extensions.Config;
+using Perper.WebJobs.Extensions.Model;
+using Perper.WebJobs.Extensions.Services;
 
 [assembly: PerperData]
 
@@ -49,22 +49,24 @@ namespace Perper.WebJobs.Extensions.Config
                 // NOTE: The check for assembly.GetCustomAttributes<PerperDataAttribute>().Any() means that
                 // users need to use [assembly: PerperDataAttribute]. This isn't much of a problem, however,
                 // since this is used only for types that cross language boundaries.
-                var types = from assembly in AppDomain.CurrentDomain.GetAssemblies()
+                var types = (
+                    from assembly in AppDomain.CurrentDomain.GetAssemblies()
                     where assembly.GetCustomAttributes<PerperDataAttribute>().Any()
                     from type in assembly.GetTypes()
                     where type.GetCustomAttributes<PerperDataAttribute>().Any()
-                    select type;
+                    select type);
 
                 var serializer = ActivatorUtilities.CreateInstance<PerperBinarySerializer>(services);
 
                 var ignite = Ignition.StartClient(new IgniteClientConfiguration
                 {
-                    Endpoints = new List<string> {igniteHost},
+                    Endpoints = new List<string> { igniteHost },
                     BinaryConfiguration = new BinaryConfiguration()
                     {
-                        NameMapper = new Binary​Basic​Name​Mapper() {IsSimpleName = true},
+                        NameMapper = new Binary​Basic​Name​Mapper() { IsSimpleName = true },
                         Serializer = serializer,
-                        TypeConfigurations = types.Select(type => new BinaryTypeConfiguration(type) {
+                        TypeConfigurations = types.Select(type => new BinaryTypeConfiguration(type)
+                        {
                             Serializer = serializer,
                         }).ToList()
                     }
@@ -72,7 +74,8 @@ namespace Perper.WebJobs.Extensions.Config
                 return ignite;
             });
 
-            builder.Services.Configure<ServiceProviderOptions>(options => {
+            builder.Services.Configure<ServiceProviderOptions>(options =>
+            {
                 options.ValidateScopes = true;
             });
 

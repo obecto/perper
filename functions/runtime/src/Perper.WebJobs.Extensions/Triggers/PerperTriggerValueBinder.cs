@@ -1,14 +1,14 @@
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using Apache.Ignite.Core.Client;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
-using Perper.WebJobs.Extensions.Cache;
 using Perper.WebJobs.Extensions.Bindings;
+using Perper.WebJobs.Extensions.Cache;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
@@ -36,7 +36,7 @@ namespace Perper.WebJobs.Extensions.Triggers
         {
             if (_trigger.ContainsKey("Call"))
             {
-                var call = (string) _trigger["Call"]!;
+                var call = (string)_trigger["Call"]!;
                 var callsCache = _ignite.GetCache<string, CallData>("calls");
                 var callData = await callsCache.GetAsync(call);
                 callData.Result = value;
@@ -45,7 +45,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             }
             else
             {
-                var stream = (string) _trigger["Stream"]!;
+                var stream = (string)_trigger["Stream"]!;
 
                 var asyncEnumerableInterface = GetGenericInterface(value.GetType(), typeof(IAsyncEnumerable<>));
                 if (asyncEnumerableInterface == null)
@@ -57,7 +57,7 @@ namespace Perper.WebJobs.Extensions.Triggers
                 var processMethod = GetType().GetMethod(nameof(ProcessAsyncEnumerable), BindingFlags.NonPublic | BindingFlags.Instance)!
                     .MakeGenericMethod(cacheType);
 
-                await (Task) processMethod.Invoke(this, new object[] { stream, value, cancellationToken })!;
+                await (Task)processMethod.Invoke(this, new object[] { stream, value, cancellationToken })!;
             }
         }
 

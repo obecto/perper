@@ -29,7 +29,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
             if (Type.IsAssignableFrom(typeof(object[])))
             {
-                result = (object?) parameters;
+                result = (object?)parameters;
             }
             else if (typeof(ITuple).IsAssignableFrom(Type))
             {

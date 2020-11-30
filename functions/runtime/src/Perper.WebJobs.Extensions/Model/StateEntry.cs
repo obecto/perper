@@ -1,6 +1,6 @@
 using System;
-using System.Threading.Tasks;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Model
@@ -14,8 +14,11 @@ namespace Perper.WebJobs.Extensions.Model
     public class StateEntry<T> : StateEntry, IStateEntry<T>
     {
         [NonSerialized] private IState _state = default!;
-        [PerperInject] protected IState State { // Used to ensure that State.Entries is updated correctly
-            set {
+        [PerperInject]
+        protected IState State
+        { // Used to ensure that State.Entries is updated correctly
+            set
+            {
                 _state = value;
                 ((State)_state).Entries.Add(this);
             }

@@ -1,12 +1,12 @@
 using System;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Client;
-using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Config;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Bindings;
@@ -29,7 +29,7 @@ namespace Perper.WebJobs.Extensions.Config
 
             public IAsyncCollector<T> Convert(PerperAttribute attribute)
             {
-                return (IAsyncCollector<T>) ActivatorUtilities.CreateInstance(_services, typeof(PerperCollector<T>), attribute.Stream);
+                return (IAsyncCollector<T>)ActivatorUtilities.CreateInstance(_services, typeof(PerperCollector<T>), attribute.Stream);
             }
         }
 

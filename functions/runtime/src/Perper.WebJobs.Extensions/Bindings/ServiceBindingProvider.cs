@@ -1,8 +1,8 @@
 using System;
-using System.Linq;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Protocols;

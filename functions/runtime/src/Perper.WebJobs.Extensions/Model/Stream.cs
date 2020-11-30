@@ -5,11 +5,11 @@ using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Binary;
-using Perper.WebJobs.Extensions.Services;
+using Apache.Ignite.Core.Client;
 using Perper.WebJobs.Extensions.Cache;
 using Perper.WebJobs.Extensions.Cache.Notifications;
+using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Model
 {
@@ -34,18 +34,24 @@ namespace Perper.WebJobs.Extensions.Model
 
         [NonSerialized] private PerperInstanceData _instance;
         [NonSerialized] private int _parameterIndex;
-        [PerperInject] protected PerperInstanceData? Instance { set { // Setter used so that parameter index is updated on deserialization from parameters
-            if (value != null) {
-                _instance = value;
-                _parameterIndex = value.GetStreamParameterIndex();
+        [PerperInject]
+        protected PerperInstanceData? Instance
+        { // Used so that parameter index is updated on deserialization from parameters
+            set
+            {
+                if (value != null)
+                {
+                    _instance = value;
+                    _parameterIndex = value.GetStreamParameterIndex();
+                }
             }
-        } }
+        }
 
         [PerperInject] protected readonly IContext _context;
         [PerperInject] protected readonly IState _state;
 
 
-        #pragma warning disable 8618 // _instance and _parameterIndex come from Instance
+#pragma warning disable 8618 // _instance and _parameterIndex come from Instance
         public Stream(string streamName, PerperInstanceData instance, FabricService fabric, IIgniteClient ignite, IContext context, IState state)
             : base(streamName, fabric, ignite)
         {
@@ -53,7 +59,7 @@ namespace Perper.WebJobs.Extensions.Model
             _context = context;
             _state = state;
         }
-        #pragma warning restore 8618
+#pragma warning restore 8618
 
         private StreamAsyncEnumerable<T> GetEnumerable(Dictionary<string, object> filter, bool localToData)
         {
@@ -99,12 +105,18 @@ namespace Perper.WebJobs.Extensions.Model
 
         [NonSerialized] private PerperInstanceData _instance;
         [NonSerialized] private int _parameterIndex;
-        [PerperInject] protected PerperInstanceData? Instance { set { // Setter used so that parameter index is updated on deserialization from parameters
-            if (value != null) {
-                _instance = value;
-                _parameterIndex = value.GetStreamParameterIndex();
+        [PerperInject]
+        protected PerperInstanceData? Instance
+        { // Used so that parameter index is updated on deserialization from parameters
+            set
+            {
+                if (value != null)
+                {
+                    _instance = value;
+                    _parameterIndex = value.GetStreamParameterIndex();
+                }
             }
-        } }
+        }
 
         [PerperInject] protected readonly IState _state;
         [PerperInject] protected readonly FabricService _fabric;
@@ -162,7 +174,8 @@ namespace Perper.WebJobs.Extensions.Model
         private async Task ModifyStreamDataAsync(Action<StreamData> modification)
         {
             var streamsCache = _ignite.GetCache<string, StreamData>("streams").WithKeepBinary<string, IBinaryObject>();
-            while (true) {
+            while (true)
+            {
                 var currentValue = await streamsCache.GetAsync(StreamName);
                 var newValue = currentValue.Deserialize<StreamData>();
                 modification(newValue);
@@ -176,14 +189,16 @@ namespace Perper.WebJobs.Extensions.Model
 
         private Task AddListenerAsync()
         {
-            var streamListener = new StreamListener {
+            var streamListener = new StreamListener
+            {
                 AgentDelegate = _fabric.AgentDelegate,
                 Stream = _instance.InstanceName,
                 Parameter = _parameterIndex,
                 Filter = Filter,
                 LocalToData = LocalToData,
             };
-            return ModifyStreamDataAsync(streamData => {
+            return ModifyStreamDataAsync(streamData =>
+            {
                 streamData.Listeners.Add(streamListener);
             });
         }
@@ -191,7 +206,8 @@ namespace Perper.WebJobs.Extensions.Model
         private Task RemoveListenerAsync()
         {
             // If listener is anonymous (_parameter is null) then remove the listener
-            return ModifyStreamDataAsync(streamData => {
+            return ModifyStreamDataAsync(streamData =>
+            {
                 var index = streamData.Listeners.FindIndex(x => x.Parameter == _parameterIndex);
                 if (index >= 0) streamData.Listeners.RemoveAt(index);
             });

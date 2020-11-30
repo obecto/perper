@@ -1,10 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 using Apache.Ignite.Core.Client;
-using Perper.WebJobs.Extensions.Services;
 using Perper.WebJobs.Extensions.Cache;
+using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Model
 {
@@ -31,7 +31,8 @@ namespace Perper.WebJobs.Extensions.Model
             var agentName = GenerateName(delegateName);
 
             var agent = new Agent(agentName, delegateName, this, _ignite);
-            await agentsCache.PutAsync(agentName, new AgentData {
+            await agentsCache.PutAsync(agentName, new AgentData
+            {
                 Delegate = delegateName,
             });
 
@@ -57,7 +58,7 @@ namespace Perper.WebJobs.Extensions.Model
         public IStream<TItem> DeclareStreamFunction<TItem>(string functionName)
         {
             var streamName = GenerateName(functionName);
-             return new Stream<TItem>(streamName, _instance, _fabric, _ignite, this, (IState)_services.GetService(typeof(IState))) { FunctionName = functionName };
+            return new Stream<TItem>(streamName, _instance, _fabric, _ignite, this, (IState)_services.GetService(typeof(IState))) { FunctionName = functionName };
         }
 
         public async Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default, StreamFlags flags = StreamFlags.Default)
@@ -81,7 +82,8 @@ namespace Perper.WebJobs.Extensions.Model
         private async Task CreateStreamAsync(string streamName, StreamDelegateType delegateType, string delegateName, object? parameters, Type? type, StreamFlags flags)
         {
             var streamsCache = _ignite.GetCache<string, StreamData>("streams");
-            await streamsCache.PutAsync(streamName, new StreamData {
+            await streamsCache.PutAsync(streamName, new StreamData
+            {
                 Agent = _instance.InstanceData.Agent,
                 AgentDelegate = _fabric.AgentDelegate,
                 Delegate = delegateName,
@@ -99,7 +101,8 @@ namespace Perper.WebJobs.Extensions.Model
         {
             var callsCache = _ignite.GetCache<string, CallData>("calls");
             var callName = GenerateName(callDelegate);
-            await callsCache.PutAsync(callName, new CallData {
+            await callsCache.PutAsync(callName, new CallData
+            {
                 Agent = agentName,
                 AgentDelegate = agentDelegate,
                 Delegate = callDelegate,
@@ -144,7 +147,7 @@ namespace Perper.WebJobs.Extensions.Model
                 return array;
             }
 
-            return new object?[] {parameters};
+            return new object?[] { parameters };
         }
 
         private string GenerateName(string? baseName = null)

@@ -1,7 +1,5 @@
-using System;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Client;
-using Perper.WebJobs.Extensions.Cache;
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Model

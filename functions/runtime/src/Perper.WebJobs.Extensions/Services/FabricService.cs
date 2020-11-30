@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Threading;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 using Apache.Ignite.Core.Cache.Affinity;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
@@ -53,7 +53,8 @@ namespace Perper.WebJobs.Extensions.Services
 
             _notificationsCache = _ignite.GetCache<AffinityKey, Notification>($"{AgentDelegate}-$notifications");
 
-            var host = ignite.RemoteEndPoint switch {
+            var host = ignite.RemoteEndPoint switch
+            {
                 IPEndPoint ip => ip.Address.ToString(),
                 DnsEndPoint dns => dns.Host,
                 _ => ""
@@ -71,7 +72,8 @@ namespace Perper.WebJobs.Extensions.Services
         {
             _serviceCancellation = new CancellationTokenSource();
             _serviceTask = RunAsync(_serviceCancellation.Token);
-            _serviceTask.ContinueWith(t => {
+            _serviceTask.ContinueWith(t =>
+            {
                 _logger.LogError("Fatal FabricService error: " + t.Exception!.ToString());
             }, TaskContinuationOptions.OnlyOnFaulted);
             return Task.CompletedTask;
@@ -83,19 +85,23 @@ namespace Perper.WebJobs.Extensions.Services
             return _serviceTask ?? Task.CompletedTask;
         }
 
-        private AffinityKey GetAffinityKey(NotificationProto notification) {
+        private AffinityKey GetAffinityKey(NotificationProto notification)
+        {
             return new AffinityKey(
                 notification.NotificationKey,
-                notification.AffinityCase switch {
+                notification.AffinityCase switch
+                {
                     NotificationProto.AffinityOneofCase.StringAffinity => notification.StringAffinity,
                     NotificationProto.AffinityOneofCase.IntAffinity => notification.IntAffinity,
                     _ => null,
                 });
         }
 
-        private Channel<(AffinityKey, Notification)> GetChannel(string instance, int? parameter = null) {
+        private Channel<(AffinityKey, Notification)> GetChannel(string instance, int? parameter = null)
+        {
             var key = (instance, parameter);
-            if (_channels.TryGetValue(key, out var channel)) {
+            if (_channels.TryGetValue(key, out var channel))
+            {
                 return channel;
             }
             var newChannel = Channel.CreateUnbounded<(AffinityKey, Notification)>();
@@ -106,7 +112,7 @@ namespace Perper.WebJobs.Extensions.Services
         private async Task RunAsync(CancellationToken cancellationToken = default)
         {
             var client = new Fabric.FabricClient(_grpcChannel);
-            using var notifications = client.Notifications(new NotificationFilter {AgentDelegate = AgentDelegate}, null, null, cancellationToken);
+            using var notifications = client.Notifications(new NotificationFilter { AgentDelegate = AgentDelegate }, null, null, cancellationToken);
             var stream = notifications.ResponseStream;
             while (await stream.MoveNext(cancellationToken))
             {
@@ -121,7 +127,8 @@ namespace Perper.WebJobs.Extensions.Services
                 var notification = notificationResult.Value;
                 _logger.LogTrace($"FabricService received: {key} {notification}");
 
-                switch (notification) {
+                switch (notification)
+                {
                     case StreamItemNotification si:
                         await GetChannel(si.Stream, si.Parameter).Writer.WriteAsync((key, notification));
                         break;
@@ -159,7 +166,8 @@ namespace Perper.WebJobs.Extensions.Services
         public async Task<(AffinityKey, CallResultNotification)> GetCallNotification(string call, CancellationToken cancellationToken = default)
         {
             var client = new Fabric.FabricClient(_grpcChannel);
-            var notification = await client.CallResultNotificationAsync(new CallNotificationFilter {
+            var notification = await client.CallResultNotificationAsync(new CallNotificationFilter
+            {
                 AgentDelegate = AgentDelegate,
                 CallName = call
             });

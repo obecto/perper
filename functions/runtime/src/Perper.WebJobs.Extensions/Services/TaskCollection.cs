@@ -7,7 +7,7 @@ namespace Perper.WebJobs.Extensions.Services
 {
     public class TaskCollection
     {
-        private struct EmptyStruct {}
+        private struct EmptyStruct { }
 
         private TaskCompletionSource<EmptyStruct> _completionSource = new TaskCompletionSource<EmptyStruct>();
         private ConcurrentDictionary<Task, EmptyStruct> _tasks = new ConcurrentDictionary<Task, EmptyStruct>();

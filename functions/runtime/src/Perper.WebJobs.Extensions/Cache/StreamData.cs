@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using Perper.WebJobs.Extensions.Config;
 
+#pragma warning disable 8618
 namespace Perper.WebJobs.Extensions.Cache
 {
-    #pragma warning disable 8618
     [PerperData]
     public class StreamData : IInstanceData
     {

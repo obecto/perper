@@ -10,7 +10,6 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Cache;
 using Perper.WebJobs.Extensions.Cache.Notifications;
-using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Triggers
@@ -66,7 +65,8 @@ namespace Perper.WebJobs.Extensions.Triggers
             var taskCollection = new TaskCollection();
             await foreach (var (key, notification) in _fabric.GetNotifications(_delegate).WithCancellation(cancellationToken))
             {
-                taskCollection.Add(async () => {
+                taskCollection.Add(async () =>
+                {
                     if (notification is StreamTriggerNotification)
                     {
                         await _fabric.ConsumeNotification(key); // Consume first, since execution might never end in this case
@@ -85,7 +85,7 @@ namespace Perper.WebJobs.Extensions.Triggers
         private async Task ExecuteAsync(Notification notification, CancellationToken cancellationToken)
         {
             var trigger = JObject.FromObject(notification);
-            var input = new TriggeredFunctionData {TriggerValue = trigger};
+            var input = new TriggeredFunctionData { TriggerValue = trigger };
             var result = await _executor.TryExecuteAsync(input, cancellationToken);
 
             string? error = null;
@@ -99,7 +99,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             if (trigger.ContainsKey("Call"))
             {
                 // TODO: Can we somehow detect that PerperTriggerValueBinder was already invoked for this?
-                var call = (string) trigger["Call"]!;
+                var call = (string)trigger["Call"]!;
                 var callsCache = _ignite.GetCache<string, CallData>("calls");
                 var callData = await callsCache.GetAsync(call);
                 callData.Finished = true;

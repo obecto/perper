@@ -1,7 +1,7 @@
 using System;
-using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
@@ -163,7 +163,8 @@ namespace Perper.WebJobs.Extensions.Services
                             result.SetValue(converterFrom(arr[i])!, i);
                         }
                         return result;
-                    });
+                    }
+                );
             }
 
 #if !NETSTANDARD2_0
@@ -173,7 +174,7 @@ namespace Perper.WebJobs.Extensions.Services
                     source =>
                     {
                         if (source == null) return null;
-                        var tuple = (ITuple) source!;
+                        var tuple = (ITuple)source!;
                         var result = new object?[tuple.Length];
                         for (var i = 0; i < result.Length; i++)
                         {
@@ -185,7 +186,8 @@ namespace Perper.WebJobs.Extensions.Services
                     {
                         if (converted == null) return null;
                         return Activator.CreateInstance(type, (object?[])converted!);
-                    });
+                    }
+                );
             }
 #endif
 
@@ -205,7 +207,7 @@ namespace Perper.WebJobs.Extensions.Services
                     {
                         if (source == null) return null;
                         var result = new Hashtable();
-                        foreach (DictionaryEntry? entry in (IDictionary) source)
+                        foreach (DictionaryEntry? entry in (IDictionary)source)
                         {
                             result[keyConverterTo(entry?.Key)!] = valueConverterTo(entry?.Value);
                         }
@@ -214,13 +216,14 @@ namespace Perper.WebJobs.Extensions.Services
                     converted =>
                     {
                         if (converted == null) return null;
-                        var result = (IDictionary) Activator.CreateInstance(finalType)!;
-                        foreach (DictionaryEntry? entry in (IDictionary) converted)
+                        var result = (IDictionary)Activator.CreateInstance(finalType)!;
+                        foreach (DictionaryEntry? entry in (IDictionary)converted)
                         {
                             result[keyConverterFrom(entry?.Key)!] = valueConverterFrom(entry?.Value);
                         }
                         return result;
-                    });
+                    }
+                );
             }
 
             var collectionInterface = GetGenericInterface(type, typeof(ICollection<>));
@@ -238,7 +241,7 @@ namespace Perper.WebJobs.Extensions.Services
                     {
                         if (source == null) return null;
                         var result = new ArrayList();
-                        foreach (object? item in (ICollection) source)
+                        foreach (object? item in (ICollection)source)
                         {
                             result.Add(itemConverterTo(item));
                         }
@@ -247,13 +250,14 @@ namespace Perper.WebJobs.Extensions.Services
                     converted =>
                     {
                         if (converted == null) return null;
-                        var result = (ICollection) Activator.CreateInstance(finalType)!;
-                        foreach (object? item in (ICollection) converted)
+                        var result = (ICollection)Activator.CreateInstance(finalType)!;
+                        foreach (object? item in (ICollection)converted)
                         {
                             addMethod.Invoke(result, new object?[] { itemConverterTo(item) });
                         }
                         return result;
-                    });
+                    }
+                );
             }
 
             return (Identity, Identity);
