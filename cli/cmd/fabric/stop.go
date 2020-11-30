@@ -30,7 +30,7 @@ var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Kills and removes a container from the docker host.",
 	Long: `Finds a container with Fabric image type, kills and removes it.
-	Returns panic If there is not present Fabric container`,
+	Errors if there is no Fabric container present`,
 
 	Run: func(cmd *cobra.Command, args []string) {
 		stopFabricContainer()
@@ -49,7 +49,7 @@ func stopFabricContainer() {
 	}
 	containerID := findWorkingFabric(ctx, cli)
 	if containerID == "" {
-		panic("Could not find a fabric container")
+		fmt.Println("Could not find a fabric container")
 	}
 
 	err = cli.ContainerStop(ctx, containerID[:12], nil)

@@ -45,12 +45,16 @@ func restartFabricContainer() {
 	}
 	containerID := findWorkingFabric(ctx, cli)
 	if containerID == "" {
-		panic("Could not find a fabric container")
+		fmt.Println("Could not find a fabric container")
+		fmt.Println("Running new container")
+
+		runFabricContainer()
+	} else {
+		err = cli.ContainerRestart(ctx, containerID, nil)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Fabric Restarted")
 	}
 
-	err = cli.ContainerRestart(ctx, containerID, nil)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Fabric Stopped")
 }

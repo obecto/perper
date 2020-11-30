@@ -31,7 +31,7 @@ import (
 // logsCmd represents the logs command
 var logsCmd = &cobra.Command{
 	Use:   "logs",
-	Short: "Shows logs from perper fabric",
+	Short: "Shows logs from Perper Fabric",
 	Long:  `Finds a container with Fabric image type and prints its output`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("logs called")

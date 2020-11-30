@@ -9,6 +9,7 @@ require (
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200916142827-bd33bbf0497b+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0 // indirect
+	github.com/go-git/go-git v4.7.0+incompatible
 	github.com/go-git/go-git/v5 v5.2.0
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
@@ -20,4 +21,5 @@ require (
 	github.com/spf13/viper v1.7.1
 	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
 	google.golang.org/grpc v1.33.2 // indirect
+	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 )

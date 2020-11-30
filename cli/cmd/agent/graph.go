@@ -1,9 +1,10 @@
 package agent
 
 type graph struct {
-	edges    map[string][]string
-	capacity int
-	sequence []string
+	edges          map[string][]string
+	capacity       int
+	sequence       []string
+	agentToAddress map[string]string
 }
 
 func (g *graph) add(key, value string) {
@@ -16,6 +17,13 @@ func (g *graph) add(key, value string) {
 	}
 }
 
+func newGraph() *graph {
+	g := &graph{}
+	g.edges = make(map[string][]string)
+	g.agentToAddress = make(map[string]string)
+	return g
+}
+
 //
 type visitedColor int
 
@@ -25,12 +33,9 @@ const (
 	black
 )
 
-var visitedIndex int
-var visited map[string]visitedColor
-
 func (g *graph) topoSortGraph() {
-	visitedIndex = 0
-	visited = make(map[string]visitedColor, g.capacity)
+	var visitedIndex = 0
+	var visited = make(map[string]visitedColor, g.capacity)
 	g.sequence = make([]string, g.capacity)
 
 	for i := range g.edges {
@@ -39,14 +44,14 @@ func (g *graph) topoSortGraph() {
 
 	index := hasUnvisitedVertex(visited)
 	for index != "" {
-		g.visit(index)
+		g.visit(index, visited, &visitedIndex)
 		index = hasUnvisitedVertex(visited)
 	}
 	g.sequence = g.sequence[:visitedIndex]
-	g.reverseSequence()
+	g.reverseSequence(visitedIndex)
 }
 
-func (g *graph) visit(index string) {
+func (g *graph) visit(index string, visited map[string]visitedColor, visitedIndex *int) {
 	visited[index] = grey
 	if g.edges != nil {
 		for _, v := range g.edges[index] {
@@ -54,16 +59,16 @@ func (g *graph) visit(index string) {
 				panic("It appears there is a cycle in depending agents!")
 			}
 			if visited[v] == white {
-				g.visit(v)
+				g.visit(v, visited, visitedIndex)
 			}
 		}
 	}
 	visited[index] = black
-	g.sequence[visitedIndex] = index
-	visitedIndex++
+	g.sequence[*visitedIndex] = index
+	*visitedIndex++
 }
 
-func (g *graph) reverseSequence() {
+func (g *graph) reverseSequence(visitedIndex int) {
 	i := visitedIndex - 1
 	j := 0
 	for i > j {
