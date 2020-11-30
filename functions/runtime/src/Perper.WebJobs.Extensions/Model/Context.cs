@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Apache.Ignite.Core.Client;
-using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Services;
 using Perper.WebJobs.Extensions.Cache;
 
@@ -129,6 +128,7 @@ namespace Perper.WebJobs.Extensions.Model
 
         private object?[] ConvertParameters(object? parameters)
         {
+#if !NETSTANDARD2_0
             if (parameters is ITuple tuple)
             {
                 var result = new object?[tuple.Length];
@@ -138,14 +138,13 @@ namespace Perper.WebJobs.Extensions.Model
                 }
                 return result;
             }
-            else if (parameters is object?[] array)
+#endif
+            if (parameters is object?[] array)
             {
                 return array;
             }
-            else
-            {
-                return new object?[] {parameters};
-            }
+
+            return new object?[] {parameters};
         }
 
         private string GenerateName(string? baseName = null)

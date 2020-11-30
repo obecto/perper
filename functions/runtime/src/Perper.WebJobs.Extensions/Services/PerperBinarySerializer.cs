@@ -166,6 +166,7 @@ namespace Perper.WebJobs.Extensions.Services
                     });
             }
 
+#if !NETSTANDARD2_0
             if (typeof(ITuple).IsAssignableFrom(type))
             {
                 return (
@@ -186,6 +187,7 @@ namespace Perper.WebJobs.Extensions.Services
                         return Activator.CreateInstance(type, (object?[])converted!);
                     });
             }
+#endif
 
             var dictionaryInterface = GetGenericInterface(type, typeof(IDictionary<,>));
             if (dictionaryInterface != null)
@@ -282,10 +284,11 @@ namespace Perper.WebJobs.Extensions.Services
                 return;
             }
 
-            foreach (var (name, property) in GetProperties(obj.GetType()))
+            foreach (var property in GetProperties(obj.GetType()))
             {
-                var value = property.Get(obj);
-                var type = property.Type;
+                var name = property.Key;
+                var value = property.Value.Get(obj);
+                var type = property.Value.Type;
                 if (type == null) continue;
                 if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
                 {
@@ -323,7 +326,11 @@ namespace Perper.WebJobs.Extensions.Services
                 else
                 {
                     value = GetCollectionConverters(type).to.Invoke(value);
+#if !NETSTANDARD2_0
                     if (type.IsArray || typeof(ITuple).IsAssignableFrom(type))
+#else
+                    if (type.IsArray)
+#endif
                     {
                         writer.WriteArray(name, (object?[])value!);
                     }
@@ -352,14 +359,15 @@ namespace Perper.WebJobs.Extensions.Services
             }
 
 
-            foreach (var (name, property) in GetProperties(obj.GetType()))
+            foreach (var property in GetProperties(obj.GetType()))
             {
+                var name = property.Key;
                 object? value;
-                var type = property.Type;
+                var type = property.Value.Type;
 
                 if (type == null)
                 {
-                    property.Set(obj, null);
+                    property.Value.Set(obj, null);
                     continue;
                 }
 
@@ -396,7 +404,11 @@ namespace Perper.WebJobs.Extensions.Services
                 else if (type.IsArray && type.GetElementType()!.IsEnum) value = reader.ReadEnumArray<object?>(name);
                 else
                 {
+#if !NETSTANDARD2_0
                     if (type.IsArray || typeof(ITuple).IsAssignableFrom(type))
+#else
+                    if (type.IsArray)
+#endif
                     {
                         value = reader.ReadArray<object?>(name);
                     }
@@ -416,7 +428,7 @@ namespace Perper.WebJobs.Extensions.Services
                     value = GetCollectionConverters(type).from.Invoke(value);
                 }
 
-                property.Set(obj, value);
+                property.Value.Set(obj, value);
             }
         }
     }
