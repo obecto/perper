@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using Apache.Ignite.Core.Binary;
 
 namespace Perper.WebJobs.Extensions.Cache
 {
-    public class StreamData
+    public class StreamData : IInstanceData
     {
         public string Agent { get; set; }
         public string AgentDelegate { get; set; }

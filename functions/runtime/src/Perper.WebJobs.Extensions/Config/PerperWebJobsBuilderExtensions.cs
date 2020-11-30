@@ -19,10 +19,11 @@ namespace Perper.WebJobs.Extensions.Config
     {
         public static IWebJobsBuilder AddPerper(this IWebJobsBuilder builder)
         {
+            builder.Services.AddScoped(typeof(PerperInstanceData), typeof(PerperInstanceData));
+
             builder.Services.AddScoped(typeof(IContext), typeof(Context));
             builder.Services.AddScoped(typeof(IState), typeof(State));
-            builder.Services.AddScoped(typeof(IStateEntry<>), typeof(StateEntry<>));
-            builder.Services.AddScoped(typeof(StreamParameterIndexHelper), typeof(StreamParameterIndexHelper));
+            builder.Services.AddScoped(typeof(IStateEntry<>), typeof(StateEntryDI<>));
 
             builder.Services.AddSingleton<IBindingProvider>(services => new ServiceBindingProvider(new HashSet<Type>
             {

@@ -9,22 +9,20 @@ namespace Perper.WebJobs.Extensions.Model
 {
     public class State : IState
     {
-        private Context context { get => ((Context) _context); }
-
-        [PerperInject] protected IContext _context;
+        [PerperInject] protected PerperInstanceData _instance;
         [PerperInject] protected IIgniteClient _ignite;
 
         [NonSerialized] public List<StateEntry> Entries = new List<StateEntry>();
 
-        public State(IContext context, IIgniteClient ignite)
+        public State(PerperInstanceData instance, IIgniteClient ignite)
         {
-            _context = context;
+            _instance = instance;
             _ignite = ignite;
         }
 
         public async Task<T> GetValue<T>(string key, Func<T> defaultValueFactory)
         {
-            var cache = _ignite.GetOrCreateCache<string, T>(context.AgentName);
+            var cache = _ignite.GetOrCreateCache<string, T>(_instance.InstanceData.Agent);
             var result = await cache.TryGetAsync(key);
             if (!result.Success)
             {
@@ -37,7 +35,7 @@ namespace Perper.WebJobs.Extensions.Model
 
         public Task SetValue<T>(string key, T value)
         {
-            var cache = _ignite.GetOrCreateCache<string, T>(context.AgentName);
+            var cache = _ignite.GetOrCreateCache<string, T>(_instance.InstanceData.Agent);
             return cache.PutAsync(key, value);
         }
 
@@ -50,7 +48,7 @@ namespace Perper.WebJobs.Extensions.Model
 
         public StateEntry<T> UnloadedEntry<T>(string key, Func<T> defaultValueFactory)
         {
-            return new StateEntry<T>(this, _context) { Name = key, DefaultValueFactory = defaultValueFactory };
+            return new StateEntry<T>(this, key, defaultValueFactory);
         }
 
         public Task LoadStateEntries()

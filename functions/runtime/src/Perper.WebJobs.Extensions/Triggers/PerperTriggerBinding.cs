@@ -12,7 +12,6 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
-using Perper.WebJobs.Extensions.Cache;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
@@ -55,12 +54,12 @@ namespace Perper.WebJobs.Extensions.Triggers
         {
             var trigger = (JObject) value;
 
-            var context = (Context)_services.GetService(typeof(IContext));
-            await context.SetTriggerValue(trigger);
+            var instanceData = (PerperInstanceData)_services.GetService(typeof(PerperInstanceData));
+            await instanceData.SetTriggerValue(trigger);
 
-            var valueProvider = new PerperTriggerValueProvider(trigger, _parameter.ParameterType, _services, _ignite, _logger);
+            var valueProvider = new PerperTriggerValueProvider(trigger, _parameter.ParameterType, instanceData);
             var returnValueProvider = new PerperTriggerValueBinder(trigger, _ignite, _logger);
-            var bindingData = await GetBindingData(trigger);
+            var bindingData = await GetBindingData(instanceData, trigger);
 
             return new TriggerData(valueProvider, bindingData)
             {
@@ -82,38 +81,22 @@ namespace Perper.WebJobs.Extensions.Triggers
             return result;
         }
 
-        private async Task<Dictionary<string, object>> GetBindingData(JObject trigger)
+        private Task<Dictionary<string, object>> GetBindingData(PerperInstanceData instanceData, JObject trigger)
         {
-            // Use _parameterExpression {parameter_name: index} to extract string
-            // value from Ignite parameters (assume that they are object[])
             var result = new Dictionary<string, object>();
+
             if (_parameterExpression != null)
             {
-                // FIXME: DRY this code
-                object?[] parameters;
-
-                if (trigger.ContainsKey("Call"))
-                {
-                    var callsCache = _ignite.GetCache<string, CallData>("calls");
-                    var callData = await callsCache.GetAsync((string)trigger["Call"]!);
-                    parameters = callData.Parameters!;
-                }
-                else
-                {
-                    var streamsCache = _ignite.GetCache<string, StreamData>("streams");
-                    var streamData = await streamsCache.GetAsync((string)trigger["Stream"]!);
-                    parameters = streamData.Parameters!;
-                }
-
                 foreach (var property in _parameterExpression.Properties())
                 {
                     if (property.Value.Type == JTokenType.Integer)
                     {
-                        result[property.Name] = parameters[(int)property.Value!]!;
+                        result[property.Name] = instanceData.InstanceData.Parameters?[(int)property.Value!]!;
                     }
                 }
             }
-            return result;
+
+            return Task.FromResult(result);
         }
     }
 }

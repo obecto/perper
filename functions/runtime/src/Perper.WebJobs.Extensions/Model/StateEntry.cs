@@ -21,28 +21,18 @@ namespace Perper.WebJobs.Extensions.Model
             }
         }
 
-        [NonSerialized] public Func<T> DefaultValueFactory = () => {
-            if (typeof(T).GetConstructor(Type.EmptyTypes) != null)
-            {
-                return Activator.CreateInstance<T>();
-            }
-            return default(T)!;
-        };
+        [NonSerialized] public Func<T> DefaultValueFactory = () => default(T)!;
 
-        [NonSerialized] private IContext? _context;
-        [NonSerialized] private string? _name;
-        public string Name { get => _name ?? ((Context) _context!).InstanceName; set => _name = value; }
+        public string Name { get; private set; }
 
         [IgnoreDataMember]
         public T Value { get; set; } = default(T)!;
 
-        // HACK: We cannot have multiple constructors, as the DI container ignores [ActivatorUtilitiesConstructor]
-        // So we just pass Name/DefaultValueFactory directly.
-        // Might be possible to rework with a proxy class/wrapper which is used for DI only
-        public StateEntry(IState state, IContext? context)
+        public StateEntry(IState state, string name, Func<T> defaultValueFactory)
         {
             State = state;
-            _context = context;
+            Name = name;
+            DefaultValueFactory = defaultValueFactory;
         }
 
         public override async Task Load()
@@ -53,6 +43,41 @@ namespace Perper.WebJobs.Extensions.Model
         public override Task Store()
         {
             return _state.SetValue<T>(Name, Value);
+        }
+    }
+
+    public class StateEntryDI<T> : IStateEntry<T>
+    {
+        [NonSerialized] private IStateEntry<T>? _implementation;
+        [PerperInject] protected IState _state;
+        [PerperInject] protected PerperInstanceData _instance;
+
+        public StateEntryDI(IState state, PerperInstanceData instance)
+        {
+            _state = state;
+            _instance = instance;
+        }
+
+        [IgnoreDataMember]
+        public T Value { get => GetImplementation().Value; set => GetImplementation().Value = value; }
+
+        public Task Load() => GetImplementation().Load();
+        public Task Store() => GetImplementation().Store();
+
+        private IStateEntry<T> GetImplementation()
+        {
+            if (_implementation == null)
+            {
+                _implementation = new StateEntry<T>(_state, _instance.InstanceName, () =>
+                {
+                    if (typeof(T).GetConstructor(Type.EmptyTypes) != null)
+                    {
+                        return Activator.CreateInstance<T>();
+                    }
+                    return default(T)!;
+                });
+            }
+            return _implementation;
         }
     }
 }

@@ -13,25 +13,6 @@ using Perper.WebJobs.Extensions.Cache.Notifications;
 
 namespace Perper.WebJobs.Extensions.Model
 {
-    public class StreamParameterIndexHelper
-    {
-        private int _nextStreamParameterIndex = 0;
-        private int _nextAnonymousStreamParameterIndex = 0;
-        public bool Anonymous = false;
-
-        public int GetStreamParameterIndex()
-        {
-            if (Anonymous)
-            {
-                return Interlocked.Decrement(ref _nextAnonymousStreamParameterIndex);
-            }
-            else
-            {
-                return Interlocked.Increment(ref _nextStreamParameterIndex);
-            }
-        }
-    }
-
     public class Stream : IStream
     {
         public string StreamName { get; protected set; }
@@ -39,7 +20,8 @@ namespace Perper.WebJobs.Extensions.Model
         [PerperInject] protected readonly FabricService _fabric;
         [PerperInject] protected readonly IIgniteClient _ignite;
 
-        public Stream(string streamName, FabricService fabric, IIgniteClient ignite) {
+        public Stream(string streamName, FabricService fabric, IIgniteClient ignite)
+        {
             StreamName = streamName;
             _fabric = fabric;
             _ignite = ignite;
@@ -49,25 +31,33 @@ namespace Perper.WebJobs.Extensions.Model
     public class Stream<T> : Stream, IStream<T>
     {
         [NonSerialized] public string? FunctionName; // HACK: Used for Declare/InitiaizeStream
+
+        [NonSerialized] private PerperInstanceData _instance;
         [NonSerialized] private int _parameterIndex;
-        [PerperInject] protected StreamParameterIndexHelper _helper { set { // Setter used so that it gets triggered on deserialization
-           if (value != null) _parameterIndex = value.GetStreamParameterIndex();
+        [PerperInject] protected PerperInstanceData? Instance { set { // Setter used so that parameter index is updated on deserialization from parameters
+            if (value != null) {
+                _instance = value;
+                _parameterIndex = value.GetStreamParameterIndex();
+            }
         } }
+
         [PerperInject] protected readonly IContext _context;
         [PerperInject] protected readonly IState _state;
 
 
-        public Stream(string streamName, StreamParameterIndexHelper helper, FabricService fabric, IIgniteClient ignite, IContext context, IState state)
+        #pragma warning disable 8618 // _instance and _parameterIndex come from Instance
+        public Stream(string streamName, PerperInstanceData instance, FabricService fabric, IIgniteClient ignite, IContext context, IState state)
             : base(streamName, fabric, ignite)
         {
-            _helper = helper;
+            Instance = instance;
             _context = context;
             _state = state;
         }
+        #pragma warning restore 8618
 
         private StreamAsyncEnumerable<T> GetEnumerable(Dictionary<string, object> filter, bool localToData)
         {
-            return new StreamAsyncEnumerable<T>(StreamName, _parameterIndex, filter, localToData, _state, _context, _fabric, _ignite);
+            return new StreamAsyncEnumerable<T>(StreamName, _parameterIndex, filter, localToData, _state, _instance, _fabric, _ignite);
         }
 
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
@@ -107,24 +97,27 @@ namespace Perper.WebJobs.Extensions.Model
         public Dictionary<string, object> Filter { get; protected set; }
         public bool LocalToData { get; protected set; }
 
+        [NonSerialized] private PerperInstanceData _instance;
         [NonSerialized] private int _parameterIndex;
-        [PerperInject] protected StreamParameterIndexHelper _helper { set { // Setter used so that it gets triggered on deserialization
-            if (value != null) _parameterIndex = value.GetStreamParameterIndex();
+        [PerperInject] protected PerperInstanceData? Instance { set { // Setter used so that parameter index is updated on deserialization from parameters
+            if (value != null) {
+                _instance = value;
+                _parameterIndex = value.GetStreamParameterIndex();
+            }
         } }
 
-        [PerperInject] protected readonly IContext _context;
         [PerperInject] protected readonly IState _state;
         [PerperInject] protected readonly FabricService _fabric;
         [PerperInject] protected readonly IIgniteClient _ignite;
 
-        private Context context { get => (Context)_context; }
-
-        public StreamAsyncEnumerable(string streamName, int parameterIndex, Dictionary<string, object> filter, bool localToData, IState state, IContext context, FabricService fabric, IIgniteClient ignite) {
+        public StreamAsyncEnumerable(string streamName, int parameterIndex, Dictionary<string, object> filter, bool localToData, IState state, PerperInstanceData instance, FabricService fabric, IIgniteClient ignite)
+        {
             StreamName = streamName;
             Filter = filter;
             LocalToData = localToData;
             _state = state;
-            _context = context;
+            _instance = instance;
+            _parameterIndex = parameterIndex;
             _fabric = fabric;
             _ignite = ignite;
         }
@@ -140,15 +133,19 @@ namespace Perper.WebJobs.Extensions.Model
             {
                 await AddListenerAsync();
 
-                await foreach (var (key, notification) in _fabric.GetNotifications(context.InstanceName, _parameterIndex, cancellationToken))
+                await foreach (var (key, notification) in _fabric.GetNotifications(_instance.InstanceName, _parameterIndex, cancellationToken))
                 {
                     if (notification is StreamItemNotification si)
                     {
                         var cache = _ignite.GetCache<long, T>(si.Cache);
                         var value = await cache.GetAsync(si.Key);
+
                         await ((State)_state).LoadStateEntries();
+
                         yield return value;
+
                         await ((State)_state).StoreStateEntries();
+
                         await _fabric.ConsumeNotification(key);
                     }
                 }
@@ -181,7 +178,7 @@ namespace Perper.WebJobs.Extensions.Model
         {
             var streamListener = new StreamListener {
                 AgentDelegate = _fabric.AgentDelegate,
-                Stream = context.InstanceName,
+                Stream = _instance.InstanceName,
                 Parameter = _parameterIndex,
                 Filter = Filter,
                 LocalToData = LocalToData,

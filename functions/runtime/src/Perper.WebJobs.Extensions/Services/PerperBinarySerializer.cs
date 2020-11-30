@@ -125,155 +125,138 @@ namespace Perper.WebJobs.Extensions.Services
         #endregion
 
         #region ConvertCollections
-        private readonly Dictionary<Type, Type> ConvertedTypeCache = new Dictionary<Type, Type>();
+        private static Func<object?, object?> Identity = x => x;
 
-        private Type ConvertedCollectionType(Type type)
+        private (Func<object?, object?> to, Func<object?, object?> from) GetCollectionConverters(Type type)
         {
-            if (ConvertedTypeCache.TryGetValue(type, out var value))
-            {
-                return value;
-            }
-
             if (type.IsArray)
             {
-                var elementType = ConvertedCollectionType(type.GetElementType()!);
-                var result = elementType.MakeArrayType();
-                ConvertedTypeCache[type] = result;
-                return result;
+                var elementType = type.GetElementType()!;
+                var converters = GetCollectionConverters(elementType!);
+
+                if (converters == (Identity, Identity))
+                {
+                    return (Identity, Identity);
+                }
+
+                var (converterTo, converterFrom) = converters;
+
+                return (
+                    source =>
+                    {
+                        if (source == null) return null;
+                        var arr = (Array)source!;
+                        var result = new object?[arr.Length];
+                        for (var i = 0; i < arr.Length; i++)
+                        {
+                            result[i] = converterTo(arr.GetValue(i));
+                        }
+                        return result;
+                    },
+                    converted =>
+                    {
+                        if (converted == null) return null;
+                        var arr = (object?[])converted!;
+                        var result = Array.CreateInstance(elementType, arr.Length);
+                        for (var i = 0; i < arr.Length; i++)
+                        {
+                            result.SetValue(converterFrom(arr[i])!, i);
+                        }
+                        return result;
+                    });
             }
+
+            if (typeof(ITuple).IsAssignableFrom(type))
+            {
+                return (
+                    source =>
+                    {
+                        if (source == null) return null;
+                        var tuple = (ITuple) source!;
+                        var result = new object?[tuple.Length];
+                        for (var i = 0; i < result.Length; i++)
+                        {
+                            result[i] = tuple[i];
+                        }
+                        return result;
+                    },
+                    converted =>
+                    {
+                        if (converted == null) return null;
+                        return Activator.CreateInstance(type, (object?[])converted!);
+                    });
+            }
+
             var dictionaryInterface = GetGenericInterface(type, typeof(IDictionary<,>));
             if (dictionaryInterface != null)
             {
-                var keyType = ConvertedCollectionType(dictionaryInterface.GetGenericArguments()[0]);
-                var valueType = ConvertedCollectionType(dictionaryInterface.GetGenericArguments()[1]);
-                var result = typeof(Dictionary<,>).MakeGenericType(keyType, valueType);
-                ConvertedTypeCache[type] = result;
-                return result;
+                var keyType = dictionaryInterface.GetGenericArguments()[0];
+                var valueType = dictionaryInterface.GetGenericArguments()[1];
+
+                var (keyConverterTo, keyConverterFrom) = GetCollectionConverters(keyType);
+                var (valueConverterTo, valueConverterFrom) = GetCollectionConverters(valueType);
+
+                var finalType = type.IsInterface ? typeof(Dictionary<,>).MakeGenericType(keyType, valueType) : type;
+
+                return (
+                    source =>
+                    {
+                        if (source == null) return null;
+                        var result = new Hashtable();
+                        foreach (DictionaryEntry? entry in (IDictionary) source)
+                        {
+                            result[keyConverterTo(entry?.Key)!] = valueConverterTo(entry?.Value);
+                        }
+                        return result;
+                    },
+                    converted =>
+                    {
+                        if (converted == null) return null;
+                        var result = (IDictionary) Activator.CreateInstance(finalType)!;
+                        foreach (DictionaryEntry? entry in (IDictionary) converted)
+                        {
+                            result[keyConverterFrom(entry?.Key)!] = valueConverterFrom(entry?.Value);
+                        }
+                        return result;
+                    });
             }
+
             var collectionInterface = GetGenericInterface(type, typeof(ICollection<>));
             if (collectionInterface != null)
             {
-                var valueType = ConvertedCollectionType(collectionInterface.GetGenericArguments()[0]);
-                var result = typeof(List<>).MakeGenericType(valueType);
-                ConvertedTypeCache[type] = result;
-                return result;
+                var itemType = collectionInterface.GetGenericArguments()[0];
+
+                var (itemConverterTo, itemConverterFrom) = GetCollectionConverters(itemType);
+
+                var finalType = type.IsInterface ? typeof(List<>).MakeGenericType(itemType) : type;
+                var addMethod = finalType.GetMethod(nameof(ICollection<object>.Add))!;
+
+                return (
+                    source =>
+                    {
+                        if (source == null) return null;
+                        var result = new ArrayList();
+                        foreach (object? item in (ICollection) source)
+                        {
+                            result.Add(itemConverterTo(item));
+                        }
+                        return result;
+                    },
+                    converted =>
+                    {
+                        if (converted == null) return null;
+                        var result = (ICollection) Activator.CreateInstance(finalType)!;
+                        foreach (object? item in (ICollection) converted)
+                        {
+                            addMethod.Invoke(result, new object?[] { itemConverterTo(item) });
+                        }
+                        return result;
+                    });
             }
 
-            ConvertedTypeCache[type] = type;
-            return type;
-        }
-
-        private void ConvertArray<D, S>(bool toCommon, S[] source, D[] destination)
-        {
-            for (var i = 0; i < source.Length; i++)
-            {
-                destination[i] = (D)ConvertCollections(toCommon, typeof(S), source[i])!;
-            }
-        }
-
-        private void ConvertCollection<S, D>(bool toCommon, IEnumerable source, ICollection<D> destination)
-        {
-            foreach (var value in source)
-            {
-                var convertedValue = (D)ConvertCollections(toCommon, typeof(S), value)!;
-                destination.Add(convertedValue);
-            }
-        }
-
-        private void ConvertDictionary<SK, SV, DK, DV>(bool toCommon, IDictionary<SK, SV> source, IDictionary<DK, DV> destination)
-            where DK : notnull where SK : notnull
-        {
-            foreach (var (key, value) in source)
-            {
-                var convertedKey = (DK)ConvertCollections(toCommon, typeof(SK), key)!;
-                var convertedValue = (DV)ConvertCollections(toCommon, typeof(SV), value)!;
-                destination[convertedKey] = convertedValue;
-            }
-        }
-
-        private object? CreateCollection(Type type)
-        {
-            if (type.IsInterface)
-            {
-                var dictionaryInterface = GetGenericInterface(type, typeof(IDictionary<,>));
-                if (dictionaryInterface != null)
-                {
-                    return Activator.CreateInstance(typeof(Dictionary<,>).MakeGenericType(dictionaryInterface.GetGenericArguments()));
-                }
-                var collectionInterface = GetGenericInterface(type, typeof(ICollection<>));
-                if (collectionInterface != null)
-                {
-                    return Activator.CreateInstance(typeof(List<>).MakeGenericType(collectionInterface.GetGenericArguments()));
-                }
-            }
-            return Activator.CreateInstance(type);
-        }
-
-        private object? ConvertCollections(bool toCommon, Type type, object? source)
-        {
-            if (source == null)
-            {
-                return null;
-            }
-
-            // FIXME: Get `method` below to use the same dictionary as ConvertedCollectionType
-            var convertedType = ConvertedCollectionType(type);
-            if (type == convertedType)
-            {
-                return source;
-            }
-
-            var fromType = toCommon ? type : convertedType;
-            var toType = toCommon ? convertedType : type;
-
-            if (convertedType.IsArray)
-            {
-                var destination = Array.CreateInstance(toType.GetElementType()!, ((Array)source!).Length);
-
-                // , BindingFlags.NonPublic | BindingFlags.Instance
-                var method = typeof(PerperBinarySerializer).GetMethod("ConvertArray", new Type[] { typeof(bool), fromType, toType })!;
-                method.Invoke(this, new object?[] { toCommon, source, destination });
-
-                return destination;
-            }
-            else if (convertedType.IsGenericType)
-            {
-                var destination = CreateCollection(toType);
-
-                MethodInfo method;
-                if (convertedType.GetGenericTypeDefinition() == typeof(Dictionary<,>))
-                {
-                    var fromTypeArguments = GetGenericInterface(fromType, typeof(IDictionary<,>))!.GetGenericArguments();
-                    var toTypeArguments = GetGenericInterface(toType, typeof(IDictionary<,>))!.GetGenericArguments();
-                    method = typeof(PerperBinarySerializer).GetMethod("ConvertDictionary", BindingFlags.NonPublic | BindingFlags.Instance)!.MakeGenericMethod(
-                        fromTypeArguments[0], fromTypeArguments[1],
-                        toTypeArguments[0], toTypeArguments[1]);
-                }
-                else // if (convertedType.GetGenericTypeDefinition() == typeof(List<>))
-                {
-                    var fromTypeArguments = GetGenericInterface(fromType, typeof(ICollection<>))!.GetGenericArguments();
-                    var toTypeArguments = GetGenericInterface(toType, typeof(ICollection<>))!.GetGenericArguments();
-                    method = typeof(PerperBinarySerializer).GetMethod("ConvertCollection", BindingFlags.NonPublic | BindingFlags.Instance)!.MakeGenericMethod(fromTypeArguments[0], toTypeArguments[0]);
-                }
-
-                method.Invoke(this, new object?[] { toCommon, source, destination });
-
-                return destination;
-            }
-
-            return source; // Shouldn't get here
+            return (Identity, Identity);
         }
         #endregion
-
-        private object?[] ConvertTuple(ITuple tuple)
-        {
-            var result = new object?[tuple.Length];
-            for (var i = 0; i < result.Length; i++)
-            {
-                result[i] = tuple[i];
-            }
-            return result;
-        }
 
         private Type? GetGenericInterface(Type type, Type genericInterface)
         {
@@ -309,7 +292,7 @@ namespace Perper.WebJobs.Extensions.Services
                     type = type.GetGenericArguments()[0];
                 }
 
-                // NOTE: nullable value types are not supported in Java/Kotlin; currently writing them as non-nullable.
+                // NOTE: nullable value types are not supported in Java/Kotlin; currently ignoring nullability.
 
                 if (type == typeof(bool)) writer.WriteBoolean(name, (bool)value!);
                 else if (type == typeof(char)) writer.WriteChar(name, (char)value!);
@@ -322,6 +305,7 @@ namespace Perper.WebJobs.Extensions.Services
                 else if (type == typeof(decimal)) writer.WriteDecimal(name, (decimal)value!);
                 else if (type == typeof(DateTime)) writer.WriteTimestamp(name, (DateTime)value!);
                 else if (type == typeof(Guid)) writer.WriteGuid(name, (Guid)value!);
+                else if (type == typeof(string)) writer.WriteString(name, (string)value!);
                 else if (type == typeof(bool[])) writer.WriteBooleanArray(name, (bool[])value!);
                 else if (type == typeof(char[])) writer.WriteCharArray(name, (char[])value!);
                 else if (type == typeof(byte[])) writer.WriteByteArray(name, (byte[])value!);
@@ -333,25 +317,23 @@ namespace Perper.WebJobs.Extensions.Services
                 else if (type == typeof(decimal[])) writer.WriteDecimalArray(name, (decimal?[])value!);
                 else if (type == typeof(DateTime[])) writer.WriteTimestampArray(name, (DateTime?[])value!);
                 else if (type == typeof(Guid[])) writer.WriteGuidArray(name, (Guid?[])value!);
+                else if (type == typeof(string[])) writer.WriteStringArray(name, (string[])value!);
                 else if (type.IsEnum) writer.WriteEnum(name, value);
                 else if (type.IsArray && type.GetElementType()!.IsEnum) writer.WriteEnumArray(name, (object?[])value!);
                 else
                 {
-                    if (type.IsArray)
+                    value = GetCollectionConverters(type).to.Invoke(value);
+                    if (type.IsArray || typeof(ITuple).IsAssignableFrom(type))
                     {
-                        writer.WriteArray(name, (object?[])ConvertCollections(true, type, value)!);
+                        writer.WriteArray(name, (object?[])value!);
                     }
                     else if (GetGenericInterface(type, typeof(IDictionary<,>)) != null)
                     {
-                        writer.WriteDictionary(name, (IDictionary)ConvertCollections(true, type, value)!);
+                        writer.WriteDictionary(name, (IDictionary)value!);
                     }
                     else if (GetGenericInterface(type, typeof(ICollection<>)) != null)
                     {
-                        writer.WriteCollection(name, (ICollection)ConvertCollections(true, type, value)!);
-                    }
-                    else if (typeof(ITuple).IsAssignableFrom(type))
-                    {
-                        writer.WriteArray(name, (object?[])ConvertCollections(true, typeof(object?[]), ConvertTuple((ITuple)value!))!);
+                        writer.WriteCollection(name, (ICollection)value!);
                     }
                     else
                     {
@@ -397,6 +379,7 @@ namespace Perper.WebJobs.Extensions.Services
                 else if (type == typeof(decimal)) value = reader.ReadDecimal(name);
                 else if (type == typeof(DateTime)) value = reader.ReadTimestamp(name);
                 else if (type == typeof(Guid)) value = reader.ReadGuid(name);
+                else if (type == typeof(string)) value = reader.ReadString(name);
                 else if (type == typeof(bool[])) value = reader.ReadBooleanArray(name);
                 else if (type == typeof(char[])) value = reader.ReadCharArray(name);
                 else if (type == typeof(byte[])) value = reader.ReadByteArray(name);
@@ -408,40 +391,29 @@ namespace Perper.WebJobs.Extensions.Services
                 else if (type == typeof(decimal[])) value = reader.ReadDecimalArray(name);
                 else if (type == typeof(DateTime[])) value = reader.ReadTimestampArray(name);
                 else if (type == typeof(Guid[])) value = reader.ReadGuidArray(name);
+                else if (type == typeof(string[])) value = reader.ReadStringArray(name);
                 else if (type.IsEnum) value = reader.ReadEnum<object?>(name);
                 else if (type.IsArray && type.GetElementType()!.IsEnum) value = reader.ReadEnumArray<object?>(name);
                 else
                 {
-                    if (type.IsArray)
+                    if (type.IsArray || typeof(ITuple).IsAssignableFrom(type))
                     {
-                        value = ConvertCollections(false, type, reader.ReadArray<object?>(name));
+                        value = reader.ReadArray<object?>(name);
                     }
                     else if (GetGenericInterface(type, typeof(IDictionary<,>)) != null)
                     {
-                        var convertedType = ConvertedCollectionType(type);
-                        value = ConvertCollections(false, type, reader.ReadDictionary(name, s => (IDictionary)Activator.CreateInstance(convertedType)!));
+                        value = reader.ReadDictionary(name);
                     }
                     else if (GetGenericInterface(type, typeof(ICollection<>)) != null)
                     {
-                        var convertedType = ConvertedCollectionType(type);
-                        // FIXME: This addMethod should probably go in the ConvertedCollectionType dictionary
-                        var addMethod = convertedType.GetMethod(nameof(ICollection<object>.Add))!;
-                        var values = reader.ReadCollection(name,
-                            s => (ICollection)Activator.CreateInstance(convertedType)!,
-                            (c, v) => {
-                                addMethod.Invoke(c, new object[] { v });
-                            });
-                        value = ConvertCollections(false, type, values);
-                    }
-                    else if (typeof(ITuple).IsAssignableFrom(type))
-                    {
-                        var values = (object?[])ConvertCollections(false, typeof(object?[]), reader.ReadArray<object?>(name))!;
-                        value = Activator.CreateInstance(type, values);
+                        value = reader.ReadCollection(name);
                     }
                     else
                     {
                         value = reader.ReadObject<object?>(name);
                     }
+
+                    value = GetCollectionConverters(type).from.Invoke(value);
                 }
 
                 property.Set(obj, value);

@@ -146,6 +146,7 @@ class PerperBinarySerializer : BinarySerializer {
                     Time::class.javaObjectType -> writer.writeTimeArray(name, value as Array<Time>)
                     Timestamp::class.javaObjectType -> writer.writeTimestampArray(name, value as Array<Timestamp>)
                     UUID::class.javaObjectType -> writer.writeUuidArray(name, value as Array<UUID>)
+                    String::class.javaObjectType -> writer.writeStringArray(name, value as Array<String>)
                     else -> when {
                         prop.type.componentType.isEnum() -> writer.writeEnumArray(name, value as Array<Enum<*>>)
                         else -> writer.writeObjectArray(name, convertCollections(true, prop.genericType, value) as Array<*>)
@@ -166,6 +167,7 @@ class PerperBinarySerializer : BinarySerializer {
                     Time::class.javaObjectType -> writer.writeTime(name, value as Time)
                     Timestamp::class.javaObjectType -> writer.writeTimestamp(name, value as Timestamp)
                     UUID::class.javaObjectType -> writer.writeUuid(name, value as UUID)
+                    String::class.javaObjectType -> writer.writeString(name, value as String)
                     else -> when {
                         prop.type.isEnum() -> writer.writeEnum(name, value as Enum<*>)
                         mapClass.isAssignableFrom(prop.type) -> writer.writeMap(name, convertCollections(true, prop.genericType, value) as Map<Any?, Any?>)
@@ -205,6 +207,7 @@ class PerperBinarySerializer : BinarySerializer {
                     Time::class.javaObjectType -> reader.readTimeArray(name)
                     Timestamp::class.javaObjectType -> reader.readTimestampArray(name)
                     UUID::class.javaObjectType -> reader.readUuidArray(name)
+                    String::class.javaObjectType -> reader.readStringArray(name)
                     else -> when {
                         prop.type.componentType.isEnum() -> reader.readEnumArray<Enum<*>>(name)
                         else -> convertCollections(false, prop.genericType, reader.readObjectArray(name))
@@ -225,6 +228,7 @@ class PerperBinarySerializer : BinarySerializer {
                     Time::class.javaObjectType -> reader.readTime(name)
                     Timestamp::class.javaObjectType -> reader.readTimestamp(name)
                     UUID::class.javaObjectType -> reader.readUuid(name)
+                    String::class.javaObjectType -> reader.readString(name)
                     else -> when {
                         prop.type.isEnum() -> reader.readEnum(name)
                         mapClass.isAssignableFrom(prop.type) -> convertCollections(false, prop.genericType, reader.readMap<Any?, Any?>(name))

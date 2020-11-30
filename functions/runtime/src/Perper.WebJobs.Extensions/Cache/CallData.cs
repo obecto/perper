@@ -1,8 +1,6 @@
-using Apache.Ignite.Core.Binary;
-
 namespace Perper.WebJobs.Extensions.Cache
 {
-    public class CallData
+    public class CallData : IInstanceData
     {
         public string Agent { get; set; }
         public string AgentDelegate { get; set; }
