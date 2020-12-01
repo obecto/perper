@@ -1,21 +1,15 @@
 package agent
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path"
-	"strings"
 	"syscall"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 //flags
@@ -27,16 +21,13 @@ var runCmd = &cobra.Command{
 	Short: "Runs Azure Function",
 	Long:  `Runs Azure Function. Should be executed from functions folder`,
 	Run: func(cmd *cobra.Command, args []string) {
-		var agentsParentDir string = parentDir
 		var g = newGraph()
-		if pathFlag != defaultDir {
-			agentsParentDir = path.Join(pathFlag, parentDir)
-		}
+		var agentsParentDir = getParentDirName()
+
 		generateGraph(pathFlag, agentsParentDir, g)
 		//Probably will be removed
 		//Due to how Perper 0.6 works, it is not necessary to start agents in any specific order.
 		g.topoSortGraph()
-		fmt.Println(g.sequence)
 
 		runMultipleAgents(agentsParentDir, g.sequence)
 	},
@@ -81,13 +72,11 @@ func generateGraph(dirPath, agentsParentDir string, g *graph) {
 	for _, v := range agentNames {
 		g.add(v, root)
 	}
-	username := ""
-	password := ""
+
 	for _, v := range agentNames {
 		filePath := path.Join(agentsParentDir, v, configFileName)
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
-			fmt.Println(filePath)
-			username, password = cloneGitRepository(v, g.agentToAddress[v], agentsParentDir, username, password)
+			gitCloneWithExec(v, g.agentToAddress[v], agentsParentDir)
 		}
 		generateGraph(path.Join(agentsParentDir, v), agentsParentDir, g)
 	}
@@ -126,39 +115,13 @@ func clearLogs(sigs chan os.Signal, agentsParentDir string, sequence []string) {
 	os.Exit(2)
 }
 
-func cloneGitRepository(agent, address, agentsParentDir, username, password string) (string, string) {
-	var err error
-	fmt.Printf("\nCloning %s ...\n", address)
-	_, err = gitCloneCall(agent, address, agentsParentDir, username, password)
-	if err != nil {
-		if err == transport.ErrAuthenticationRequired {
-			if username == "" || password == "" {
-				username, password, err = credentials()
-				if err != nil {
-					panic(err)
-				}
-			}
-			_, err = gitCloneCall(agent, address, agentsParentDir, username, password)
-			if err != nil {
-				panic(err)
-			}
-		} else {
-			panic(err)
-		}
-	}
-	if err != nil {
+func gitCloneWithExec(agent, address, agentsParentDir string) {
+	cmd := exec.Command("git", "clone", address)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
+	if err := cmd.Run(); err != nil {
 		panic(err)
 	}
-	return username, password
-}
-
-func gitCloneCall(agent, address, agentsParentDir, username, password string) (*git.Repository, error) {
-	repo, err := git.PlainClone(path.Join(agentsParentDir, agent), false, &git.CloneOptions{
-		URL:      address,
-		Progress: os.Stdout,
-		Auth:     &http.BasicAuth{Username: username, Password: password},
-	})
-	return repo, err
 }
 
 func runSingleAgent(dirPath string, port int) {
@@ -184,14 +147,16 @@ func getAgentNameFromPath(dirPath string) string {
 			panic(err)
 		}
 		dirPath = dir
-		index := strings.LastIndex(dir, "/")
-		return dirPath[index+1:]
 	}
-	index := strings.LastIndex(dirPath, "/")
-	if index == -1 {
-		return dirPath
+	return path.Base(dirPath)
+}
+
+func getParentDirName() string {
+	agentsParentDir := parentDir
+	if pathFlag != defaultDir {
+		agentsParentDir = path.Join(pathFlag, parentDir)
 	}
-	return dirPath[index+1:]
+	return agentsParentDir
 }
 
 func checkForSrcFolder(dirPath string) string {
@@ -199,25 +164,4 @@ func checkForSrcFolder(dirPath string) string {
 		dirPath = path.Join(dirPath, "src")
 	}
 	return dirPath
-}
-
-func credentials() (string, string, error) {
-
-	fmt.Println("Git credentials are needed.")
-	reader := bufio.NewReader(os.Stdin)
-
-	fmt.Print("Username: ")
-	username, err := reader.ReadString('\n')
-	if err != nil {
-		return "", "", err
-	}
-
-	fmt.Print("Password: ")
-	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
-	if err != nil {
-		return "", "", err
-	}
-	fmt.Println()
-	password := string(bytePassword)
-	return strings.TrimSpace(username), strings.TrimSpace(password), nil
 }

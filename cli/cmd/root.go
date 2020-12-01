@@ -51,8 +51,8 @@ func initConfig() {
 		// Search config in home directory with name ".perper" (without extension).
 		viper.AddConfigPath(home)
 		viper.SetConfigName(".perper")
-		viper.SetEnvPrefix("toml")
 	}
+	viper.SetEnvPrefix("perper")
 
 	viper.AutomaticEnv() // read in environment variables that match
 

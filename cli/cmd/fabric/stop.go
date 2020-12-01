@@ -34,6 +34,7 @@ func stopFabricContainer() {
 	containerID := findWorkingFabric(ctx, cli)
 	if containerID == "" {
 		fmt.Println("Could not find a fabric container")
+		return
 	}
 
 	err = cli.ContainerStop(ctx, containerID[:12], nil)
