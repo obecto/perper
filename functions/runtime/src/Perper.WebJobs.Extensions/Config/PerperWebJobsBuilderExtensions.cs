@@ -35,6 +35,8 @@ namespace Perper.WebJobs.Extensions.Config
                 typeof(IStateEntry<>)
             }, services));
 
+            builder.Services.AddSingleton<PerperBinarySerializer>();
+
             builder.Services.AddSingleton(services =>
             {
                 var fabric = ActivatorUtilities.CreateInstance<FabricService>(services);
@@ -56,7 +58,7 @@ namespace Perper.WebJobs.Extensions.Config
                     where type.GetCustomAttributes<PerperDataAttribute>().Any()
                     select type);
 
-                var serializer = ActivatorUtilities.CreateInstance<PerperBinarySerializer>(services);
+                var serializer = services.GetRequiredService<PerperBinarySerializer>();
 
                 var ignite = Ignition.StartClient(new IgniteClientConfiguration
                 {
@@ -71,6 +73,9 @@ namespace Perper.WebJobs.Extensions.Config
                         }).ToList()
                     }
                 });
+
+                serializer.SetBinary(ignite.GetBinary());
+
                 return ignite;
             });
 

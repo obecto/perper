@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Cache;
+using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
@@ -16,14 +17,16 @@ namespace Perper.WebJobs.Extensions.Triggers
     {
         private readonly JObject _trigger;
         private readonly IIgniteClient _ignite;
+        private readonly PerperBinarySerializer _serializer;
         private readonly ILogger _logger;
 
         public Type Type { get; } = typeof(object).MakeByRefType();
 
-        public PerperTriggerValueBinder(JObject trigger, IIgniteClient ignite, ILogger logger)
+        public PerperTriggerValueBinder(JObject trigger, IIgniteClient ignite, PerperBinarySerializer serializer, ILogger logger)
         {
             _trigger = trigger;
             _ignite = ignite;
+            _serializer = serializer;
             _logger = logger;
         }
 
@@ -63,7 +66,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         private async Task ProcessAsyncEnumerable<T>(string stream, IAsyncEnumerable<T> values, CancellationToken cancellationToken)
         {
-            var collector = new PerperCollector<T>(_ignite, stream);
+            var collector = new PerperCollector<T>(_ignite, _serializer, stream);
             await foreach (var value in values)
             {
                 await collector.AddAsync(value);

@@ -1,12 +1,12 @@
 using System;
-using System.Threading;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
-using Perper.WebJobs.Extensions.Triggers;
-using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Bindings;
+using Perper.WebJobs.Extensions.Model;
+using Perper.WebJobs.Extensions.Triggers;
 
 namespace DotNet.FunctionApp
 {
@@ -16,6 +16,10 @@ namespace DotNet.FunctionApp
         public static async Task RunAsync([PerperTrigger] object parameters, IContext context, IState state, CancellationToken cancellationToken)
         {
             await context.CallActionAsync("Log", "This was written by an action!");
+            var dynamicResult = await context.CallFunctionAsync<dynamic>("Dynamic", new { A = 1, B = 3, Message = "This was read from a dynamic object!" });
+
+            Console.WriteLine("{0}", dynamicResult);
+            Console.WriteLine("Dynamically-calculated sum was {0}", dynamicResult.Sum);
 
             var result = await context.CallFunctionAsync<int>("Called", (8, 3));
             Console.WriteLine("Result from function call is... {0}", result);
@@ -31,21 +35,28 @@ namespace DotNet.FunctionApp
             var multiplier = 7;
             var expectedFinalValue = count * (count + 1) / 2 * multiplier;
 
-            // var generator = await context.StreamFunctionAsync<int>("Generator", count);
-            var (generator, generatorName) = await context.CreateBlankStreamAsync<int>();
+            var generator = await context.StreamFunctionAsync<dynamic>("Generator", count);
+            // var (generator, generatorName) = await context.CreateBlankStreamAsync<int>();
 
             var processor = await context.StreamFunctionAsync<int>("Processor", (generator, multiplier));
             await context.StreamActionAsync("Consumer", (processor, expectedFinalValue));
 
             await Task.Delay(1000); // UGLY: Make sure Consumer/Processor are up
 
-            await context.CallActionAsync("BlankGenerator", (generatorName, count));
+            //await context.CallActionAsync("BlankGenerator", (generatorName, count));
         }
 
         [FunctionName("Log")]
         public static void Log([PerperTrigger] string message)
         {
             Console.WriteLine(message);
+        }
+
+        [FunctionName("Dynamic")]
+        public static dynamic Dynamic([PerperTrigger] dynamic item)
+        {
+            Console.WriteLine(item.Message);
+            return new { Sum = item.A + item.B };
         }
 
         [FunctionName("Called")]
@@ -65,36 +76,36 @@ namespace DotNet.FunctionApp
 
         [FunctionName("BlankGenerator")]
         public static async Task BlankGenerator(
-            [PerperTrigger(ParameterExpression="{\"stream\":0}")] (string _, int to) parameters,
-            [Perper] IAsyncCollector<int> output,
+            [PerperTrigger(ParameterExpression = "{\"stream\":0}")] (string _, int to) parameters,
+            [Perper] IAsyncCollector<dynamic> output,
             ILogger logger)
         {
-            for (var i = 0; i <= parameters.to; i ++)
+            for (var i = 0; i <= parameters.to; i++)
             {
                 logger.LogDebug("Generating: {0}", i);
-                await output.AddAsync(i);
+                await output.AddAsync(new { Num = i });
             }
             await output.FlushAsync();
         }
 
         [FunctionName("Generator")]
-        public static async IAsyncEnumerable<int> Generator([PerperTrigger] int to, ILogger logger)
+        public static async IAsyncEnumerable<dynamic> Generator([PerperTrigger] int to, ILogger logger)
         {
-            for (var i = 0; i <= to; i ++)
+            for (var i = 0; i <= to; i++)
             {
                 logger.LogDebug("Generating: {0}", i);
-                yield return i;
+                yield return new { Num = i };
             }
             await Task.Delay(1000000);
         }
 
         [FunctionName("Processor")]
-        public static async IAsyncEnumerable<int> Processor([PerperTrigger] (IAsyncEnumerable<int> generator, int x) paramters, ILogger logger)
+        public static async IAsyncEnumerable<int> Processor([PerperTrigger] (IAsyncEnumerable<dynamic> generator, int x) paramters, ILogger logger)
         {
             await foreach (var i in paramters.generator)
             {
                 logger.LogDebug($"Processing: {i}");
-                yield return i * paramters.x;
+                yield return i.Num * paramters.x;
             }
         }
 

@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Client;
@@ -9,6 +10,8 @@ namespace Perper.WebJobs.Extensions.Services
     public class PerperInstanceData
     {
         private readonly IIgniteClient _ignite;
+        private readonly PerperBinarySerializer _serializer;
+
         private int _nextStreamParameterIndex = 0;
         private int _nextAnonymousStreamParameterIndex = 0;
         public bool _initialized = false;
@@ -16,9 +19,10 @@ namespace Perper.WebJobs.Extensions.Services
         public string InstanceName { get; private set; } = default!;
         public IInstanceData InstanceData { get; private set; } = default!;
 
-        public PerperInstanceData(IIgniteClient ignite)
+        public PerperInstanceData(IIgniteClient ignite, PerperBinarySerializer serializer)
         {
             _ignite = ignite;
+            _serializer = serializer;
         }
 
         public async Task SetTriggerValue(JObject trigger)
@@ -36,6 +40,17 @@ namespace Perper.WebJobs.Extensions.Services
                 InstanceData = await streamsCache.GetAsync(InstanceName);
             }
             _initialized = true;
+        }
+
+        public object? GetParameters(Type type)
+        {
+            return _serializer.ConvertCommonToObject(type, InstanceData.Parameters);
+        }
+
+        public object?[] GetParameters<T>()
+        {
+            var parameters = GetParameters(typeof(object?[]));
+            return (parameters as object?[]) ?? new object?[] { parameters };
         }
 
         public int GetStreamParameterIndex()

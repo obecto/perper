@@ -5,6 +5,6 @@ namespace Perper.WebJobs.Extensions.Cache
         string Agent { get; set; }
         string AgentDelegate { get; set; }
         string Delegate { get; set; }
-        object?[]? Parameters { get; set; }
+        object? Parameters { get; set; }
     }
 }

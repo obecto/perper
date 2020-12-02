@@ -32,6 +32,8 @@ namespace Perper.WebJobs.Extensions.Model
     {
         [NonSerialized] public string? FunctionName; // HACK: Used for Declare/InitiaizeStream
 
+        [PerperInject] protected readonly PerperBinarySerializer _serializer;
+
         [NonSerialized] private PerperInstanceData _instance;
         [NonSerialized] private int _parameterIndex;
         [PerperInject]
@@ -50,10 +52,11 @@ namespace Perper.WebJobs.Extensions.Model
         [PerperInject] protected readonly IState _state;
 
 #pragma warning disable 8618 // _instance and _parameterIndex come from Instance
-        public Stream(string streamName, PerperInstanceData instance, FabricService fabric, IIgniteClient ignite, IState state)
+        public Stream(string streamName, PerperInstanceData instance, FabricService fabric, IIgniteClient ignite, PerperBinarySerializer serializer, IState state)
             : base(streamName, fabric, ignite)
         {
             Instance = instance;
+            _serializer = serializer;
             _state = state;
         }
 #pragma warning restore 8618
@@ -115,6 +118,10 @@ namespace Perper.WebJobs.Extensions.Model
 
             private async IAsyncEnumerable<T> Impl([EnumeratorCancellation] CancellationToken cancellationToken = default)
             {
+                var convertersInfo = _stream._serializer.GetObjectConverters(typeof(T));
+                var converter = convertersInfo.from;
+                var shouldKeepBinary = convertersInfo.convertedType == typeof(IBinaryObject);
+
                 try
                 {
                     await AddListenerAsync();
@@ -123,12 +130,17 @@ namespace Perper.WebJobs.Extensions.Model
                     {
                         if (notification is StreamItemNotification si)
                         {
-                            var cache = _stream._ignite.GetCache<long, T>(si.Cache);
+                            var cache = _stream._ignite.GetCache<long, object?>(si.Cache);
+                            if (shouldKeepBinary)
+                            {
+                                cache = cache.WithKeepBinary<long, object?>();
+                            }
+
                             var value = await cache.GetAsync(si.Key);
 
                             await ((State)_stream._state).LoadStateEntries();
 
-                            yield return value;
+                            yield return (T)converter.Invoke(value)!;
 
                             await ((State)_stream._state).StoreStateEntries();
 

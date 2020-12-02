@@ -12,10 +12,16 @@ namespace Perper.WebJobs.Extensions.Services
     public class PerperBinarySerializer : IBinarySerializer
     {
         private readonly IServiceProvider _services;
+        private IBinary _binary = default!;
 
         public PerperBinarySerializer(IServiceProvider services)
         {
             _services = services;
+        }
+
+        public void SetBinary(IBinary binary)
+        {
+            _binary = binary;
         }
 
         #region GetProperties
@@ -72,13 +78,13 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        private readonly Dictionary<Type, Dictionary<String, IPropertyInfo>> PropertiesCache = new Dictionary<Type, Dictionary<String, IPropertyInfo>>();
+        private readonly Dictionary<Type, Dictionary<string, IPropertyInfo>> PropertiesCache = new Dictionary<Type, Dictionary<string, IPropertyInfo>>();
 
-        private Dictionary<String, IPropertyInfo> GetProperties(Type type)
+        private Dictionary<string, IPropertyInfo> GetProperties(Type type)
         {
-            if (PropertiesCache.TryGetValue(type, out var value))
+            if (PropertiesCache.TryGetValue(type, out var cached))
             {
-                return value;
+                return cached;
             }
 
             var result = new Dictionary<String, IPropertyInfo>();
@@ -124,24 +130,23 @@ namespace Perper.WebJobs.Extensions.Services
         }
         #endregion
 
-        #region ConvertCollections
+        #region GetObjectConverters
         private static Func<object?, object?> Identity = x => x;
 
-        private (Func<object?, object?> to, Func<object?, object?> from) GetCollectionConverters(Type type)
+        public (Type convertedType, Func<object?, object?> to, Func<object?, object?> from) GetObjectConverters(Type type)
         {
             if (type.IsArray)
             {
                 var elementType = type.GetElementType()!;
-                var converters = GetCollectionConverters(elementType!);
+                var (elementConvertedType, elementConverterTo, elementConverterFrom) = GetObjectConverters(elementType!);
 
-                if (converters == (Identity, Identity))
+                if (elementConverterTo == Identity && elementConverterFrom == Identity)
                 {
-                    return (Identity, Identity);
+                    return (type, Identity, Identity);
                 }
 
-                var (converterTo, converterFrom) = converters;
-
                 return (
+                    typeof(object?[]),
                     source =>
                     {
                         if (source == null) return null;
@@ -149,7 +154,7 @@ namespace Perper.WebJobs.Extensions.Services
                         var result = new object?[arr.Length];
                         for (var i = 0; i < arr.Length; i++)
                         {
-                            result[i] = converterTo(arr.GetValue(i));
+                            result[i] = elementConverterTo(arr.GetValue(i));
                         }
                         return result;
                     },
@@ -160,7 +165,7 @@ namespace Perper.WebJobs.Extensions.Services
                         var result = Array.CreateInstance(elementType, arr.Length);
                         for (var i = 0; i < arr.Length; i++)
                         {
-                            result.SetValue(converterFrom(arr[i])!, i);
+                            result.SetValue(elementConverterFrom(arr[i])!, i);
                         }
                         return result;
                     }
@@ -170,7 +175,10 @@ namespace Perper.WebJobs.Extensions.Services
 #if !NETSTANDARD2_0
             if (typeof(ITuple).IsAssignableFrom(type))
             {
+                var subConverters = type.GetGenericArguments().Select(x => GetObjectConverters(x)).ToList();
+
                 return (
+                    typeof(object?[]),
                     source =>
                     {
                         if (source == null) return null;
@@ -178,14 +186,20 @@ namespace Perper.WebJobs.Extensions.Services
                         var result = new object?[tuple.Length];
                         for (var i = 0; i < result.Length; i++)
                         {
-                            result[i] = tuple[i];
+                            result[i] = subConverters[i].to(tuple[i]);
                         }
                         return result;
                     },
                     converted =>
                     {
                         if (converted == null) return null;
-                        return Activator.CreateInstance(type, (object?[])converted!);
+                        var arr = (object?[])converted!;
+                        var parameters = new object?[arr.Length];
+                        for (var i = 0; i < parameters.Length; i++)
+                        {
+                            parameters[i] = subConverters[i].from(arr[i]);
+                        }
+                        return Activator.CreateInstance(type, parameters);
                     }
                 );
             }
@@ -197,12 +211,13 @@ namespace Perper.WebJobs.Extensions.Services
                 var keyType = dictionaryInterface.GetGenericArguments()[0];
                 var valueType = dictionaryInterface.GetGenericArguments()[1];
 
-                var (keyConverterTo, keyConverterFrom) = GetCollectionConverters(keyType);
-                var (valueConverterTo, valueConverterFrom) = GetCollectionConverters(valueType);
+                var (keyConvertedType, keyConverterTo, keyConverterFrom) = GetObjectConverters(keyType);
+                var (valueConvertedType, valueConverterTo, valueConverterFrom) = GetObjectConverters(valueType);
 
                 var finalType = type.IsInterface ? typeof(Dictionary<,>).MakeGenericType(keyType, valueType) : type;
 
                 return (
+                    typeof(IDictionary),
                     source =>
                     {
                         if (source == null) return null;
@@ -231,12 +246,13 @@ namespace Perper.WebJobs.Extensions.Services
             {
                 var itemType = collectionInterface.GetGenericArguments()[0];
 
-                var (itemConverterTo, itemConverterFrom) = GetCollectionConverters(itemType);
+                var (itemConvertedType, itemConverterTo, itemConverterFrom) = GetObjectConverters(itemType);
 
                 var finalType = type.IsInterface ? typeof(List<>).MakeGenericType(itemType) : type;
                 var addMethod = finalType.GetMethod(nameof(ICollection<object>.Add))!;
 
                 return (
+                    typeof(ICollection),
                     source =>
                     {
                         if (source == null) return null;
@@ -260,11 +276,81 @@ namespace Perper.WebJobs.Extensions.Services
                 );
             }
 
-            return (Identity, Identity);
+            if (type.IsAssignableFrom(typeof(PerperDynamicObject)) || IsAnonymousType(type))
+            {
+                var deserializeMethod = typeof(IBinaryObject).GetMethod(nameof(IBinaryObject.Deserialize))!.MakeGenericMethod(type);
+
+                return (
+                    typeof(IBinaryObject),
+                    source =>
+                    {
+                        if (source == null) return null;
+
+                        if (source is PerperDynamicObject dynamicObject)
+                        {
+                            return dynamicObject.BinaryObject;
+                        }
+
+                        var sourceType = source.GetType();
+                        if (sourceType.GetCustomAttributes<CompilerGeneratedAttribute>().Count() > 0)
+                        {
+                            // Compiler-generated, assume anonymous.
+                            // Using Guid, as it is more likely to be unique between different programs than anonymous type name
+                            var builder = _binary.GetBuilder(sourceType.GUID.ToString());
+
+                            foreach (var property in sourceType.GetProperties())
+                            {
+                                builder.SetField(property.Name, property.GetValue(source));
+                            }
+
+                            return builder.Build();
+                        }
+
+                        return source;
+                    },
+                    converted =>
+                    {
+                        if (converted is IBinaryObject binObj)
+                        {
+                            if (type.IsAssignableFrom(typeof(PerperDynamicObject)))
+                            {
+                                return new PerperDynamicObject(binObj);
+                            }
+                            else
+                            {
+                                return deserializeMethod.Invoke(binObj, new object[] { });
+                            }
+                        }
+                        return converted;
+                    }
+                );
+            }
+
+            return (type, Identity, Identity);
         }
+
+        public object? ConvertObjectToCommon(Type expectedType, object? obj)
+        {
+            if (obj == null) return obj;
+
+            return GetObjectConverters(expectedType).to.Invoke(obj);
+        }
+
+        public object? ConvertCommonToObject(Type expectedType, object? obj)
+        {
+            if (obj == null) return obj;
+
+            return GetObjectConverters(expectedType).from.Invoke(obj);
+        }
+
+        private static bool IsAnonymousType(Type type)
+        {
+            return type.GetCustomAttributes<CompilerGeneratedAttribute>().Count() > 0;
+        }
+
         #endregion
 
-        private Type? GetGenericInterface(Type type, Type genericInterface)
+        private static Type? GetGenericInterface(Type type, Type genericInterface)
         {
             if (type.IsGenericType && type.GetGenericTypeDefinition() == genericInterface)
             {
@@ -329,27 +415,13 @@ namespace Perper.WebJobs.Extensions.Services
                 else if (type.IsArray && type.GetElementType()!.IsEnum) writer.WriteEnumArray(name, (object?[])value!);
                 else
                 {
-                    value = GetCollectionConverters(type).to.Invoke(value);
-#if !NETSTANDARD2_0
-                    if (type.IsArray || typeof(ITuple).IsAssignableFrom(type))
-#else
-                    if (type.IsArray)
-#endif
-                    {
-                        writer.WriteArray(name, (object?[])value!);
-                    }
-                    else if (GetGenericInterface(type, typeof(IDictionary<,>)) != null)
-                    {
-                        writer.WriteDictionary(name, (IDictionary)value!);
-                    }
-                    else if (GetGenericInterface(type, typeof(ICollection<>)) != null)
-                    {
-                        writer.WriteCollection(name, (ICollection)value!);
-                    }
-                    else
-                    {
-                        writer.WriteObject(name, value);
-                    }
+                    var (convertedType, converterTo, converterFrom) = GetObjectConverters(type);
+                    value = converterTo.Invoke(value);
+
+                    if (convertedType == typeof(object?[])) writer.WriteArray(name, (object?[])value!);
+                    else if (convertedType == typeof(IDictionary)) writer.WriteDictionary(name, (IDictionary)value!);
+                    else if (convertedType == typeof(ICollection)) writer.WriteCollection(name, (ICollection)value!);
+                    else writer.WriteObject(name, value);
                 }
             }
         }
@@ -361,7 +433,6 @@ namespace Perper.WebJobs.Extensions.Services
                 binarizable.ReadBinary(reader);
                 return;
             }
-
 
             foreach (var property in GetProperties(obj.GetType()))
             {
@@ -408,28 +479,14 @@ namespace Perper.WebJobs.Extensions.Services
                 else if (type.IsArray && type.GetElementType()!.IsEnum) value = reader.ReadEnumArray<object?>(name);
                 else
                 {
-#if !NETSTANDARD2_0
-                    if (type.IsArray || typeof(ITuple).IsAssignableFrom(type))
-#else
-                    if (type.IsArray)
-#endif
-                    {
-                        value = reader.ReadArray<object?>(name);
-                    }
-                    else if (GetGenericInterface(type, typeof(IDictionary<,>)) != null)
-                    {
-                        value = reader.ReadDictionary(name);
-                    }
-                    else if (GetGenericInterface(type, typeof(ICollection<>)) != null)
-                    {
-                        value = reader.ReadCollection(name);
-                    }
-                    else
-                    {
-                        value = reader.ReadObject<object?>(name);
-                    }
+                    var (convertedType, converterTo, converterFrom) = GetObjectConverters(type);
 
-                    value = GetCollectionConverters(type).from.Invoke(value);
+                    if (convertedType == typeof(object?[])) value = reader.ReadArray<object?>(name);
+                    else if (convertedType == typeof(IDictionary)) value = reader.ReadDictionary(name);
+                    else if (convertedType == typeof(ICollection)) value = reader.ReadCollection(name);
+                    else value = reader.ReadObject<object?>(name);
+
+                    value = converterFrom.Invoke(value);
                 }
 
                 property.Value.Set(obj, value);

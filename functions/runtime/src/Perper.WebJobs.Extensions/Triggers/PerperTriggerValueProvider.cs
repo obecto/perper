@@ -1,9 +1,9 @@
 using System;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Services;
-using ITuple = System.Runtime.CompilerServices.ITuple;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
@@ -14,33 +14,16 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public Type Type { get; }
 
-        public PerperTriggerValueProvider(JObject trigger, Type type, PerperInstanceData instance)
+        public PerperTriggerValueProvider(JObject trigger, ParameterInfo parameter, PerperInstanceData instance)
         {
+            Type = parameter.ParameterType;
             _trigger = trigger;
-            Type = type;
             _instance = instance;
         }
 
         public Task<object?> GetValueAsync()
         {
-            var parameters = _instance.InstanceData.Parameters;
-
-            object? result;
-
-            if (Type.IsAssignableFrom(typeof(object[])))
-            {
-                result = (object?)parameters;
-            }
-            else if (typeof(ITuple).IsAssignableFrom(Type))
-            {
-                result = Activator.CreateInstance(Type, parameters);
-            }
-            else
-            {
-                result = parameters?[0];
-            }
-
-            return Task.FromResult(result);
+            return Task.FromResult(_instance.GetParameters(Type));
         }
 
         public string ToInvokeString()

@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Services;
@@ -53,11 +54,12 @@ namespace Perper.WebJobs.Extensions.Triggers
         {
             var trigger = (JObject)value;
 
-            var instanceData = (PerperInstanceData)_services.GetService(typeof(PerperInstanceData));
+            var instanceData = _services.GetRequiredService<PerperInstanceData>();
             await instanceData.SetTriggerValue(trigger);
 
-            var valueProvider = new PerperTriggerValueProvider(trigger, _parameter.ParameterType, instanceData);
-            var returnValueProvider = new PerperTriggerValueBinder(trigger, _ignite, _logger);
+
+            var valueProvider = new PerperTriggerValueProvider(trigger, _parameter, instanceData);
+            var returnValueProvider = new PerperTriggerValueBinder(trigger, _ignite, _services.GetRequiredService<PerperBinarySerializer>(), _logger);
             var bindingData = await GetBindingData(instanceData, trigger);
 
             return new TriggerData(valueProvider, bindingData)
@@ -90,7 +92,7 @@ namespace Perper.WebJobs.Extensions.Triggers
                 {
                     if (property.Value.Type == JTokenType.Integer)
                     {
-                        result[property.Name] = instanceData.InstanceData.Parameters?[(int)property.Value!]!;
+                        result[property.Name] = instanceData.GetParameters<object[]>()[(int)property.Value!]!;
                     }
                 }
             }
