@@ -2,6 +2,8 @@ package fabric
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -54,6 +56,7 @@ func runFabricContainer() {
 	if err != nil || reader == nil {
 		panic(err)
 	}
+	io.Copy(os.Stdout, reader)
 
 	if ports != nil || len(ports) == 0 {
 		ports = []string{"10800:10800", "40400:40400"}

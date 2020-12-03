@@ -1,8 +1,6 @@
 package fabric
 
 import (
-	"fmt"
-
 	"context"
 	"io"
 	"os"
@@ -18,7 +16,6 @@ var logsCmd = &cobra.Command{
 	Short: "Shows logs from Perper Fabric",
 	Long:  `Finds a container with Fabric image type and prints its output`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("logs called")
 		getContainerLogs(nil, "", nil)
 	},
 }

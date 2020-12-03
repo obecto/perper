@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path"
+	"path/filepath"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -40,10 +40,10 @@ func init() {
 }
 
 func readConfig(dirPath string) (map[string]string, string) {
-	agentName := getAgentNameFromPath(path.Clean(dirPath))
+	agentName := getAgentNameFromPath(filepath.Clean(dirPath))
 
 	localConfig := viper.New()
-	localConfig.SetConfigFile(path.Join(dirPath, configFileName))
+	localConfig.SetConfigFile(filepath.Join(dirPath, configFileName))
 	err := localConfig.ReadInConfig()
 	if err != nil {
 		panic(err)
@@ -52,7 +52,7 @@ func readConfig(dirPath string) (map[string]string, string) {
 	root := localConfig.GetString("name")
 	if root != agentName {
 		fmt.Println(agentName + " != " + root)
-		panic("Expect agent name to be '" + agentName + "' in '" + path.Join(dirPath, configFileName) + "'")
+		panic("Expect agent name to be '" + agentName + "' in '" + filepath.Join(dirPath, configFileName) + "'")
 	}
 
 	return agents, root
@@ -74,11 +74,11 @@ func generateGraph(dirPath, agentsParentDir string, g *graph) {
 	}
 
 	for _, v := range agentNames {
-		filePath := path.Join(agentsParentDir, v, configFileName)
+		filePath := filepath.Join(agentsParentDir, v, configFileName)
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
 			gitCloneWithExec(v, g.agentToAddress[v], agentsParentDir)
 		}
-		generateGraph(path.Join(agentsParentDir, v), agentsParentDir, g)
+		generateGraph(filepath.Join(agentsParentDir, v), agentsParentDir, g)
 	}
 }
 
@@ -86,7 +86,7 @@ func runMultipleAgents(agentsParentDir string, sequence []string) {
 	for i, agent := range sequence {
 
 		port := 7071 + i
-		dirPath := checkForSrcFolder(path.Join(agentsParentDir, agent))
+		dirPath := checkForSrcFolder(filepath.Join(agentsParentDir, agent))
 		runSingleAgent(dirPath, port)
 	}
 	if !keepLogs {
@@ -96,7 +96,7 @@ func runMultipleAgents(agentsParentDir string, sequence []string) {
 	}
 
 	dirPath := checkForSrcFolder(pathFlag)
-	agentLog(path.Join(dirPath, logFileName), os.Stdout)
+	agentLog(filepath.Join(dirPath, logFileName), os.Stdout)
 }
 
 func clearLogs(sigs chan os.Signal, agentsParentDir string, sequence []string) {
@@ -104,8 +104,8 @@ func clearLogs(sigs chan os.Signal, agentsParentDir string, sequence []string) {
 	fmt.Println()
 	fmt.Println("Interrupted")
 	for _, v := range sequence {
-		dirPath := checkForSrcFolder(path.Join(agentsParentDir, v))
-		err := os.Remove(path.Join(dirPath, logFileName))
+		dirPath := checkForSrcFolder(filepath.Join(agentsParentDir, v))
+		err := os.Remove(filepath.Join(dirPath, logFileName))
 		if err != nil {
 			panic(err)
 		}
@@ -128,7 +128,7 @@ func runSingleAgent(dirPath string, port int) {
 
 	cmd := exec.Command("func", "host", "start", "--script-root", dirPath, "--port", fmt.Sprint(port))
 
-	outfile, err := os.Create(path.Join(dirPath, logFileName))
+	outfile, err := os.Create(filepath.Join(dirPath, logFileName))
 	if err != nil {
 		panic(err)
 	}
@@ -148,20 +148,20 @@ func getAgentNameFromPath(dirPath string) string {
 		}
 		dirPath = dir
 	}
-	return path.Base(dirPath)
+	return filepath.Base(dirPath)
 }
 
 func getParentDirName() string {
 	agentsParentDir := parentDir
 	if pathFlag != defaultDir {
-		agentsParentDir = path.Join(pathFlag, parentDir)
+		agentsParentDir = filepath.Join(pathFlag, parentDir)
 	}
 	return agentsParentDir
 }
 
 func checkForSrcFolder(dirPath string) string {
-	if _, err := os.Stat(path.Join(dirPath, "src")); err == nil {
-		dirPath = path.Join(dirPath, "src")
+	if _, err := os.Stat(filepath.Join(dirPath, "src")); err == nil {
+		dirPath = filepath.Join(dirPath, "src")
 	}
 	return dirPath
 }
