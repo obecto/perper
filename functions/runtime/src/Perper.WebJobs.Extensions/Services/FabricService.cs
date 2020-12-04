@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -40,14 +41,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public FabricService(IIgniteClient ignite, IOptions<PerperConfig> config, ILogger<FabricService> logger)
         {
-            var agentDelegate = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(Directory.GetCurrentDirectory())))!;
-            var suffix = ".FunctionApp";
-            if (agentDelegate.EndsWith(suffix))
-            {
-                agentDelegate = agentDelegate.Substring(0, agentDelegate.Length - suffix.Length);
-            }
-
-            AgentDelegate = agentDelegate;
+            AgentDelegate = Environment.GetEnvironmentVariable("PERPER_AGENT_NAME") ?? GetAgentDelegateFromPath();
             _ignite = ignite;
             _logger = logger;
 
@@ -60,6 +54,24 @@ namespace Perper.WebJobs.Extensions.Services
 #else
             _grpcChannel = GrpcChannel.ForAddress(address);
 #endif
+        }
+
+        private string GetAgentDelegateFromPath()
+        {
+            var projectRootPath = Path.GetDirectoryName(Path.GetDirectoryName(Directory.GetCurrentDirectory()));
+            var agentDelegate = Path.GetFileName(projectRootPath)!;
+            if (agentDelegate == "src")
+            {
+                agentDelegate = Path.GetFileName(Path.GetDirectoryName(projectRootPath))!;
+            }
+            var suffix = ".FunctionApp";
+            if (agentDelegate.EndsWith(suffix))
+            {
+                agentDelegate = agentDelegate.Substring(0, agentDelegate.Length - suffix.Length);
+            }
+            // NOTE: Currently this can still result in agent delegates with dots, dashes, or underscores,
+            // which is bad as it is currently impossible to have a function named the same as such an agent
+            return agentDelegate;
         }
 
         public Task StartAsync(CancellationToken token)
