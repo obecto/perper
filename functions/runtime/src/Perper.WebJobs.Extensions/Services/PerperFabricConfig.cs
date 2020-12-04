@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace Perper.WebJobs.Extensions.Config
+namespace Perper.WebJobs.Extensions.Services
 {
     public class PerperConfig
     {

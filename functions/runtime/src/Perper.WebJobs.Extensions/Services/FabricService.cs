@@ -19,7 +19,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Perper.WebJobs.Extensions.Cache.Notifications;
 using Perper.WebJobs.Extensions.Protobuf;
-using Perper.WebJobs.Extensions.Config;
 using Notification = Perper.WebJobs.Extensions.Cache.Notifications.Notification;
 using NotificationProto = Perper.WebJobs.Extensions.Protobuf.Notification;
 
