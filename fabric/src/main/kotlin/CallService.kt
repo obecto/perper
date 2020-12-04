@@ -56,8 +56,7 @@ class CallService(val startCall: Pair<String, String>?) : JobService() {
         val query = ContinuousQuery<String, CallData>()
         query.localListener = CacheEntryUpdatedListener { events ->
             for (event in events) {
-                if (event.isOldValueAvailable && event.oldValue.finished == event.value.finished)
-                {
+                if (event.isOldValueAvailable && event.oldValue.finished == event.value.finished) {
                     continue
                 }
                 runBlocking { streamGraphUpdates.send(Pair(event.key, event.value)) }

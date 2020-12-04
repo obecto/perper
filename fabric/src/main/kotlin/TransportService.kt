@@ -10,6 +10,9 @@ import io.grpc.ServerBuilder
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
@@ -27,6 +30,12 @@ import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
 import org.apache.ignite.services.Service
 import org.apache.ignite.services.ServiceContext
+import sh.keda.externalscaler.ExternalScalerGrpcKt
+import sh.keda.externalscaler.GetMetricSpecResponse
+import sh.keda.externalscaler.GetMetricsRequest
+import sh.keda.externalscaler.GetMetricsResponse
+import sh.keda.externalscaler.IsActiveResponse
+import sh.keda.externalscaler.ScaledObjectRef
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ConcurrentHashMap
 import javax.cache.Cache.Entry
@@ -44,9 +53,12 @@ class TransportService(var port: Int) : Service {
         }
 
         fun getNotificationQueue(ignite: Ignite, streamName: String): IgniteQueue<AffinityKey<Long>> {
-            return ignite.queue<AffinityKey<Long>>("$streamName-\$notifications", 0, CollectionConfiguration().also {
-                it.backups = 1 // Workaround IGNITE-7789
-            })
+            return ignite.queue<AffinityKey<Long>>(
+                "$streamName-\$notifications", 0,
+                CollectionConfiguration().also {
+                    it.backups = 1 // Workaround IGNITE-7789
+                }
+            )
         }
     }
 
@@ -61,7 +73,7 @@ class TransportService(var port: Int) : Service {
     override fun init(ctx: ServiceContext) {
         var serverBuilder = ServerBuilder.forPort(port)
         serverBuilder.addService(FabricImpl())
-        // serverBuilder.addService(ExternalScalerImpl())
+        serverBuilder.addService(ExternalScalerImpl())
         server = serverBuilder.build()
     }
 
@@ -227,23 +239,23 @@ class TransportService(var port: Int) : Service {
         }
     }
 
-    /*inner class ExternalScalerImpl : ExternalScalerGrpcKt.ExternalScalerCoroutineImplBase() {
+    inner class ExternalScalerImpl : ExternalScalerGrpcKt.ExternalScalerCoroutineImplBase() {
         val ScaledObjectRef.delegate
             get() = scalerMetadataMap.getOrDefault("delegate", name)
         val ScaledObjectRef.targetNotifications
             get() = scalerMetadataMap.getOrDefault("targetNotifications", "10").toLong()
 
         override suspend fun isActive(request: ScaledObjectRef): IsActiveResponse {
-            val notificationCache = agentService.getNotificationCache(request.delegate)
+            val notificationCache = getNotificationCache(ignite, request.delegate)
             val available = notificationCache.localSizeLong()
             return IsActiveResponse.newBuilder().also {
                 it.result = available > 0
             }.build()
         }
 
-        @FlowPreview
+        @kotlinx.coroutines.FlowPreview
         override fun streamIsActive(request: ScaledObjectRef) = flow<Boolean> {
-            val notificationCache = agentService.getNotificationCache(request.delegate).withKeepBinary<BinaryObject, BinaryObject>()
+            val notificationCache = getNotificationCache(ignite, request.delegate).withKeepBinary<BinaryObject, BinaryObject>()
 
             lateinit var queryCursor: QueryCursor<Entry<BinaryObject, BinaryObject>>
             val query = ContinuousQuery<BinaryObject, BinaryObject>().also {
@@ -276,7 +288,7 @@ class TransportService(var port: Int) : Service {
         }
 
         override suspend fun getMetrics(request: GetMetricsRequest): GetMetricsResponse {
-            val notificationCache = agentService.getNotificationCache(request.scaledObjectRef.delegate)
+            val notificationCache = getNotificationCache(ignite, request.scaledObjectRef.delegate)
             val available = notificationCache.localSizeLong()
 
             return GetMetricsResponse.newBuilder().also {
@@ -286,5 +298,5 @@ class TransportService(var port: Int) : Service {
                 }
             }.build()
         }
-    }*/
+    }
 }
