@@ -1,3 +1,4 @@
+using System;
 using System.Dynamic;
 using Apache.Ignite.Core.Binary;
 
@@ -48,6 +49,18 @@ namespace Perper.WebJobs.Extensions.Services
             if (BinaryObject.HasField(binder.Name))
             {
                 result = BinaryObject.GetField<object?>(binder.Name);
+                if (result is IBinaryObject binaryObject)
+                {
+                    if (Guid.TryParse(binaryObject.GetBinaryType().TypeName, out var _))
+                    {
+                        // Anonymous type
+                        result = new PerperDynamicObject(binaryObject);
+                    }
+                    else
+                    {
+                        result = binaryObject.Deserialize<object?>();
+                    }
+                }
                 return true;
             }
             else

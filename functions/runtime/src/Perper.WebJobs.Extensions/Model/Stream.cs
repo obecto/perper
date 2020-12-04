@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -157,16 +158,14 @@ namespace Perper.WebJobs.Extensions.Model
                 }
             }
 
-            private async Task ModifyStreamDataAsync(Action<StreamData> modification)
+            private async Task ModifyStreamDataAsync(Func<IBinaryObject, IBinaryObject> modification)
             {
                 var streamsCache = _stream._ignite.GetCache<string, StreamData>("streams").WithKeepBinary<string, IBinaryObject>();
                 while (true)
                 {
                     var currentValue = await streamsCache.GetAsync(_stream.StreamName);
-                    var newValue = currentValue.Deserialize<StreamData>();
-                    modification(newValue);
-                    var newValueBinary = _stream._ignite.GetBinary().ToBinary<IBinaryObject>(newValue);
-                    if (await streamsCache.ReplaceAsync(_stream.StreamName, currentValue, newValueBinary))
+                    var newValue = modification(currentValue);
+                    if (await streamsCache.ReplaceAsync(_stream.StreamName, currentValue, newValue))
                     {
                         break;
                     };
@@ -175,27 +174,46 @@ namespace Perper.WebJobs.Extensions.Model
 
             private Task AddListenerAsync()
             {
-                var streamListener = new StreamListener
+                var streamListener = _stream._ignite.GetBinary().ToBinary<object?>(new StreamListener
                 {
                     AgentDelegate = _stream._fabric.AgentDelegate,
                     Stream = _stream._instance.InstanceName,
                     Parameter = _stream._parameterIndex,
                     Filter = Filter,
                     LocalToData = LocalToData,
-                };
-                return ModifyStreamDataAsync(streamData =>
+                });
+                return ModifyStreamDataAsync(streamDataBinary =>
                 {
-                    streamData.Listeners.Add(streamListener);
+                    var currentListeners = streamDataBinary.GetField<ArrayList>(nameof(StreamData.Listeners));
+
+                    currentListeners.Add(streamListener);
+
+                    var builder = streamDataBinary.ToBuilder();
+                    builder.SetField(nameof(StreamData.Listeners), currentListeners);
+                    return builder.Build();
                 });
             }
 
             private Task RemoveListenerAsync()
             {
-                // If listener is anonymous (_parameter is null) then remove the listener
-                return ModifyStreamDataAsync(streamData =>
+                return ModifyStreamDataAsync(streamDataBinary =>
                 {
-                    var index = streamData.Listeners.FindIndex(x => x.Parameter == _stream._parameterIndex);
-                    if (index >= 0) streamData.Listeners.RemoveAt(index);
+                    var currentListeners = streamDataBinary.GetField<ArrayList>(nameof(StreamData.Listeners));
+
+                    foreach (var listener in currentListeners)
+                    {
+                        if (listener is IBinaryObject binObj &&
+                            binObj.GetField<string>(nameof(StreamListener.Stream)) == _stream._instance.InstanceName &&
+                            binObj.GetField<int>(nameof(StreamListener.Parameter)) == _stream._parameterIndex)
+                        {
+                            currentListeners.Remove(listener);
+                            break;
+                        }
+                    }
+
+                    var builder = streamDataBinary.ToBuilder();
+                    builder.SetField(nameof(StreamData.Listeners), currentListeners);
+                    return builder.Build();
                 });
             }
         }

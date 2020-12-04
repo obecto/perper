@@ -35,10 +35,10 @@ namespace DotNet.FunctionApp
             var multiplier = 7;
             var expectedFinalValue = count * (count + 1) / 2 * multiplier;
 
-            var generator = await context.StreamFunctionAsync<dynamic>("Generator", count);
+            var generator = await context.StreamFunctionAsync<dynamic>("Generator", new { Count = count });
             // var (generator, generatorName) = await context.CreateBlankStreamAsync<int>();
 
-            var processor = await context.StreamFunctionAsync<int>("Processor", (generator, multiplier));
+            var processor = await context.StreamFunctionAsync<int>("Processor", new { Generator = generator, Multiplier = multiplier });
             await context.StreamActionAsync("Consumer", (processor, expectedFinalValue));
 
             await Task.Delay(1000); // UGLY: Make sure Consumer/Processor are up
@@ -89,9 +89,9 @@ namespace DotNet.FunctionApp
         }
 
         [FunctionName("Generator")]
-        public static async IAsyncEnumerable<dynamic> Generator([PerperTrigger] int to, ILogger logger)
+        public static async IAsyncEnumerable<dynamic> Generator([PerperTrigger] dynamic parameters, ILogger logger)
         {
-            for (var i = 0; i <= to; i++)
+            for (var i = 0; i <= parameters.Count; i++)
             {
                 logger.LogDebug("Generating: {0}", i);
                 yield return new { Num = i };
@@ -100,12 +100,12 @@ namespace DotNet.FunctionApp
         }
 
         [FunctionName("Processor")]
-        public static async IAsyncEnumerable<int> Processor([PerperTrigger] (IAsyncEnumerable<dynamic> generator, int x) paramters, ILogger logger)
+        public static async IAsyncEnumerable<int> Processor([PerperTrigger] dynamic paramters, ILogger logger)
         {
-            await foreach (var i in paramters.generator)
+            await foreach (var i in (IAsyncEnumerable<dynamic>)paramters.Generator)
             {
                 logger.LogDebug($"Processing: {i}");
-                yield return i.Num * paramters.x;
+                yield return i.Num * paramters.Multiplier;
             }
         }
 
