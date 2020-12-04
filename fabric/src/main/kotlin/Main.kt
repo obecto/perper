@@ -41,7 +41,6 @@ fun main(args: Array<String>) {
     val igniteConfiguration = IgniteConfiguration().also {
         it.binaryConfiguration = BinaryConfiguration().also {
             it.typeConfigurations = listOf(
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.AgentData>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.CallData>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamData>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamDelegateType>(),
@@ -56,7 +55,6 @@ fun main(args: Array<String>) {
             it.nameMapper = BinaryBasicNameMapper(true)
         }
         it.setServiceConfiguration(
-            singletonServiceConfiguration("AgentService", AgentService()),
             singletonServiceConfiguration("CallService", CallService(startCall)),
             singletonServiceConfiguration("StreamService", StreamService()),
             singletonServiceConfiguration("TransportService", TransportService(40400)),
@@ -64,5 +62,5 @@ fun main(args: Array<String>) {
         it.gridLogger = Slf4jLogger()
     }
 
-    val ignite = Ignition.start(igniteConfiguration)
+    Ignition.start(igniteConfiguration)
 }

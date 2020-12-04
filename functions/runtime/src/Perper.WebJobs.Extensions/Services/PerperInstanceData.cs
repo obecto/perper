@@ -14,7 +14,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         private int _nextStreamParameterIndex = 0;
         private int _nextAnonymousStreamParameterIndex = 0;
-        public bool _initialized = false;
+        private bool _initialized = false;
 
         public string InstanceName { get; private set; } = default!;
         public IInstanceData InstanceData { get; private set; } = default!;

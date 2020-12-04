@@ -28,16 +28,13 @@ namespace Perper.WebJobs.Extensions.Model
 
         public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string delegateName, object? parameters = default)
         {
-            var agentsCache = _ignite.GetCache<string, AgentData>("agents");
-            var agentName = GenerateName(delegateName);
+            var agentDelegate = delegateName;
+            var callDelegate = delegateName;
 
-            var agent = new Agent(agentName, delegateName, this, _ignite);
-            await agentsCache.PutAsync(agentName, new AgentData
-            {
-                Delegate = delegateName,
-            });
+            var agentName = GenerateName(agentDelegate);
+            var agent = new Agent(agentName, agentDelegate, this, _ignite);
 
-            var result = await agent.CallFunctionAsync<TResult>(agentName, parameters);
+            var result = await agent.CallFunctionAsync<TResult>(delegateName, parameters);
 
             return (agent, result);
         }
