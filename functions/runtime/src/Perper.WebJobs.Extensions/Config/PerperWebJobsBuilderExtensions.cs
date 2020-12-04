@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Reflection;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
@@ -9,6 +8,8 @@ using Apache.Ignite.Core.Client;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
@@ -26,6 +27,11 @@ namespace Perper.WebJobs.Extensions.Config
             builder.Services.AddScoped(typeof(IContext), typeof(Context));
             builder.Services.AddScoped(typeof(IState), typeof(State));
             builder.Services.AddScoped(typeof(IStateEntry<>), typeof(StateEntryDI<>));
+
+            builder.Services.AddOptions<PerperConfig>().Configure<IConfiguration>((perperConfig, configuration) =>
+            {
+                configuration.GetSection("Perper").Bind(perperConfig);
+            });
 
             builder.Services.AddSingleton<IBindingProvider>(services => new ServiceBindingProvider(new HashSet<Type>
             {
@@ -45,7 +51,8 @@ namespace Perper.WebJobs.Extensions.Config
 
             builder.Services.AddSingleton(services =>
             {
-                var igniteHost = IPAddress.Loopback.ToString();
+                var config = services.GetRequiredService<IOptions<PerperConfig>>();
+                var fabricHost = config.Value.FabricHost;
 
                 // NOTE: The check for assembly.GetCustomAttributes<PerperDataAttribute>().Any() means that
                 // users need to use [assembly: PerperDataAttribute]. This isn't much of a problem, however,
@@ -61,7 +68,7 @@ namespace Perper.WebJobs.Extensions.Config
 
                 var ignite = Ignition.StartClient(new IgniteClientConfiguration
                 {
-                    Endpoints = new List<string> { igniteHost },
+                    Endpoints = new List<string> { fabricHost },
                     BinaryConfiguration = new BinaryConfiguration()
                     {
                         NameMapper = new Binary​Basic​Name​Mapper() { IsSimpleName = true },

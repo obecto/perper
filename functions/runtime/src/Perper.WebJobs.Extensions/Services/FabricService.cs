@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Threading;
@@ -17,8 +16,10 @@ using Grpc.Net.Client;
 #endif
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Perper.WebJobs.Extensions.Cache.Notifications;
 using Perper.WebJobs.Extensions.Protobuf;
+using Perper.WebJobs.Extensions.Config;
 using Notification = Perper.WebJobs.Extensions.Cache.Notifications.Notification;
 using NotificationProto = Perper.WebJobs.Extensions.Protobuf.Notification;
 
@@ -38,7 +39,7 @@ namespace Perper.WebJobs.Extensions.Services
         private CancellationTokenSource _serviceCancellation = new CancellationTokenSource();
         private Task? _serviceTask;
 
-        public FabricService(IIgniteClient ignite, ILogger<FabricService> logger)
+        public FabricService(IIgniteClient ignite, IOptions<PerperConfig> config, ILogger<FabricService> logger)
         {
             var agentDelegate = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(Directory.GetCurrentDirectory())))!;
             var suffix = ".FunctionApp";
@@ -53,13 +54,7 @@ namespace Perper.WebJobs.Extensions.Services
 
             _notificationsCache = _ignite.GetCache<AffinityKey, Notification>($"{AgentDelegate}-$notifications");
 
-            var host = ignite.RemoteEndPoint switch
-            {
-                IPEndPoint ip => ip.Address.ToString(),
-                DnsEndPoint dns => dns.Host,
-                _ => ""
-            };
-            var address = $"http://{host}:40400";
+            var address = $"http://{config.Value.FabricHost}:40400";
 
 #if NETSTANDARD2_0
             _grpcChannel = new GrpcChannel(address, ChannelCredentials.Insecure);
