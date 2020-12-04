@@ -2,9 +2,9 @@
     "version": "2.0",
     "logging": {
         "logLevel": {
-            "default": "trace",
+            "default": "Debug",
             "DotNet.FunctionApp": "Information",
-            "Perper.WebJobs.Extensions": "debug"
+            "Perper.WebJobs.Extensions": "Debug"
         }
     }
 }

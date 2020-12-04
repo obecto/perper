@@ -50,7 +50,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             {
                 var stream = (string)_trigger["Stream"]!;
 
-                var asyncEnumerableInterface = GetGenericInterface(value.GetType(), typeof(IAsyncEnumerable<>));
+                var asyncEnumerableInterface = PerperTypeUtils.GetGenericInterface(value.GetType(), typeof(IAsyncEnumerable<>));
                 if (asyncEnumerableInterface == null)
                 {
                     throw new NotSupportedException($"Expected IAsyncEnumerable<*> return from stream function, got: {value.GetType()}.");
@@ -71,22 +71,6 @@ namespace Perper.WebJobs.Extensions.Triggers
             {
                 await collector.AddAsync(value);
             }
-        }
-
-        private Type? GetGenericInterface(Type type, Type genericInterface)
-        {
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == genericInterface)
-            {
-                return type;
-            }
-            foreach (var iface in type.GetInterfaces())
-            {
-                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == genericInterface)
-                {
-                    return iface;
-                }
-            }
-            return null;
         }
 
         public string ToInvokeString()

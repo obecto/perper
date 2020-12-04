@@ -205,7 +205,7 @@ namespace Perper.WebJobs.Extensions.Services
             }
 #endif
 
-            var dictionaryInterface = GetGenericInterface(type, typeof(IDictionary<,>));
+            var dictionaryInterface = PerperTypeUtils.GetGenericInterface(type, typeof(IDictionary<,>));
             if (dictionaryInterface != null)
             {
                 var keyType = dictionaryInterface.GetGenericArguments()[0];
@@ -241,7 +241,7 @@ namespace Perper.WebJobs.Extensions.Services
                 );
             }
 
-            var collectionInterface = GetGenericInterface(type, typeof(ICollection<>));
+            var collectionInterface = PerperTypeUtils.GetGenericInterface(type, typeof(ICollection<>));
             if (collectionInterface != null)
             {
                 var itemType = collectionInterface.GetGenericArguments()[0];
@@ -276,7 +276,7 @@ namespace Perper.WebJobs.Extensions.Services
                 );
             }
 
-            if (type.IsAssignableFrom(typeof(PerperDynamicObject)) || IsAnonymousType(type))
+            if (type.IsAssignableFrom(typeof(PerperDynamicObject)) || PerperTypeUtils.IsAnonymousType(type))
             {
                 var deserializeMethod = typeof(IBinaryObject).GetMethod(nameof(IBinaryObject.Deserialize))!.MakeGenericMethod(type);
 
@@ -343,28 +343,7 @@ namespace Perper.WebJobs.Extensions.Services
             return GetObjectConverters(expectedType).from.Invoke(obj);
         }
 
-        private static bool IsAnonymousType(Type type)
-        {
-            return type.GetCustomAttributes<CompilerGeneratedAttribute>().Count() > 0;
-        }
-
         #endregion
-
-        private static Type? GetGenericInterface(Type type, Type genericInterface)
-        {
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == genericInterface)
-            {
-                return type;
-            }
-            foreach (var iface in type.GetInterfaces())
-            {
-                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == genericInterface)
-                {
-                    return iface;
-                }
-            }
-            return null;
-        }
 
         public void WriteBinary(object obj, IBinaryWriter writer)
         {

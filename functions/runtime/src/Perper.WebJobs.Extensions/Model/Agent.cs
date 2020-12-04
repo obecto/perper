@@ -26,7 +26,6 @@ namespace Perper.WebJobs.Extensions.Model
 
             if (callData.Result == null)
             {
-                // throw new InvalidOperationException($"Called function '{functionName}' did not return a result, did you mean CallActionAsync?");
                 return default(TResult)!;
             }
 

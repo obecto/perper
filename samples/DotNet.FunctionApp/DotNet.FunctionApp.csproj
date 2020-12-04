@@ -3,7 +3,6 @@
         <TargetFramework>netcoreapp3.1</TargetFramework>
         <LangVersion>8</LangVersion>
         <AzureFunctionsVersion>v3</AzureFunctionsVersion>
-        <AzureFunctionsVersion>v3</AzureFunctionsVersion>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="3.0.2" />
@@ -19,9 +18,5 @@
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\..\functions\runtime\src\Perper.WebJobs.Extensions\Perper.WebJobs.Extensions.csproj" />
-    </ItemGroup>
-    <ItemGroup>
-        <Compile Remove="_/*.cs" />
-        <Compile Remove="_/**/*.cs" />
     </ItemGroup>
 </Project>
