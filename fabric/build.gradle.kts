@@ -39,7 +39,7 @@ dependencies {
 }
 
 application {
-    version = "0.5.1"
+    version = "0.6.0"
     mainClass.set("com.obecto.perper.fabric.Main")
     description = "Perper Fabric"
 }
@@ -77,18 +77,4 @@ protobuf {
             }
         }
     }
-}
-
-tasks.withType<Jar> {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    manifest {
-        attributes["Main-Class"] = application.mainClass
-    }
-
-    from(sourceSets.main.get().output)
-
-    dependsOn(configurations.runtimeClasspath)
-    from({
-        configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
-    })
 }

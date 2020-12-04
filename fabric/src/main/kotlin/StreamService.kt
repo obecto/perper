@@ -29,14 +29,26 @@ class StreamService : JobService() {
 
     val forwardParameterIndex = Int.MIN_VALUE
 
-    @set:LoggerResource
     lateinit var log: IgniteLogger
 
-    @set:IgniteInstanceResource
     lateinit var ignite: Ignite
 
     lateinit var streamsCache: IgniteCache<String, StreamData>
     lateinit var streamItemUpdates: Channel<Pair<String, Long>>
+
+    @IgniteInstanceResource
+    fun setIgniteResource(igniteResource: Ignite?) {
+        if (igniteResource != null) {
+            ignite = igniteResource
+        }
+    }
+
+    @LoggerResource
+    fun setLoggerResource(loggerResource: IgniteLogger?) {
+        if (loggerResource != null) {
+            log = loggerResource
+        }
+    }
 
     override fun init(ctx: ServiceContext) {
         streamItemUpdates = Channel(Channel.UNLIMITED)

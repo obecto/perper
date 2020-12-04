@@ -62,13 +62,25 @@ class TransportService(var port: Int) : Service {
         }
     }
 
-    @set:LoggerResource
     lateinit var log: IgniteLogger
 
-    @set:IgniteInstanceResource
     lateinit var ignite: Ignite
 
     lateinit var server: Server
+
+    @IgniteInstanceResource
+    fun setIgniteResource(igniteResource: Ignite?) {
+        if (igniteResource != null) {
+            ignite = igniteResource
+        }
+    }
+
+    @LoggerResource
+    fun setLoggerResource(loggerResource: IgniteLogger?) {
+        if (loggerResource != null) {
+            log = loggerResource
+        }
+    }
 
     override fun init(ctx: ServiceContext) {
         var serverBuilder = ServerBuilder.forPort(port)

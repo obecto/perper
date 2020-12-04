@@ -19,13 +19,25 @@ import javax.cache.event.CacheEntryUpdatedListener
 class CallService(val startCall: Pair<String, String>?) : JobService() {
     val systemAgentDelegate = "\$system"
 
-    @set:LoggerResource
     lateinit var log: IgniteLogger
 
-    @set:IgniteInstanceResource
     lateinit var ignite: Ignite
 
     lateinit var callsCache: IgniteCache<String, CallData>
+
+    @IgniteInstanceResource
+    fun setIgniteResource(igniteResource: Ignite?) {
+        if (igniteResource != null) {
+            ignite = igniteResource
+        }
+    }
+
+    @LoggerResource
+    fun setLoggerResource(loggerResource: IgniteLogger?) {
+        if (loggerResource != null) {
+            log = loggerResource
+        }
+    }
 
     override fun init(ctx: ServiceContext) {
         callsCache = ignite.getOrCreateCache("calls")
