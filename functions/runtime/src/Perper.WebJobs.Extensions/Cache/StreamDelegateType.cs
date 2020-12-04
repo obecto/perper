@@ -1,4 +1,4 @@
-using Perper.WebJobs.Extensions.Config;
+using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Cache
 {

@@ -46,7 +46,7 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             var channel = _callParametersChannels.GetOrAdd(delegateName,
                 _ => Channel.CreateUnbounded<(object, Guid)>())!;
             var (parameters, callId) = await channel.Reader.ReadAsync();
-            return ((TResult) parameters, callId);
+            return ((TResult)parameters, callId);
         }
 
         public async Task SetCallResultAsync(Guid callId, object result)

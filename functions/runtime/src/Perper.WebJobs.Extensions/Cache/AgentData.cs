@@ -1,4 +1,4 @@
-using Perper.WebJobs.Extensions.Config;
+using Perper.WebJobs.Extensions.Model;
 
 #pragma warning disable 8618
 namespace Perper.WebJobs.Extensions.Cache
