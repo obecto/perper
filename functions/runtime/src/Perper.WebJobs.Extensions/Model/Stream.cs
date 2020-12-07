@@ -119,7 +119,7 @@ namespace Perper.WebJobs.Extensions.Model
 
             private async IAsyncEnumerable<T> Impl([EnumeratorCancellation] CancellationToken cancellationToken = default)
             {
-                var convertersInfo = _stream._serializer.GetObjectConverters(typeof(T));
+                var convertersInfo = _stream._serializer.GetRootObjectConverters(typeof(T));
                 var converter = convertersInfo.from;
                 var shouldKeepBinary = convertersInfo.convertedType == typeof(IBinaryObject);
 
@@ -131,10 +131,10 @@ namespace Perper.WebJobs.Extensions.Model
                     {
                         if (notification is StreamItemNotification si)
                         {
-                            var cache = _stream._ignite.GetCache<long, object?>(si.Cache);
+                            var cache = _stream._ignite.GetCache<long, object>(si.Cache);
                             if (shouldKeepBinary)
                             {
-                                cache = cache.WithKeepBinary<long, object?>();
+                                cache = cache.WithKeepBinary<long, object>();
                             }
 
                             var value = await cache.GetAsync(si.Key);

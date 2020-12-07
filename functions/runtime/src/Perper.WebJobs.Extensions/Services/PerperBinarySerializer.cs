@@ -11,6 +11,8 @@ namespace Perper.WebJobs.Extensions.Services
 {
     public class PerperBinarySerializer : IBinarySerializer
     {
+        public struct NullPlaceholder { };
+
         private readonly IServiceProvider _services;
         private IBinary _binary = default!;
 
@@ -329,18 +331,21 @@ namespace Perper.WebJobs.Extensions.Services
             return (type, Identity, Identity);
         }
 
-        public object? ConvertObjectToCommon(Type expectedType, object? obj)
+        public (Type convertedType, Func<object?, object> to, Func<object, object?> from) GetRootObjectConverters(Type type)
         {
-            if (obj == null) return obj;
-
-            return GetObjectConverters(expectedType).to.Invoke(obj);
-        }
-
-        public object? ConvertCommonToObject(Type expectedType, object? obj)
-        {
-            if (obj == null) return obj;
-
-            return GetObjectConverters(expectedType).from.Invoke(obj);
+            var (convertedType, converterTo, converterFrom) = GetObjectConverters(type);
+            return (
+                convertedType,
+                source => converterTo(source) ?? new NullPlaceholder(),
+                converted =>
+                {
+                    if (converted is NullPlaceholder || (converted is IBinaryObject binObj && binObj.GetBinaryType().TypeName == "NullPlaceholder"))
+                    {
+                        return converterFrom(null);
+                    }
+                    return converterFrom(converted);
+                }
+            );
         }
 
         #endregion

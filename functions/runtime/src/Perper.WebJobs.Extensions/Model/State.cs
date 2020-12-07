@@ -11,32 +11,38 @@ namespace Perper.WebJobs.Extensions.Model
     {
         [PerperInject] protected PerperInstanceData _instance;
         [PerperInject] protected IIgniteClient _ignite;
+        [PerperInject] protected PerperBinarySerializer _serializer;
 
         [NonSerialized] public List<StateEntry> Entries = new List<StateEntry>();
 
-        public State(PerperInstanceData instance, IIgniteClient ignite)
+        public State(PerperInstanceData instance, IIgniteClient ignite, PerperBinarySerializer serializer)
         {
             _instance = instance;
             _ignite = ignite;
+            _serializer = serializer;
         }
 
         public async Task<T> GetValue<T>(string key, Func<T> defaultValueFactory)
         {
-            var cache = _ignite.GetOrCreateCache<string, T>(_instance.InstanceData.Agent);
+            var converters = _serializer.GetRootObjectConverters(typeof(T));
+
+            var cache = _ignite.GetOrCreateCache<string, object>(_instance.InstanceData.Agent);
             var result = await cache.TryGetAsync(key);
             if (!result.Success)
             {
                 var defaultValue = defaultValueFactory();
-                await cache.PutAsync(key, defaultValue);
+                await cache.PutAsync(key, converters.to.Invoke(defaultValue));
                 return defaultValue;
             }
-            return result.Value;
+            return (T)converters.from.Invoke(result.Value)!;
         }
 
         public Task SetValue<T>(string key, T value)
         {
-            var cache = _ignite.GetOrCreateCache<string, T>(_instance.InstanceData.Agent);
-            return cache.PutAsync(key, value);
+            var converters = _serializer.GetRootObjectConverters(typeof(T));
+
+            var cache = _ignite.GetOrCreateCache<string, object>(_instance.InstanceData.Agent);
+            return cache.PutAsync(key, converters.to.Invoke(value));
         }
 
         public async Task<IStateEntry<T>> Entry<T>(string key, Func<T> defaultValueFactory)

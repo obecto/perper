@@ -34,7 +34,7 @@ namespace Perper.WebJobs.Extensions.Model
             var agentName = GenerateName(agentDelegate);
             var agent = new Agent(agentName, agentDelegate, this, _ignite);
 
-            var result = await agent.CallFunctionAsync<TResult>(delegateName, parameters);
+            var result = await agent.CallFunctionAsync<TResult>(callDelegate, parameters);
 
             return (agent, result);
         }
@@ -131,7 +131,7 @@ namespace Perper.WebJobs.Extensions.Model
 
         private object? ConvertParameters(object? parameters)
         {
-            return _serializer.ConvertObjectToCommon(parameters?.GetType() ?? typeof(object), parameters);
+            return _serializer.GetObjectConverters(parameters?.GetType() ?? typeof(object)).to.Invoke(parameters);
         }
 
         private string GenerateName(string? baseName = null)

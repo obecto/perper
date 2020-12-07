@@ -91,6 +91,7 @@ namespace DotNet.FunctionApp
         [FunctionName("Generator")]
         public static async IAsyncEnumerable<dynamic> Generator([PerperTrigger] dynamic parameters, ILogger logger)
         {
+            yield return null;
             for (var i = 0; i <= parameters.Count; i++)
             {
                 logger.LogDebug("Generating: {0}", i);
@@ -99,29 +100,71 @@ namespace DotNet.FunctionApp
             await Task.Delay(1000000);
         }
 
+        /*
+        private class GeneratorImpl : IAsyncEnumerable<object>
+        {
+            public int i;
+            public int count;
+
+            public IAsyncEnumerator<object> GetAsyncEnumerator(CancellationToken cancellationToken)
+            {
+                return new EnumeratorImpl() {Current = null, self = this};
+            }
+
+            private class EnumeratorImpl : IAsyncEnumerator<object> {
+                public object Current { get; set; }
+                public GeneratorImpl self;
+                public ValueTask<bool> MoveNextAsync()
+                {
+                    Current = new { Num = self.i };
+                    self.i++;
+                    if (self.i <= self.count + 1)
+                    {
+                        return new ValueTask<bool>(Task.FromResult(true));
+                    }
+                    return new ValueTask<bool>(Task.FromResult(false));
+                }
+                public ValueTask DisposeAsync()
+                {
+                    return new ValueTask(Task.CompletedTask);
+                }
+            }
+        }
+
+        [FunctionName("Generator")]
+        public static IAsyncEnumerable<dynamic> Generator([PerperTrigger] dynamic parameters, ILogger logger)
+        {
+            return new GeneratorImpl() { i = 0, count = parameters.Count };
+        }
+        */
+
         [FunctionName("Processor")]
         public static async IAsyncEnumerable<int> Processor([PerperTrigger] dynamic paramters, ILogger logger)
         {
             await foreach (var i in (IAsyncEnumerable<dynamic>)paramters.Generator)
             {
                 logger.LogDebug($"Processing: {i}");
-                yield return i.Num * paramters.Multiplier;
+                if (i != null)
+                {
+                    yield return i.Num * paramters.Multiplier;
+                }
             }
         }
 
         [FunctionName("Consumer")]
-        public static async Task Consumer([PerperTrigger] (IAsyncEnumerable<int> processor, int expectedFinal) parameters, IStateEntry<int> consumerState, ILogger logger)
+        public static async Task Consumer([PerperTrigger] (IAsyncEnumerable<int> processor, int expectedFinal) parameters, IStateEntry<int?> consumerState, ILogger logger)
         {
             var lastI = -1;
             await foreach (var i in parameters.processor)
             {
+                consumerState.Value = consumerState.Value ?? 10;
                 if (i <= lastI) throw new Exception("Incorrect order of received items!");
                 lastI = i;
 
                 consumerState.Value += i;
                 logger.LogDebug($"Rolling sum is: {consumerState.Value}");
 
-                if (consumerState.Value == parameters.expectedFinal)
+                if (consumerState.Value == parameters.expectedFinal + 10)
                 {
                     Console.WriteLine("Consumer finished successfully");
                 }

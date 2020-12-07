@@ -44,7 +44,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public object? GetParameters(Type type)
         {
-            return _serializer.ConvertCommonToObject(type, InstanceData.Parameters);
+            return _serializer.GetObjectConverters(type).from.Invoke(InstanceData.Parameters);
         }
 
         public object?[] GetParameters<T>()
