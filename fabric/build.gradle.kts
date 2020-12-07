@@ -33,12 +33,13 @@ dependencies {
     implementation("io.grpc:grpc-stub:$grpcVersion")
     implementation("io.grpc:grpc-kotlin-stub:$grpcKotlinVersion")
     runtimeOnly("io.grpc:grpc-netty-shaded:$grpcVersion")
+    implementation("org.apache.commons:commons-lang3:3.11")
     implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3")
     testImplementation("junit:junit:4.12")
 }
 
 application {
-    version = "0.5.1"
+    version = "0.6.0"
     mainClass.set("com.obecto.perper.fabric.Main")
     description = "Perper Fabric"
 }
@@ -76,17 +77,4 @@ protobuf {
             }
         }
     }
-}
-
-tasks.withType<Jar> {
-    manifest {
-        attributes["Main-Class"] = application.mainClass
-    }
-
-    from(sourceSets.main.get().output)
-
-    dependsOn(configurations.runtimeClasspath)
-    from({
-        configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
-    })
 }

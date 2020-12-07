@@ -2,56 +2,29 @@ syntax = "proto2";
 
 option java_multiple_files = true;
 option java_package = "com.obecto.perper.protobuf";
-option csharp_namespace = "Perper.Protocol.Protobuf";
+option csharp_namespace = "Perper.WebJobs.Extensions.Protobuf";
 
 package perper;
 
 service Fabric {
-  rpc StreamTriggers (StreamTriggerFilter) returns (stream StreamTrigger) {}
-  rpc WorkerTriggers (WorkerTriggerFilter) returns (stream WorkerTrigger) {}
-  rpc StreamUpdates (StreamUpdateFilter) returns (stream StreamUpdate) {}
+    rpc Notifications (NotificationFilter) returns (stream Notification) {}
+    rpc CallResultNotification (CallNotificationFilter) returns (Notification) {}
 }
 
-message StreamTriggerFilter {
-    optional string delegate = 1;
+message NotificationFilter {
+    required string agentDelegate = 1;
 }
 
-message StreamTrigger {
-    required string delegate = 1;
-    required string stream = 2;
+message CallNotificationFilter {
+    required string agentDelegate = 1;
+    required string callName = 2;
 }
 
-message WorkerTriggerFilter {
-    optional string workerDelegate = 1;
-}
+message Notification {
+    required int64 notificationKey = 1;
 
-message WorkerTrigger {
-    required string workerDelegate = 1;
-    required string stream = 2;
-    required string worker = 3;
-}
-
-message StreamUpdateFilter {
-    optional string delegate = 1;
-    optional string stream = 2;
-}
-
-message StreamUpdate {
-    required string delegate = 1;
-    required string stream = 2;
-
-    message ItemUpdate {
-        required string parameter = 1;
-        required string parameterStream = 2;
-        required int64 parameterStreamItem = 3;
-    }
-
-    message WorkerResult {
-        required string worker = 1;
-    }
-
-    oneof update {
-        ItemUpdate itemUpdate = 3;
-        WorkerResult workerResult = 4;
+    oneof affinity {
+      string stringAffinity = 2;
+      int64 intAffinity = 3;
     }
 }

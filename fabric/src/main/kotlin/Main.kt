@@ -6,37 +6,61 @@ import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import org.apache.ignite.Ignition
 import org.apache.ignite.binary.BinaryBasicNameMapper
-import org.apache.ignite.binary.BinaryReflectiveSerializer
 import org.apache.ignite.binary.BinaryTypeConfiguration
 import org.apache.ignite.configuration.BinaryConfiguration
 import org.apache.ignite.configuration.IgniteConfiguration
 import org.apache.ignite.logger.slf4j.Slf4jLogger
+import org.apache.ignite.services.Service
+import org.apache.ignite.services.ServiceConfiguration
+
+private inline fun <reified T : Any> BinaryTypeConfiguration() =
+    BinaryTypeConfiguration(T::class.qualifiedName).setEnum(T::class.java.isEnum())
+
+private fun singletonServiceConfiguration(name: String, instance: Service) = ServiceConfiguration().also {
+    it.name = name
+    it.service = instance
+    it.maxPerNodeCount = 1
+    it.totalCount = 0
+}
 
 fun main(args: Array<String>) {
     val parser = ArgParser("perper-fabric")
+
     val debug by parser.option(ArgType.Boolean, shortName = "d", description = "Show debug logs").default(false)
     val verbose by parser.option(ArgType.Boolean, shortName = "v", description = "Show Ignite information logs").default(false)
+    val startDelegate by parser.option(ArgType.String, shortName = "s", description = "Set initial agent delegate to call").default("")
+
     parser.parse(args)
+
+    val startCall = if (startDelegate == "") null else Pair(startDelegate, startDelegate)
 
     System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", if (verbose) "info" else "warn")
     System.setProperty("org.slf4j.simpleLogger.log.com.obecto.perper", if (debug) "debug" else "info")
     System.setProperty("org.slf4j.simpleLogger.levelInBrackets", "true")
 
-    val cfg = IgniteConfiguration().also {
+    val igniteConfiguration = IgniteConfiguration().also {
         it.binaryConfiguration = BinaryConfiguration().also {
             it.typeConfigurations = listOf(
-                BinaryTypeConfiguration(StreamData::class.qualifiedName),
-                BinaryTypeConfiguration(StreamParam::class.qualifiedName),
-                BinaryTypeConfiguration(StreamDelegateType::class.qualifiedName).setEnum(true),
-                BinaryTypeConfiguration(WorkerData::class.qualifiedName),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.CallData>(),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamData>(),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamDelegateType>(),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamListener>(),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.CallResultNotification>(),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.CallTriggerNotification>(),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.Notification>(),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.StreamItemNotification>(),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.StreamTriggerNotification>(),
             )
-            it.serializer = BinaryReflectiveSerializer()
+            it.serializer = PerperBinarySerializer()
             it.nameMapper = BinaryBasicNameMapper(true)
         }
+        it.setServiceConfiguration(
+            singletonServiceConfiguration("CallService", CallService(startCall)),
+            singletonServiceConfiguration("StreamService", StreamService()),
+            singletonServiceConfiguration("TransportService", TransportService(40400)),
+        )
         it.gridLogger = Slf4jLogger()
     }
-    val ignite = Ignition.start(cfg)
 
-    ignite.services().deployNodeSingleton("TransportService", TransportService(40400))
-    ignite.services().deployNodeSingleton("StreamService", StreamService())
+    Ignition.start(igniteConfiguration)
 }

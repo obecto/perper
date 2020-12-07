@@ -1,8 +1,14 @@
+using System;
 using System.Threading.Tasks;
+using Apache.Ignite.Core.Client;
+using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Services;
 using Perper.WebJobs.Extensions.Triggers;
@@ -12,29 +18,46 @@ namespace Perper.WebJobs.Extensions.Config
     [Extension("Perper")]
     public class PerperExtensionConfigProvider : IExtensionConfigProvider
     {
-        private readonly IPerperFabricContext _fabricContext;
+        public class PerperCollectorConverter<T> : IConverter<PerperAttribute, IAsyncCollector<T>>
+        {
+            private readonly IServiceProvider _services;
+
+            public PerperCollectorConverter(IServiceProvider services)
+            {
+                _services = services;
+            }
+
+            public IAsyncCollector<T> Convert(PerperAttribute attribute)
+            {
+                return (IAsyncCollector<T>)ActivatorUtilities.CreateInstance(_services, typeof(PerperCollector<T>), attribute.Stream);
+            }
+        }
+
+        private readonly FabricService _fabric;
+        private readonly IIgniteClient _ignite;
+        private readonly IServiceProvider _services;
         private readonly ILogger _logger;
 
-        public PerperExtensionConfigProvider(IPerperFabricContext fabricContext, ILogger<PerperExtensionConfigProvider> logger)
+        public PerperExtensionConfigProvider(FabricService fabric, IIgniteClient ignite, IServiceProvider services, ILogger<PerperExtensionConfigProvider> logger)
         {
-            _fabricContext = fabricContext;
+            _fabric = fabric;
+            _ignite = ignite;
+            _services = services;
             _logger = logger;
         }
 
         public void Initialize(ExtensionConfigContext context)
         {
-            var bindingRule = context.AddBindingRule<PerperAttribute>();
-            bindingRule.BindToValueProvider<OpenType>((a, t) =>
-                Task.FromResult<IValueBinder>(new PerperValueBinder(_fabricContext, a, t)));
+            var rule = context.AddBindingRule<PerperAttribute>();
+            rule.BindToCollector<OpenType>(typeof(PerperCollectorConverter<>), _services);
 
-            var streamTriggerBindingRule = context.AddBindingRule<PerperStreamTriggerAttribute>();
-            streamTriggerBindingRule.BindToTrigger(new PerperTriggerBindingProvider<PerperStreamTriggerAttribute>(_fabricContext, _logger));
+            var triggerRule = context.AddBindingRule<PerperTriggerAttribute>();
+            triggerRule.BindToTrigger(new PerperTriggerBindingProvider(_fabric, _ignite, _services, _logger));
 
-            var workerTriggerBindingRule = context.AddBindingRule<PerperWorkerTriggerAttribute>();
-            workerTriggerBindingRule.BindToTrigger(new PerperTriggerBindingProvider<PerperWorkerTriggerAttribute>(_fabricContext, _logger));
-
-            var moduleTriggerBindingRule = context.AddBindingRule<PerperModuleTriggerAttribute>();
-            moduleTriggerBindingRule.BindToTrigger(new PerperTriggerBindingProvider<PerperModuleTriggerAttribute>(_fabricContext, _logger));
+            context.AddConverter<JObject, DirectInvokeString>((src, attribute, bindingContext) =>
+            {
+                return Task.FromResult<DirectInvokeString>(new DirectInvokeString(src.ToString(Formatting.None)));
+            });
         }
     }
 }

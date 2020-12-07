@@ -11,3 +11,5 @@ venv
 /.vs
 /samples/DotNet.FunctionApp/Properties/launchSettings.json
 /samples/Python.FunctionApp/.vscode/settings.json
+
+/*.DotSettings.user

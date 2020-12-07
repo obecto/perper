@@ -11,21 +11,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNet.FunctionApp", "sampl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Python.FunctionApp", "samples\Python.FunctionApp\Python.FunctionApp.csproj", "{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perper.Protocol", "functions\runtime\src\Perper.Protocol\Perper.Protocol.csproj", "{4F999EBD-26F4-4EF7-B492-7D85583291C5}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docker", "docker", "{4E442550-F0DE-476C-A348-F484A081CFD5}"
-	ProjectSection(SolutionItems) = preProject
-		docker\Dockerfile = docker\Dockerfile
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "python", "functions\python", "{7F7D6C67-3E15-4BD1-8745-3A2E7A7E386A}"
-	ProjectSection(SolutionItems) = preProject
-		python\setup.py = functions\python\setup.py
-		python\azure_functions\perper\perper.py = functions\python\azure_functions\perper\perper.py
-		python\azure_functions\perper\__init__.py = functions\python\azure_functions\perper\__init__.py
-		python\azure_functions\perper\_perper.py = functions\python\azure_functions\perper\_perper.py
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "structure", "samples\structure", "{4EFF2890-070B-4232-9240-6C824AFD0A7A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Structure", "samples\structure\Structure.FunctionApp\src\Structure.csproj", "{10B60903-4AC8-48DA-A81F-C7C8E883EF16}"
@@ -44,6 +29,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Messaging.FunctionApp", "sa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Custom.FunctionApp", "samples\Custom.FunctionApp\Custom.FunctionApp.csproj", "{A959640D-0218-4851-AA5F-649250C92688}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp1", "samples\ConsoleApp1\ConsoleApp1.csproj", "{42D874EF-8467-4276-8F69-0FFE2C4D5837}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -53,7 +40,6 @@ Global
 		{9D6B115C-3B6D-4E41-92B0-69AE3EB7926C} = {0C1B132E-1677-46B6-9EF5-B306558045E8}
 		{76B3F8CB-9BB7-43F1-84E4-B421E76E7EDF} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
 		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
-		{4F999EBD-26F4-4EF7-B492-7D85583291C5} = {0C1B132E-1677-46B6-9EF5-B306558045E8}
 		{4EFF2890-070B-4232-9240-6C824AFD0A7A} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
 		{10B60903-4AC8-48DA-A81F-C7C8E883EF16} = {4EFF2890-070B-4232-9240-6C824AFD0A7A}
 		{39309781-5B47-4401-8AC7-3087E7FC523A} = {4EFF2890-070B-4232-9240-6C824AFD0A7A}
@@ -63,6 +49,7 @@ Global
 		{EE3DCED0-30E2-4E5D-9407-7F057AFDE5CA} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
 		{F3188C2F-294E-4B1A-82D0-FD93AED0A717} = {EE3DCED0-30E2-4E5D-9407-7F057AFDE5CA}
 		{A959640D-0218-4851-AA5F-649250C92688} = {5EB01B9B-538D-4FC8-8FBC-90409087ED75}
+		{42D874EF-8467-4276-8F69-0FFE2C4D5837} = {4EFF2890-070B-4232-9240-6C824AFD0A7A}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{9D6B115C-3B6D-4E41-92B0-69AE3EB7926C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -77,10 +64,6 @@ Global
 		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7328F9E0-43BC-4DAE-BCCD-9E6D7D5ECBE2}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4F999EBD-26F4-4EF7-B492-7D85583291C5}.Release|Any CPU.Build.0 = Release|Any CPU
 		{10B60903-4AC8-48DA-A81F-C7C8E883EF16}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{10B60903-4AC8-48DA-A81F-C7C8E883EF16}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{10B60903-4AC8-48DA-A81F-C7C8E883EF16}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -101,5 +84,9 @@ Global
 		{A959640D-0218-4851-AA5F-649250C92688}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A959640D-0218-4851-AA5F-649250C92688}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A959640D-0218-4851-AA5F-649250C92688}.Release|Any CPU.Build.0 = Release|Any CPU
+		{42D874EF-8467-4276-8F69-0FFE2C4D5837}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{42D874EF-8467-4276-8F69-0FFE2C4D5837}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{42D874EF-8467-4276-8F69-0FFE2C4D5837}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{42D874EF-8467-4276-8F69-0FFE2C4D5837}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
