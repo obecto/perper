@@ -76,6 +76,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public Task StartAsync(CancellationToken token)
         {
+            _logger.LogInformation("Started FabricService for agent '" + AgentDelegate + "'");
             _serviceCancellation = new CancellationTokenSource();
             _serviceTask = RunAsync(_serviceCancellation.Token);
             _serviceTask.ContinueWith(t =>
