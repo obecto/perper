@@ -17,7 +17,8 @@ namespace Perper.WebJobs.Extensions.Services
         public Task GetTask()
         {
             _mayComplete = true;
-            if (_count == 0)
+
+            if (Interlocked.Read(ref _count) == 0)
             {
                 _completionSource.TrySetResult(new EmptyStruct());
             }

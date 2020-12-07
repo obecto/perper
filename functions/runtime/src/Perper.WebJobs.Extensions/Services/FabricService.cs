@@ -20,6 +20,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Perper.WebJobs.Extensions.Cache.Notifications;
 using Perper.WebJobs.Extensions.Protobuf;
+using Perper.WebJobs.Extensions.Cache;
 using Notification = Perper.WebJobs.Extensions.Cache.Notifications.Notification;
 using NotificationProto = Perper.WebJobs.Extensions.Protobuf.Notification;
 
@@ -28,6 +29,7 @@ namespace Perper.WebJobs.Extensions.Services
     public class FabricService : IHostedService
     {
         public string AgentDelegate { get; }
+        private bool isInitialAgent;
 
         private readonly IIgniteClient _ignite;
         private ILogger _logger;
@@ -42,6 +44,8 @@ namespace Perper.WebJobs.Extensions.Services
         public FabricService(IIgniteClient ignite, IOptions<PerperConfig> config, ILogger<FabricService> logger)
         {
             AgentDelegate = Environment.GetEnvironmentVariable("PERPER_AGENT_NAME") ?? GetAgentDelegateFromPath();
+            isInitialAgent = (Environment.GetEnvironmentVariable("PERPER_ROOT_AGENT") ?? "") == AgentDelegate;
+
             _ignite = ignite;
             _logger = logger;
 
@@ -116,8 +120,33 @@ namespace Perper.WebJobs.Extensions.Services
             return newChannel;
         }
 
+        private async Task StartInitialAgent(CancellationToken cancellationToken = default)
+        {
+            if (isInitialAgent)
+            {
+                _logger.LogInformation("Calling initial agent");
+                var callDelegate = AgentDelegate;
+                var agentName = AgentDelegate + "-$launchAgent";
+                var callName = callDelegate + "-$launchCall";
+
+                var callsCache = _ignite.GetCache<string, CallData>("calls");
+                await callsCache.PutAsync(callName, new CallData
+                {
+                    Agent = agentName,
+                    AgentDelegate = AgentDelegate,
+                    Delegate = callDelegate,
+                    CallerAgentDelegate = "",
+                    Caller = "",
+                    Finished = false,
+                    LocalToData = false
+                });
+            }
+        }
+
         private async Task RunAsync(CancellationToken cancellationToken = default)
         {
+            _ = StartInitialAgent();
+
             var client = new Fabric.FabricClient(_grpcChannel);
             using var notifications = client.Notifications(new NotificationFilter { AgentDelegate = AgentDelegate }, null, null, cancellationToken);
             var stream = notifications.ResponseStream;

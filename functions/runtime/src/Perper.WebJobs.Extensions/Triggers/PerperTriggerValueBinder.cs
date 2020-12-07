@@ -67,7 +67,7 @@ namespace Perper.WebJobs.Extensions.Triggers
         private async Task ProcessAsyncEnumerable<T>(string stream, IAsyncEnumerable<T> values, CancellationToken cancellationToken)
         {
             var collector = new PerperCollector<T>(_ignite, _serializer, stream);
-            await foreach (var value in values)
+            await foreach (var value in values.WithCancellation(cancellationToken))
             {
                 await collector.AddAsync(value);
             }

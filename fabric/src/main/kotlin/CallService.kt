@@ -4,7 +4,6 @@ import com.obecto.perper.fabric.cache.notification.CallResultNotification
 import com.obecto.perper.fabric.cache.notification.CallTriggerNotification
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteCache
@@ -16,9 +15,7 @@ import org.apache.ignite.resources.LoggerResource
 import org.apache.ignite.services.ServiceContext
 import javax.cache.event.CacheEntryUpdatedListener
 
-class CallService(val startCall: Pair<String, String>?) : JobService() {
-    val systemAgentDelegate = "\$system"
-
+class CallService : JobService() {
     lateinit var log: IgniteLogger
 
     lateinit var ignite: Ignite
@@ -46,24 +43,6 @@ class CallService(val startCall: Pair<String, String>?) : JobService() {
     }
 
     override suspend fun CoroutineScope.execute(ctx: ServiceContext) {
-        if (startCall != null) launch {
-            val (startAgentDelegate, startCallDelegate) = startCall
-            val agentName = startAgentDelegate + "-\$launchAgent"
-            val callName = startCallDelegate + "-\$launchCall"
-            callsCache.putIfAbsent(
-                callName,
-                CallData(
-                    agent = agentName,
-                    agentDelegate = startAgentDelegate,
-                    delegate = startCallDelegate,
-                    callerAgentDelegate = systemAgentDelegate,
-                    caller = "\$launch",
-                    finished = false,
-                    localToData = false
-                )
-            )
-        }
-
         var streamGraphUpdates = Channel<Pair<String, CallData>>(Channel.UNLIMITED)
         val query = ContinuousQuery<String, CallData>()
         query.localListener = CacheEntryUpdatedListener { events ->
@@ -84,7 +63,7 @@ class CallService(val startCall: Pair<String, String>?) : JobService() {
 
     suspend fun updateCall(call: String, callData: CallData) {
         if (callData.finished) {
-            if (callData.callerAgentDelegate == systemAgentDelegate) return
+            if (callData.callerAgentDelegate == "") return
 
             val notificationsCache = TransportService.getNotificationCache(ignite, callData.callerAgentDelegate)
             val key = AffinityKey(System.currentTimeMillis(), if (callData.localToData) call else callData.caller)
