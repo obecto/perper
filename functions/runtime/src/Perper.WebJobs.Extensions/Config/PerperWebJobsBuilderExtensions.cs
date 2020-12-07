@@ -71,7 +71,7 @@ namespace Perper.WebJobs.Extensions.Config
                     Endpoints = new List<string> { fabricHost },
                     BinaryConfiguration = new BinaryConfiguration()
                     {
-                        NameMapper = new Binary​Basic​Name​Mapper() { IsSimpleName = true },
+                        NameMapper = new BinaryBasicNameMapper() { IsSimpleName = true },
                         Serializer = serializer,
                         TypeConfigurations = types.Select(type => new BinaryTypeConfiguration(type)
                         {
