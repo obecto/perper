@@ -51,7 +51,7 @@ namespace Perper.WebJobs.Extensions.Services
                 result = BinaryObject.GetField<object?>(binder.Name);
                 if (result is IBinaryObject binaryObject)
                 {
-                    if (Guid.TryParse(binaryObject.GetBinaryType().TypeName, out var _))
+                    if (Guid.TryParse(binaryObject.GetBinaryType().TypeName, out _))
                     {
                         // Anonymous type
                         result = new PerperDynamicObject(binaryObject);

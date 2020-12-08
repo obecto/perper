@@ -29,7 +29,10 @@ var runCmd = &cobra.Command{
 		//Due to how Perper 0.6 works, it is not necessary to start agents in any specific order.
 		g.topoSortGraph()
 
+		os.Setenv(rootAgentName, getAgentNameFromPath(pathFlag))
+
 		runMultipleAgents(agentsParentDir, g.sequence)
+		os.Unsetenv(rootAgentName)
 	},
 }
 
@@ -87,7 +90,7 @@ func runMultipleAgents(agentsParentDir string, sequence []string) {
 
 		port := 7071 + i
 		dirPath := checkForSrcFolder(filepath.Join(agentsParentDir, agent))
-		runSingleAgent(dirPath, port)
+		runSingleAgent(dirPath, agent, port)
 	}
 	if !keepLogs {
 		sigs := make(chan os.Signal, 1)
@@ -124,7 +127,7 @@ func gitCloneWithExec(agent, address, agentsParentDir string) {
 	}
 }
 
-func runSingleAgent(dirPath string, port int) {
+func runSingleAgent(dirPath, agent string, port int) {
 
 	cmd := exec.Command("func", "host", "start", "--script-root", dirPath, "--port", fmt.Sprint(port))
 
@@ -135,9 +138,12 @@ func runSingleAgent(dirPath string, port int) {
 	cmd.Stdout = outfile
 	cmd.Stderr = outfile
 
+	os.Setenv(currentAgentName, agent)
+
 	if err := cmd.Start(); err != nil {
 		panic(err)
 	}
+	os.Unsetenv(currentAgentName)
 }
 
 func getAgentNameFromPath(dirPath string) string {

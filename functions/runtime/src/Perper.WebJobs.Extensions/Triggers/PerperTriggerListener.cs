@@ -101,10 +101,14 @@ namespace Perper.WebJobs.Extensions.Triggers
                 // TODO: Can we somehow detect that PerperTriggerValueBinder was already invoked for this?
                 var call = (string)trigger["Call"]!;
                 var callsCache = _ignite.GetCache<string, CallData>("calls");
-                var callData = await callsCache.GetAsync(call);
-                callData.Finished = true;
-                callData.Error = error;
-                await callsCache.ReplaceAsync(call, callData);
+                var callDataResult = await callsCache.TryGetAsync(call);
+                if (callDataResult.Success)
+                {
+                    var callData = callDataResult.Value;
+                    callData.Finished = true;
+                    callData.Error = error;
+                    await callsCache.ReplaceAsync(call, callData);
+                }
             }
         }
     }
