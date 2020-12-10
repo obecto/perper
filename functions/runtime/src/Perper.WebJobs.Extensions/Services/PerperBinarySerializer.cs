@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
+using System.Numerics;
 using Apache.Ignite.Core.Binary;
 
 namespace Perper.WebJobs.Extensions.Services
@@ -325,6 +326,15 @@ namespace Perper.WebJobs.Extensions.Services
                         }
                         return converted;
                     }
+                );
+            }
+
+            if (type == typeof(BigInteger))
+            {
+                return (
+                    typeof(string),
+                    source => source is BigInteger bigInt ? bigInt.ToString() : source,
+                    converted => converted is string str && BigInteger.TryParse(str, out var bigInt) ? bigInt : converted
                 );
             }
 
