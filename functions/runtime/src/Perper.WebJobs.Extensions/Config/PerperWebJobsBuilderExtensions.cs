@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
@@ -13,8 +12,6 @@ using Microsoft.Extensions.Options;
 using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
-
-[assembly: PerperData]
 
 namespace Perper.WebJobs.Extensions.Config
 {
@@ -42,41 +39,36 @@ namespace Perper.WebJobs.Extensions.Config
 
             builder.Services.AddSingleton<PerperBinarySerializer>();
 
-            builder.Services.AddSingleton(services =>
+            builder.Services.AddSingleton<FabricService>(services =>
             {
                 var fabric = ActivatorUtilities.CreateInstance<FabricService>(services);
                 fabric.StartAsync(default).Wait();
                 return fabric;
             });
 
-            builder.Services.AddSingleton(services =>
+            // NOTE: Due to how Ignite works, we cannot add more type configurations after starting
+            // However, during Azure WebJobs startup, we cannot access the assembly containing functions/types
+            // Therefore, care must be taken to not resolve IIgniteClient until Azure has loaded the user's assembly...
+            builder.Services.AddSingleton<IIgniteClient>(services =>
             {
-                var config = services.GetRequiredService<IOptions<PerperConfig>>();
-                var fabricHost = config.Value.FabricHost;
-
-                // NOTE: The check for assembly.GetCustomAttributes<PerperDataAttribute>().Any() means that
-                // users need to use [assembly: PerperDataAttribute]. This isn't much of a problem, however,
-                // since this is used only for types that cross language boundaries.
-                var types = (
-                    from assembly in AppDomain.CurrentDomain.GetAssemblies()
-                    where assembly.GetCustomAttributes<PerperDataAttribute>().Any()
-                    from type in assembly.GetTypes()
-                    where type.GetCustomAttributes<PerperDataAttribute>().Any()
-                    select type);
-
+                var config = services.GetRequiredService<IOptions<PerperConfig>>().Value;
                 var serializer = services.GetRequiredService<PerperBinarySerializer>();
+
+                var nameMapper = ActivatorUtilities.CreateInstance<PerperNameMapper>(services);
+                nameMapper.InitializeFromAppDomain();
 
                 var ignite = Ignition.StartClient(new IgniteClientConfiguration
                 {
-                    Endpoints = new List<string> { fabricHost },
+                    Endpoints = new List<string> { config.FabricHost },
                     BinaryConfiguration = new BinaryConfiguration()
                     {
-                        NameMapper = new BinaryBasicNameMapper() { IsSimpleName = true },
+                        NameMapper = nameMapper,
                         Serializer = serializer,
-                        TypeConfigurations = types.Select(type => new BinaryTypeConfiguration(type)
-                        {
-                            Serializer = serializer,
-                        }).ToList()
+                        TypeConfigurations = (
+                            from type in nameMapper.WellKnownTypes.Keys
+                            where !type.IsGenericTypeDefinition
+                            select new BinaryTypeConfiguration(type) { Serializer = serializer }
+                        ).ToList()
                     }
                 });
 

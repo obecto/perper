@@ -1,26 +1,18 @@
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
-using Apache.Ignite.Core.Client;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.Extensions.Logging;
-using Perper.WebJobs.Extensions.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Perper.WebJobs.Extensions.Triggers
 {
     public class PerperTriggerBindingProvider : ITriggerBindingProvider
     {
-        private readonly FabricService _fabric;
-        private readonly IIgniteClient _ignite;
         private readonly IServiceProvider _services;
-        private readonly ILogger _logger;
 
-        public PerperTriggerBindingProvider(FabricService fabric, IIgniteClient ignite, IServiceProvider services, ILogger logger)
+        public PerperTriggerBindingProvider(IServiceProvider services)
         {
-            _fabric = fabric;
-            _ignite = ignite;
             _services = services;
-            _logger = logger;
         }
 
         public Task<ITriggerBinding?> TryCreateAsync(TriggerBindingProviderContext context)
@@ -29,7 +21,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             return Task.FromResult<ITriggerBinding?>(attribute switch
             {
                 null => null,
-                _ => new PerperTriggerBinding(context.Parameter, attribute, _fabric, _ignite, _services, _logger)
+                _ => ActivatorUtilities.CreateInstance<PerperTriggerBinding>(_services, context.Parameter, attribute)
             });
         }
     }

@@ -29,7 +29,7 @@ namespace Perper.WebJobs.Extensions.Triggers
         public Type TriggerValueType { get; } = typeof(JObject);
 
         public PerperTriggerBinding(ParameterInfo parameter, PerperTriggerAttribute attribute,
-            FabricService fabric, IIgniteClient ignite, IServiceProvider services, ILogger logger)
+            FabricService fabric, IIgniteClient ignite, IServiceProvider services, ILogger<PerperTriggerBinding> logger)
         {
             _parameter = parameter;
             _fabric = fabric;
