@@ -161,7 +161,11 @@ class TransportService(var port: Int) : Service {
             remoteConfirmationQuery.localListener = CacheEntryUpdatedListener { events ->
                 try {
                     for (event in events) {
-                        updateQueue((event.oldValue as StreamItemNotification).stream)
+                        if (event.eventType == EventType.REMOVED)
+                        {
+                            val value = event.value ?: event.oldValue
+                            updateQueue((value as StreamItemNotification).stream)
+                        }
                     }
                 } catch (e: Exception) {
                     runBlocking { finishChannel.send(e) }
@@ -169,7 +173,7 @@ class TransportService(var port: Int) : Service {
             }
 
             remoteConfirmationQuery.remoteFilterFactory = Factory<CacheEntryEventFilter<AffinityKey<Long>, Notification>> {
-                CacheEntryEventFilter { event -> event.value == null && event.oldValue is StreamItemNotification }
+                CacheEntryEventFilter { event -> event.eventType == EventType.REMOVED && (event.value ?: event.oldValue) is StreamItemNotification }
             }
 
             val remoteQueryCursor = notificationCache.query(remoteConfirmationQuery)
