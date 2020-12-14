@@ -143,11 +143,16 @@ namespace Perper.WebJobs.Extensions.Model
 
                             await ((State)_stream._state).LoadStateEntries();
 
-                            yield return (T)converter.Invoke(value)!;
+                            try
+                            {
+                                yield return (T)converter.Invoke(value)!;
+                            }
+                            finally
+                            {
+                                await ((State)_stream._state).StoreStateEntries();
 
-                            await ((State)_stream._state).StoreStateEntries();
-
-                            await _stream._fabric.ConsumeNotification(key);
+                                await _stream._fabric.ConsumeNotification(key);
+                            }
                         }
                     }
                 }
