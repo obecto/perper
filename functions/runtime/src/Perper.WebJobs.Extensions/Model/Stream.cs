@@ -14,6 +14,7 @@ using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Model
 {
+    [PerperData(Name = "PerperStream")]
     public class Stream : IStream
     {
         public string StreamName { get; protected set; }
@@ -29,6 +30,7 @@ namespace Perper.WebJobs.Extensions.Model
         }
     }
 
+    [PerperData(Name = "PerperStream")]
     public class Stream<T> : Stream, IStream<T>
     {
         [NonSerialized] public string? FunctionName; // HACK: Used for Declare/InitiaizeStream
@@ -141,11 +143,16 @@ namespace Perper.WebJobs.Extensions.Model
 
                             await ((State)_stream._state).LoadStateEntries();
 
-                            yield return (T)converter.Invoke(value)!;
+                            try
+                            {
+                                yield return (T)converter.Invoke(value)!;
+                            }
+                            finally
+                            {
+                                await ((State)_stream._state).StoreStateEntries();
 
-                            await ((State)_stream._state).StoreStateEntries();
-
-                            await _stream._fabric.ConsumeNotification(key);
+                                await _stream._fabric.ConsumeNotification(key);
+                            }
                         }
                     }
                 }

@@ -2,15 +2,19 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using Apache.Ignite.Core.Binary;
+using Perper.WebJobs.Extensions.Cache;
+using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Services
 {
     public class PerperBinarySerializer : IBinarySerializer
     {
+        [PerperData(Name = "<null>")]
         public struct NullPlaceholder { };
 
         private readonly IServiceProvider _services;
@@ -328,6 +332,15 @@ namespace Perper.WebJobs.Extensions.Services
                 );
             }
 
+            if (type == typeof(BigInteger))
+            {
+                return (
+                    typeof(string),
+                    source => source is BigInteger bigInt ? bigInt.ToString() : source,
+                    converted => converted is string str && BigInteger.TryParse(str, out var bigInt) ? bigInt : converted
+                );
+            }
+
             return (type, Identity, Identity);
         }
 
@@ -339,7 +352,7 @@ namespace Perper.WebJobs.Extensions.Services
                 source => converterTo(source) ?? new NullPlaceholder(),
                 converted =>
                 {
-                    if (converted is NullPlaceholder || (converted is IBinaryObject binObj && binObj.GetBinaryType().TypeName == "NullPlaceholder"))
+                    if (converted is NullPlaceholder || (converted is IBinaryObject binObj && binObj.GetBinaryType().TypeName == "<null>"))
                     {
                         return converterFrom(null);
                     }

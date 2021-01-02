@@ -150,8 +150,8 @@ class StreamService : JobService() {
                     val notificationsCache = TransportService.getNotificationCache(ignite, listener.agentDelegate)
                     val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.stream)
                     val key = AffinityKey(itemKey, if (listener.localToData) itemKey else listener.stream)
-                    notificationsCache.put(key, StreamItemNotification(listener.stream, listener.parameter, stream, itemKey, ephemeral))
                     notificationsQueue.put(key)
+                    notificationsCache.put(key, StreamItemNotification(listener.stream, listener.parameter, stream, itemKey, ephemeral))
                 }
             }
         }

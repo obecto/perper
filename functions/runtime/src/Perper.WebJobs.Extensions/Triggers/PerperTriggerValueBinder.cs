@@ -35,7 +35,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             return Task.FromResult<object?>(null);
         }
 
-        public async Task SetValueAsync(object value, CancellationToken cancellationToken)
+        public async Task SetValueAsync(object? value, CancellationToken cancellationToken)
         {
             if (_trigger.ContainsKey("Call"))
             {
@@ -49,6 +49,11 @@ namespace Perper.WebJobs.Extensions.Triggers
             else
             {
                 var stream = (string)_trigger["Stream"]!;
+
+                if (value == null)
+                {
+                    return;
+                }
 
                 var asyncEnumerableInterface = PerperTypeUtils.GetGenericInterface(value.GetType(), typeof(IAsyncEnumerable<>));
                 if (asyncEnumerableInterface == null)
