@@ -4,7 +4,7 @@ using Microsoft.Azure.WebJobs.Description;
 namespace Perper.WebJobs.Extensions.Services
 {
     [Binding]
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+    [AttributeUsage(AttributeTargets.Constructor)]
     public sealed class PerperInjectAttribute : Attribute
     {
     }

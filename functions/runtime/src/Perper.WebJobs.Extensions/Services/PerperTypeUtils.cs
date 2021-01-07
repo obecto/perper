@@ -11,6 +11,33 @@ namespace Perper.WebJobs.Extensions.Services
         {
             return type.GetCustomAttributes<CompilerGeneratedAttribute>().Count() > 0;
         }
+        public static bool IsTupleType(Type type)
+        {
+#if !NETSTANDARD2_0
+            return typeof(ITuple).IsAssignableFrom(type);
+#else
+            var definition = type.GetGenericTypeDefinition();
+            return (definition == typeof(Tuple<>)
+                || definition == typeof(Tuple<,>)
+                || definition == typeof(Tuple<,,>)
+                || definition == typeof(Tuple<,,,>)
+                || definition == typeof(Tuple<,,,,>)
+                || definition == typeof(Tuple<,,,,,>)
+                || definition == typeof(Tuple<,,,,,,>)
+                || definition == typeof(Tuple<,,,,,,,>)
+                || definition == typeof(Tuple<,,,,,,,>)
+                || definition == typeof(ValueTuple<>)
+                || definition == typeof(ValueTuple<,>)
+                || definition == typeof(ValueTuple<,,>)
+                || definition == typeof(ValueTuple<,,,>)
+                || definition == typeof(ValueTuple<,,,,>)
+                || definition == typeof(ValueTuple<,,,,,>)
+                || definition == typeof(ValueTuple<,,,,,,>)
+                || definition == typeof(ValueTuple<,,,,,,,>)
+                || definition == typeof(ValueTuple<,,,,,,,>));
+#endif
+
+        }
 
         public static Type? GetGenericInterface(Type type, Type genericInterface)
         {

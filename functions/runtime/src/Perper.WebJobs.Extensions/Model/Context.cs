@@ -15,7 +15,7 @@ namespace Perper.WebJobs.Extensions.Model
         private readonly PerperBinarySerializer _serializer;
         private readonly IState _state;
 
-        public IAgent Agent => new Agent(_instance.InstanceData.Agent, _fabric.AgentDelegate, this, _ignite);
+        public IAgent Agent => new Agent(_instance.Agent, _fabric.AgentDelegate, this, _ignite);
 
         public Context(FabricService fabric, PerperInstanceData instance, IIgniteClient ignite, PerperBinarySerializer serializer, IState state)
         {
@@ -84,11 +84,11 @@ namespace Perper.WebJobs.Extensions.Model
             var streamsCache = _ignite.GetCache<string, StreamData>("streams");
             await streamsCache.PutAsync(streamName, new StreamData
             {
-                Agent = _instance.InstanceData.Agent,
+                Agent = _instance.Agent,
                 AgentDelegate = _fabric.AgentDelegate,
                 Delegate = delegateName,
                 DelegateType = delegateType,
-                Parameters = ConvertParameters(parameters),
+                Parameters = parameters,
                 Listeners = new List<StreamListener>(),
                 IndexType = null,
                 IndexFields = null,
@@ -110,7 +110,7 @@ namespace Perper.WebJobs.Extensions.Model
                 Caller = _instance.InstanceName,
                 Finished = false,
                 LocalToData = true,
-                Parameters = ConvertParameters(parameters),
+                Parameters = parameters,
             });
 
             var (key, notification) = await _fabric.GetCallNotification(callName);
@@ -127,11 +127,6 @@ namespace Perper.WebJobs.Extensions.Model
             {
                 return call;
             }
-        }
-
-        private object? ConvertParameters(object? parameters)
-        {
-            return _serializer.GetObjectConverters(parameters?.GetType() ?? typeof(object)).to.Invoke(parameters);
         }
 
         private string GenerateName(string? baseName = null)

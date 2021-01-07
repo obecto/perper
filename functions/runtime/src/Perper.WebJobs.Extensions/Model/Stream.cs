@@ -19,14 +19,20 @@ namespace Perper.WebJobs.Extensions.Model
     {
         public string StreamName { get; protected set; }
 
-        [PerperInject] protected readonly FabricService _fabric;
-        [PerperInject] protected readonly IIgniteClient _ignite;
+        [NonSerialized] protected readonly FabricService _fabric;
+        [NonSerialized] protected readonly IIgniteClient _ignite;
 
-        public Stream(string streamName, FabricService fabric, IIgniteClient ignite)
+        [PerperInject]
+        protected Stream(FabricService fabric, IIgniteClient ignite)
         {
-            StreamName = streamName;
             _fabric = fabric;
             _ignite = ignite;
+        }
+
+        public Stream(string streamName, FabricService fabric, IIgniteClient ignite)
+            : this(fabric, ignite)
+        {
+            StreamName = streamName;
         }
     }
 
@@ -35,34 +41,26 @@ namespace Perper.WebJobs.Extensions.Model
     {
         [NonSerialized] public string? FunctionName; // HACK: Used for Declare/InitiaizeStream
 
-        [PerperInject] protected readonly PerperBinarySerializer _serializer;
+        [NonSerialized] private readonly PerperInstanceData _instance;
+        [NonSerialized] private readonly int _parameterIndex;
+        [NonSerialized] private readonly PerperBinarySerializer _serializer;
+        [NonSerialized] private readonly IState _state;
 
-        [NonSerialized] private PerperInstanceData _instance;
-        [NonSerialized] private int _parameterIndex;
         [PerperInject]
-        protected PerperInstanceData? Instance
-        { // Used so that parameter index is updated on deserialization from parameters
-            set
-            {
-                if (value != null)
-                {
-                    _instance = value;
-                    _parameterIndex = value.GetStreamParameterIndex();
-                }
-            }
-        }
-
-        [PerperInject] protected readonly IState _state;
-
-#pragma warning disable 8618 // _instance and _parameterIndex come from Instance
-        public Stream(string streamName, PerperInstanceData instance, FabricService fabric, IIgniteClient ignite, PerperBinarySerializer serializer, IState state)
-            : base(streamName, fabric, ignite)
+        public Stream(PerperInstanceData instance, FabricService fabric, IIgniteClient ignite, PerperBinarySerializer serializer, IState state)
+            : base(fabric, ignite)
         {
-            Instance = instance;
+            _instance = instance;
+            _parameterIndex = instance.GetStreamParameterIndex();
             _serializer = serializer;
             _state = state;
         }
-#pragma warning restore 8618
+
+        public Stream(string streamName, PerperInstanceData instance, FabricService fabric, IIgniteClient ignite, PerperBinarySerializer serializer, IState state)
+            : this(instance, fabric, ignite, serializer, state)
+        {
+            StreamName = streamName;
+        }
 
         private StreamAsyncEnumerable GetEnumerable(Dictionary<string, object> filter, bool localToData)
         {
@@ -101,17 +99,16 @@ namespace Perper.WebJobs.Extensions.Model
 
         public class StreamAsyncEnumerable : IAsyncEnumerable<T>
         {
-            protected Stream<T> _stream;
+            private Stream<T> _stream;
 
             public Dictionary<string, object> Filter { get; private set; }
-
             public bool LocalToData { get; private set; }
 
             public StreamAsyncEnumerable(Stream<T> stream, Dictionary<string, object> filter, bool localToData)
             {
+                _stream = stream;
                 Filter = filter;
                 LocalToData = localToData;
-                _stream = stream;
             }
 
             public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken())
@@ -121,10 +118,6 @@ namespace Perper.WebJobs.Extensions.Model
 
             private async IAsyncEnumerable<T> Impl([EnumeratorCancellation] CancellationToken cancellationToken = default)
             {
-                var convertersInfo = _stream._serializer.GetRootObjectConverters(typeof(T));
-                var converter = convertersInfo.from;
-                var shouldKeepBinary = convertersInfo.convertedType == typeof(IBinaryObject);
-
                 try
                 {
                     await AddListenerAsync();
@@ -133,11 +126,7 @@ namespace Perper.WebJobs.Extensions.Model
                     {
                         if (notification is StreamItemNotification si)
                         {
-                            var cache = _stream._ignite.GetCache<long, object>(si.Cache);
-                            if (shouldKeepBinary)
-                            {
-                                cache = cache.WithKeepBinary<long, object>();
-                            }
+                            var cache = _stream._ignite.GetCache<long, object>(si.Cache).WithKeepBinary<long, object>();
 
                             var value = await cache.GetAsync(si.Key);
 
@@ -145,7 +134,7 @@ namespace Perper.WebJobs.Extensions.Model
 
                             try
                             {
-                                yield return (T)converter.Invoke(value)!;
+                                yield return (T)_stream._serializer.DeserializeRoot(value, typeof(T))!;
                             }
                             finally
                             {
