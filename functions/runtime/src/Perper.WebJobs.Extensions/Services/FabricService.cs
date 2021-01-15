@@ -189,12 +189,12 @@ namespace Perper.WebJobs.Extensions.Services
         public async IAsyncEnumerable<(AffinityKey, Notification)> GetNotifications(
             string instance, int? parameter = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            _logger.LogDebug($"FabricService listen on: {instance} {parameter}");
+            _logger.LogTrace($"FabricService listen on: {instance} {parameter}");
             var reader = GetChannel(instance, parameter).Reader;
             while (true)
             {
                 var value = await reader.ReadAsync(cancellationToken);
-                _logger.LogDebug($"FabricService sent: {value}");
+                _logger.LogTrace($"FabricService sent: {value}");
                 yield return value;
             }
         }

@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
+using Apache.Ignite.Linq;
 using Perper.WebJobs.Extensions.Cache;
 using Perper.WebJobs.Extensions.Cache.Notifications;
 using Perper.WebJobs.Extensions.Services;
@@ -62,51 +63,60 @@ namespace Perper.WebJobs.Extensions.Model
             StreamName = streamName;
         }
 
-        private StreamAsyncEnumerable GetEnumerable(Dictionary<string, object> filter, bool localToData)
+        private StreamAsyncEnumerable GetEnumerable(Dictionary<string, object?> filter, bool replay, bool localToData)
         {
-            return new StreamAsyncEnumerable(this, filter, localToData);
+            return new StreamAsyncEnumerable(this, filter, replay, localToData);
         }
 
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
-            return GetEnumerable(new Dictionary<string, object>(), false).GetAsyncEnumerator(cancellationToken);
+            return GetEnumerable(new Dictionary<string, object?>(), false, false).GetAsyncEnumerator(cancellationToken);
         }
 
         public IAsyncEnumerable<T> DataLocal()
         {
-            return GetEnumerable(new Dictionary<string, object>(), true);
+            return GetEnumerable(new Dictionary<string, object?>(), false, true);
         }
 
         public IAsyncEnumerable<T> Filter(Expression<Func<T, bool>> filter, bool dataLocal = false)
         {
-            throw new NotImplementedException();
+            return GetEnumerable(FilterUtils.ConvertFilter(filter), false, dataLocal);
         }
 
         public IAsyncEnumerable<T> Replay(bool dataLocal = false)
         {
-            throw new NotImplementedException();
+            return GetEnumerable(new Dictionary<string, object?>(), true, dataLocal);
         }
 
         public IAsyncEnumerable<T> Replay(Expression<Func<T, bool>> filter, bool dataLocal = false)
         {
-            throw new NotImplementedException();
+            return GetEnumerable(FilterUtils.ConvertFilter(filter), true, dataLocal);
         }
 
-        public IAsyncEnumerable<T> Replay(Func<IQueryable<T>, IQueryable<T>> query, bool dataLocal = false)
+        public async IAsyncEnumerable<TResult> Query<TResult>(Func<IQueryable<T>, IQueryable<TResult>> query)
         {
-            throw new NotImplementedException();
+            var cache = _ignite.GetCache<long, T>(StreamName).WithKeepBinary<long, T>(); // NOTE: Will not work with forwarding
+            var queryable = query(cache.AsCacheQueryable().Select(pair => pair.Value)).Select(x => (object?)x);
+
+            using var enumerator = queryable.GetEnumerator();
+            while (await Task.Run(enumerator.MoveNext)) // Blocking, should run in background
+            {
+                yield return (TResult)_serializer.DeserializeRoot(enumerator.Current!, typeof(TResult))!;
+            }
         }
 
         public class StreamAsyncEnumerable : IAsyncEnumerable<T>
         {
-            private Stream<T> _stream;
+            protected Stream<T> _stream;
 
-            public Dictionary<string, object> Filter { get; private set; }
+            public Dictionary<string, object?> Filter { get; private set; }
+            public bool Replay { get; private set; }
             public bool LocalToData { get; private set; }
 
-            public StreamAsyncEnumerable(Stream<T> stream, Dictionary<string, object> filter, bool localToData)
+            public StreamAsyncEnumerable(Stream<T> stream, Dictionary<string, object?> filter, bool replay, bool localToData)
             {
                 _stream = stream;
+                Replay = replay;
                 Filter = filter;
                 LocalToData = localToData;
             }
@@ -176,6 +186,7 @@ namespace Perper.WebJobs.Extensions.Model
                     Stream = _stream._instance.InstanceName,
                     Parameter = _stream._parameterIndex,
                     Filter = Filter,
+                    Replay = Replay,
                     LocalToData = LocalToData,
                 });
                 return ModifyStreamDataAsync(streamDataBinary =>

@@ -68,7 +68,7 @@ namespace Perper.WebJobs.Extensions.Model
             {
                 throw new InvalidOperationException("Stream is already initialized");
             }
-            await CreateStreamAsync(streamInstance.StreamName, StreamDelegateType.Function, streamInstance.FunctionName!, parameters, null, flags);
+            await CreateStreamAsync(streamInstance.StreamName, StreamDelegateType.Function, streamInstance.FunctionName!, parameters, typeof(TItem), flags);
             streamInstance.FunctionName = null;
         }
 
@@ -90,8 +90,8 @@ namespace Perper.WebJobs.Extensions.Model
                 DelegateType = delegateType,
                 Parameters = parameters,
                 Listeners = new List<StreamListener>(),
-                IndexType = null,
-                IndexFields = null,
+                IndexType = (flags & StreamFlags.Query) != 0 && type != null ? PerperTypeUtils.GetJavaTypeName(type) ?? type.Name : null,
+                IndexFields = (flags & StreamFlags.Query) != 0 && type != null ? _serializer.GetQueriableFields(type) : null,
                 Ephemeral = (flags & StreamFlags.Ephemeral) != 0,
                 LastModified = DateTime.UtcNow
             });

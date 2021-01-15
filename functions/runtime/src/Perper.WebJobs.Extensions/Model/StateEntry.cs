@@ -24,7 +24,7 @@ namespace Perper.WebJobs.Extensions.Model
         [PerperInject]
         protected StateEntry(IState state)
         {
-            _state = (State) state;
+            _state = (State)state;
             _state.Entries.Add(this);
         }
 

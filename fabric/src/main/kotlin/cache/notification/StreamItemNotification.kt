@@ -5,5 +5,5 @@ class StreamItemNotification(
     var parameter: Int,
     var cache: String,
     var key: Long,
-    var ephemeral: Boolean,
+    var ephemeral: Boolean
 ) : Notification()

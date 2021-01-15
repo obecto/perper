@@ -39,7 +39,7 @@ namespace Perper.WebJobs.Extensions.Model
                 await cache.PutAsync(key, _serializer.SerializeRoot(defaultValue));
                 return defaultValue;
             }
-            return (T)_serializer.DeserializeRoot(result.Value, typeof(T));
+            return (T)_serializer.DeserializeRoot(result.Value, typeof(T))!;
         }
 
         public Task SetValue<T>(string key, T value)

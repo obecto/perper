@@ -111,23 +111,12 @@ namespace Perper.WebJobs.Extensions.Services
         #endregion
 
         #region ObjectConverters
-        private static Func<object?, object?> Identity = x => x;
-
-        private static bool IsPrimitiveType(Type type)
-        {
-            if (type.IsArray)
-            {
-                return IsPrimitiveType(type.GetElementType()!);
-            }
-            return type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(Guid) || type == typeof(DateTime) || type == typeof(Guid?) || type == typeof(DateTime?);
-        }
-
         public object? Serialize(object? value)
         {
             switch (value)
             {
                 case null: return null;
-                case var primitive when IsPrimitiveType(value.GetType()): return primitive;
+                case var primitive when PerperTypeUtils.IsPrimitiveType(value.GetType()): return primitive;
 
                 case Array arr:
                 {
@@ -196,7 +185,7 @@ namespace Perper.WebJobs.Extensions.Services
             {
                 case null: return null;
 
-                case var primitive when IsPrimitiveType(serialized.GetType()) && serialized.GetType() == type: return primitive;
+                case var primitive when PerperTypeUtils.IsPrimitiveType(serialized.GetType()) && serialized.GetType() == type: return primitive;
 
                 case Array arr when type.IsArray:
                 {
@@ -286,6 +275,20 @@ namespace Perper.WebJobs.Extensions.Services
                 return Deserialize(null, type);
             }
             return Deserialize(value, type);
+        }
+
+        public Dictionary<string, string> GetQueriableFields(Type type)
+        {
+            var result = new Dictionary<string, string>();
+            foreach (var property in GetTypeData(type).Properties)
+            {
+                var name = property.Name;
+                var typeName = PerperTypeUtils.GetJavaTypeName(property.Type);
+                if (typeName != null) {
+                    result[name] = typeName;
+                }
+            }
+            return result;
         }
         #endregion
 
