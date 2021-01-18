@@ -7,5 +7,5 @@ class CallData(
     var callerAgentDelegate: String,
     var caller: String,
     var finished: Boolean,
-    var localToData: Boolean
+    var localToData: Boolean,
 )

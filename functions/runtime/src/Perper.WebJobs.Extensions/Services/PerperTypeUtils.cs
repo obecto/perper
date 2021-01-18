@@ -45,7 +45,7 @@ namespace Perper.WebJobs.Extensions.Services
             while (type.IsArray)
             {
                 type = type.GetElementType()!;
-                arrayNesting ++;
+                arrayNesting++;
             }
             if (!javaTypeNames.TryGetValue(type, out var result))
             {

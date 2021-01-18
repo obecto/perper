@@ -52,7 +52,7 @@ namespace Perper.WebJobs.Extensions.Services
             public object? GetValue(object obj) => Member switch { FieldInfo fi => fi.GetValue(obj), PropertyInfo pi => pi.GetValue(obj) };
             public void SetValue(object obj, object? value)
             {
-                switch(Member)
+                switch (Member)
                 {
                     case FieldInfo fi: fi.SetValue(obj, value); break;
                     case PropertyInfo pi: pi.SetValue(obj, value); break;
@@ -119,57 +119,57 @@ namespace Perper.WebJobs.Extensions.Services
                 case var primitive when PerperTypeUtils.IsPrimitiveType(value.GetType()): return primitive;
 
                 case Array arr:
-                {
-                    var serialized = new object?[arr.Length];
-                    for (var i = 0; i < arr.Length; i++)
                     {
-                        serialized[i] = Serialize(arr.GetValue(i));
+                        var serialized = new object?[arr.Length];
+                        for (var i = 0; i < arr.Length; i++)
+                        {
+                            serialized[i] = Serialize(arr.GetValue(i));
+                        }
+                        return serialized;
                     }
-                    return serialized;
-                }
                 case var tuple when PerperTypeUtils.IsTupleType(tuple.GetType()):
-                {
-                    // Cannot use ITuple cast since it doesn't work in netstandard2
-                    var typeData = GetTypeData(tuple.GetType());
-                    var serialized = new object?[typeData.Properties.Count];
-                    for (var i = 0; i < typeData.Properties.Count; i++)
                     {
-                        var tupleElement = typeData.Properties[i].GetValue(tuple);
-                        serialized[i] = Serialize(tupleElement);
+                        // Cannot use ITuple cast since it doesn't work in netstandard2
+                        var typeData = GetTypeData(tuple.GetType());
+                        var serialized = new object?[typeData.Properties.Count];
+                        for (var i = 0; i < typeData.Properties.Count; i++)
+                        {
+                            var tupleElement = typeData.Properties[i].GetValue(tuple);
+                            serialized[i] = Serialize(tupleElement);
+                        }
+                        return serialized;
                     }
-                    return serialized;
-                }
                 case IDictionary dictionary:
-                {
-                    var serialized = new Hashtable();
-                    foreach (DictionaryEntry? entry in dictionary)
                     {
-                        serialized[Serialize(entry?.Key)!] = Serialize(entry?.Value);
+                        var serialized = new Hashtable();
+                        foreach (DictionaryEntry? entry in dictionary)
+                        {
+                            serialized[Serialize(entry?.Key)!] = Serialize(entry?.Value);
+                        }
+                        return serialized;
                     }
-                    return serialized;
-                }
                 case ICollection collection:
-                {
-                    var serialized = new ArrayList();
-                    foreach (object? item in collection)
                     {
-                        serialized.Add(Serialize(item));
+                        var serialized = new ArrayList();
+                        foreach (object? item in collection)
+                        {
+                            serialized.Add(Serialize(item));
+                        }
+                        return serialized;
                     }
-                    return serialized;
-                }
                 case var anonymous when PerperTypeUtils.IsAnonymousType(value.GetType()):
-                {
-                    var anonymousType = anonymous.GetType();
-
-                    var builder = _binary.GetBuilder(anonymousType.GUID.ToString());
-
-                    foreach (var property in anonymousType.GetProperties())
                     {
-                        builder.SetField(property.Name, property.GetValue(anonymous));
-                    }
+                        var anonymousType = anonymous.GetType();
 
-                    return builder.Build();
-                }
+                        var builder = _binary.GetBuilder(anonymousType.GUID.ToString());
+
+                        foreach (var property in anonymousType.GetProperties())
+                        {
+                            builder.SetField(property.Name, property.GetValue(anonymous));
+                        }
+
+                        return builder.Build();
+                    }
 
                 case PerperDynamicObject dynamicObject: return dynamicObject.BinaryObject;
 
@@ -188,76 +188,76 @@ namespace Perper.WebJobs.Extensions.Services
                 case var primitive when PerperTypeUtils.IsPrimitiveType(serialized.GetType()) && serialized.GetType() == type: return primitive;
 
                 case Array arr when type.IsArray:
-                {
-                    var elementType = type.GetElementType()!;
-                    var value = Array.CreateInstance(elementType, arr.Length);
-                    for (var i = 0; i < arr.Length; i++)
                     {
-                        value.SetValue(Deserialize(arr.GetValue(i), elementType), i);
+                        var elementType = type.GetElementType()!;
+                        var value = Array.CreateInstance(elementType, arr.Length);
+                        for (var i = 0; i < arr.Length; i++)
+                        {
+                            value.SetValue(Deserialize(arr.GetValue(i), elementType), i);
+                        }
+                        return value;
                     }
-                    return value;
-                }
 
                 case Array arr when PerperTypeUtils.IsTupleType(type):
-                {
-                    // Can potentitially rework this to use TypeData, similar to the code serializing tuples
-                    var types = type.GetGenericArguments();
-                    var parameters = new object?[types.Length];
-                    for (var i = 0; i < types.Length && i < arr.Length; i++)
                     {
-                        parameters[i] = Deserialize(arr.GetValue(i), types[i]);
+                        // Can potentitially rework this to use TypeData, similar to the code serializing tuples
+                        var types = type.GetGenericArguments();
+                        var parameters = new object?[types.Length];
+                        for (var i = 0; i < types.Length && i < arr.Length; i++)
+                        {
+                            parameters[i] = Deserialize(arr.GetValue(i), types[i]);
+                        }
+                        return Activator.CreateInstance(type, parameters);
                     }
-                    return Activator.CreateInstance(type, parameters);
-                }
 
                 case IDictionary dictionary:
-                {
-                    // NOTE: Can cache keyType, valueType, and finalType for type
-                    var dictionaryTypes = PerperTypeUtils.GetGenericInterface(type, typeof(IDictionary<,>))?.GetGenericArguments() ?? new []{typeof(object), typeof(object)};
-                    var keyType = dictionaryTypes[0];
-                    var valueType = dictionaryTypes[1];
-                    var finalType = type.IsInterface ? typeof(Dictionary<,>).MakeGenericType(keyType, valueType) : type;
-
-                    var value = (IDictionary)Activator.CreateInstance(finalType)!;
-                    foreach (DictionaryEntry? entry in dictionary)
                     {
-                        value[Deserialize(entry?.Key, keyType)!] = Deserialize(entry?.Value, valueType);
+                        // NOTE: Can cache keyType, valueType, and finalType for type
+                        var dictionaryTypes = PerperTypeUtils.GetGenericInterface(type, typeof(IDictionary<,>))?.GetGenericArguments() ?? new[] { typeof(object), typeof(object) };
+                        var keyType = dictionaryTypes[0];
+                        var valueType = dictionaryTypes[1];
+                        var finalType = type.IsInterface ? typeof(Dictionary<,>).MakeGenericType(keyType, valueType) : type;
+
+                        var value = (IDictionary)Activator.CreateInstance(finalType)!;
+                        foreach (DictionaryEntry? entry in dictionary)
+                        {
+                            value[Deserialize(entry?.Key, keyType)!] = Deserialize(entry?.Value, valueType);
+                        }
+                        return value;
                     }
-                    return value;
-                }
 
                 case ICollection collection:
-                {
-                    // NOTE: Can cache elementType, finalType, and addMethod for type
-                    var elementType = PerperTypeUtils.GetGenericInterface(type, typeof(ICollection<>))?.GetGenericArguments()?[0] ?? typeof(object);
-                    var finalType = type.IsAssignableFrom(typeof(List<>).MakeGenericType(elementType)) ? typeof(List<>).MakeGenericType(elementType) : type;
-
-                    var addMethod = finalType.GetMethod(nameof(ICollection<object>.Add))!;
-
-                    var value = (ICollection) Activator.CreateInstance(finalType)!;
-                    foreach (object? item in collection)
                     {
-                        addMethod.Invoke(value, new object?[] { Deserialize(item, elementType) });
+                        // NOTE: Can cache elementType, finalType, and addMethod for type
+                        var elementType = PerperTypeUtils.GetGenericInterface(type, typeof(ICollection<>))?.GetGenericArguments()?[0] ?? typeof(object);
+                        var finalType = type.IsAssignableFrom(typeof(List<>).MakeGenericType(elementType)) ? typeof(List<>).MakeGenericType(elementType) : type;
+
+                        var addMethod = finalType.GetMethod(nameof(ICollection<object>.Add))!;
+
+                        var value = (ICollection)Activator.CreateInstance(finalType)!;
+                        foreach (object? item in collection)
+                        {
+                            addMethod.Invoke(value, new object?[] { Deserialize(item, elementType) });
+                        }
+                        return value;
                     }
-                    return value;
-                }
 
                 case string stringValue when type == typeof(BigInteger):
                     return BigInteger.Parse(stringValue);
 
                 case IBinaryObject binaryObject:
-                {
-                    if (type == typeof(PerperDynamicObject) || Guid.TryParse(binaryObject.GetBinaryType().TypeName, out var typeGuid))
                     {
-                        return new PerperDynamicObject(binaryObject);
+                        if (type == typeof(PerperDynamicObject) || Guid.TryParse(binaryObject.GetBinaryType().TypeName, out var typeGuid))
+                        {
+                            return new PerperDynamicObject(binaryObject);
+                        }
+                        else
+                        {
+                            // NOTE: Can cache deserializeMethod for type
+                            var deserializeMethod = typeof(IBinaryObject).GetMethod(nameof(IBinaryObject.Deserialize))!.MakeGenericMethod(type);
+                            return deserializeMethod.Invoke(binaryObject, new object[] { });
+                        }
                     }
-                    else
-                    {
-                        // NOTE: Can cache deserializeMethod for type
-                        var deserializeMethod = typeof(IBinaryObject).GetMethod(nameof(IBinaryObject.Deserialize))!.MakeGenericMethod(type);
-                        return deserializeMethod.Invoke(binaryObject, new object[] { });
-                    }
-                }
 
                 default: return serialized;
             }
@@ -284,7 +284,8 @@ namespace Perper.WebJobs.Extensions.Services
             {
                 var name = property.Name;
                 var typeName = PerperTypeUtils.GetJavaTypeName(property.Type);
-                if (typeName != null) {
+                if (typeName != null)
+                {
                     result[name] = typeName;
                 }
             }

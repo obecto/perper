@@ -39,7 +39,7 @@ dependencies {
 }
 
 application {
-    version = "0.6.0-alpha5"
+    version = "0.6.0-alpha6"
     mainClass.set("com.obecto.perper.fabric.Main")
     description = "Perper Fabric"
 }

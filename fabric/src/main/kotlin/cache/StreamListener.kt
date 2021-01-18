@@ -5,6 +5,6 @@ class StreamListener(
     var stream: String,
     var parameter: Int,
     var filter: Map<String, Any?>,
+    var replay: Boolean,
     var localToData: Boolean,
-    var replay: Boolean
 )
