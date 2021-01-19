@@ -1,6 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using Apache.Ignite.Core.Client;
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Model
@@ -11,17 +10,15 @@ namespace Perper.WebJobs.Extensions.Model
         public string AgentDelegate { get; set; }
 
         [NonSerialized] private IContext _context;
-        [NonSerialized] private IIgniteClient _ignite;
 
         [PerperInject]
-        protected Agent(IContext context, IIgniteClient ignite)
+        protected Agent(IContext context)
         {
             _context = context;
-            _ignite = ignite;
         }
 
-        public Agent(string agentName, string agentDelegate, IContext context, IIgniteClient ignite)
-            : this(context, ignite)
+        public Agent(string agentName, string agentDelegate, IContext context)
+            : this(context)
         {
             AgentName = agentName;
             AgentDelegate = agentDelegate;

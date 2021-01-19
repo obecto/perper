@@ -15,7 +15,7 @@ namespace Perper.WebJobs.Extensions.Model
         private readonly PerperBinarySerializer _serializer;
         private readonly IState _state;
 
-        public IAgent Agent => new Agent(_instance.Agent, _fabric.AgentDelegate, this, _ignite);
+        public IAgent Agent => new Agent(_instance.Agent, _fabric.AgentDelegate, this);
 
         public Context(FabricService fabric, PerperInstanceData instance, IIgniteClient ignite, PerperBinarySerializer serializer, IState state)
         {
@@ -32,7 +32,7 @@ namespace Perper.WebJobs.Extensions.Model
             var callDelegate = delegateName;
 
             var agentName = GenerateName(agentDelegate);
-            var agent = new Agent(agentName, agentDelegate, this, _ignite);
+            var agent = new Agent(agentName, agentDelegate, this);
 
             var result = await agent.CallFunctionAsync<TResult>(callDelegate, parameters);
 
@@ -72,7 +72,7 @@ namespace Perper.WebJobs.Extensions.Model
             streamInstance.FunctionName = null;
         }
 
-        public async Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Ephemeral)
+        public async Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Default)
         {
             var streamName = GenerateName();
             await CreateStreamAsync(streamName, StreamDelegateType.External, "", null, typeof(TItem), flags);

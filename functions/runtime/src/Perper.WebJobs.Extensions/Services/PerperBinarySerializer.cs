@@ -15,10 +15,10 @@ namespace Perper.WebJobs.Extensions.Services
         [PerperData(Name = "<null>")]
         public struct NullPlaceholder { };
 
-        private readonly IServiceProvider _services;
-        private IBinary _binary = default!;
+        private readonly IServiceProvider? _services;
+        private IBinary? _binary = null;
 
-        public PerperBinarySerializer(IServiceProvider services)
+        public PerperBinarySerializer(IServiceProvider? services)
         {
             _services = services;
         }
@@ -157,7 +157,7 @@ namespace Perper.WebJobs.Extensions.Services
                         }
                         return serialized;
                     }
-                case var anonymous when PerperTypeUtils.IsAnonymousType(value.GetType()):
+                case var anonymous when PerperTypeUtils.IsAnonymousType(value.GetType()) && _binary != null:
                     {
                         var anonymousType = anonymous.GetType();
 
@@ -329,7 +329,7 @@ namespace Perper.WebJobs.Extensions.Services
 
             if (typeData.Constructor != null)
             {
-                var parameters = typeData.Constructor.GetParameters().Select(p => _services.GetService(p.ParameterType)).ToArray();
+                var parameters = typeData.Constructor.GetParameters().Select(p => _services?.GetService(p.ParameterType)).ToArray();
                 typeData.Constructor.Invoke(obj, parameters);
             }
 

@@ -59,6 +59,7 @@
     <ItemGroup>
         <Compile Include="Model/**/*.cs" />
         <Compile Include="Services/**/*.cs" />
+        <Compile Include="Test/**/*.cs" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
