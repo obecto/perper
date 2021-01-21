@@ -1,4 +1,5 @@
 using System;
+using System.Dynamic;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -157,18 +158,34 @@ namespace Perper.WebJobs.Extensions.Services
                         }
                         return serialized;
                     }
-                case var anonymous when PerperTypeUtils.IsAnonymousType(value.GetType()) && _binary != null:
+                case var anonymous when PerperTypeUtils.IsAnonymousType(value.GetType()):
                     {
                         var anonymousType = anonymous.GetType();
 
-                        var builder = _binary.GetBuilder(anonymousType.GUID.ToString());
-
-                        foreach (var property in anonymousType.GetProperties())
+                        if (_binary != null)
                         {
-                            builder.SetField(property.Name, property.GetValue(anonymous));
+                            var builder = _binary.GetBuilder(anonymousType.GUID.ToString());
+
+                            foreach (var property in anonymousType.GetProperties())
+                            {
+                                builder.SetField(property.Name, property.GetValue(anonymous));
+                            }
+
+                            return builder.Build();
+                        }
+                        else
+                        {
+                            // We are used in testing; return an object which works with dynamic
+                            var expando = new ExpandoObject();
+
+                            foreach (var property in anonymousType.GetProperties())
+                            {
+                                (expando as IDictionary<string, object?>).Add(property.Name, property.GetValue(anonymous));
+                            }
+
+                            return expando;
                         }
 
-                        return builder.Build();
                     }
 
                 case PerperDynamicObject dynamicObject: return dynamicObject.BinaryObject;

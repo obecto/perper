@@ -38,6 +38,7 @@
     <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
         <PackageReference Include="System.Linq.Async" Version="4.1.1" />
         <PackageReference Include="Grpc.Net.Client" Version="2.32.0" />
+        <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.7.0" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
@@ -59,7 +60,7 @@
     <ItemGroup>
         <Compile Include="Model/**/*.cs" />
         <Compile Include="Services/**/*.cs" />
-        <Compile Include="Test/**/*.cs" />
+        <Compile Include="Fake/**/*.cs" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">

@@ -15,11 +15,17 @@ namespace DotNet.FunctionApp
         [FunctionName("DotNet")]
         public static async Task RunAsync([PerperTrigger] object parameters, IContext context, IState state, CancellationToken cancellationToken)
         {
-            await context.CallActionAsync("Log", "This was written by an action!");
-            var dynamicResult = await context.CallFunctionAsync<dynamic>("Dynamic", new { A = 1, B = 3, Message = "This was read from a dynamic object!" });
+            if (parameters != null)
+            {
+                var (agent, agentResult) = await context.StartAgentAsync<int>("TestAgent", 42);
+                await context.CallActionAsync("Log", $"TestAgent returned {agentResult}");
 
-            Console.WriteLine("{0}", dynamicResult);
-            Console.WriteLine("Dynamically-calculated sum was {0}", dynamicResult.Sum);
+                var dynamicResult = await context.CallFunctionAsync<dynamic>("Dynamic", new { A = 1, B = 3, Message = "This was read from a dynamic object!" });
+
+                Console.WriteLine("{0}", dynamicResult);
+                Console.WriteLine("Dynamically-calculated sum was {0}", dynamicResult.Sum);
+                return;
+            }
 
             var result = await context.CallFunctionAsync<int>("Called", (8, 3));
             Console.WriteLine("Result from function call is... {0}", result);

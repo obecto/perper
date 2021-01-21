@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using DotNet.FunctionApp;
 using Perper.WebJobs.Extensions.Model;
-using Perper.WebJobs.Extensions.Test;
+using Perper.WebJobs.Extensions.Fake;
+using System.Diagnostics;
 
 namespace DotNet.FunctionApp.Test
 {
@@ -12,37 +14,40 @@ namespace DotNet.FunctionApp.Test
     {
         static async Task Main(string[] args)
         {
-            var env = new TestEnvironment();
+            var context = new FakeContext();
 
-            env.RegisterFunction("DotNet", "StatefulSum", (int input, TestInstance instance) => {
-                return Launcher.StatefulSum(input, instance, default);
+            /*context.Agent.RegisterAgent("TestAgent", () => {
+                var agent = new TestAgent();
+                agent.RegisterFunction("TestAgent", (int input) => {
+                    Debug.Assert(input == 42);
+                    return 78;
+                });
+                return agent;
+            });*/
+
+            context.Agent.RegisterAgent("TestAgent", () => context.Agent);
+
+            context.Agent.RegisterFunction("TestAgent", (int input) => {
+                Debug.Assert(input == 42);
+                return 78;
             });
 
-            var agent = env.CreateAgent("DotNet");
+            context.Agent.RegisterFunction("Dynamic", (dynamic item) => {
+                Debug.Assert((string)item.Message == "This was read from a dynamic object!");
+                return new { Sum = item.A + item.B };
+            });
 
-            Console.WriteLine(await agent.GetValue<int>("StatefulSum"));
+            context.Agent.RegisterFunction("Log", (string input) => {
+                Debug.Assert(input == $"TestAgent returned 78");
+            });
 
-            for (var i = 0; i < 100; i++) {
-                await agent.CallActionAsync("StatefulSum", i);
-            }
+            var state = new FakeState();
 
-            Console.WriteLine(await agent.GetValue<int>("StatefulSum"));
+            var result = await Launcher.StatefulSum(10, state, default);
+            Debug.Assert(result == 10);
+            Debug.Assert(state.GetValue<int>("StatefulSum") == 10);
 
-            var tasks = new List<Task>();
-            for (var i = 0; i < 10; i ++)
-            {
-                tasks.Add(Task.Run(async () =>
-                {
-                    for (var i = 0; i < 100; i++)
-                    {
-                        await agent.CallActionAsync("StatefulSum", i);
-                    }
-                }));
-            }
-
-            await Task.WhenAll(tasks);
-
-            Console.WriteLine(await agent.GetValue<int>("StatefulSum"));
+            await Launcher.RunAsync(true, context, state, default);
         }
     }
 }
