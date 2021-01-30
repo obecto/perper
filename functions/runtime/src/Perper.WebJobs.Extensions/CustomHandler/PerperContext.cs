@@ -1,29 +1,97 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Apache.Ignite.Core;
+using Apache.Ignite.Core.Binary;
+using Apache.Ignite.Core.Client;
 using EmbedIO;
 using EmbedIO.Actions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Model;
+using Perper.WebJobs.Extensions.Services;
 using Swan;
 
 namespace Perper.WebJobs.Extensions.CustomHandler
 {
-    public class PerperContext : IContext
+    public class PerperContext : IContext, IState
     {
         private static readonly Lazy<PerperContext> LazyInstance = new Lazy<PerperContext>(() => new PerperContext());
 
         public static PerperContext Instance => LazyInstance.Value;
 
-        private readonly Dictionary<string, Channel<(object, Guid)>> _callParametersChannels;
-        private readonly Dictionary<Guid, Channel<object>> _callResultChannels;
-        private IContext _contextImplementation;
+        private readonly IHost _host;
+        private readonly Dictionary<string, Channel<(JObject, Guid)>> _callParametersChannels;
+        private readonly Dictionary<Guid, Channel<JObject>> _callResultChannels;
 
         private PerperContext()
         {
-            _callParametersChannels = new Dictionary<string, Channel<(object, Guid)>>();
-            _callResultChannels = new Dictionary<Guid, Channel<object>>();
+            _host = Host.CreateDefaultBuilder().ConfigureServices((_, services) => 
+            {
+                services.AddScoped(typeof(PerperInstanceData), typeof(PerperInstanceData));
+
+                services.AddScoped(typeof(IContext), typeof(Context));
+                services.AddScoped(typeof(IState), typeof(State));
+
+                services.AddOptions<PerperConfig>().Configure<IConfiguration>((perperConfig, configuration) =>
+                {
+                    configuration.GetSection("Perper").Bind(perperConfig);
+                });
+
+                services.AddSingleton<PerperBinarySerializer>();
+
+                services.AddSingleton<FabricService>(services =>
+                {
+                    var fabric = ActivatorUtilities.CreateInstance<FabricService>(services);
+                    fabric.StartAsync(default).Wait();
+                    return fabric;
+                });
+
+                // NOTE: Due to how Ignite works, we cannot add more type configurations after starting
+                // However, during Azure WebJobs startup, we cannot access the assembly containing functions/types
+                // Therefore, care must be taken to not resolve IIgniteClient until Azure has loaded the user's assembly...
+                services.AddSingleton<IIgniteClient>(services =>
+                {
+                    var config = services.GetRequiredService<IOptions<PerperConfig>>().Value;
+                    var serializer = services.GetRequiredService<PerperBinarySerializer>();
+
+                    var nameMapper = ActivatorUtilities.CreateInstance<PerperNameMapper>(services);
+                    nameMapper.InitializeFromAppDomain();
+
+                    var ignite = Ignition.StartClient(new IgniteClientConfiguration
+                    {
+                        Endpoints = new List<string> { config.FabricHost },
+                        BinaryConfiguration = new BinaryConfiguration()
+                        {
+                            NameMapper = nameMapper,
+                            Serializer = serializer,
+                            TypeConfigurations = (
+                                from type in nameMapper.WellKnownTypes.Keys
+                                where !type.IsGenericTypeDefinition
+                                select new BinaryTypeConfiguration(type) { Serializer = serializer }
+                            ).ToList()
+                        }
+                    });
+
+                    serializer.SetBinary(ignite.GetBinary());
+
+                    return ignite;
+                });
+
+                services.Configure<ServiceProviderOptions>(options =>
+                {
+                    options.ValidateScopes = true;
+                });
+            }).Start();
+
+            _callParametersChannels = new Dictionary<string, Channel<(JObject, Guid)>>();
+            _callResultChannels = new Dictionary<Guid, Channel<JObject>>();
 
             var url = $"http://localhost:{Environment.GetEnvironmentVariable("FUNCTIONS_CUSTOMHANDLER_PORT")}/";
             using var server = new WebServer(o => o.WithUrlPrefix(url).WithMode(HttpListenerMode.EmbedIO))
@@ -44,7 +112,7 @@ namespace Perper.WebJobs.Extensions.CustomHandler
         public async Task<(TResult, Guid)> GetCallParametersAsync<TResult>(string delegateName)
         {
             var channel = _callParametersChannels.GetOrAdd(delegateName,
-                _ => Channel.CreateUnbounded<(object, Guid)>())!;
+                _ => Channel.CreateUnbounded<(JObject, Guid)>())!;
             var (parameters, callId) = await channel.Reader.ReadAsync();
             return ((TResult)parameters, callId);
         }
@@ -64,51 +132,57 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             throw new NotImplementedException();
         }
 
-        public IAgent Agent { get => _contextImplementation.Agent; }
+        public IAgent Agent { get => _host.Services.GetService<IContext>()!.Agent; }
 
         public Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, object? parameters = default)
         {
-            return _contextImplementation.StartAgentAsync<TResult>(name, parameters);
+            return _host.Services.GetService<IContext>()!.StartAgentAsync<TResult>(name, parameters);
         }
 
         public Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default,
             StreamFlags flags = StreamFlags.Ephemeral)
         {
-            return _contextImplementation.StreamFunctionAsync<TItem>(functionName, parameters, flags);
+            return _host.Services.GetService<IContext>()!.StreamFunctionAsync<TItem>(functionName, parameters, flags);
         }
 
         public Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamFlags flags = StreamFlags.Ephemeral)
         {
-            return _contextImplementation.StreamActionAsync(actionName, parameters, flags);
+            return _host.Services.GetService<IContext>()!.StreamActionAsync(actionName, parameters, flags);
         }
 
         public IStream<TItem> DeclareStreamFunction<TItem>(string functionName)
         {
-            return _contextImplementation.DeclareStreamFunction<TItem>(functionName);
+            return _host.Services.GetService<IContext>()!.DeclareStreamFunction<TItem>(functionName);
         }
 
         public Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default,
             StreamFlags flags = StreamFlags.Ephemeral)
         {
-            return _contextImplementation.InitializeStreamFunctionAsync(stream, parameters, flags);
+            return _host.Services.GetService<IContext>()!.InitializeStreamFunctionAsync(stream, parameters, flags);
         }
 
         public Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Ephemeral)
         {
-            return _contextImplementation.CreateBlankStreamAsync<TItem>(flags);
+            return _host.Services.GetService<IContext>()!.CreateBlankStreamAsync<TItem>(flags);
+        }
+
+        public Task<T> GetValue<T>(string key, Func<T> defaultValueFactory)
+        {
+            return _host.Services.GetService<IState>()!.GetValue(key, defaultValueFactory);
+        }
+
+        public Task SetValue<T>(string key, T value)
+        {
+            return _host.Services.GetService<IState>()!.SetValue(key, value);
         }
 
         private async Task Handler(IHttpContext context)
         {
             var invocationId = Guid.Parse(context.Request.Headers["X-Azure-Functions-Invocationid"]);
             dynamic payload = JsonConvert.DeserializeObject(await context.GetRequestBodyAsStringAsync())!;
-            if (payload.Metadata.triggerAttribute == "PerperModuleTriggerAttribute")
+            if (payload.Metadata.triggerAttribute == "PerperTrigger")
             {
-
-            }
-            else if (payload.Metadata.triggerAttribute == "PerperWorkerTriggerAttribute")
-            {
-
+                
             }
         }
     }
