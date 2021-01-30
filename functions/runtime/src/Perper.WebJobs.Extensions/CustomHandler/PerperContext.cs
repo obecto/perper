@@ -109,7 +109,7 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             throw new NotImplementedException();
         }
 
-        public async Task<(TResult, Guid)> GetCallParametersAsync<TResult>(string delegateName)
+        public async Task<(TResult, Guid)> GetCallParametersAsync<TResult>(string delegateName) where TResult:JObject
         {
             var channel = _callParametersChannels.GetOrAdd(delegateName,
                 _ => Channel.CreateUnbounded<(JObject, Guid)>())!;
@@ -119,7 +119,7 @@ namespace Perper.WebJobs.Extensions.CustomHandler
 
         public async Task SetCallResultAsync(Guid callId, object result)
         {
-            await _callResultChannels[callId].Writer.WriteAsync(result);
+            await _callResultChannels[callId].Writer.WriteAsync((JObject)result);
         }
 
         public Task<(TResult, Guid)> GetStreamParametersAsync<TResult>(string delegateName)
