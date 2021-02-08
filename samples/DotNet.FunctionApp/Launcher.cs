@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Triggers;
+using Perper.WebJobs.Extensions.Dataflow;
+using System.Threading.Tasks.Dataflow;
 
 namespace DotNet.FunctionApp
 {
@@ -145,16 +147,15 @@ namespace DotNet.FunctionApp
         */
 
         [FunctionName("Processor")]
-        public static async IAsyncEnumerable<int> Processor([PerperTrigger] dynamic paramters, ILogger logger)
+        public static IAsyncEnumerable<int> Processor([PerperTrigger] dynamic paramters, ILogger logger)
         {
-            await foreach (var i in (IAsyncEnumerable<dynamic>)paramters.Generator)
-            {
-                logger.LogDebug($"Processing: {i}");
-                if (i != null)
-                {
-                    yield return i.Num * paramters.Multiplier;
-                }
-            }
+            var source = ((IAsyncEnumerable<dynamic>)paramters.Generator).ToDataflow();
+
+            var processor = new TransformBlock<dynamic, int>(input => (int)(input.Num * paramters.Multiplier));
+
+            source.LinkTo(processor, x => x != null);
+
+            return processor.ToAsyncEnumerable();
         }
 
         [FunctionName("Consumer")]
