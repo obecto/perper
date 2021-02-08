@@ -11,7 +11,7 @@ namespace Perper.WebJobs.Extensions.Model
         IAsyncEnumerable<T> Filter(Expression<Func<T, bool>> filter, bool dataLocal = false);
         IAsyncEnumerable<T> Replay(bool dataLocal = false);
         IAsyncEnumerable<T> Replay(Expression<Func<T, bool>> filter, bool dataLocal = false);
-        IAsyncEnumerable<T> Replay(Func<IQueryable<T>, IQueryable<T>> query, bool dataLocal = false);
+        IAsyncEnumerable<TResult> Query<TResult>(Func<IQueryable<T>, IQueryable<TResult>> query);
     }
 
     public interface IStream

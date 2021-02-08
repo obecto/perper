@@ -13,27 +13,24 @@ namespace Perper.WebJobs.Extensions.Model
 
     public class StateEntry<T> : StateEntry, IStateEntry<T>
     {
-        [NonSerialized] private IState _state = default!;
-        [PerperInject]
-        protected IState State
-        { // Used to ensure that State.Entries is updated correctly
-            set
-            {
-                _state = value;
-                ((State)_state).Entries.Add(this);
-            }
-        }
-
+        [NonSerialized] private State _state;
         [NonSerialized] public Func<T> DefaultValueFactory = () => default(T)!;
-
-        public string Name { get; private set; }
 
         [IgnoreDataMember]
         public T Value { get; set; } = default(T)!;
 
-        public StateEntry(IState state, string name, Func<T> defaultValueFactory)
+        public string Name { get; private set; }
+
+        [PerperInject]
+        protected StateEntry(IState state)
         {
-            State = state;
+            _state = (State)state;
+            _state.Entries.Add(this);
+        }
+
+        public StateEntry(IState state, string name, Func<T> defaultValueFactory)
+            : this(state)
+        {
             Name = name;
             DefaultValueFactory = defaultValueFactory;
         }
@@ -51,10 +48,11 @@ namespace Perper.WebJobs.Extensions.Model
 
     public class StateEntryDI<T> : IStateEntry<T>
     {
-        [NonSerialized] private IStateEntry<T>? _implementation;
-        [PerperInject] protected IState _state;
-        [PerperInject] protected PerperInstanceData _instance;
+        protected IStateEntry<T>? _implementation;
+        [NonSerialized] protected IState _state;
+        [NonSerialized] protected PerperInstanceData _instance;
 
+        [PerperInject]
         public StateEntryDI(IState state, PerperInstanceData instance)
         {
             _state = state;

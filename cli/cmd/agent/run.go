@@ -49,6 +49,7 @@ func readConfig(dirPath string) (map[string]string, string) {
 	localConfig.SetConfigFile(filepath.Join(dirPath, configFileName))
 	err := localConfig.ReadInConfig()
 	if err != nil {
+		fmt.Println("Error while parsing: " + filepath.Join(dirPath, configFileName))
 		panic(err)
 	}
 	agents := localConfig.GetStringMapString("dependencies")

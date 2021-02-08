@@ -1,13 +1,12 @@
 using System;
+using System.Dynamic;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using Apache.Ignite.Core.Binary;
-using Perper.WebJobs.Extensions.Cache;
 using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Services
@@ -17,10 +16,10 @@ namespace Perper.WebJobs.Extensions.Services
         [PerperData(Name = "<null>")]
         public struct NullPlaceholder { };
 
-        private readonly IServiceProvider _services;
-        private IBinary _binary = default!;
+        private readonly IServiceProvider? _services;
+        private IBinary? _binary = null;
 
-        public PerperBinarySerializer(IServiceProvider services)
+        public PerperBinarySerializer(IServiceProvider? services)
         {
             _services = services;
         }
@@ -31,71 +30,52 @@ namespace Perper.WebJobs.Extensions.Services
         }
 
         #region GetProperties
-        private interface IPropertyInfo
+        private class TypeData
         {
-            Type? Type { get; } // Null means that the property is not part of the final serialized form
-            object? Get(object obj);
-            void Set(object obj, object? value);
+            public ConstructorInfo? Constructor { get; set; }
+            public List<FieldOrPropertyInfo> Properties { get; } = new List<FieldOrPropertyInfo>();
         }
-
-        private class FieldPropertyInfo : IPropertyInfo
+        private struct FieldOrPropertyInfo
         {
-            public FieldInfo Field { get; }
-            public FieldPropertyInfo(FieldInfo field)
+            public MemberInfo Member { get; }
+            public FieldOrPropertyInfo(FieldInfo field)
             {
-                Field = field;
+                Member = field;
+            }
+            public FieldOrPropertyInfo(PropertyInfo property)
+            {
+                Member = property;
             }
 
-            public Type? Type { get => Field.FieldType; }
-            public object? Get(object obj) => Field.GetValue(obj);
-            public void Set(object obj, object? value) => Field.SetValue(obj, value);
+            public string Name => Member.Name;
+#pragma warning disable CS8509 // Switch handles all possibilities
+            public Type Type => Member switch { FieldInfo fi => fi.FieldType, PropertyInfo pi => pi.PropertyType };
+            public object? GetValue(object obj) => Member switch { FieldInfo fi => fi.GetValue(obj), PropertyInfo pi => pi.GetValue(obj) };
+            public void SetValue(object obj, object? value)
+            {
+                switch (Member)
+                {
+                    case FieldInfo fi: fi.SetValue(obj, value); break;
+                    case PropertyInfo pi: pi.SetValue(obj, value); break;
+                }
+            }
+#pragma warning restore CS8509
         }
 
-        private class PropertyPropertyInfo : IPropertyInfo
+        private readonly Dictionary<Type, TypeData> TypeDataCache = new Dictionary<Type, TypeData>();
+
+        private TypeData GetTypeData(Type type)
         {
-            public PropertyInfo Property { get; }
-            public PropertyPropertyInfo(PropertyInfo property)
-            {
-                Property = property;
-            }
-
-            public Type? Type { get => Property.PropertyType; }
-            public object? Get(object obj) => Property.GetValue(obj);
-            public void Set(object obj, object? value) => Property.SetValue(obj, value);
-        }
-
-        private class ServicePropertyInfoDecorator : IPropertyInfo
-        {
-            public IPropertyInfo WrappedProperty { get; }
-            public IServiceProvider ServiceProvider { get; }
-            public Type ServiceType { get; }
-            public ServicePropertyInfoDecorator(IPropertyInfo wrappedProperty, IServiceProvider serviceProvider, Type serviceType)
-            {
-                WrappedProperty = wrappedProperty;
-                ServiceProvider = serviceProvider;
-                ServiceType = serviceType;
-            }
-
-            public Type? Type { get => null; }
-            public object? Get(object obj) => null;
-            public void Set(object obj, object? value)
-            {
-                WrappedProperty.Set(obj, ServiceProvider.GetService(ServiceType));
-            }
-        }
-
-        private readonly Dictionary<Type, Dictionary<string, IPropertyInfo>> PropertiesCache = new Dictionary<Type, Dictionary<string, IPropertyInfo>>();
-
-        private Dictionary<string, IPropertyInfo> GetProperties(Type type)
-        {
-            if (PropertiesCache.TryGetValue(type, out var cached))
+            if (TypeDataCache.TryGetValue(type, out var cached))
             {
                 return cached;
             }
 
-            var result = new Dictionary<String, IPropertyInfo>();
+            var allInstanceBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
-            foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+            var result = new TypeData();
+
+            foreach (var field in type.GetFields(allInstanceBindingFlags))
             {
                 if (field.GetCustomAttributes<NonSerializedAttribute>().Any() ||
                     field.GetCustomAttributes<IgnoreDataMemberAttribute>().Any() ||
@@ -104,263 +84,230 @@ namespace Perper.WebJobs.Extensions.Services
                     continue;
                 }
 
-                result[field.Name] = new FieldPropertyInfo(field);
-
-                if (field.GetCustomAttributes<PerperInjectAttribute>().Any())
-                {
-                    result[field.Name] = new ServicePropertyInfoDecorator(result[field.Name], _services, field.FieldType);
-                }
+                result.Properties.Add(new FieldOrPropertyInfo(field));
             }
 
             // Unlike the Java version, we do not implement getters/setters here, as those are represented by properties in C#
 
-            foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+            foreach (var property in type.GetProperties(allInstanceBindingFlags))
             {
                 if (property.GetCustomAttributes<IgnoreDataMemberAttribute>().Any() ||
-                    !property.CanWrite)
+                    property.GetIndexParameters().Length != 0 ||
+                    !property.CanRead)
                 {
                     continue;
                 }
 
-                result[property.Name] = new PropertyPropertyInfo(property);
-
-                if (property.GetCustomAttributes<PerperInjectAttribute>().Any())
-                {
-                    result[property.Name] = new ServicePropertyInfoDecorator(result[property.Name], _services, property.PropertyType);
-                }
+                result.Properties.Add(new FieldOrPropertyInfo(property));
             }
 
-            PropertiesCache[type] = result;
+            result.Properties.Sort((x, y) => x.Name.CompareTo(y.Name));
+
+            result.Constructor = type.GetConstructors(allInstanceBindingFlags).SingleOrDefault(c => c.GetCustomAttribute<PerperInjectAttribute>() != null);
+
+            TypeDataCache[type] = result;
 
             return result;
         }
         #endregion
 
-        #region GetObjectConverters
-        private static Func<object?, object?> Identity = x => x;
-
-        public (Type convertedType, Func<object?, object?> to, Func<object?, object?> from) GetObjectConverters(Type type)
+        #region ObjectConverters
+        public object? Serialize(object? value)
         {
-            if (type.IsArray)
+            switch (value)
             {
-                var elementType = type.GetElementType()!;
-                var (elementConvertedType, elementConverterTo, elementConverterFrom) = GetObjectConverters(elementType!);
+                case null: return null;
+                case var primitive when PerperTypeUtils.IsPrimitiveType(value.GetType()): return primitive;
 
-                if (elementConverterTo == Identity && elementConverterFrom == Identity)
-                {
-                    return (type, Identity, Identity);
-                }
-
-                return (
-                    typeof(object?[]),
-                    source =>
+                case Array arr:
                     {
-                        if (source == null) return null;
-                        var arr = (Array)source!;
-                        var result = new object?[arr.Length];
+                        var serialized = new object?[arr.Length];
                         for (var i = 0; i < arr.Length; i++)
                         {
-                            result[i] = elementConverterTo(arr.GetValue(i));
+                            serialized[i] = Serialize(arr.GetValue(i));
                         }
-                        return result;
-                    },
-                    converted =>
-                    {
-                        if (converted == null) return null;
-                        var arr = (object?[])converted!;
-                        var result = Array.CreateInstance(elementType, arr.Length);
-                        for (var i = 0; i < arr.Length; i++)
-                        {
-                            result.SetValue(elementConverterFrom(arr[i])!, i);
-                        }
-                        return result;
+                        return serialized;
                     }
-                );
-            }
-
-#if !NETSTANDARD2_0
-            if (typeof(ITuple).IsAssignableFrom(type))
-            {
-                var subConverters = type.GetGenericArguments().Select(x => GetObjectConverters(x)).ToList();
-
-                return (
-                    typeof(object?[]),
-                    source =>
+                case var tuple when PerperTypeUtils.IsTupleType(tuple.GetType()):
                     {
-                        if (source == null) return null;
-                        var tuple = (ITuple)source!;
-                        var result = new object?[tuple.Length];
-                        for (var i = 0; i < result.Length; i++)
+                        // Cannot use ITuple cast since it doesn't work in netstandard2
+                        var typeData = GetTypeData(tuple.GetType());
+                        var serialized = new object?[typeData.Properties.Count];
+                        for (var i = 0; i < typeData.Properties.Count; i++)
                         {
-                            result[i] = subConverters[i].to(tuple[i]);
+                            var tupleElement = typeData.Properties[i].GetValue(tuple);
+                            serialized[i] = Serialize(tupleElement);
                         }
-                        return result;
-                    },
-                    converted =>
-                    {
-                        if (converted == null) return null;
-                        var arr = (object?[])converted!;
-                        var parameters = new object?[arr.Length];
-                        for (var i = 0; i < parameters.Length; i++)
-                        {
-                            parameters[i] = subConverters[i].from(arr[i]);
-                        }
-                        return Activator.CreateInstance(type, parameters);
+                        return serialized;
                     }
-                );
-            }
-#endif
-
-            var dictionaryInterface = PerperTypeUtils.GetGenericInterface(type, typeof(IDictionary<,>));
-            if (dictionaryInterface != null)
-            {
-                var keyType = dictionaryInterface.GetGenericArguments()[0];
-                var valueType = dictionaryInterface.GetGenericArguments()[1];
-
-                var (keyConvertedType, keyConverterTo, keyConverterFrom) = GetObjectConverters(keyType);
-                var (valueConvertedType, valueConverterTo, valueConverterFrom) = GetObjectConverters(valueType);
-
-                var finalType = type.IsInterface ? typeof(Dictionary<,>).MakeGenericType(keyType, valueType) : type;
-
-                return (
-                    typeof(IDictionary),
-                    source =>
+                case IDictionary dictionary:
                     {
-                        if (source == null) return null;
-                        var result = new Hashtable();
-                        foreach (DictionaryEntry? entry in (IDictionary)source)
+                        var serialized = new Hashtable();
+                        foreach (DictionaryEntry? entry in dictionary)
                         {
-                            result[keyConverterTo(entry?.Key)!] = valueConverterTo(entry?.Value);
+                            serialized[Serialize(entry?.Key)!] = Serialize(entry?.Value);
                         }
-                        return result;
-                    },
-                    converted =>
-                    {
-                        if (converted == null) return null;
-                        var result = (IDictionary)Activator.CreateInstance(finalType)!;
-                        foreach (DictionaryEntry? entry in (IDictionary)converted)
-                        {
-                            result[keyConverterFrom(entry?.Key)!] = valueConverterFrom(entry?.Value);
-                        }
-                        return result;
+                        return serialized;
                     }
-                );
-            }
-
-            var collectionInterface = PerperTypeUtils.GetGenericInterface(type, typeof(ICollection<>));
-            if (collectionInterface != null)
-            {
-                var itemType = collectionInterface.GetGenericArguments()[0];
-
-                var (itemConvertedType, itemConverterTo, itemConverterFrom) = GetObjectConverters(itemType);
-
-                var finalType = type.IsInterface ? typeof(List<>).MakeGenericType(itemType) : type;
-                var addMethod = finalType.GetMethod(nameof(ICollection<object>.Add))!;
-
-                return (
-                    typeof(ICollection),
-                    source =>
+                case ICollection collection:
                     {
-                        if (source == null) return null;
-                        var result = new ArrayList();
-                        foreach (object? item in (ICollection)source)
+                        var serialized = new ArrayList();
+                        foreach (object? item in collection)
                         {
-                            result.Add(itemConverterTo(item));
+                            serialized.Add(Serialize(item));
                         }
-                        return result;
-                    },
-                    converted =>
-                    {
-                        if (converted == null) return null;
-                        var result = (ICollection)Activator.CreateInstance(finalType)!;
-                        foreach (object? item in (ICollection)converted)
-                        {
-                            addMethod.Invoke(result, new object?[] { itemConverterTo(item) });
-                        }
-                        return result;
+                        return serialized;
                     }
-                );
-            }
-
-            if (type.IsAssignableFrom(typeof(PerperDynamicObject)) || PerperTypeUtils.IsAnonymousType(type))
-            {
-                var deserializeMethod = typeof(IBinaryObject).GetMethod(nameof(IBinaryObject.Deserialize))!.MakeGenericMethod(type);
-
-                return (
-                    typeof(IBinaryObject),
-                    source =>
+                case var anonymous when PerperTypeUtils.IsAnonymousType(value.GetType()):
                     {
-                        if (source == null) return null;
+                        var anonymousType = anonymous.GetType();
 
-                        if (source is PerperDynamicObject dynamicObject)
+                        if (_binary != null)
                         {
-                            return dynamicObject.BinaryObject;
-                        }
+                            var builder = _binary.GetBuilder(anonymousType.GUID.ToString());
 
-                        var sourceType = source.GetType();
-                        if (sourceType.GetCustomAttributes<CompilerGeneratedAttribute>().Count() > 0)
-                        {
-                            // Compiler-generated, assume anonymous.
-                            // Using Guid, as it is more likely to be unique between different programs than anonymous type name
-                            var builder = _binary.GetBuilder(sourceType.GUID.ToString());
-
-                            foreach (var property in sourceType.GetProperties())
+                            foreach (var property in anonymousType.GetProperties())
                             {
-                                builder.SetField(property.Name, property.GetValue(source));
+                                builder.SetField(property.Name, property.GetValue(anonymous));
                             }
 
                             return builder.Build();
                         }
-
-                        return source;
-                    },
-                    converted =>
-                    {
-                        if (converted is IBinaryObject binObj)
+                        else
                         {
-                            if (type.IsAssignableFrom(typeof(PerperDynamicObject)))
+                            // We are used in testing; return an object which works with dynamic
+                            var expando = new ExpandoObject();
+
+                            foreach (var property in anonymousType.GetProperties())
                             {
-                                return new PerperDynamicObject(binObj);
+                                (expando as IDictionary<string, object?>).Add(property.Name, property.GetValue(anonymous));
                             }
-                            else
-                            {
-                                return deserializeMethod.Invoke(binObj, new object[] { });
-                            }
+
+                            return expando;
                         }
-                        return converted;
+
                     }
-                );
-            }
 
-            if (type == typeof(BigInteger))
-            {
-                return (
-                    typeof(string),
-                    source => source is BigInteger bigInt ? bigInt.ToString() : source,
-                    converted => converted is string str && BigInteger.TryParse(str, out var bigInt) ? bigInt : converted
-                );
-            }
+                case PerperDynamicObject dynamicObject: return dynamicObject.BinaryObject;
 
-            return (type, Identity, Identity);
+                case BigInteger bigInteger: return bigInteger.ToString();
+
+                default: return value;
+            }
         }
 
-        public (Type convertedType, Func<object?, object> to, Func<object, object?> from) GetRootObjectConverters(Type type)
+        public object? Deserialize(object? serialized, Type type)
         {
-            var (convertedType, converterTo, converterFrom) = GetObjectConverters(type);
-            return (
-                convertedType,
-                source => converterTo(source) ?? new NullPlaceholder(),
-                converted =>
-                {
-                    if (converted is NullPlaceholder || (converted is IBinaryObject binObj && binObj.GetBinaryType().TypeName == "<null>"))
+            switch (serialized)
+            {
+                case null: return null;
+
+                case var primitive when PerperTypeUtils.IsPrimitiveType(serialized.GetType()) && serialized.GetType() == type: return primitive;
+
+                case Array arr when type.IsArray:
                     {
-                        return converterFrom(null);
+                        var elementType = type.GetElementType()!;
+                        var value = Array.CreateInstance(elementType, arr.Length);
+                        for (var i = 0; i < arr.Length; i++)
+                        {
+                            value.SetValue(Deserialize(arr.GetValue(i), elementType), i);
+                        }
+                        return value;
                     }
-                    return converterFrom(converted);
-                }
-            );
+
+                case Array arr when PerperTypeUtils.IsTupleType(type):
+                    {
+                        // Can potentitially rework this to use TypeData, similar to the code serializing tuples
+                        var types = type.GetGenericArguments();
+                        var parameters = new object?[types.Length];
+                        for (var i = 0; i < types.Length && i < arr.Length; i++)
+                        {
+                            parameters[i] = Deserialize(arr.GetValue(i), types[i]);
+                        }
+                        return Activator.CreateInstance(type, parameters);
+                    }
+
+                case IDictionary dictionary:
+                    {
+                        // NOTE: Can cache keyType, valueType, and finalType for type
+                        var dictionaryTypes = PerperTypeUtils.GetGenericInterface(type, typeof(IDictionary<,>))?.GetGenericArguments() ?? new[] { typeof(object), typeof(object) };
+                        var keyType = dictionaryTypes[0];
+                        var valueType = dictionaryTypes[1];
+                        var finalType = type.IsInterface ? typeof(Dictionary<,>).MakeGenericType(keyType, valueType) : type;
+
+                        var value = (IDictionary)Activator.CreateInstance(finalType)!;
+                        foreach (DictionaryEntry? entry in dictionary)
+                        {
+                            value[Deserialize(entry?.Key, keyType)!] = Deserialize(entry?.Value, valueType);
+                        }
+                        return value;
+                    }
+
+                case ICollection collection:
+                    {
+                        // NOTE: Can cache elementType, finalType, and addMethod for type
+                        var elementType = PerperTypeUtils.GetGenericInterface(type, typeof(ICollection<>))?.GetGenericArguments()?[0] ?? typeof(object);
+                        var finalType = type.IsAssignableFrom(typeof(List<>).MakeGenericType(elementType)) ? typeof(List<>).MakeGenericType(elementType) : type;
+
+                        var addMethod = finalType.GetMethod(nameof(ICollection<object>.Add))!;
+
+                        var value = (ICollection)Activator.CreateInstance(finalType)!;
+                        foreach (object? item in collection)
+                        {
+                            addMethod.Invoke(value, new object?[] { Deserialize(item, elementType) });
+                        }
+                        return value;
+                    }
+
+                case string stringValue when type == typeof(BigInteger):
+                    return BigInteger.Parse(stringValue);
+
+                case IBinaryObject binaryObject:
+                    {
+                        if (type == typeof(PerperDynamicObject) || Guid.TryParse(binaryObject.GetBinaryType().TypeName, out var typeGuid))
+                        {
+                            return new PerperDynamicObject(binaryObject);
+                        }
+                        else
+                        {
+                            // NOTE: Can cache deserializeMethod for type
+                            var deserializeMethod = typeof(IBinaryObject).GetMethod(nameof(IBinaryObject.Deserialize))!.MakeGenericMethod(type);
+                            return deserializeMethod.Invoke(binaryObject, new object[] { });
+                        }
+                    }
+
+                default: return serialized;
+            }
         }
 
+        public object SerializeRoot(object? value)
+        {
+            return Serialize(value) ?? new NullPlaceholder();
+        }
+
+        public object? DeserializeRoot(object value, Type type)
+        {
+            if (value is NullPlaceholder || (value is IBinaryObject binaryObject && binaryObject.GetBinaryType().TypeName == "<null>"))
+            {
+                return Deserialize(null, type);
+            }
+            return Deserialize(value, type);
+        }
+
+        public Dictionary<string, string> GetQueriableFields(Type type)
+        {
+            var result = new Dictionary<string, string>();
+            foreach (var property in GetTypeData(type).Properties)
+            {
+                var name = property.Name;
+                var typeName = PerperTypeUtils.GetJavaTypeName(property.Type);
+                if (typeName != null)
+                {
+                    result[name] = typeName;
+                }
+            }
+            return result;
+        }
         #endregion
 
         public void WriteBinary(object obj, IBinaryWriter writer)
@@ -371,54 +318,18 @@ namespace Perper.WebJobs.Extensions.Services
                 return;
             }
 
-            foreach (var property in GetProperties(obj.GetType()))
+            foreach (var property in GetTypeData(obj.GetType()).Properties)
             {
-                var name = property.Key;
-                var value = property.Value.Get(obj);
-                var type = property.Value.Type;
-                if (type == null) continue;
-                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+                var name = property.Name;
+                var value = property.GetValue(obj);
+                var rawValue = Serialize(value);
+                if (rawValue is DateTime dateTime) // DateTime causes an infinite loop if passed to WriteObject, for some reason..
                 {
-                    type = type.GetGenericArguments()[0];
+                    writer.WriteTimestamp(name, dateTime);
                 }
-
-                // NOTE: nullable value types are not supported in Java/Kotlin; currently ignoring nullability.
-
-                if (type == typeof(bool)) writer.WriteBoolean(name, (bool)value!);
-                else if (type == typeof(char)) writer.WriteChar(name, (char)value!);
-                else if (type == typeof(byte)) writer.WriteByte(name, (byte)value!);
-                else if (type == typeof(short)) writer.WriteShort(name, (short)value!);
-                else if (type == typeof(int)) writer.WriteInt(name, (int)value!);
-                else if (type == typeof(long)) writer.WriteLong(name, (long)value!);
-                else if (type == typeof(float)) writer.WriteFloat(name, (float)value!);
-                else if (type == typeof(double)) writer.WriteDouble(name, (double)value!);
-                else if (type == typeof(decimal)) writer.WriteDecimal(name, (decimal)value!);
-                else if (type == typeof(DateTime)) writer.WriteTimestamp(name, (DateTime)value!);
-                else if (type == typeof(Guid)) writer.WriteGuid(name, (Guid)value!);
-                else if (type == typeof(string)) writer.WriteString(name, (string)value!);
-                else if (type == typeof(bool[])) writer.WriteBooleanArray(name, (bool[])value!);
-                else if (type == typeof(char[])) writer.WriteCharArray(name, (char[])value!);
-                else if (type == typeof(byte[])) writer.WriteByteArray(name, (byte[])value!);
-                else if (type == typeof(short[])) writer.WriteShortArray(name, (short[])value!);
-                else if (type == typeof(int[])) writer.WriteIntArray(name, (int[])value!);
-                else if (type == typeof(long[])) writer.WriteLongArray(name, (long[])value!);
-                else if (type == typeof(float[])) writer.WriteFloatArray(name, (float[])value!);
-                else if (type == typeof(double[])) writer.WriteDoubleArray(name, (double[])value!);
-                else if (type == typeof(decimal[])) writer.WriteDecimalArray(name, (decimal?[])value!);
-                else if (type == typeof(DateTime[])) writer.WriteTimestampArray(name, (DateTime?[])value!);
-                else if (type == typeof(Guid[])) writer.WriteGuidArray(name, (Guid?[])value!);
-                else if (type == typeof(string[])) writer.WriteStringArray(name, (string[])value!);
-                else if (type.IsEnum) writer.WriteEnum(name, value);
-                else if (type.IsArray && type.GetElementType()!.IsEnum) writer.WriteEnumArray(name, (object?[])value!);
                 else
                 {
-                    var (convertedType, converterTo, converterFrom) = GetObjectConverters(type);
-                    value = converterTo.Invoke(value);
-
-                    if (convertedType == typeof(object?[])) writer.WriteArray(name, (object?[])value!);
-                    else if (convertedType == typeof(IDictionary)) writer.WriteDictionary(name, (IDictionary)value!);
-                    else if (convertedType == typeof(ICollection)) writer.WriteCollection(name, (ICollection)value!);
-                    else writer.WriteObject(name, value);
+                    writer.WriteObject(name, rawValue);
                 }
             }
         }
@@ -431,62 +342,19 @@ namespace Perper.WebJobs.Extensions.Services
                 return;
             }
 
-            foreach (var property in GetProperties(obj.GetType()))
+            var typeData = GetTypeData(obj.GetType());
+
+            if (typeData.Constructor != null)
             {
-                var name = property.Key;
-                object? value;
-                var type = property.Value.Type;
+                var parameters = typeData.Constructor.GetParameters().Select(p => _services?.GetService(p.ParameterType)).ToArray();
+                typeData.Constructor.Invoke(obj, parameters);
+            }
 
-                if (type == null)
-                {
-                    property.Value.Set(obj, null);
-                    continue;
-                }
-
-                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
-                {
-                    type = type.GetGenericArguments()[0];
-                }
-
-                if (type == typeof(bool)) value = reader.ReadBoolean(name);
-                else if (type == typeof(char)) value = reader.ReadChar(name);
-                else if (type == typeof(byte)) value = reader.ReadByte(name);
-                else if (type == typeof(short)) value = reader.ReadShort(name);
-                else if (type == typeof(int)) value = reader.ReadInt(name);
-                else if (type == typeof(long)) value = reader.ReadLong(name);
-                else if (type == typeof(float)) value = reader.ReadFloat(name);
-                else if (type == typeof(double)) value = reader.ReadDouble(name);
-                else if (type == typeof(decimal)) value = reader.ReadDecimal(name);
-                else if (type == typeof(DateTime)) value = reader.ReadTimestamp(name);
-                else if (type == typeof(Guid)) value = reader.ReadGuid(name);
-                else if (type == typeof(string)) value = reader.ReadString(name);
-                else if (type == typeof(bool[])) value = reader.ReadBooleanArray(name);
-                else if (type == typeof(char[])) value = reader.ReadCharArray(name);
-                else if (type == typeof(byte[])) value = reader.ReadByteArray(name);
-                else if (type == typeof(short[])) value = reader.ReadShortArray(name);
-                else if (type == typeof(int[])) value = reader.ReadIntArray(name);
-                else if (type == typeof(long[])) value = reader.ReadLongArray(name);
-                else if (type == typeof(float[])) value = reader.ReadFloatArray(name);
-                else if (type == typeof(double[])) value = reader.ReadDoubleArray(name);
-                else if (type == typeof(decimal[])) value = reader.ReadDecimalArray(name);
-                else if (type == typeof(DateTime[])) value = reader.ReadTimestampArray(name);
-                else if (type == typeof(Guid[])) value = reader.ReadGuidArray(name);
-                else if (type == typeof(string[])) value = reader.ReadStringArray(name);
-                else if (type.IsEnum) value = reader.ReadEnum<object?>(name);
-                else if (type.IsArray && type.GetElementType()!.IsEnum) value = reader.ReadEnumArray<object?>(name);
-                else
-                {
-                    var (convertedType, converterTo, converterFrom) = GetObjectConverters(type);
-
-                    if (convertedType == typeof(object?[])) value = reader.ReadArray<object?>(name);
-                    else if (convertedType == typeof(IDictionary)) value = reader.ReadDictionary(name);
-                    else if (convertedType == typeof(ICollection)) value = reader.ReadCollection(name);
-                    else value = reader.ReadObject<object?>(name);
-
-                    value = converterFrom.Invoke(value);
-                }
-
-                property.Value.Set(obj, value);
+            foreach (var property in typeData.Properties)
+            {
+                var rawValue = reader.ReadObject<object?>(property.Name);
+                var value = Deserialize(rawValue, property.Type);
+                property.SetValue(obj, value);
             }
         }
     }

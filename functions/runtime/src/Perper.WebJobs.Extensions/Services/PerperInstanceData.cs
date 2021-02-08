@@ -1,7 +1,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
+using Apache.Ignite.Core.Client.Cache;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Cache;
 
@@ -17,7 +19,8 @@ namespace Perper.WebJobs.Extensions.Services
         private bool _initialized = false;
 
         public string InstanceName { get; private set; } = default!;
-        public IInstanceData InstanceData { get; private set; } = default!;
+        public string Agent { get; private set; } = default!;
+        public object? Parameters { get; private set; } = default!;
 
         public PerperInstanceData(IIgniteClient ignite, PerperBinarySerializer serializer)
         {
@@ -27,27 +30,33 @@ namespace Perper.WebJobs.Extensions.Services
 
         public async Task SetTriggerValue(JObject trigger)
         {
+            // Done using binary, since this.Agent is sometimes needed while deserializing Parameters
+            ICacheClient<string, IBinaryObject> instanceCache;
             if (trigger.ContainsKey("Call"))
             {
                 InstanceName = (string)trigger["Call"]!;
-                var callsCache = _ignite.GetCache<string, CallData>("calls");
-                InstanceData = await callsCache.GetAsync(InstanceName);
+                instanceCache = _ignite.GetCache<string, CallData>("calls").WithKeepBinary<string, IBinaryObject>();
             }
             else
             {
                 InstanceName = (string)trigger["Stream"]!;
-                var streamsCache = _ignite.GetCache<string, StreamData>("streams");
-                InstanceData = await streamsCache.GetAsync(InstanceName);
+                instanceCache = _ignite.GetCache<string, StreamData>("streams").WithKeepBinary<string, IBinaryObject>();
             }
+
+            var instanceDataBinary = await instanceCache.GetAsync(InstanceName);
+
+            Agent = instanceDataBinary.GetField<string>(nameof(IInstanceData.Agent));
+            Parameters = instanceDataBinary.GetField<object>(nameof(IInstanceData.Parameters));
+
             _initialized = true;
         }
 
         public object? GetParameters(Type type)
         {
-            return _serializer.GetObjectConverters(type).from.Invoke(InstanceData.Parameters);
+            return _serializer.Deserialize(Parameters, type);
         }
 
-        public object?[] GetParameters<T>()
+        public object?[] GetParameters()
         {
             var parameters = GetParameters(typeof(object?[]));
             return (parameters as object?[]) ?? new object?[] { parameters };

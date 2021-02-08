@@ -15,7 +15,8 @@ jobs:
     - uses: actions/checkout@v2
     
     - name: Build the Docker image
-      run: docker build . --file docker/Dockerfile --tag obecto/perper-fabric
+      run: docker build . --file docker/Dockerfile --tag obecto/perper-fabric:$(sed -E -n 's|^\s*version\s*=\s*"([^"]+)"\s*$|\1|p' fabric/build.gradle.kts | head -1)
+      shell: bash
     
     - name: Login to DockerHub
       run: docker login --username obecto --password ${{ secrets.DOCKER_HUB_TOKEN }}
