@@ -15,7 +15,7 @@ namespace Perper.WebJobs.Extensions.Fake
             Agent = agent;
         }
 
-        public FakeContext() : this(new FakeAgent()) {}
+        public FakeContext() : this(new FakeAgent()) { }
 
         public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string delegateName, object? parameters = default)
         {

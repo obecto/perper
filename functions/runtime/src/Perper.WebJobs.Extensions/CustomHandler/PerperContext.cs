@@ -32,7 +32,7 @@ namespace Perper.WebJobs.Extensions.CustomHandler
 
         private PerperContext()
         {
-            _host = Host.CreateDefaultBuilder().ConfigureServices((_, services) => 
+            _host = Host.CreateDefaultBuilder().ConfigureServices((_, services) =>
             {
                 services.AddScoped(typeof(PerperInstanceData), typeof(PerperInstanceData));
 
@@ -109,7 +109,7 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             throw new NotImplementedException();
         }
 
-        public async Task<(TResult, Guid)> GetCallParametersAsync<TResult>(string delegateName) where TResult:JObject
+        public async Task<(TResult, Guid)> GetCallParametersAsync<TResult>(string delegateName) where TResult : JObject
         {
             var channel = _callParametersChannels.GetOrAdd(delegateName,
                 _ => Channel.CreateUnbounded<(JObject, Guid)>())!;
@@ -176,13 +176,18 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             return _host.Services.GetService<IState>()!.SetValue(key, value);
         }
 
+        public Task<IStateEntry<T>> Entry<T>(string key, Func<T> defaultValueFactory)
+        {
+            return _host.Services.GetService<IState>()!.Entry(key, defaultValueFactory);
+        }
+
         private async Task Handler(IHttpContext context)
         {
             var invocationId = Guid.Parse(context.Request.Headers["X-Azure-Functions-Invocationid"]);
             dynamic payload = JsonConvert.DeserializeObject(await context.GetRequestBodyAsStringAsync())!;
             if (payload.Metadata.triggerAttribute == "PerperTrigger")
             {
-                
+
             }
         }
     }

@@ -1,4 +1,3 @@
-using System;
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Fake

@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using Microsoft.Azure.WebJobs;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using System.Runtime.CompilerServices;
+using Microsoft.Azure.WebJobs;
 
 namespace Perper.WebJobs.Extensions.Dataflow
 {
@@ -16,7 +16,7 @@ namespace Perper.WebJobs.Extensions.Dataflow
 
             async Task helper()
             {
-                await foreach(var item in enumerable.WithCancellation(cancellationToken))
+                await foreach (var item in enumerable.WithCancellation(cancellationToken))
                 {
                     block.Post(item);
                 }
@@ -24,8 +24,8 @@ namespace Perper.WebJobs.Extensions.Dataflow
 
             helper().ContinueWith(completedTask =>
             {
-                if (completedTask.IsFaulted) ((IDataflowBlock)block).Fault(completedTask.Exception);
-                else if (completedTask.IsCompletedSuccessfully) block.Complete();
+                if (completedTask.Status == TaskStatus.Faulted) ((IDataflowBlock)block).Fault(completedTask.Exception);
+                else if (completedTask.Status == TaskStatus.RanToCompletion) block.Complete();
             });
 
             return block;

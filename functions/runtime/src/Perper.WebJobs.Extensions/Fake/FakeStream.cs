@@ -25,9 +25,9 @@ namespace Perper.WebJobs.Extensions.Fake
             ExecutionTask = Produce(source);
         }
 
-        public FakeStream(IAsyncEnumerable<T> source) : this(Task.FromResult(source)) {}
+        public FakeStream(IAsyncEnumerable<T> source) : this(Task.FromResult(source)) { }
 
-        public FakeStream(IEnumerable<T> source) : this(source.ToAsyncEnumerable()) {}
+        public FakeStream(IEnumerable<T> source) : this(source.ToAsyncEnumerable()) { }
 
         private TestStreamAsyncEnumerable GetEnumerable(Func<T, bool> filter, bool replay)
         {
@@ -149,7 +149,7 @@ namespace Perper.WebJobs.Extensions.Fake
             _source = source;
         }
 
-        public DeclaredFakeStream() : this(new TaskCompletionSource<IAsyncEnumerable<T>>()) {}
+        public DeclaredFakeStream() : this(new TaskCompletionSource<IAsyncEnumerable<T>>()) { }
 
         public void SetSource(IAsyncEnumerable<T> source)
         {
