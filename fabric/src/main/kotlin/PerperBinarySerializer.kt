@@ -60,7 +60,7 @@ class PerperBinarySerializer : BinarySerializer {
             val setters = HashMap<String, Method>()
 
             for (method in type.methods) {
-                if (method.name.startsWith("get") && method.parameterCount == 0 && method.returnType != Void::class.javaPrimitiveType) {
+                if (method.name.startsWith("get") && method.parameterCount == 0 && method.returnType != Void::class.javaPrimitiveType && method.name != "getClass") {
                     getters[method.name.drop(3).decapitalize()] = method
                 }
                 if (method.name.startsWith("is") && method.parameterCount == 0 && method.returnType == Boolean::class.javaPrimitiveType) {
