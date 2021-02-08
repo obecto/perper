@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Triggers;
+using Perper.WebJobs.Extensions.Dataflow;
+using System.Threading.Tasks.Dataflow;
 
 namespace DotNet.FunctionApp
 {
@@ -15,11 +17,17 @@ namespace DotNet.FunctionApp
         [FunctionName("DotNet")]
         public static async Task RunAsync([PerperTrigger] object parameters, IContext context, IState state, CancellationToken cancellationToken)
         {
-            await context.CallActionAsync("Log", "This was written by an action!");
-            var dynamicResult = await context.CallFunctionAsync<dynamic>("Dynamic", new { A = 1, B = 3, Message = "This was read from a dynamic object!" });
+            if (parameters != null)
+            {
+                var (agent, agentResult) = await context.StartAgentAsync<int>("TestAgent", 42);
+                await context.CallActionAsync("Log", $"TestAgent returned {agentResult}");
 
-            Console.WriteLine("{0}", dynamicResult);
-            Console.WriteLine("Dynamically-calculated sum was {0}", dynamicResult.Sum);
+                var dynamicResult = await context.CallFunctionAsync<dynamic>("Dynamic", new { A = 1, B = 3, Message = "This was read from a dynamic object!" });
+
+                Console.WriteLine("{0}", dynamicResult);
+                Console.WriteLine("Dynamically-calculated sum was {0}", dynamicResult.Sum);
+                return;
+            }
 
             var result = await context.CallFunctionAsync<int>("Called", (8, 3));
             Console.WriteLine("Result from function call is... {0}", result);
@@ -139,16 +147,15 @@ namespace DotNet.FunctionApp
         */
 
         [FunctionName("Processor")]
-        public static async IAsyncEnumerable<int> Processor([PerperTrigger] dynamic paramters, ILogger logger)
+        public static IAsyncEnumerable<int> Processor([PerperTrigger] dynamic paramters, ILogger logger)
         {
-            await foreach (var i in (IAsyncEnumerable<dynamic>)paramters.Generator)
-            {
-                logger.LogDebug($"Processing: {i}");
-                if (i != null)
-                {
-                    yield return i.Num * paramters.Multiplier;
-                }
-            }
+            var source = ((IAsyncEnumerable<dynamic>)paramters.Generator).ToDataflow();
+
+            var processor = new TransformBlock<dynamic, int>(input => (int)(input.Num * paramters.Multiplier));
+
+            source.LinkTo(processor, x => x != null);
+
+            return processor.ToAsyncEnumerable();
         }
 
         [FunctionName("Consumer")]

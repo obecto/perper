@@ -53,7 +53,7 @@ class TransportService(var port: Int) : Service {
         }
 
         fun getNotificationQueue(ignite: Ignite, streamName: String): IgniteQueue<AffinityKey<Long>> {
-            return ignite.queue<AffinityKey<Long>>(
+            return ignite.queue(
                 "$streamName-\$notifications", 0,
                 CollectionConfiguration().also {
                     it.backups = 1 // Workaround IGNITE-7789
@@ -143,6 +143,7 @@ class TransportService(var port: Int) : Service {
                 } else if (notification is StreamItemNotification) {
                     if (confirmed) {
                         getNotificationQueue(ignite, notification.stream).remove(key)
+
                         if (notification.ephemeral) {
                             val counter = ignite.atomicLong("${notification.cache}-${notification.key}", 0, true)
                             if (counter.decrementAndGet() == 0L) {
@@ -161,8 +162,7 @@ class TransportService(var port: Int) : Service {
             remoteConfirmationQuery.localListener = CacheEntryUpdatedListener { events ->
                 try {
                     for (event in events) {
-                        if (event.eventType == EventType.REMOVED)
-                        {
+                        if (event.eventType == EventType.REMOVED) {
                             val value = event.value ?: event.oldValue
                             updateQueue((value as StreamItemNotification).stream)
                         }

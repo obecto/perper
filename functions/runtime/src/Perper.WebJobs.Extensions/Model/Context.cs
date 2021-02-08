@@ -15,7 +15,7 @@ namespace Perper.WebJobs.Extensions.Model
         private readonly PerperBinarySerializer _serializer;
         private readonly IState _state;
 
-        public IAgent Agent => new Agent(_instance.InstanceData.Agent, _fabric.AgentDelegate, this, _ignite);
+        public IAgent Agent => new Agent(_instance.Agent, _fabric.AgentDelegate, this);
 
         public Context(FabricService fabric, PerperInstanceData instance, IIgniteClient ignite, PerperBinarySerializer serializer, IState state)
         {
@@ -32,7 +32,7 @@ namespace Perper.WebJobs.Extensions.Model
             var callDelegate = delegateName;
 
             var agentName = GenerateName(agentDelegate);
-            var agent = new Agent(agentName, agentDelegate, this, _ignite);
+            var agent = new Agent(agentName, agentDelegate, this);
 
             var result = await agent.CallFunctionAsync<TResult>(callDelegate, parameters);
 
@@ -68,11 +68,11 @@ namespace Perper.WebJobs.Extensions.Model
             {
                 throw new InvalidOperationException("Stream is already initialized");
             }
-            await CreateStreamAsync(streamInstance.StreamName, StreamDelegateType.Function, streamInstance.FunctionName!, parameters, null, flags);
+            await CreateStreamAsync(streamInstance.StreamName, StreamDelegateType.Function, streamInstance.FunctionName!, parameters, typeof(TItem), flags);
             streamInstance.FunctionName = null;
         }
 
-        public async Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Ephemeral)
+        public async Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Default)
         {
             var streamName = GenerateName();
             await CreateStreamAsync(streamName, StreamDelegateType.External, "", null, typeof(TItem), flags);
@@ -84,14 +84,14 @@ namespace Perper.WebJobs.Extensions.Model
             var streamsCache = _ignite.GetCache<string, StreamData>("streams");
             await streamsCache.PutAsync(streamName, new StreamData
             {
-                Agent = _instance.InstanceData.Agent,
+                Agent = _instance.Agent,
                 AgentDelegate = _fabric.AgentDelegate,
                 Delegate = delegateName,
                 DelegateType = delegateType,
-                Parameters = ConvertParameters(parameters),
+                Parameters = parameters,
                 Listeners = new List<StreamListener>(),
-                IndexType = null,
-                IndexFields = null,
+                IndexType = (flags & StreamFlags.Query) != 0 && type != null ? PerperTypeUtils.GetJavaTypeName(type) ?? type.Name : null,
+                IndexFields = (flags & StreamFlags.Query) != 0 && type != null ? _serializer.GetQueriableFields(type) : null,
                 Ephemeral = (flags & StreamFlags.Ephemeral) != 0,
                 LastModified = DateTime.UtcNow
             });
@@ -110,7 +110,7 @@ namespace Perper.WebJobs.Extensions.Model
                 Caller = _instance.InstanceName,
                 Finished = false,
                 LocalToData = true,
-                Parameters = ConvertParameters(parameters),
+                Parameters = parameters,
             });
 
             var (key, notification) = await _fabric.GetCallNotification(callName);
@@ -127,11 +127,6 @@ namespace Perper.WebJobs.Extensions.Model
             {
                 return call;
             }
-        }
-
-        private object? ConvertParameters(object? parameters)
-        {
-            return _serializer.GetObjectConverters(parameters?.GetType() ?? typeof(object)).to.Invoke(parameters);
         }
 
         private string GenerateName(string? baseName = null)

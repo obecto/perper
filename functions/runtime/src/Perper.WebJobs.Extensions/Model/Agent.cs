@@ -1,5 +1,5 @@
+using System;
 using System.Threading.Tasks;
-using Apache.Ignite.Core.Client;
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Model
@@ -9,15 +9,19 @@ namespace Perper.WebJobs.Extensions.Model
         public string AgentName { get; set; }
         public string AgentDelegate { get; set; }
 
-        [PerperInject] private IContext _context;
-        [PerperInject] private IIgniteClient _ignite;
+        [NonSerialized] private IContext _context;
 
-        public Agent(string agentName, string agentDelegate, IContext context, IIgniteClient ignite)
+        [PerperInject]
+        protected Agent(IContext context)
+        {
+            _context = context;
+        }
+
+        public Agent(string agentName, string agentDelegate, IContext context)
+            : this(context)
         {
             AgentName = agentName;
             AgentDelegate = agentDelegate;
-            _context = context;
-            _ignite = ignite;
         }
 
         public async Task<TResult> CallFunctionAsync<TResult>(string functionName, object? parameters = default)

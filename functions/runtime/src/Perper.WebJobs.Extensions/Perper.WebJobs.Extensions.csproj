@@ -3,7 +3,7 @@
         <LangVersion>8</LangVersion>
         <Nullable>enable</Nullable>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageVersion>0.6.0-alpha5</PackageVersion>
+        <PackageVersion>0.6.0-alpha6</PackageVersion>
         <Authors>Obecto EOOD</Authors>
         <RepositoryUrl>https://github.com/obecto/perper</RepositoryUrl>
         <Title>Perper Functions</Title>
@@ -33,11 +33,13 @@
         <PackageReference Include="Google.Protobuf" Version="3.13.0" />
         <PackageReference Include="System.Threading.Channels" Version="4.7.0" />
         <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+        <PackageReference Include="System.Threading.Tasks.Dataflow" Version="5.0.0" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
         <PackageReference Include="System.Linq.Async" Version="4.1.1" />
         <PackageReference Include="Grpc.Net.Client" Version="2.32.0" />
+        <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.7.0" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
@@ -45,6 +47,7 @@
         <PackageReference Include="Grpc.Core" Version="2.33.1" />
         <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
         <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="5.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
     </ItemGroup>
 
     <PropertyGroup>
@@ -59,6 +62,8 @@
     <ItemGroup>
         <Compile Include="Model/**/*.cs" />
         <Compile Include="Services/**/*.cs" />
+        <Compile Include="Fake/**/*.cs" />
+        <Compile Include="Dataflow/**/*.cs" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">

@@ -92,7 +92,7 @@ namespace Perper.WebJobs.Extensions.Triggers
                 {
                     if (property.Value.Type == JTokenType.Integer)
                     {
-                        result[property.Name] = instanceData.GetParameters<object[]>()[(int)property.Value!]!;
+                        result[property.Name] = instanceData.GetParameters()[(int)property.Value!]!;
                     }
                 }
             }

@@ -9,40 +9,43 @@ namespace Perper.WebJobs.Extensions.Model
 {
     public class State : IState
     {
-        [PerperInject] protected PerperInstanceData _instance;
-        [PerperInject] protected IIgniteClient _ignite;
-        [PerperInject] protected PerperBinarySerializer _serializer;
+        public string Agent { get; protected set; }
+
+        private IIgniteClient _ignite;
+        private PerperBinarySerializer _serializer;
 
         [NonSerialized] public List<StateEntry> Entries = new List<StateEntry>();
 
-        public State(PerperInstanceData instance, IIgniteClient ignite, PerperBinarySerializer serializer)
+        [PerperInject]
+        protected State(IIgniteClient ignite, PerperBinarySerializer serializer)
         {
-            _instance = instance;
             _ignite = ignite;
             _serializer = serializer;
         }
 
+        public State(PerperInstanceData instance, IIgniteClient ignite, PerperBinarySerializer serializer)
+            : this(ignite, serializer)
+        {
+            Agent = instance.Agent;
+        }
+
         public async Task<T> GetValue<T>(string key, Func<T> defaultValueFactory)
         {
-            var converters = _serializer.GetRootObjectConverters(typeof(T));
-
-            var cache = _ignite.GetOrCreateCache<string, object>(_instance.InstanceData.Agent);
+            var cache = _ignite.GetOrCreateCache<string, object>(Agent).WithKeepBinary<string, object>();
             var result = await cache.TryGetAsync(key);
             if (!result.Success)
             {
                 var defaultValue = defaultValueFactory();
-                await cache.PutAsync(key, converters.to.Invoke(defaultValue));
+                await cache.PutAsync(key, _serializer.SerializeRoot(defaultValue));
                 return defaultValue;
             }
-            return (T)converters.from.Invoke(result.Value)!;
+            return (T)_serializer.DeserializeRoot(result.Value, typeof(T))!;
         }
 
         public Task SetValue<T>(string key, T value)
         {
-            var converters = _serializer.GetRootObjectConverters(typeof(T));
-
-            var cache = _ignite.GetOrCreateCache<string, object>(_instance.InstanceData.Agent);
-            return cache.PutAsync(key, converters.to.Invoke(value));
+            var cache = _ignite.GetOrCreateCache<string, object>(Agent).WithKeepBinary<string, object>();
+            return cache.PutAsync(key, _serializer.SerializeRoot(value));
         }
 
         public async Task<IStateEntry<T>> Entry<T>(string key, Func<T> defaultValueFactory)
