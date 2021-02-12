@@ -9,24 +9,20 @@ namespace Perper.WebJobs.Extensions.Model
 {
     public class State : IState
     {
-        public string Agent { get; protected set; }
-
+        public string Agent { get => _instance.Agent; }
+        
+        private readonly PerperInstanceData _instance;
         private IIgniteClient _ignite;
         private PerperBinarySerializer _serializer;
 
         [NonSerialized] public List<StateEntry> Entries = new List<StateEntry>();
 
         [PerperInject]
-        protected State(IIgniteClient ignite, PerperBinarySerializer serializer)
+        public State(PerperInstanceData instance, IIgniteClient ignite, PerperBinarySerializer serializer)
         {
+            _instance = instance;
             _ignite = ignite;
             _serializer = serializer;
-        }
-
-        public State(PerperInstanceData instance, IIgniteClient ignite, PerperBinarySerializer serializer)
-            : this(ignite, serializer)
-        {
-            Agent = instance.Agent;
         }
 
         public async Task<T> GetValue<T>(string key, Func<T> defaultValueFactory)
