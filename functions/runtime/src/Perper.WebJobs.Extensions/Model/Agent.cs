@@ -9,16 +9,18 @@ namespace Perper.WebJobs.Extensions.Model
         public string AgentName { get; set; }
         public string AgentDelegate { get; set; }
 
-        [NonSerialized] private IContext _context;
+        [NonSerialized] private readonly IContext _context;
+        [NonSerialized] private readonly PerperBinarySerializer _serializer;
 
         [PerperInject]
-        protected Agent(IContext context)
+        protected Agent(IContext context, PerperBinarySerializer serializer)
         {
             _context = context;
+            _serializer = serializer;
         }
 
-        public Agent(string agentName, string agentDelegate, IContext context)
-            : this(context)
+        public Agent(string agentName, string agentDelegate, IContext context, PerperBinarySerializer serializer)
+            : this(context, serializer)
         {
             AgentName = agentName;
             AgentDelegate = agentDelegate;
@@ -32,8 +34,7 @@ namespace Perper.WebJobs.Extensions.Model
             {
                 return default(TResult)!;
             }
-
-            return (TResult)callData.Result;
+            return (TResult)_serializer.DeserializeRoot(callData.Result, typeof(TResult))!;
         }
 
         public Task CallActionAsync(string actionName, object? parameters = default)

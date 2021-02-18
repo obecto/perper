@@ -227,6 +227,8 @@ namespace Perper.WebJobs.Extensions.Services
                         return Activator.CreateInstance(type, parameters);
                     }
 
+                case Array arr: return arr;
+
                 case IDictionary dictionary:
                     {
                         // NOTE: Can cache keyType, valueType, and finalType for type
