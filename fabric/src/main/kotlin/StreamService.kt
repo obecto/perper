@@ -146,7 +146,7 @@ class StreamService : JobService() {
                 cache.query(query)
             }
         } catch (e: CacheException) {
-            log.error(e.toString())
+            log.error("Unexpected error when creating cache for stream '$stream': ${e.toString()}")
             e.printStackTrace()
             return false
         }
