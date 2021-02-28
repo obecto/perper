@@ -99,8 +99,8 @@ class PerperBinarySerializer : BinarySerializer {
                 if (wantedClass.isAssignableFrom(HashMap::class.java)) null else wantedClass.getConstructor()?.newInstance() as? MutableMap<Any?, Any?>
             }
             return (value as Map<*, *>)
-                .mapKeys({ convertCollections(toCommon, keyType, it) })
-                .mapValuesTo(map ?: HashMap(), { convertCollections(toCommon, valueType, it) })
+                .mapKeys({ convertCollections(toCommon, keyType, it.key) })
+                .mapValuesTo(map ?: HashMap(), { convertCollections(toCommon, valueType, it.value) })
         }
         val collectionTypeArguments = TypeUtils.getTypeArguments(type, collectionClass)
         if (collectionTypeArguments != null) {
