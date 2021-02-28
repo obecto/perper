@@ -145,7 +145,9 @@ class StreamService : JobService() {
                 query.setAutoUnsubscribe(false)
                 cache.query(query)
             }
-        } catch (_: CacheException) {
+        } catch (e: CacheException) {
+            log.error(e.toString())
+            e.printStackTrace()
             return false
         }
 
