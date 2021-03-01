@@ -1,4 +1,4 @@
-FROM gradle:6.4.1-jdk8 AS build-env
+FROM gradle:6.8.3-jdk11 AS build-env
 WORKDIR /fabric
 COPY fabric /fabric
 COPY proto /proto
