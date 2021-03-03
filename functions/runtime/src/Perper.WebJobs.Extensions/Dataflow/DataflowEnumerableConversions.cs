@@ -12,19 +12,19 @@ namespace Perper.WebJobs.Extensions.Dataflow
     {
         public static ISourceBlock<T> ToDataflow<T>(this IAsyncEnumerable<T> enumerable, CancellationToken cancellationToken = default)
         {
-            var block = new BroadcastBlock<T>(null, new DataflowBlockOptions { CancellationToken = cancellationToken });
+            var block = new BufferBlock<T>(new DataflowBlockOptions { CancellationToken = cancellationToken, BoundedCapacity = 1 });
 
             async Task helper()
             {
                 await foreach (var item in enumerable.WithCancellation(cancellationToken))
                 {
-                    block.Post(item);
+                    await block.SendAsync(item);
                 }
             }
 
             helper().ContinueWith(completedTask =>
             {
-                if (completedTask.Status == TaskStatus.Faulted) ((IDataflowBlock)block).Fault(completedTask.Exception);
+                if (completedTask.Status == TaskStatus.Faulted) ((IDataflowBlock)block).Fault(completedTask.Exception!);
                 else if (completedTask.Status == TaskStatus.RanToCompletion) block.Complete();
             });
 

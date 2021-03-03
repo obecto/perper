@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 
 namespace Perper.WebJobs.Extensions.Model
 {
-    public interface IStream<T> : IAsyncEnumerable<T>
+    public interface IStream<T> : IAsyncEnumerable<T>, IStream
     {
         IAsyncEnumerable<T> DataLocal();
         IAsyncEnumerable<T> Filter(Expression<Func<T, bool>> filter, bool dataLocal = false);
