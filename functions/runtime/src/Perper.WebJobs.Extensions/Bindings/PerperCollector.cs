@@ -19,10 +19,16 @@ namespace Perper.WebJobs.Extensions.Bindings
             _serializer = serializer;
         }
 
-        public Task AddAsync(T item, CancellationToken cancellationToken = default)
+        public async Task AddAsync(T item, CancellationToken cancellationToken = default)
         {
             // NOTE: Should probably be made to use the same time format as fabric
-            return cache.PutAsync(DateTime.UtcNow.Ticks, _serializer.SerializeRoot(item));
+            var key = DateTime.UtcNow.Ticks;
+            
+            var result = await cache.PutIfAbsentAsync(key, _serializer.SerializeRoot(item));
+            if(!result)
+            {
+                throw new Exception($"Duplicate stream item key! {key}");
+            }
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = default)

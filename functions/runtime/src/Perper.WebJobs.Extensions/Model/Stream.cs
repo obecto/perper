@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Linq;
+using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Cache;
 using Perper.WebJobs.Extensions.Cache.Notifications;
 using Perper.WebJobs.Extensions.Services;
@@ -46,26 +47,28 @@ namespace Perper.WebJobs.Extensions.Model
         [NonSerialized] private readonly int _parameterIndex;
         [NonSerialized] private readonly PerperBinarySerializer _serializer;
         [NonSerialized] private readonly IState _state;
+        [NonSerialized] private readonly ILogger _logger;
 
         [PerperInject]
-        public Stream(PerperInstanceData instance, FabricService fabric, IIgniteClient ignite, PerperBinarySerializer serializer, IState state)
+        public Stream(PerperInstanceData instance, FabricService fabric, IIgniteClient ignite, PerperBinarySerializer serializer, IState state, ILogger logger)
             : base(fabric, ignite)
         {
             _instance = instance;
             _parameterIndex = instance.GetStreamParameterIndex();
             _serializer = serializer;
             _state = state;
+            _logger = logger;
         }
 
-        public Stream(string streamName, PerperInstanceData instance, FabricService fabric, IIgniteClient ignite, PerperBinarySerializer serializer, IState state)
-            : this(instance, fabric, ignite, serializer, state)
+        public Stream(string streamName, PerperInstanceData instance, FabricService fabric, IIgniteClient ignite, PerperBinarySerializer serializer, IState state, ILogger logger)
+            : this(instance, fabric, ignite, serializer, state, logger)
         {
             StreamName = streamName;
         }
 
         private StreamAsyncEnumerable GetEnumerable(Dictionary<string, object?> filter, bool replay, bool localToData)
         {
-            return new StreamAsyncEnumerable(this, filter, replay, localToData);
+            return new StreamAsyncEnumerable(this, filter, replay, localToData, _logger);
         }
 
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
@@ -113,12 +116,15 @@ namespace Perper.WebJobs.Extensions.Model
             public bool Replay { get; private set; }
             public bool LocalToData { get; private set; }
 
-            public StreamAsyncEnumerable(Stream<T> stream, Dictionary<string, object?> filter, bool replay, bool localToData)
+            private ILogger _logger;
+
+            public StreamAsyncEnumerable(Stream<T> stream, Dictionary<string, object?> filter, bool replay, bool localToData, ILogger logger)
             {
                 _stream = stream;
                 Replay = replay;
                 Filter = filter;
                 LocalToData = localToData;
+                _logger = logger;
             }
 
             public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken())
@@ -138,7 +144,17 @@ namespace Perper.WebJobs.Extensions.Model
                         {
                             var cache = _stream._ignite.GetCache<long, object>(si.Cache).WithKeepBinary<long, object>();
 
-                            var value = await cache.GetAsync(si.Key);
+                            object value;
+                            try
+                            {
+                                value = await cache.GetAsync(si.Key);
+                            }
+                            catch
+                            {
+                                _logger.LogError($"Error AffinityKey({key}) Cache Not Found key: {si.Key} in {si.Cache}");
+                                continue;
+                            }
+                            
 
                             await ((State)_stream._state).LoadStateEntries();
 
