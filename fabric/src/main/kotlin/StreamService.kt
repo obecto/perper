@@ -2,6 +2,7 @@ package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.StreamData
 import com.obecto.perper.fabric.cache.StreamDelegateType
 import com.obecto.perper.fabric.cache.StreamListener
+import com.obecto.perper.fabric.cache.notification.NotificationKey
 import com.obecto.perper.fabric.cache.notification.StreamItemNotification
 import com.obecto.perper.fabric.cache.notification.StreamTriggerNotification
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +16,6 @@ import org.apache.ignite.IgniteLogger
 import org.apache.ignite.IgniteSet
 import org.apache.ignite.binary.BinaryObject
 import org.apache.ignite.cache.QueryEntity
-import org.apache.ignite.cache.affinity.AffinityKey
 import org.apache.ignite.cache.query.ContinuousQuery
 import org.apache.ignite.cache.query.ScanQuery
 import org.apache.ignite.configuration.CacheConfiguration
@@ -113,7 +113,7 @@ class StreamService : JobService() {
         if (createCache(stream, streamData)) {
             log.debug({ "Starting stream '$stream'" })
             val notificationsCache = TransportService.getNotificationCache(ignite, streamData.agentDelegate)
-            notificationsCache.put(AffinityKey(System.currentTimeMillis(), stream), StreamTriggerNotification(stream, streamData.delegate))
+            notificationsCache.put(NotificationKey(System.currentTimeMillis(), stream), StreamTriggerNotification(stream, streamData.delegate))
         }
     }
 
@@ -146,7 +146,7 @@ class StreamService : JobService() {
                 cache.query(query)
             }
         } catch (e: CacheException) {
-            log.error("Unexpected error when creating cache for stream '$stream': ${e.toString()}")
+            log.error("Unexpected error when creating cache for stream '$stream': $e")
             e.printStackTrace()
             return false
         }
@@ -171,7 +171,7 @@ class StreamService : JobService() {
                     ephemeralCounter ++
                     val notificationsCache = TransportService.getNotificationCache(ignite, listener.agentDelegate)
                     val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.stream)
-                    val key = AffinityKey(itemKey, if (listener.localToData) itemKey else listener.stream)
+                    val key = NotificationKey(itemKey, if (listener.localToData) itemKey else listener.stream)
                     notificationsQueue.put(key)
                     notificationsCache.put(key, StreamItemNotification(listener.stream, listener.parameter, stream, itemKey, ephemeral))
                 }
@@ -243,7 +243,7 @@ class StreamService : JobService() {
                 }
             }
 
-            val key = AffinityKey(itemKey, if (listener.localToData) itemKey else listener.stream)
+            val key = NotificationKey(itemKey, if (listener.localToData) itemKey else listener.stream)
             notificationsQueue.put(key)
             notificationsCache.put(key, StreamItemNotification(listener.stream, listener.parameter, stream, itemKey, ephemeral))
         }

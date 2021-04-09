@@ -1,12 +1,10 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Linq;
 using Microsoft.Extensions.Logging;
@@ -154,7 +152,7 @@ namespace Perper.WebJobs.Extensions.Model
                                 _logger.LogError($"Error AffinityKey({key}) Cache Not Found key: {si.Key} in {si.Cache}");
                                 continue;
                             }
-                            
+
 
                             await ((State)_stream._state).LoadStateEntries();
 
@@ -180,23 +178,12 @@ namespace Perper.WebJobs.Extensions.Model
                 }
             }
 
-            private async Task ModifyStreamDataAsync(Func<IBinaryObject, IBinaryObject> modification)
+            private async Task AddListenerAsync()
             {
-                var streamsCache = _stream._ignite.GetCache<string, StreamData>("streams").WithKeepBinary<string, IBinaryObject>();
-                while (true)
-                {
-                    var currentValue = await streamsCache.GetAsync(_stream.StreamName);
-                    var newValue = modification(currentValue);
-                    if (await streamsCache.ReplaceAsync(_stream.StreamName, currentValue, newValue))
-                    {
-                        break;
-                    };
-                }
-            }
+                var streamsCache = _stream._ignite.GetCache<string, StreamData>("streams");
+                var currentValue = await streamsCache.GetAsync(_stream.StreamName);
 
-            private Task AddListenerAsync()
-            {
-                var streamListener = _stream._ignite.GetBinary().ToBinary<object?>(new StreamListener
+                currentValue.Listeners.Add(new StreamListener
                 {
                     AgentDelegate = _stream._fabric.AgentDelegate,
                     Stream = _stream._instance.InstanceName,
@@ -205,39 +192,20 @@ namespace Perper.WebJobs.Extensions.Model
                     Replay = Replay,
                     LocalToData = LocalToData,
                 });
-                return ModifyStreamDataAsync(streamDataBinary =>
-                {
-                    var currentListeners = streamDataBinary.GetField<ArrayList>(nameof(StreamData.Listeners));
 
-                    currentListeners.Add(streamListener);
-
-                    var builder = streamDataBinary.ToBuilder();
-                    builder.SetField(nameof(StreamData.Listeners), currentListeners);
-                    return builder.Build();
-                });
+                await streamsCache.PutAsync(_stream.StreamName, currentValue);
             }
 
-            private Task RemoveListenerAsync()
+            private async Task RemoveListenerAsync()
             {
-                return ModifyStreamDataAsync(streamDataBinary =>
-                {
-                    var currentListeners = streamDataBinary.GetField<ArrayList>(nameof(StreamData.Listeners));
+                var streamsCache = _stream._ignite.GetCache<string, StreamData>("streams");
+                var currentValue = await streamsCache.GetAsync(_stream.StreamName);
 
-                    foreach (var listener in currentListeners)
-                    {
-                        if (listener is IBinaryObject binObj &&
-                            binObj.GetField<string>(nameof(StreamListener.Stream)) == _stream._instance.InstanceName &&
-                            binObj.GetField<int>(nameof(StreamListener.Parameter)) == _stream._parameterIndex)
-                        {
-                            currentListeners.Remove(listener);
-                            break;
-                        }
-                    }
+                currentValue.Listeners.RemoveAt(currentValue.Listeners.FindIndex(listener =>
+                    listener.Stream == _stream._instance.InstanceName && listener.Parameter == _stream._parameterIndex
+                ));
 
-                    var builder = streamDataBinary.ToBuilder();
-                    builder.SetField(nameof(StreamData.Listeners), currentListeners);
-                    return builder.Build();
-                });
+                await streamsCache.PutAsync(_stream.StreamName, currentValue);
             }
         }
     }

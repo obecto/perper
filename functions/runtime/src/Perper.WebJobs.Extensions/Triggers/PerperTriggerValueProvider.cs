@@ -23,7 +23,11 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public Task<object?> GetValueAsync()
         {
-            return Task.FromResult(_instance.GetParameters(Type));
+            // WARNING: This BREAKS if you are trying to call a dotnet function from python
+            // TODO: Fix / Get Converters working.
+            var value = _instance.GetParameters(Type) ?? ToInvokeString();
+
+            return Task.FromResult<object?>(value);
         }
 
         public string ToInvokeString()

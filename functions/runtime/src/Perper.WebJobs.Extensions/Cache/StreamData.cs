@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Perper.WebJobs.Extensions.Model;
 
@@ -17,6 +16,5 @@ namespace Perper.WebJobs.Extensions.Cache
         public string? IndexType { get; set; }
         public Dictionary<string, string>? IndexFields { get; set; }
         public bool Ephemeral { get; set; }
-        public DateTime LastModified { get; set; }
     }
 }

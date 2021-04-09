@@ -96,7 +96,6 @@ namespace Perper.WebJobs.Extensions.Model
                 IndexType = (flags & StreamFlags.Query) != 0 && type != null ? PerperTypeUtils.GetJavaTypeName(type) ?? type.Name : null,
                 IndexFields = (flags & StreamFlags.Query) != 0 && type != null ? _serializer.GetQueriableFields(type) : null,
                 Ephemeral = (flags & StreamFlags.Ephemeral) != 0,
-                LastModified = DateTime.UtcNow
             });
         }
 

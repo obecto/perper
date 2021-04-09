@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
+using Apache.Ignite.Core.Cache.Affinity;
 using Apache.Ignite.Core.Client;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -57,6 +59,19 @@ namespace Perper.WebJobs.Extensions.Config
                 var nameMapper = ActivatorUtilities.CreateInstance<PerperNameMapper>(services);
                 nameMapper.InitializeFromAppDomain();
 
+                string? getAffinityKeyFieldName(Type type)
+                {
+                    foreach (var prop in type.GetProperties())
+                    {
+                        if (prop.GetCustomAttribute<AffinityKeyMappedAttribute>() != null)
+                        {
+                            return prop.Name.ToLower();
+                        }
+                    }
+
+                    return null;
+                }
+
                 var ignite = Ignition.StartClient(new IgniteClientConfiguration
                 {
                     Endpoints = new List<string> { config.FabricHost },
@@ -67,10 +82,15 @@ namespace Perper.WebJobs.Extensions.Config
                         TypeConfigurations = (
                             from type in nameMapper.WellKnownTypes.Keys
                             where !type.IsGenericTypeDefinition
-                            select new BinaryTypeConfiguration(type) { Serializer = serializer }
+                            select new BinaryTypeConfiguration(type)
+                            {
+                                Serializer = serializer,
+                                AffinityKeyFieldName = getAffinityKeyFieldName(type)
+                            }
                         ).ToList()
                     }
                 });
+
 
                 serializer.SetBinary(ignite.GetBinary());
 

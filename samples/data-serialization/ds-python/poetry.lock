@@ -1,0 +1,41 @@
+[[package]]
+name = "attrs"
+version = "18.1.0"
+description = "Classes Without Boilerplate"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.extras]
+dev = ["coverage", "hypothesis", "pympler", "pytest", "six", "zope.interface", "sphinx", "zope.interface"]
+docs = ["sphinx", "zope.interface"]
+tests = ["coverage", "hypothesis", "pympler", "pytest", "six", "zope.interface"]
+
+[[package]]
+name = "pyignite"
+version = "0.3.4"
+description = "Apache Ignite binary client Python API"
+category = "main"
+optional = false
+python-versions = ">=3.4"
+
+[package.extras]
+docs = ["Sphinx (1.7.5)", "sphinxcontrib-fulltoc (1.2.0)"]
+
+[package.dependencies]
+attrs = "18.1.0"
+
+[metadata]
+lock-version = "1.0"
+python-versions = "^3.9"
+content-hash = "3a8f1e509846efbdd9d6b9aa3ec1db8be655bf617b09a454e0e30e38ea3b38b6"
+
+[metadata.files]
+attrs = [
+    {file = "attrs-18.1.0-py2.py3-none-any.whl", hash = "sha256:4b90b09eeeb9b88c35bc642cbac057e45a5fd85367b985bd2809c62b7b939265"},
+    {file = "attrs-18.1.0.tar.gz", hash = "sha256:e0d0eb91441a3b53dab4d9b743eafc1ac44476296a2053b6ca3af0b139faf87b"},
+]
+pyignite = [
+    {file = "pyignite-0.3.4-py3-none-any.whl", hash = "sha256:582bebbe92a276df0fad0620c3d091f05809035fc4efcd5d1e8fd9e4e0cb1c69"},
+    {file = "pyignite-0.3.4.tar.gz", hash = "sha256:c258f0f98875013c5aac19b92fc27f3f7c540b66d19920eaad2b8c00113bd9ae"},
+]

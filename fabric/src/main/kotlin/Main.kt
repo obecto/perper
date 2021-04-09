@@ -7,6 +7,7 @@ import kotlinx.cli.default
 import org.apache.ignite.Ignition
 import org.apache.ignite.binary.BinaryBasicNameMapper
 import org.apache.ignite.binary.BinaryTypeConfiguration
+import org.apache.ignite.cache.CacheKeyConfiguration
 import org.apache.ignite.configuration.BinaryConfiguration
 import org.apache.ignite.configuration.IgniteConfiguration
 import org.apache.ignite.logger.slf4j.Slf4jLogger
@@ -45,12 +46,19 @@ fun main(args: Array<String>) {
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.CallResultNotification>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.CallTriggerNotification>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.Notification>(),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.NotificationKey>(),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.NotificationKeyLong>(),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.NotificationKeyString>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.StreamItemNotification>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.StreamTriggerNotification>(),
             )
             it.serializer = PerperBinarySerializer()
             it.nameMapper = BinaryBasicNameMapper(true)
         }
+        it.setCacheKeyConfiguration(
+            CacheKeyConfiguration(com.obecto.perper.fabric.cache.notification.NotificationKeyLong::class.java),
+            CacheKeyConfiguration(com.obecto.perper.fabric.cache.notification.NotificationKeyString::class.java)
+        )
         it.setServiceConfiguration(
             singletonServiceConfiguration("CallService", CallService()),
             singletonServiceConfiguration("StreamService", StreamService()),

@@ -1,0 +1,15 @@
+version: '3'
+services:
+  perper: 
+    image: obecto/perper-fabric
+    ports:
+      - "10800:10800"
+      - "40400:40400"
+  # parity:
+  #   image: openethereum/openethereum:v3.0.0
+  #   ports:
+  #     - "8545:8545"
+  #     - "8546:8546"
+  #     - "30303:30303"
+  #     - "30303:30303/udp"
+  #   command: "--jsonrpc-interface all --no-warp --mode passive --tracing on"

@@ -1,0 +1,40 @@
+package: 
+  name: perper
+  version: '0.3.0.4'
+
+source:
+  path: ..
+  # git_branch: feat/jupyter
+  # git_url: https://github.com/obecto/perper.git
+
+build:
+  noarch: python
+  number: 0
+
+requirements:
+  build:
+    - pip 
+    - python>=3.6
+    - setuptools
+
+  host:
+    - pip
+    - python
+
+  run:
+    - python
+    - grpcio>=1.35.0
+    - poetry-core>=1.0.0
+    - jupyter
+
+test:
+  imports:
+    - perper
+    - perper.jupyter
+    - perper.model
+    - perper.services
+    - perper.cache
+    - perper.cache.notifications
+
+about:
+  home: https://github.com/obecto/perper

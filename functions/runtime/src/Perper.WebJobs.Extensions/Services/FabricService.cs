@@ -5,7 +5,6 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Threading.Channels;
-using Apache.Ignite.Core.Cache.Affinity;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
 #if NETSTANDARD2_0
@@ -35,8 +34,8 @@ namespace Perper.WebJobs.Extensions.Services
         private ILogger _logger;
 
         private GrpcChannel _grpcChannel;
-        private readonly ICacheClient<AffinityKey, Notification> _notificationsCache;
-        private readonly Dictionary<(string, int?), Channel<(AffinityKey, Notification)>> _channels = new Dictionary<(string, int?), Channel<(AffinityKey, Notification)>>();
+        private readonly ICacheClient<NotificationKey, Notification> _notificationsCache;
+        private readonly Dictionary<(string, int?), Channel<(NotificationKey, Notification)>> _channels = new Dictionary<(string, int?), Channel<(NotificationKey, Notification)>>();
 
         private CancellationTokenSource _serviceCancellation = new CancellationTokenSource();
         private Task? _serviceTask;
@@ -49,7 +48,7 @@ namespace Perper.WebJobs.Extensions.Services
             _ignite = ignite;
             _logger = logger;
 
-            _notificationsCache = _ignite.GetCache<AffinityKey, Notification>($"{AgentDelegate}-$notifications");
+            _notificationsCache = _ignite.GetCache<NotificationKey, Notification>($"{AgentDelegate}-$notifications");
 
             var address = $"http://{config.Value.FabricHost}:40400";
 
@@ -96,26 +95,28 @@ namespace Perper.WebJobs.Extensions.Services
             return _serviceTask ?? Task.CompletedTask;
         }
 
-        private AffinityKey GetAffinityKey(NotificationProto notification)
+        private NotificationKey GetNotificationKey(NotificationProto notification)
         {
-            return new AffinityKey(
-                notification.NotificationKey,
-                notification.AffinityCase switch
-                {
-                    NotificationProto.AffinityOneofCase.StringAffinity => notification.StringAffinity,
-                    NotificationProto.AffinityOneofCase.IntAffinity => notification.IntAffinity,
-                    _ => null,
-                });
+            return (notification.AffinityCase switch
+            {
+                NotificationProto.AffinityOneofCase.StringAffinity => new NotificationKeyString(
+                    notification.NotificationKey,
+                    notification.StringAffinity),
+                NotificationProto.AffinityOneofCase.IntAffinity => new NotificationKeyLong(
+                    notification.NotificationKey,
+                    notification.IntAffinity),
+                _ => default!
+            })!;
         }
 
-        private Channel<(AffinityKey, Notification)> GetChannel(string instance, int? parameter = null)
+        private Channel<(NotificationKey, Notification)> GetChannel(string instance, int? parameter = null)
         {
             var key = (instance, parameter);
             if (_channels.TryGetValue(key, out var channel))
             {
                 return channel;
             }
-            var newChannel = Channel.CreateUnbounded<(AffinityKey, Notification)>();
+            var newChannel = Channel.CreateUnbounded<(NotificationKey, Notification)>();
             _channels[key] = newChannel;
             return newChannel;
         }
@@ -152,7 +153,8 @@ namespace Perper.WebJobs.Extensions.Services
             var stream = notifications.ResponseStream;
             while (await stream.MoveNext(cancellationToken))
             {
-                var key = GetAffinityKey(stream.Current);
+                var key = GetNotificationKey(stream.Current);
+
                 var notificationResult = await _notificationsCache.TryGetAsync(key);
 
                 if (!notificationResult.Success)
@@ -181,12 +183,12 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        public Task ConsumeNotification(AffinityKey key, CancellationToken cancellationToken = default)
+        public Task ConsumeNotification(NotificationKey key, CancellationToken cancellationToken = default)
         {
             return _notificationsCache.RemoveAsync(key);
         }
 
-        public async IAsyncEnumerable<(AffinityKey, Notification)> GetNotifications(
+        public async IAsyncEnumerable<(NotificationKey, Notification)> GetNotifications(
             string instance, int? parameter = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             _logger.LogTrace($"FabricService listen on: {instance} {parameter}");
@@ -199,7 +201,7 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        public async Task<(AffinityKey, CallResultNotification)> GetCallNotification(string call, CancellationToken cancellationToken = default)
+        public async Task<(NotificationKey, CallResultNotification)> GetCallNotification(string call, CancellationToken cancellationToken = default)
         {
             var client = new Fabric.FabricClient(_grpcChannel);
             var notification = await client.CallResultNotificationAsync(new CallNotificationFilter
@@ -207,7 +209,8 @@ namespace Perper.WebJobs.Extensions.Services
                 AgentDelegate = AgentDelegate,
                 CallName = call
             });
-            var key = GetAffinityKey(notification);
+            var key = GetNotificationKey(notification);
+
             var fullNotification = await _notificationsCache.GetAsync(key);
             return (key, (CallResultNotification)fullNotification);
         }

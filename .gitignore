@@ -1,10 +1,12 @@
 .idea/
 
+**/.vscode
 **/obj
 **/bin
 **/build
 **/dist
 **/*.egg-info
+.vscode/*
 
 venv
 **/__pycache__
@@ -13,3 +15,5 @@ venv
 /samples/Python.FunctionApp/.vscode/settings.json
 
 /*.DotSettings.user
+.vscode/settings.json
+samples/PythonNotebook/jupyter_command.bat

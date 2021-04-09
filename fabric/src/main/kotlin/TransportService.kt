@@ -1,6 +1,9 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.notification.CallResultNotification
 import com.obecto.perper.fabric.cache.notification.Notification
+import com.obecto.perper.fabric.cache.notification.NotificationKey
+import com.obecto.perper.fabric.cache.notification.NotificationKeyLong
+import com.obecto.perper.fabric.cache.notification.NotificationKeyString
 import com.obecto.perper.fabric.cache.notification.StreamItemNotification
 import com.obecto.perper.protobuf.CallNotificationFilter
 import com.obecto.perper.protobuf.FabricGrpcKt
@@ -20,7 +23,6 @@ import org.apache.ignite.IgniteCache
 import org.apache.ignite.IgniteLogger
 import org.apache.ignite.IgniteQueue
 import org.apache.ignite.binary.BinaryObject
-import org.apache.ignite.cache.affinity.AffinityKey
 import org.apache.ignite.cache.query.ContinuousQuery
 import org.apache.ignite.cache.query.QueryCursor
 import org.apache.ignite.cache.query.ScanQuery
@@ -48,11 +50,11 @@ import com.obecto.perper.protobuf.Notification as NotificationProto
 class TransportService(var port: Int) : Service {
 
     companion object Caches {
-        fun getNotificationCache(ignite: Ignite, agentDelegate: String): IgniteCache<AffinityKey<Long>, Notification> {
-            return ignite.getOrCreateCache<AffinityKey<Long>, Notification>("$agentDelegate-\$notifications")
+        fun getNotificationCache(ignite: Ignite, agentDelegate: String): IgniteCache<NotificationKey, Notification> {
+            return ignite.getOrCreateCache<NotificationKey, Notification>("$agentDelegate-\$notifications")
         }
 
-        fun getNotificationQueue(ignite: Ignite, streamName: String): IgniteQueue<AffinityKey<Long>> {
+        fun getNotificationQueue(ignite: Ignite, streamName: String): IgniteQueue<NotificationKey> {
             return ignite.queue(
                 "$streamName-\$notifications", 0,
                 CollectionConfiguration().also {
@@ -100,27 +102,31 @@ class TransportService(var port: Int) : Service {
     }
 
     inner class FabricImpl : FabricGrpcKt.FabricCoroutineImplBase() {
-        fun AffinityKey<Long>.toNotification() = NotificationProto.newBuilder().also {
-            it.notificationKey = key()
-            when (val affinityKey = affinityKey<Any>()) {
-                is String -> it.stringAffinity = affinityKey
-                is Long -> it.intAffinity = affinityKey
-                else -> log.error("Unexpected affinity type ${affinityKey.javaClass}")
+        fun NotificationKey.toNotification() = NotificationProto.newBuilder().also {
+            when (this) {
+                is NotificationKeyString -> {
+                    it.notificationKey = key
+                    it.stringAffinity = affinity
+                }
+                is NotificationKeyLong -> {
+                    it.notificationKey = key
+                    it.intAffinity = affinity
+                }
             }
         }.build()
 
         @kotlinx.coroutines.ExperimentalCoroutinesApi
         override fun notifications(request: NotificationFilter) = channelFlow<NotificationProto> {
             val notificationCache = getNotificationCache(ignite, request.agentDelegate)
-            val notificationAffinity = ignite.affinity<AffinityKey<Long>>(request.agentDelegate)
+            val notificationAffinity = ignite.affinity<NotificationKey>(request.agentDelegate)
             val localNode = ignite.cluster().localNode()
             val finishChannel = Channel<Throwable>(Channel.CONFLATED)
 
-            val sentQueueNotificationsMap = ConcurrentHashMap<String, AffinityKey<Long>>()
+            val sentQueueNotificationsMap = ConcurrentHashMap<String, NotificationKey>()
 
             fun updateQueue(stream: String) {
                 val queue = getNotificationQueue(ignite, stream)
-                val queuedKey: AffinityKey<Long>? = queue.peek()
+                val queuedKey: NotificationKey? = queue.peek()
 
                 if (queuedKey == null) {
                     return
@@ -137,7 +143,7 @@ class TransportService(var port: Int) : Service {
                 }
             }
 
-            fun processNotification(key: AffinityKey<Long>, notification: Notification, confirmed: Boolean) {
+            fun processNotification(key: NotificationKey, notification: Notification, confirmed: Boolean) {
                 if (notification is CallResultNotification) {
                     // pass, handled by callResultNotification below
                 } else if (notification is StreamItemNotification) {
@@ -158,7 +164,7 @@ class TransportService(var port: Int) : Service {
                 }
             }
 
-            val remoteConfirmationQuery = ContinuousQuery<AffinityKey<Long>, Notification>()
+            val remoteConfirmationQuery = ContinuousQuery<NotificationKey, Notification>()
             remoteConfirmationQuery.localListener = CacheEntryUpdatedListener { events ->
                 try {
                     for (event in events) {
@@ -172,13 +178,13 @@ class TransportService(var port: Int) : Service {
                 }
             }
 
-            remoteConfirmationQuery.remoteFilterFactory = Factory<CacheEntryEventFilter<AffinityKey<Long>, Notification>> {
+            remoteConfirmationQuery.remoteFilterFactory = Factory<CacheEntryEventFilter<NotificationKey, Notification>> {
                 CacheEntryEventFilter { event -> event.eventType == EventType.REMOVED && (event.value ?: event.oldValue) is StreamItemNotification }
             }
 
             val remoteQueryCursor = notificationCache.query(remoteConfirmationQuery)
 
-            val query = ContinuousQuery<AffinityKey<Long>, Notification>()
+            val query = ContinuousQuery<NotificationKey, Notification>()
             query.localListener = CacheEntryUpdatedListener { events ->
                 try {
                     for (event in events) {
@@ -190,7 +196,7 @@ class TransportService(var port: Int) : Service {
             }
 
             query.setLocal(true)
-            query.initialQuery = ScanQuery<AffinityKey<Long>, Notification>().also { it.setLocal(true) }
+            query.initialQuery = ScanQuery<NotificationKey, Notification>().also { it.setLocal(true) }
             val queryCursor = notificationCache.query(query)
 
             log.debug({ "Notifications listener started for '${request.agentDelegate}'!" })
@@ -220,9 +226,9 @@ class TransportService(var port: Int) : Service {
         override suspend fun callResultNotification(request: CallNotificationFilter): NotificationProto {
             val callName = request.callName
             val notificationCache = getNotificationCache(ignite, request.agentDelegate)
-            lateinit var queryCursor: QueryCursor<Entry<AffinityKey<Long>, Notification>>
-            val query = ContinuousQuery<AffinityKey<Long>, Notification>()
-            val resultChannel = Channel<AffinityKey<Long>>(Channel.CONFLATED)
+            lateinit var queryCursor: QueryCursor<Entry<NotificationKey, Notification>>
+            val query = ContinuousQuery<NotificationKey, Notification>()
+            val resultChannel = Channel<NotificationKey>(Channel.CONFLATED)
 
             query.localListener = CacheEntryUpdatedListener { events ->
                 for (event in events) {
@@ -230,11 +236,11 @@ class TransportService(var port: Int) : Service {
                 }
             }
 
-            query.remoteFilterFactory = Factory<CacheEntryEventFilter<AffinityKey<Long>, Notification>> {
+            query.remoteFilterFactory = Factory<CacheEntryEventFilter<NotificationKey, Notification>> {
                 CacheEntryEventFilter { event -> (event.value as? CallResultNotification)?.call == callName }
             }
 
-            query.initialQuery = ScanQuery<AffinityKey<Long>, Notification>().also {
+            query.initialQuery = ScanQuery<NotificationKey, Notification>().also {
                 it.filter = IgniteBiPredicate { _, notification -> notification is CallResultNotification && notification.call == callName }
             }
 

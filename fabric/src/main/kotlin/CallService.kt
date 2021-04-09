@@ -2,13 +2,13 @@ package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.CallData
 import com.obecto.perper.fabric.cache.notification.CallResultNotification
 import com.obecto.perper.fabric.cache.notification.CallTriggerNotification
+import com.obecto.perper.fabric.cache.notification.NotificationKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteCache
 import org.apache.ignite.IgniteLogger
-import org.apache.ignite.cache.affinity.AffinityKey
 import org.apache.ignite.cache.query.ContinuousQuery
 import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
@@ -66,11 +66,11 @@ class CallService : JobService() {
             if (callData.callerAgentDelegate == "") return
 
             val notificationsCache = TransportService.getNotificationCache(ignite, callData.callerAgentDelegate)
-            val key = AffinityKey(System.currentTimeMillis(), if (callData.localToData) call else callData.caller)
+            val key = NotificationKey(System.currentTimeMillis(), if (callData.localToData) call else callData.caller)
             notificationsCache.put(key, CallResultNotification(call, callData.caller))
         } else {
             val notificationsCache = TransportService.getNotificationCache(ignite, callData.agentDelegate)
-            val key = AffinityKey(System.currentTimeMillis(), call)
+            val key = NotificationKey(System.currentTimeMillis(), call)
             notificationsCache.put(key, CallTriggerNotification(call, callData.delegate))
         }
     }

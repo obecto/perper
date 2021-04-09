@@ -1,0 +1,2 @@
+class PerperInstanceData(object):
+    pass

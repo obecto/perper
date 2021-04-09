@@ -45,19 +45,19 @@ class PerperBinarySerializer : BinarySerializer {
         override fun set(obj: Any, value: Any?) { setter?.invoke(obj, value) }
     }
 
-    private val propertiesCache = HashMap<Class<*>, HashMap<String, PropertyInfo>>()
+    private val propertiesCache = HashMap<Class<*>, LinkedHashMap<String, PropertyInfo>>()
 
     private fun getProperties(type: Class<*>) = propertiesCache.getOrPut(
         type,
         {
-            val result = HashMap<String, PropertyInfo>()
+            val result = LinkedHashMap<String, PropertyInfo>()
 
             for (field in type.fields) {
                 result[field.name] = PropertyInfoField(field)
             }
 
-            val getters = HashMap<String, Method>()
-            val setters = HashMap<String, Method>()
+            val getters = LinkedHashMap<String, Method>()
+            val setters = LinkedHashMap<String, Method>()
 
             for (method in type.methods) {
                 if (method.name.startsWith("get") && method.parameterCount == 0 && method.returnType != Void::class.javaPrimitiveType && method.name != "getClass") {
@@ -124,6 +124,7 @@ class PerperBinarySerializer : BinarySerializer {
 
     @Suppress("UNCHECKED_CAST")
     override fun writeBinary(obj: Any, writer: BinaryWriter) {
+
         if (obj is Binarylizable) {
             obj.writeBinary(writer)
             return

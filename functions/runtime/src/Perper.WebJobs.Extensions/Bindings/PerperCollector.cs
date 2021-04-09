@@ -23,9 +23,9 @@ namespace Perper.WebJobs.Extensions.Bindings
         {
             // NOTE: Should probably be made to use the same time format as fabric
             var key = DateTime.UtcNow.Ticks;
-            
+
             var result = await cache.PutIfAbsentAsync(key, _serializer.SerializeRoot(item));
-            if(!result)
+            if (!result)
             {
                 throw new Exception($"Duplicate stream item key! {key}");
             }
