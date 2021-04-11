@@ -56,7 +56,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public static bool IsAnonymousType(Type type)
         {
-            return type.GetCustomAttributes<CompilerGeneratedAttribute>().Count() > 0;
+            return type.GetCustomAttributes<CompilerGeneratedAttribute>().Count() > 0 && type.BaseType == typeof(object);
         }
 
         public static bool IsTupleType(Type type)

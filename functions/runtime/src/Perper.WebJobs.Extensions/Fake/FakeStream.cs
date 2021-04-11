@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -18,7 +19,8 @@ namespace Perper.WebJobs.Extensions.Fake
     public class FakeStream<T> : FakeStream, IStream<T>
     {
         private List<object?> StoredData { get; set; } = new List<object?>();
-        private HashSet<ChannelWriter<int>> _channels = new HashSet<ChannelWriter<int>>();
+        private ConcurrentDictionary<ChannelWriter<int>, bool> _channels = new ConcurrentDictionary<ChannelWriter<int>, bool>();
+        private bool _finished = false;
 
         public FakeStream(Task<IAsyncEnumerable<T>> source)
         {
@@ -67,10 +69,16 @@ namespace Perper.WebJobs.Extensions.Fake
                     var index = StoredData.Count;
                     StoredData.Add(FakeConfiguration.Serialize(item));
 
-                    foreach (var channel in _channels)
+                    foreach (var channel in _channels.Keys)
                     {
                         await channel.WriteAsync(index);
                     }
+                }
+
+                _finished = true;
+                foreach (var channel in _channels.Keys)
+                {
+                    channel.Complete();
                 }
             }
             catch (Exception e)
@@ -83,7 +91,14 @@ namespace Perper.WebJobs.Extensions.Fake
         private ChannelReader<int> GetChannel()
         {
             var channel = Channel.CreateUnbounded<int>();
-            _channels.Add(channel.Writer);
+            if (!_finished)
+            {
+                _channels[channel.Writer] = true;
+            }
+            else
+            {
+                channel.Writer.Complete();
+            }
             return channel.Reader;
         }
 
@@ -115,13 +130,13 @@ namespace Perper.WebJobs.Extensions.Fake
                         var value = FakeConfiguration.Deserialize<T>(_stream.StoredData[i]);
                         if (Filter(value))
                         {
-                            // NOTE: We are not storing state entries here
+                            // NOTE: We are not saving state entries here
                             yield return value;
                         }
                     }
                 }
 
-                // NOTE: Race condition: can miss a few elements while switching from replay to realtime
+                // NOTE: Race condition: can miss elements while switching from replay to realtime
 
                 await foreach (var i in _stream.GetChannel().ReadAllAsync())
                 {
@@ -129,7 +144,7 @@ namespace Perper.WebJobs.Extensions.Fake
 
                     if (Filter(value))
                     {
-                        // NOTE: We are not storing state entries here
+                        // NOTE: We are not saving state entries here
                         yield return value;
                     }
 
@@ -142,16 +157,16 @@ namespace Perper.WebJobs.Extensions.Fake
     {
         public string? FunctionName;
 
-        private readonly TaskCompletionSource<IAsyncEnumerable<T>> _source;
+        private readonly TaskCompletionSource<Task<IAsyncEnumerable<T>>> _source;
 
-        public DeclaredFakeStream(TaskCompletionSource<IAsyncEnumerable<T>> source) : base(source.Task)
+        public DeclaredFakeStream(TaskCompletionSource<Task<IAsyncEnumerable<T>>> source) : base(source.Task.Unwrap())
         {
             _source = source;
         }
 
-        public DeclaredFakeStream() : this(new TaskCompletionSource<IAsyncEnumerable<T>>()) { }
+        public DeclaredFakeStream() : this(new TaskCompletionSource<Task<IAsyncEnumerable<T>>>()) { }
 
-        public void SetSource(IAsyncEnumerable<T> source)
+        public void SetSource(Task<IAsyncEnumerable<T>> source)
         {
             _source.SetResult(source);
         }

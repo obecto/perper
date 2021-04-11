@@ -9,33 +9,6 @@ namespace Perper.WebJobs.Extensions.Fake
     {
         public ConcurrentDictionary<string, object?> Values { get; } = new ConcurrentDictionary<string, object?>();
 
-        public class TestStateEntry<T> : IStateEntry<T>
-        {
-            public T Value { get; set; } = default(T)!;
-
-            public Func<T> DefaultValueFactory = () => default(T)!;
-            public string Name { get; private set; }
-
-            private IState _instance;
-
-            public TestStateEntry(IState instance, string name, Func<T> defaultValueFactory)
-            {
-                _instance = instance;
-                Name = name;
-                DefaultValueFactory = defaultValueFactory;
-            }
-
-            public async Task Load()
-            {
-                Value = await _instance.GetValue<T>(Name, DefaultValueFactory);
-            }
-
-            public Task Store()
-            {
-                return _instance.SetValue<T>(Name, Value);
-            }
-        }
-
         Task<T> IState.GetValue<T>(string key, Func<T> defaultValueFactory) // FIXME: Rename methods in state to Async?
         {
             return Task.FromResult(GetValue<T>(key, defaultValueFactory));
@@ -49,7 +22,7 @@ namespace Perper.WebJobs.Extensions.Fake
 
         async Task<IStateEntry<T>> IState.Entry<T>(string key, Func<T> defaultValueFactory)
         {
-            var entry = new TestStateEntry<T>(this, key, defaultValueFactory);
+            var entry = new FakeStateEntry<T>(this, key, defaultValueFactory);
             await entry.Load();
             return entry;
         }

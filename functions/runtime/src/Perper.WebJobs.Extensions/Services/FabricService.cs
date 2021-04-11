@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -35,7 +36,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         private GrpcChannel _grpcChannel;
         private readonly ICacheClient<NotificationKey, Notification> _notificationsCache;
-        private readonly Dictionary<(string, int?), Channel<(NotificationKey, Notification)>> _channels = new Dictionary<(string, int?), Channel<(NotificationKey, Notification)>>();
+        private readonly ConcurrentDictionary<(string, int?), Channel<(NotificationKey, Notification)>> _channels = new ConcurrentDictionary<(string, int?), Channel<(NotificationKey, Notification)>>();
 
         private CancellationTokenSource _serviceCancellation = new CancellationTokenSource();
         private Task? _serviceTask;
@@ -109,17 +110,9 @@ namespace Perper.WebJobs.Extensions.Services
             })!;
         }
 
-        private Channel<(NotificationKey, Notification)> GetChannel(string instance, int? parameter = null)
-        {
-            var key = (instance, parameter);
-            if (_channels.TryGetValue(key, out var channel))
-            {
-                return channel;
-            }
-            var newChannel = Channel.CreateUnbounded<(NotificationKey, Notification)>();
-            _channels[key] = newChannel;
-            return newChannel;
-        }
+        private Channel<(NotificationKey, Notification)> GetChannel(string instance, int? parameter = null) =>
+            _channels.GetOrAdd((instance, parameter), _ =>
+                Channel.CreateUnbounded<(NotificationKey, Notification)>());
 
         private async Task StartInitialAgent(CancellationToken cancellationToken = default)
         {

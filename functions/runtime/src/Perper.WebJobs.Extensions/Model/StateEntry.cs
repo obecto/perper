@@ -21,12 +21,14 @@ namespace Perper.WebJobs.Extensions.Model
 
         public string Name { get; private set; }
 
+#pragma warning disable CS8618
         [PerperInject]
         protected StateEntry(IState state)
         {
             _state = (State)state;
             _state.Entries.Add(this);
         }
+#pragma warning restore CS8618
 
         public StateEntry(IState state, string name, Func<T> defaultValueFactory)
             : this(state)

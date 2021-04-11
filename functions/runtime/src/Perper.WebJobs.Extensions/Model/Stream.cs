@@ -22,12 +22,14 @@ namespace Perper.WebJobs.Extensions.Model
         [NonSerialized] protected readonly FabricService _fabric;
         [NonSerialized] protected readonly IIgniteClient _ignite;
 
+#pragma warning disable CS8618
         [PerperInject]
         protected Stream(FabricService fabric, IIgniteClient ignite)
         {
             _fabric = fabric;
             _ignite = ignite;
         }
+#pragma warning restore CS8618
 
         public Stream(string streamName, FabricService fabric, IIgniteClient ignite)
             : this(fabric, ignite)
@@ -47,6 +49,7 @@ namespace Perper.WebJobs.Extensions.Model
         [NonSerialized] private readonly IState _state;
         [NonSerialized] private readonly ILogger _logger;
 
+#pragma warning disable CS8618
         [PerperInject]
         public Stream(PerperInstanceData instance, FabricService fabric, IIgniteClient ignite, PerperBinarySerializer serializer, IState state, ILogger logger)
             : base(fabric, ignite)
@@ -57,6 +60,7 @@ namespace Perper.WebJobs.Extensions.Model
             _state = state;
             _logger = logger;
         }
+#pragma warning restore CS8618
 
         public Stream(string streamName, PerperInstanceData instance, FabricService fabric, IIgniteClient ignite, PerperBinarySerializer serializer, IState state, ILogger logger)
             : this(instance, fabric, ignite, serializer, state, logger)

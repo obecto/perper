@@ -12,12 +12,14 @@ namespace Perper.WebJobs.Extensions.Model
         [NonSerialized] private readonly IContext _context;
         [NonSerialized] private readonly PerperBinarySerializer _serializer;
 
+#pragma warning disable CS8618
         [PerperInject]
         protected Agent(IContext context, PerperBinarySerializer serializer)
         {
             _context = context;
             _serializer = serializer;
         }
+#pragma warning restore CS8618
 
         public Agent(string agentName, string agentDelegate, IContext context, PerperBinarySerializer serializer)
             : this(context, serializer)

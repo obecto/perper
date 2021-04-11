@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
@@ -62,15 +63,10 @@ namespace Perper.WebJobs.Extensions.Services
 #pragma warning restore CS8509
         }
 
-        private readonly Dictionary<Type, TypeData> TypeDataCache = new Dictionary<Type, TypeData>();
+        private readonly ConcurrentDictionary<Type, TypeData> TypeDataCache = new ConcurrentDictionary<Type, TypeData>();
 
-        private TypeData GetTypeData(Type type)
+        private TypeData GetTypeData(Type type) => TypeDataCache.GetOrAdd(type, _ =>
         {
-            if (TypeDataCache.TryGetValue(type, out var cached))
-            {
-                return cached;
-            }
-
             var allInstanceBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
             var result = new TypeData();
@@ -105,10 +101,8 @@ namespace Perper.WebJobs.Extensions.Services
 
             result.Constructor = type.GetConstructors(allInstanceBindingFlags).SingleOrDefault(c => c.GetCustomAttribute<PerperInjectAttribute>() != null);
 
-            TypeDataCache[type] = result;
-
             return result;
-        }
+        });
         #endregion
 
         #region ObjectConverters
@@ -378,7 +372,14 @@ namespace Perper.WebJobs.Extensions.Services
                 var rawValue = reader.ReadObject<object?>(property.Name);
 
                 var value = Deserialize(rawValue, property.Type);
-                property.SetValue(obj, value);
+                try
+                {
+                    property.SetValue(obj, value);
+                }
+                catch (Exception e)
+                {
+                    throw new Exception($"Failed setting value on {obj.GetType()}.{property.Name}", e);
+                }
             }
         }
     }

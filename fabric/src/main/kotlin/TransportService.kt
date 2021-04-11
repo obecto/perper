@@ -246,9 +246,11 @@ class TransportService(var port: Int) : Service {
 
             queryCursor = notificationCache.query(query)
             GlobalScope.launch {
-                for (event in queryCursor) {
-                    resultChannel.send(event.key)
-                }
+                try {
+                    for (event in queryCursor) {
+                        resultChannel.send(event.key)
+                    }
+                } catch (e: java.util.NoSuchElementException) {} catch (e: org.apache.ignite.IgniteException) {}
             }
 
             log.debug({ "Call result notification listener started for '${request.callName}'!" })
