@@ -1,0 +1,9 @@
+{
+  "bindings": [
+    {
+      "name": "perper",
+      "type": "perperTrigger",
+      "direction": "in"
+    }
+  ]
+}

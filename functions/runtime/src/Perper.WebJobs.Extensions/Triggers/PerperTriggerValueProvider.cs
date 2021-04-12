@@ -10,16 +10,22 @@ namespace Perper.WebJobs.Extensions.Triggers
     public class PerperTriggerValueProvider : IValueProvider
     {
         private readonly PerperTriggerValue _triggerValue;
+        private readonly Type _parameterType;
+
         public Type Type => typeof(PerperTriggerValue);
 
-        public PerperTriggerValueProvider(PerperTriggerValue triggerValue)
+        public PerperTriggerValueProvider(PerperTriggerValue triggerValue, Type parameterType)
         {
             _triggerValue = triggerValue;
+            _parameterType = parameterType;
         }
 
         public Task<object?> GetValueAsync()
         {
-            Console.WriteLine($"{_triggerValue}");
+            if(_parameterType == typeof(string))
+            {
+                return Task.FromResult<object?>(JObject.FromObject(_triggerValue).ToString());
+            }
             return Task.FromResult<object?>(_triggerValue);
         }
 

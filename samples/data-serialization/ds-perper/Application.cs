@@ -27,11 +27,13 @@ namespace ds_perper
 
             logger.LogInformation("Started SimpleDataSerialization.Application");
 
-            var (testStream, testStreamName) = await context.CreateBlankStreamAsync<dynamic>();
-            logger.LogInformation("Stream name: {0}", testStreamName);
-            int count = 5000;
+            await context.StartAgentAsync<object>("PerperFunction");
 
-            await context.CallActionAsync("BlankGenerator", (testStreamName, count));
+            // var (testStream, testStreamName) = await context.CreateBlankStreamAsync<dynamic>();
+            // logger.LogInformation("Stream name: {0}", testStreamName);
+            // int count = 5000;
+
+            // await context.CallActionAsync("BlankGenerator", (testStreamName, count));
 
             // The following is an option for creating a custom stream with a separate definition
 

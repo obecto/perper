@@ -53,13 +53,13 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public async Task<ITriggerData> BindAsync(object value, ValueBindingContext valueBindingContext)
         {
-            Console.WriteLine($"Value: {value}");
+            Console.WriteLine($"Value: {value} Type: {_parameter.ParameterType}");
             var triggerValue = (PerperTriggerValue) value;
 
             var instanceData = _services.GetRequiredService<PerperInstanceData>();
             await instanceData.SetTriggerValue(triggerValue);
 
-            var valueProvider = new PerperTriggerValueProvider(triggerValue);
+            var valueProvider = new PerperTriggerValueProvider(triggerValue, _parameter.ParameterType);
             var returnValueProvider = new PerperTriggerValueBinder(triggerValue, _ignite, _services.GetRequiredService<PerperBinarySerializer>(), _logger);
             var bindingData = await GetBindingData(instanceData);
 

@@ -1,0 +1,15 @@
+{
+  "version": "2.0",
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true
+      }
+    },
+    "logLevel": {
+      "User": "Trace",
+      "Perper.WebJobs.Extensions": "Trace"
+    }
+  },
+  "functions": []
+}
