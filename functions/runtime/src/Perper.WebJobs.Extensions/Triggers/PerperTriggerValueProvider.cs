@@ -9,30 +9,23 @@ namespace Perper.WebJobs.Extensions.Triggers
 {
     public class PerperTriggerValueProvider : IValueProvider
     {
-        private readonly JObject _trigger;
-        private readonly PerperInstanceData _instance;
+        private readonly PerperTriggerValue _triggerValue;
+        public Type Type => typeof(PerperTriggerValue);
 
-        public Type Type { get; }
-
-        public PerperTriggerValueProvider(JObject trigger, ParameterInfo parameter, PerperInstanceData instance)
+        public PerperTriggerValueProvider(PerperTriggerValue triggerValue)
         {
-            Type = parameter.ParameterType;
-            _trigger = trigger;
-            _instance = instance;
+            _triggerValue = triggerValue;
         }
 
         public Task<object?> GetValueAsync()
         {
-            // WARNING: This BREAKS if you are trying to call a dotnet function from python
-            // TODO: Fix / Get Converters working.
-            var value = _instance.GetParameters(Type) ?? ToInvokeString();
-
-            return Task.FromResult<object?>(value);
+            Console.WriteLine($"{_triggerValue}");
+            return Task.FromResult<object?>(_triggerValue);
         }
 
         public string ToInvokeString()
         {
-            return _trigger.ToString()!;
+            return _triggerValue.ToString()!;
         }
     }
 }

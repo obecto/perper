@@ -17,7 +17,9 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public Task<ITriggerBinding?> TryCreateAsync(TriggerBindingProviderContext context)
         {
+            // Console.WriteLine($"{new System.Diagnostics.StackTrace()}");
             var attribute = context.Parameter.GetCustomAttribute<PerperTriggerAttribute>(false);
+
             return Task.FromResult<ITriggerBinding?>(attribute switch
             {
                 null => null,

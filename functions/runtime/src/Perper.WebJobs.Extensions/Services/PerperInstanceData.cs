@@ -4,8 +4,10 @@ using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Perper.WebJobs.Extensions.Cache;
+using Perper.WebJobs.Extensions.Triggers;
 
 namespace Perper.WebJobs.Extensions.Services
 {
@@ -28,26 +30,13 @@ namespace Perper.WebJobs.Extensions.Services
             _serializer = serializer;
         }
 
-        public async Task SetTriggerValue(JObject trigger)
+        public async Task SetTriggerValue(PerperTriggerValue triggerValue)
         {
-            // Done using binary, since this.Agent is sometimes needed while deserializing Parameters
-            ICacheClient<string, IBinaryObject> instanceCache;
-            if (trigger.ContainsKey("Call"))
-            {
-                InstanceName = (string)trigger["Call"]!;
-                instanceCache = _ignite.GetCache<string, CallData>("calls").WithKeepBinary<string, IBinaryObject>();
-            }
-            else
-            {
-                InstanceName = (string)trigger["Stream"]!;
-                instanceCache = _ignite.GetCache<string, StreamData>("streams").WithKeepBinary<string, IBinaryObject>();
-            }
-
-            var instanceDataBinary = await instanceCache.GetAsync(InstanceName);
-
-            Agent = instanceDataBinary.GetField<string>(nameof(IInstanceData.Agent));
-            Parameters = instanceDataBinary.GetField<object>(nameof(IInstanceData.Parameters));
-
+            InstanceName = triggerValue.InstanceName;
+            var cache = _ignite.GetCache<string, IInstanceData>(triggerValue.IsCall ? "calls" : "streams");
+            var instanceData = await cache.GetAsync(InstanceName);
+            Parameters = instanceData.Parameters;
+            Agent = instanceData.Agent;
             _initialized = true;
         }
 
@@ -60,6 +49,11 @@ namespace Perper.WebJobs.Extensions.Services
         {
             var parameters = GetParameters(typeof(object?[]));
             return (parameters as object?[]) ?? new object?[] { parameters };
+        }
+
+        public T GetParameters<T>()
+        {
+            return (T) GetParameters(typeof(T))!;
         }
 
         public int GetStreamParameterIndex()

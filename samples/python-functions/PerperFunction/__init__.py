@@ -4,9 +4,12 @@ import azure.functions as func
 
 # Temporary simulating installed package
 import sys
-sys.path.append("/home/viktorv/Projects/Work/Obecto/perper/functions/python")
+import os
+sys.path.append(os.path.join(sys.path[0], '../../perper/functions/python'))
 
 from perper.functions.converters import PerperConverter
 
 def main(perper):
     logging.info(f'Perper Function has been started with args: {perper}')
+    # with open("/tmp/temp.log", "w") as f:
+        # print(context, file=f)

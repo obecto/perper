@@ -64,12 +64,12 @@
         <Compile Include="Services/**/*.cs" />
         <Compile Include="Fake/**/*.cs" />
         <Compile Include="Dataflow/**/*.cs" />
+        <Compile Include="Triggers/**/*.cs" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
         <Compile Include="Bindings/**/*.cs" />
         <Compile Include="Config/**/*.cs" />
-        <Compile Include="Triggers/**/*.cs" />
         <Compile Include="*.cs" />
     </ItemGroup>
 

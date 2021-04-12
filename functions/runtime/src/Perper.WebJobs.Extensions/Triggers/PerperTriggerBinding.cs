@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
+using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Triggers
@@ -26,7 +27,7 @@ namespace Perper.WebJobs.Extensions.Triggers
         private readonly JObject? _parameterExpression;
 
         public IReadOnlyDictionary<string, Type> BindingDataContract { get; }
-        public Type TriggerValueType { get; } = typeof(JObject);
+        public Type TriggerValueType => typeof(PerperTriggerValue);
 
         public PerperTriggerBinding(ParameterInfo parameter, PerperTriggerAttribute attribute,
             FabricService fabric, IIgniteClient ignite, IServiceProvider services, ILogger<PerperTriggerBinding> logger)
@@ -52,15 +53,15 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public async Task<ITriggerData> BindAsync(object value, ValueBindingContext valueBindingContext)
         {
-            var trigger = (JObject)value;
+            Console.WriteLine($"Value: {value}");
+            var triggerValue = (PerperTriggerValue) value;
 
             var instanceData = _services.GetRequiredService<PerperInstanceData>();
-            await instanceData.SetTriggerValue(trigger);
+            await instanceData.SetTriggerValue(triggerValue);
 
-
-            var valueProvider = new PerperTriggerValueProvider(trigger, _parameter, instanceData);
-            var returnValueProvider = new PerperTriggerValueBinder(trigger, _ignite, _services.GetRequiredService<PerperBinarySerializer>(), _logger);
-            var bindingData = await GetBindingData(instanceData, trigger);
+            var valueProvider = new PerperTriggerValueProvider(triggerValue);
+            var returnValueProvider = new PerperTriggerValueBinder(triggerValue, _ignite, _services.GetRequiredService<PerperBinarySerializer>(), _logger);
+            var bindingData = await GetBindingData(instanceData);
 
             return new TriggerData(valueProvider, bindingData)
             {
@@ -82,7 +83,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             return result;
         }
 
-        private Task<Dictionary<string, object>> GetBindingData(PerperInstanceData instanceData, JObject trigger)
+        private Task<Dictionary<string, object>> GetBindingData(PerperInstanceData instanceData)
         {
             var result = new Dictionary<string, object>();
 

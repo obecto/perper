@@ -15,14 +15,14 @@ namespace Perper.WebJobs.Extensions.Triggers
 {
     public class PerperTriggerValueBinder : IValueBinder
     {
-        private readonly JObject _trigger;
+        private readonly PerperTriggerValue _trigger;
         private readonly IIgniteClient _ignite;
         private readonly PerperBinarySerializer _serializer;
         private readonly ILogger _logger;
 
         public Type Type { get; } = typeof(object).MakeByRefType();
 
-        public PerperTriggerValueBinder(JObject trigger, IIgniteClient ignite, PerperBinarySerializer serializer, ILogger logger)
+        public PerperTriggerValueBinder(PerperTriggerValue trigger, IIgniteClient ignite, PerperBinarySerializer serializer, ILogger logger)
         {
             _trigger = trigger;
             _ignite = ignite;
@@ -37,9 +37,9 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public async Task SetValueAsync(object? value, CancellationToken cancellationToken)
         {
-            if (_trigger.ContainsKey("Call"))
+            if (_trigger.IsCall)
             {
-                var call = (string)_trigger["Call"]!;
+                var call = _trigger.InstanceName;
                 var callsCache = _ignite.GetCache<string, CallData>("calls");
                 var callData = await callsCache.GetAsync(call);
                 callData.Result = value;
@@ -48,7 +48,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             }
             else
             {
-                var stream = (string)_trigger["Stream"]!;
+                var stream = _trigger.InstanceName;
 
                 if (value == null)
                 {
@@ -74,7 +74,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             var collector = new PerperCollector<T>(_ignite, _serializer, stream);
             await foreach (var value in values.WithCancellation(cancellationToken))
             {
-                await collector.AddAsync(value);
+                await collector.AddAsync(value, cancellationToken);
             }
         }
 
