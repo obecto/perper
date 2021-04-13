@@ -140,9 +140,6 @@ FabricService.prototype.getAgentDelegateFromPath = function () {
   return path.basename(process.cwd());
 };
 
-// TODO: Notifications corresponding to their type or corresponding to the _instance formal parameter.
-// https://github.com/obecto/perper/blob/749130c8a2f35de23e59754a820e08ab0c36c0a0/functions/python/perper/services/fabric_service.py#L138
-
 /**
  * @param {function(any)} callback
  * @param {function(Error)} errorCallback
@@ -159,6 +156,7 @@ FabricService.prototype.getNotifications = function (
     agentDelegate: this.agentDelegate
   });
 
+  // https://bit.ly/2Q0DyL5
   call.on('data', async resp => {
     const notification = await this.generateNotification(resp);
     callback(notification);

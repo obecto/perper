@@ -6,6 +6,7 @@ const ObjectType = IgniteClient.ObjectType;
 const Agent = require('./Agent');
 const Serializer = require('../service/Serializer');
 
+// TODO: Fill up some missing Context methods.
 function Context (instance, fabric, state, ignite) {
   this.ignite = ignite;
   this.instance = instance;
@@ -80,8 +81,6 @@ Context.prototype.call = async function call (
     finished: false,
     localtodata: true,
     error: ''
-
-    // TODO: Handle parameters
     // (parameters = (1, parameters))
   };
 
