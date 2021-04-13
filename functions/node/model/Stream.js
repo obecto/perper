@@ -3,10 +3,6 @@ const FilterUtils = require('./FilterUtils');
 const IgniteClient = require('apache-ignite-client');
 const ScanQuery = IgniteClient.ScanQuery;
 
-// metaclass=GenericObjectMeta, type_name = "PerperStream`1[[SimpleData]]", schema=OrderedDict([
-//     ("streamname", String)
-// ])
-
 function Stream () {}
 
 Stream.prototype.setParameters = function (streamName, ignite, fabric) {
@@ -30,18 +26,12 @@ Stream.prototype.setAdditionalParameters = function (
   state,
   instance
 ) {
-  this.serializer = serializer;
-  this.state = state;
-  this.instance = instance;
-  this.parameterIndex = this.instance.getStreamParameterIndex();
-};
-
-Stream.prototype.getEnumerable = function (filter, replay, localToData) {
-  return new StreamEnumerable(this, filter, replay, localToData);
-};
-
-Stream.prototype.getEnumerator = function (cancellationToken) {
-  return this.getEnumerable({}, false, false).getEnumerator(cancellationToken);
+  if (serializer) this.serializer = serializer;
+  if (state) this.state = state;
+  if (instance) {
+    this.instance = instance;
+    this.parameterIndex = this.instance.getStreamParameterIndex();
+  }
 };
 
 Stream.prototype.dataLocal = function () {
@@ -54,6 +44,10 @@ Stream.prototype.filter = function (filter, dataLocal = false) {
     false,
     dataLocal
   );
+};
+
+Stream.prototype.getEnumerable = function (filter, replay, localToData) {
+  return new StreamEnumerable(this, filter, replay, localToData);
 };
 
 Stream.prototype.replay = function (data_local = false) {

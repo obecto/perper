@@ -12,24 +12,22 @@ function StreamEnumerable (stream, filter, localToData, replay) {
   this.replay = replay;
 }
 
-StreamEnumerable.prototype.handleNotification = async function (notification) {
-  // TODO: Handle instance properly
-  console.log(notification);
+StreamEnumerable.prototype.handleNotification = async function (notification, callback) {
   if (notification[1].cache) {
     const cache = await this.stream.ignite.getOrCreateCache(notification[1].cache);
     cache.setKeyType(ObjectType.PRIMITIVE_TYPE.LONG);
     cache.setValueType(new ComplexObjectType({}));
     const value = await cache.get(notification[1].key);
-    console.log(value);
+    const serialized = this.stream.serializer.serialize(value);
+    callback.call(this, serialized);
     await this.stream.fabric.consumeNotification(notification[0]);
   }
 };
 
-StreamEnumerable.prototype.run = async function () {
+StreamEnumerable.prototype.run = async function (callback) {
   await this.addListener();
-  // console.log("Instance name: (" + this.stream.instance.instanceName + ")");
   this.stream.fabric.getNotifications(notification =>
-    this.handleNotification(notification)
+    this.handleNotification(notification, callback)
   );
 
   // if this.stream.parameter_index < 0:
@@ -87,8 +85,6 @@ StreamEnumerable.prototype.addListener = async function () {
   compType.setFieldType('Delegate', ObjectType.PRIMITIVE_TYPE.STRING);
   compType.setFieldType('DelegateType', ObjectType.PRIMITIVE_TYPE.ENUM);
   compType.setFieldType('Parameters', new ComplexObjectType({}));
-  // TODO: Fix workaround
-  Number.prototype._isSet = () => false; // eslint-disable-line no-extend-native
   compType.setFieldType(
     'Listeners',
     new CollectionObjectType(
@@ -105,27 +101,5 @@ StreamEnumerable.prototype.addListener = async function () {
   currentValue.Parameters = null;
   await streamCache.replace(this.stream.streamName, currentValue);
 };
-
-// def __modify_stream_data(self, modification):
-// streams_cache = self._stream.ignite.get_cache("streams")
-// current_value = streams_cache.get(self._stream.stream_name)
-// new_value = modification(current_value)
-// #This should be replace
-// streams_cache.put(self._stream.stream_name, new_value)
-
-// def __add_listener(self):
-// stream_listener = StreamListener(
-//     agentdelegate = self._stream.fabric.agent_delegate,
-//     stream = self._stream.instance.instance_name,
-//     parameter = self._stream.parameter_index,
-//     filter = (1, self._filter),
-//     replay = self.replay,
-//     localtodata = self.local_to_data)
-
-// def __add_listener_lambda_(stream_data):
-//     listeners = getattr(stream_data, "listeners", getattr(stream_data, "Listeners", None))
-//     listeners[1].append(stream_listener)
-//     return stream_data
-// return self.__modify_stream_data(__add_listener_lambda_)
 
 module.exports = StreamEnumerable;

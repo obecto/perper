@@ -69,13 +69,22 @@ BinaryCommunicator.prototype._readTypedObject = function (
 
 const oldCheckStandardTypeCompatibility =
   BinaryUtils.checkStandardTypeCompatibility;
-// Patch: Support writing longs as string
+
+// Patch: Support writing longs as string;
+// Patch: Fix calling _isSet when undefined;
 BinaryUtils.checkStandardTypeCompatibility = function (
   value,
   typeCode,
   type = null
 ) {
   if (typeCode === BinaryUtils.TYPE_CODE.LONG) return;
+  if (typeCode === BinaryUtils.TYPE_CODE.COLLECTION) {
+    if (!(type && value instanceof Set && type._isSet && type._isSet() || value instanceof Array)) {
+      throw Errors.IgniteClientError.typeCastError(valueType, type && type._isSet() ? 'set' : typeCode);
+    }
+    return;
+  }
+
   return oldCheckStandardTypeCompatibility.call(this, value, typeCode, type);
 };
 

@@ -4,7 +4,7 @@ const ComplexObjectType = IgniteClient.ComplexObjectType;
 const ObjectType = IgniteClient.ObjectType;
 
 const Agent = require('./Agent');
-const Serializer = require('../services/Serializer');
+const Serializer = require('../service/Serializer');
 
 function Context (instance, fabric, state, ignite) {
   this.ignite = ignite;

@@ -1,7 +1,8 @@
 const IgniteClient = require('apache-ignite-client');
 const IgniteClientConfiguration = IgniteClient.IgniteClientConfiguration;
 
-const FabricService = require('../services/FabricService');
+const FabricService = require('../service/FabricService');
+const Serializer = require('../service/Serializer');
 const Stream = require('./Stream');
 
 async function test (streamName) {
@@ -21,7 +22,9 @@ async function test (streamName) {
     false
   );
 
-  enumerable.run();
+  stream1.setAdditionalParameters(new Serializer());
+
+  enumerable.run(console.log);
 
   // const context = new Context({}, {}, {}, {});
   // console.log(context.startAgent("test", {}));
