@@ -30,22 +30,10 @@ StreamEnumerable.prototype.run = async function (callback) {
     this.handleNotification(notification, callback)
   );
 
-  // if this.stream.parameter_index < 0:
-  //     this.__remove_listener()
+  if (this.stream.parameterIndex < 0) await this.removeListener();
 };
 
-StreamEnumerable.prototype.addListener = async function () {
-  const streamListener = {
-    agentdelegate: this.stream.fabric.agentDelegate,
-    stream: this.stream.streamName,
-    parameter: 0,
-    filter: this.filter,
-    replay: this.replay,
-    localtodata: this.localToData
-  };
-
-  const streamCache = await this.stream.ignite.getOrCreateCache('streams');
-
+StreamEnumerable.prototype.getStreamListenerConfig = function () {
   const listenerTypes = new ComplexObjectType(
     {
       agentdelegate: this.stream.fabric.agentDelegate,
@@ -95,9 +83,39 @@ StreamEnumerable.prototype.addListener = async function () {
   compType.setFieldType('IndexType', new ComplexObjectType({})); // FIXME: is actually nullable string
   compType.setFieldType('IndexFields', new ComplexObjectType({})); // FIXME: is actually nullable dict
   compType.setFieldType('Ephemeral', ObjectType.PRIMITIVE_TYPE.BOOLEAN);
-  streamCache.setValueType(compType);
+
+  return compType;
+};
+
+StreamEnumerable.prototype.addListener = async function () {
+  const streamCache = await this.stream.ignite.getOrCreateCache('streams');
+  const streamListener = {
+    agentdelegate: this.stream.fabric.agentDelegate,
+    stream: this.stream.streamName,
+    parameter: 0,
+    filter: this.filter,
+    replay: this.replay,
+    localtodata: this.localToData
+  };
+
+  streamCache.setValueType(this.getStreamListenerConfig());
   const currentValue = await streamCache.get(this.stream.streamName);
   currentValue.Listeners.push(streamListener);
+  currentValue.Parameters = null;
+  await streamCache.replace(this.stream.streamName, currentValue);
+};
+
+StreamEnumerable.prototype.removeListener = async function () {
+  const streamCache = await this.stream.ignite.getOrCreateCache('streams');
+  streamCache.setValueType(this.getStreamListenerConfig());
+  const currentValue = await streamCache.get(this.stream.streamName);
+
+  if (currentValue.Listeners) {
+    currentValue.Listeners.forEach((el, i) => {
+      if (el.stream === this.stream.streamName) currentValue.Listeners.splice(i, 1);
+    });
+  }
+
   currentValue.Parameters = null;
   await streamCache.replace(this.stream.streamName, currentValue);
 };
