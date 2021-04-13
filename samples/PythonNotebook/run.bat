@@ -1,3 +1,3 @@
 dotnet build
-cp -R bin/bin .
+Xcopy /I /E .\bin\bin .\bin
 func start --verbose
