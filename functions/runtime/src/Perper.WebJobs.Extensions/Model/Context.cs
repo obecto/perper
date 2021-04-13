@@ -36,8 +36,9 @@ namespace Perper.WebJobs.Extensions.Model
 
             var agentName = GenerateName(agentDelegate);
             var agent = new Agent(agentName, agentDelegate, this, _serializer);
-
+            _logger.LogInformation("\n\n\n0. Inside the Agent call: " + delegateName);
             var result = await agent.CallFunctionAsync<TResult>(callDelegate, parameters);
+            _logger.LogInformation("\n\n\n1. Inside the Agent call: " + delegateName + result);
 
             return (agent, result);
         }
@@ -114,8 +115,9 @@ namespace Perper.WebJobs.Extensions.Model
                 LocalToData = true,
                 Parameters = parameters,
             });
-
+            _logger.LogInformation("\n\n\nCall async: " + callName);
             var (key, notification) = await _fabric.GetCallNotification(callName);
+            _logger.LogInformation("\n\n\nCall async: ", key, notification);
             await _fabric.ConsumeNotification(key);
 
             var callResult = await callsCache.GetAndRemoveAsync(notification.Call);
