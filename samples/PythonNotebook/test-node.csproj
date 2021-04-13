@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <AzureFunctionsVersion>v3</AzureFunctionsVersion>
+  </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="3.0.1" />
+    </ItemGroup>
+
+<PropertyGroup>
+  <OutputPath>bin</OutputPath>
+  <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+</PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\functions\runtime\src\Perper.WebJobs.Extensions\Perper.WebJobs.Extensions.csproj" />
+  </ItemGroup>
+
+</Project>
