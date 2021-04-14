@@ -32,9 +32,16 @@ class Handler(IPythonHandler):
             kernel = self.kernel_manager.get_kernel(kernel_id)
 
             message = self.get_json_body()
+            self.log.info(f"Message: {message}")
             if "Metadata" in message:
                 # When using azure the message is in the 'Metadata' section of the json
                 message = message["Metadata"]
+
+            if "header" not in message:
+                self.log.info(f"Not a comm message: {message}")
+                self.finish("Not a com message, not being sent to kernel")
+                return
+
             self.send_to_kernel(message, kernel_id)
             # TODO:Take care of kernel restarts
             sessions = yield maybe_future(self.session_manager.list_sessions())
