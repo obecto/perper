@@ -21,8 +21,7 @@ namespace Perper.WebJobs.Extensions.Bindings
 
         public async Task AddAsync(T item, CancellationToken cancellationToken = default)
         {
-            // NOTE: Should probably be made to use the same time format as fabric
-            var key = DateTime.UtcNow.Ticks;
+            var key = DateTime.UtcNow.Ticks - 62135596800000;
 
             var result = await cache.PutIfAbsentAsync(key, _serializer.SerializeRoot(item));
             if (!result)

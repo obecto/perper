@@ -66,11 +66,11 @@ class CallService : JobService() {
             if (callData.callerAgentDelegate == "") return
 
             val notificationsCache = TransportService.getNotificationCache(ignite, callData.callerAgentDelegate)
-            val key = NotificationKey(System.currentTimeMillis(), if (callData.localToData) call else callData.caller)
+            val key = NotificationKey(TransportService.getCurrentTicks(), if (callData.localToData) call else callData.caller)
             notificationsCache.put(key, CallResultNotification(call, callData.caller))
         } else {
             val notificationsCache = TransportService.getNotificationCache(ignite, callData.agentDelegate)
-            val key = NotificationKey(System.currentTimeMillis(), call)
+            val key = NotificationKey(TransportService.getCurrentTicks(), call)
             notificationsCache.put(key, CallTriggerNotification(call, callData.delegate))
         }
     }

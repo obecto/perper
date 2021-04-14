@@ -113,7 +113,7 @@ class StreamService : JobService() {
         if (createCache(stream, streamData)) {
             log.debug({ "Starting stream '$stream'" })
             val notificationsCache = TransportService.getNotificationCache(ignite, streamData.agentDelegate)
-            notificationsCache.put(NotificationKey(System.currentTimeMillis(), stream), StreamTriggerNotification(stream, streamData.delegate))
+            notificationsCache.put(NotificationKey(TransportService.getCurrentTicks(), stream), StreamTriggerNotification(stream, streamData.delegate))
         }
     }
 
