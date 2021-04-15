@@ -10,6 +10,8 @@ from notebook.base.handlers import IPythonHandler
 from jupyter_client.session import Session
 from jupyter_client.jsonutil import date_default
 
+import azure.functions as func
+
 from perper.custom_handler.handler_utils import Message_placeholders, registration_code
 from . import global_state
 
@@ -38,19 +40,15 @@ class Handler(IPythonHandler):
                 message = message["Metadata"]
 
             if "header" not in message:
-                self.log.info(f"Not a comm message: {message}")
-                self.finish("Not a com message, not being sent to kernel")
+                resp_message = func.HttpResponse(status_code=201)
+                self.log.info(f"Not a comm message: {resp_message.get_body()}")
+                self.finish(resp_message.get_body())
                 return
 
             self.send_to_kernel(message, kernel_id)
             # TODO:Take care of kernel restarts
             sessions = yield maybe_future(self.session_manager.list_sessions())
-            self.finish(
-                {
-                    "Outputs": {"res": {"body": json.dumps(sessions)}},
-                    "ReturnValue": json.dumps(sessions),
-                }
-            )
+            self.finish()
 
     @gen.coroutine
     def start_standalone_kernel(self):
