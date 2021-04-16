@@ -1,3 +1,5 @@
+from datetime import datetime
+
 class Message_placeholders:
     def __init__(self):
         self.execute_form = {
@@ -7,7 +9,7 @@ class Message_placeholders:
                 "session": "",
                 "msg_type": "execute_request",
                 "version": "5.2",
-                "date": "",
+                "date": datetime.now().strftime("%m/%d/%Y, %H:%M:%S"),
             },
             "msg_id": "",
             "msg_type": "execute_request",
@@ -24,8 +26,41 @@ class Message_placeholders:
             "buffers": [],
         }
 
-    def get_execute_form(self):
-        return self.execute_form
+        self.comm_open = {
+            "header": {
+                "msg_id": "",
+                "session": "",
+                "msg_type": "comm_open",
+                "version": "5.2",
+                "date": datetime.now().strftime("%m/%d/%Y, %H:%M:%S")},
+            "msg_id": "",
+            "msg_type": "comm_open",
+            "parent_header": {},
+            "metadata": {},
+            "content": {
+                "comm_id": "",
+                "target_name": "azure_handler",
+                "data": {}
+                },
+            "buffers": []}
+
+        self.comm_message = {
+            "header": {
+                "msg_id": "",
+                "session": "",
+                "msg_type": "comm_msg",
+                "version": "5.2",
+                "date": datetime.now().strftime("%m/%d/%Y, %H:%M:%S")},
+            "msg_id": "",
+            "msg_type": "comm_msg",
+            "parent_header": {},
+            "metadata": {},
+            "content": {
+                "comm_id": "",
+                "target_name": "azure_handler",
+                "data": {}
+                },
+            "buffers": []}
 
 
 registration_code = "def azure_handler(comm, open_msg):\n    # comm is the kernel Comm instance\n    # msg is the comm_open message\n\n    # Register handler for later messages\n    @comm.on_msg\n    def _recv(msg):\n        # Use msg['content']['data'] for the data in the message\n        comm.send({'echo': msg['content']['data']})\n        global message_received\n        message_received = msg\n\n    # Send data to the frontend on creation\n    #comm.send({'foo': 5})\n    \n    comm.send(open_msg['content']['data'])\n    global open_message_received\n    open_message_received = open_msg\n\nget_ipython().kernel.comm_manager.register_target('azure_handler', azure_handler)"

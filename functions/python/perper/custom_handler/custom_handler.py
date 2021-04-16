@@ -9,6 +9,7 @@ from notebook.utils import url_path_join, maybe_future
 from notebook.base.handlers import IPythonHandler
 from jupyter_client.session import Session
 from jupyter_client.jsonutil import date_default
+from datetime import datetime
 
 import azure.functions as func
 
@@ -18,7 +19,7 @@ from . import global_state
 
 class Handler(IPythonHandler):
     def __init__(self, *args, **kwargs):
-        print("\n\n The custom handler is called \n\n")
+        self.log.info("\n\n The custom handler is called \n\n")
         super().__init__(*args, **kwargs)
 
     # Using azure functions only post is available
@@ -35,14 +36,21 @@ class Handler(IPythonHandler):
 
             message = self.get_json_body()
             self.log.info(f"Message: {message}")
-            if "Metadata" in message:
-                # When using azure the message is in the 'Metadata' section of the json
-                message = message["Metadata"]
 
             if "header" not in message:
-                resp_message = func.HttpResponse(status_code=201)
-                self.log.info(f"Not a comm message: {resp_message.get_body()}")
-                self.finish(resp_message.get_body())
+                self.log.info(f"Not a comm message: {message}")
+
+                perper_message = Message_placeholders().execute_form
+                perper_message['content']['code'] = "import perper.jupyter as jupyter"
+                self.send_to_kernel(perper_message, kernel_id)
+
+                message_form = Message_placeholders().comm_open
+                message_form["header"]["date"] = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+                message_form["content"]["data"] = message["Data"]
+                message = message_form
+                self.send_to_kernel(message, kernel_id)
+                self.set_status(200)
+                self.finish({"Outputs":{}, "Logs":["Success"], "ReturnValue":None})
                 return
 
             self.send_to_kernel(message, kernel_id)
