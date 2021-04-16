@@ -10,7 +10,7 @@ namespace SimpleAgent.Streams
     public class Consumer
     {
         [FunctionName(nameof(Consumer))]
-        public async Task RunAsync(
+        public static async Task RunAsync(
             [PerperTrigger] IAsyncEnumerable<string[]> input,
             ILogger logger,
             CancellationToken cancellationToken)
