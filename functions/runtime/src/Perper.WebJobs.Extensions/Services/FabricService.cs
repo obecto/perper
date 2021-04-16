@@ -51,7 +51,7 @@ namespace Perper.WebJobs.Extensions.Services
 
             _notificationsCache = _ignite.GetCache<NotificationKey, Notification>($"{AgentDelegate}-$notifications");
 
-            var address = $"http://{config.Value.FabricHost}:40400";
+            var address = $"http://{config.Value.FabricHost}:{config.Value.FabricGrpcPort}";
 
 #if NETSTANDARD2_0
             _grpcChannel = new GrpcChannel(address, ChannelCredentials.Insecure);

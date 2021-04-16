@@ -31,9 +31,9 @@ namespace Perper.WebJobs.Extensions.Fake
 
         public FakeStream(IEnumerable<T> source) : this(source.ToAsyncEnumerable()) { }
 
-        private TestStreamAsyncEnumerable GetEnumerable(Func<T, bool> filter, bool replay)
+        private FakeStreamAsyncEnumerable GetEnumerable(Func<T, bool> filter, bool replay)
         {
-            return new TestStreamAsyncEnumerable(this, filter, replay);
+            return new FakeStreamAsyncEnumerable(this, filter, replay);
         }
 
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
@@ -102,14 +102,14 @@ namespace Perper.WebJobs.Extensions.Fake
             return channel.Reader;
         }
 
-        public class TestStreamAsyncEnumerable : IAsyncEnumerable<T>
+        public class FakeStreamAsyncEnumerable : IAsyncEnumerable<T>
         {
             protected FakeStream<T> _stream;
 
             public Func<T, bool> Filter { get; private set; }
             public bool Replay { get; private set; }
 
-            public TestStreamAsyncEnumerable(FakeStream<T> stream, Func<T, bool> filter, bool replay)
+            public FakeStreamAsyncEnumerable(FakeStream<T> stream, Func<T, bool> filter, bool replay)
             {
                 _stream = stream;
                 Replay = replay;

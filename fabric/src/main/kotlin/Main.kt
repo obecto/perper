@@ -9,10 +9,13 @@ import org.apache.ignite.binary.BinaryBasicNameMapper
 import org.apache.ignite.binary.BinaryTypeConfiguration
 import org.apache.ignite.cache.CacheKeyConfiguration
 import org.apache.ignite.configuration.BinaryConfiguration
+import org.apache.ignite.configuration.ClientConnectorConfiguration
 import org.apache.ignite.configuration.IgniteConfiguration
 import org.apache.ignite.logger.slf4j.Slf4jLogger
 import org.apache.ignite.services.Service
 import org.apache.ignite.services.ServiceConfiguration
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi
+import org.apache.ignite.spi.discovery.tcp.ipfinder.multicast.TcpDiscoveryMulticastIpFinder
 
 private inline fun <reified T : Any> BinaryTypeConfiguration() =
     BinaryTypeConfiguration(T::class.qualifiedName).setEnum(T::class.java.isEnum())
@@ -29,6 +32,9 @@ fun main(args: Array<String>) {
 
     val debug by parser.option(ArgType.Boolean, shortName = "d", description = "Show debug logs").default(false)
     val verbose by parser.option(ArgType.Boolean, shortName = "v", description = "Show Ignite information logs").default(false)
+    val ignitePort by parser.option(ArgType.Int, "ignite-port", description = "Ignite client port").default(10800)
+    val grpcPort by parser.option(ArgType.Int, "grpc-port", description = "Transport service port").default(40400)
+    val noDiscovery by parser.option(ArgType.Boolean, "no-discovery", description = "Disable discovery").default(false)
 
     parser.parse(args)
 
@@ -37,6 +43,14 @@ fun main(args: Array<String>) {
     System.setProperty("org.slf4j.simpleLogger.levelInBrackets", "true")
 
     val igniteConfiguration = IgniteConfiguration().also {
+        it.clientConnectorConfiguration = ClientConnectorConfiguration().also {
+            it.port = ignitePort
+        }
+        if (noDiscovery) {
+            it.discoverySpi = TcpDiscoverySpi().also {
+                it.ipFinder = TcpDiscoveryMulticastIpFinder().setMulticastPort(ignitePort)
+            }
+        }
         it.binaryConfiguration = BinaryConfiguration().also {
             it.typeConfigurations = listOf(
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.CallData>(),
@@ -62,7 +76,7 @@ fun main(args: Array<String>) {
         it.setServiceConfiguration(
             singletonServiceConfiguration("CallService", CallService()),
             singletonServiceConfiguration("StreamService", StreamService()),
-            singletonServiceConfiguration("TransportService", TransportService(40400)),
+            singletonServiceConfiguration("TransportService", TransportService(grpcPort)),
         )
         it.gridLogger = Slf4jLogger()
     }

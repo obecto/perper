@@ -8,7 +8,6 @@ using Apache.Ignite.Core.Cache.Affinity;
 using Apache.Ignite.Core.Client;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Perper.WebJobs.Extensions.Bindings;
@@ -21,16 +20,13 @@ namespace Perper.WebJobs.Extensions.Config
     {
         public static IWebJobsBuilder AddPerper(this IWebJobsBuilder builder)
         {
+            builder.AddExtension<PerperExtensionConfigProvider>().BindOptions<PerperConfig>();
+
             builder.Services.AddScoped(typeof(PerperInstanceData), typeof(PerperInstanceData));
 
             builder.Services.AddScoped(typeof(IContext), typeof(Context));
             builder.Services.AddScoped(typeof(IState), typeof(State));
             builder.Services.AddScoped(typeof(IStateEntry<>), typeof(StateEntryDI<>));
-
-            builder.Services.AddOptions<PerperConfig>().Configure<IConfiguration>((perperConfig, configuration) =>
-            {
-                configuration.GetSection("Perper").Bind(perperConfig);
-            });
 
             builder.Services.AddSingleton<IBindingProvider>(services => new ServiceBindingProvider(new HashSet<Type>
             {
@@ -74,7 +70,7 @@ namespace Perper.WebJobs.Extensions.Config
 
                 var ignite = Ignition.StartClient(new IgniteClientConfiguration
                 {
-                    Endpoints = new List<string> { config.FabricHost },
+                    Endpoints = new List<string> { config.FabricHost + ":" + config.FabricIgnitePort.ToString() },
                     BinaryConfiguration = new BinaryConfiguration()
                     {
                         NameMapper = nameMapper,
@@ -101,8 +97,6 @@ namespace Perper.WebJobs.Extensions.Config
             {
                 options.ValidateScopes = true;
             });
-
-            builder.AddExtension<PerperExtensionConfigProvider>();
 
             return builder;
         }

@@ -369,16 +369,16 @@ namespace Perper.WebJobs.Extensions.Services
 
             foreach (var property in typeData.Properties)
             {
-                var rawValue = reader.ReadObject<object?>(property.Name);
-
-                var value = Deserialize(rawValue, property.Type);
                 try
                 {
+                    var rawValue = reader.ReadObject<object?>(property.Name);
+
+                    var value = Deserialize(rawValue, property.Type);
                     property.SetValue(obj, value);
                 }
                 catch (Exception e)
                 {
-                    throw new Exception($"Failed setting value on {obj.GetType()}.{property.Name}", e);
+                    throw new Exception($"Failed reading value for {obj.GetType()}.{property.Name}", e);
                 }
             }
         }

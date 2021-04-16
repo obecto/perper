@@ -70,7 +70,7 @@ namespace Perper.WebJobs.Extensions.Model
 
         private StreamAsyncEnumerable GetEnumerable(Dictionary<string, object?> filter, bool replay, bool localToData)
         {
-            return new StreamAsyncEnumerable(this, filter, replay, localToData, _logger);
+            return new StreamAsyncEnumerable(this, filter, replay, localToData);
         }
 
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
@@ -118,15 +118,12 @@ namespace Perper.WebJobs.Extensions.Model
             public bool Replay { get; private set; }
             public bool LocalToData { get; private set; }
 
-            private ILogger _logger;
-
-            public StreamAsyncEnumerable(Stream<T> stream, Dictionary<string, object?> filter, bool replay, bool localToData, ILogger logger)
+            public StreamAsyncEnumerable(Stream<T> stream, Dictionary<string, object?> filter, bool replay, bool localToData)
             {
                 _stream = stream;
                 Replay = replay;
                 Filter = filter;
                 LocalToData = localToData;
-                _logger = logger;
             }
 
             public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken())
@@ -153,7 +150,7 @@ namespace Perper.WebJobs.Extensions.Model
                             }
                             catch
                             {
-                                _logger.LogError($"Error AffinityKey({key}) Cache Not Found key: {si.Key} in {si.Cache}");
+                                _stream._logger.LogError($"Error AffinityKey({key}) Cache Not Found key: {si.Key} in {si.Cache}");
                                 continue;
                             }
 
