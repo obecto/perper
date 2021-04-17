@@ -27,7 +27,7 @@ def azure_handler(comm, open_msg):
         pass
 
     global open_message
-    open_message = "Hello World"
+    open_message = open_msg["content"]["data"]
     comm.send(open_msg["content"]["data"])
 
 
