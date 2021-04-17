@@ -7,13 +7,12 @@ from tornado import gen, web
 
 from notebook.utils import url_path_join, maybe_future
 from notebook.base.handlers import IPythonHandler
+from ipykernel.comm import Comm
 from jupyter_client.session import Session
 from jupyter_client.jsonutil import date_default
 from datetime import datetime
 
-import azure.functions as func
-
-from perper.custom_handler.handler_utils import Message_placeholders, registration_code
+from perper.custom_handler.handler_utils import Message_placeholders
 from . import global_state
 
 
@@ -25,38 +24,48 @@ class Handler(IPythonHandler):
     # Using azure functions only post is available
     @gen.coroutine
     def post(self):
+
         if "initial_kernel_id" not in global_state:
+            self.log.info("Starting a kernel")
             yield maybe_future(self.start_notebook_kernel())
             kernel_id = global_state["initial_kernel_id"]
-            self.post()
+        if not global_state["perper_imported"]:
+            yield maybe_future(self.import_perper())
+
+        kernel_id = global_state["initial_kernel_id"]
+        message = self.get_json_body()
+        message = message['Metadata']
+
+        if global_state["comm_opened"]:
+            message_form = Message_placeholders().comm_message
         else:
-            self.log.info(f"Global state: {global_state}")
-            kernel_id = global_state["initial_kernel_id"]
-            kernel = self.kernel_manager.get_kernel(kernel_id)
+            message_form = Message_placeholders().comm_open
+            global_state["comm_opened"] = True
 
-            message = self.get_json_body()
-            self.log.info(f"Message: {message}")
+        try:
+            message_form["content"]["data"] = message["content"]["data"]
+            self.log.info("\n\n\n This is a Postman message")
+        except:
+            message_form["content"]["data"] = message["InstanceName"]
+            self.log.info("\n\n\n This is a C# message")
 
-            if "header" not in message:
-                self.log.info(f"Not a comm message: {message}")
+        self.send_to_kernel(message_form, kernel_id)
+        # TODO:Take care of kernel restarts
+        self.set_status(200)
+        self.finish({"Outputs":{}, "Logs":["Sucssscess"], "ReturnValue":None})
 
-                perper_message = Message_placeholders().execute_form
-                perper_message['content']['code'] = "import perper.jupyter as jupyter"
-                self.send_to_kernel(perper_message, kernel_id)
-
-                message_form = Message_placeholders().comm_open
-                message_form["header"]["date"] = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
-                message_form["content"]["data"] = message["Data"]
-                message = message_form
-                self.send_to_kernel(message, kernel_id)
-                self.set_status(200)
-                self.finish({"Outputs":{}, "Logs":["Success"], "ReturnValue":None})
-                return
-
-            self.send_to_kernel(message, kernel_id)
-            # TODO:Take care of kernel restarts
-            sessions = yield maybe_future(self.session_manager.list_sessions())
-            self.finish()
+    @gen.coroutine
+    def import_perper(self):
+        kernel_id = global_state["initial_kernel_id"]
+        self.log.info("\n\n\nRegistering handler, importing perper.jupyter")
+        perper_message = Message_placeholders().execute_form
+        perper_message['content']['code'] = "import perper.jupyter as jupyter"
+        yield maybe_future(self.send_to_kernel(perper_message, kernel_id))
+        self.log.info("Imported perper, comm registered")
+        global_state["perper_imported"] = True
+        # self.set_status(200)
+        # self.finish({"Outputs":{}, "Logs":["Started kernel and imported perper"], "ReturnValue":None})
+        self.log.info("Kernel started, perper imported")
 
     @gen.coroutine
     def start_standalone_kernel(self):
@@ -78,6 +87,9 @@ class Handler(IPythonHandler):
         )
         global_state["initial_kernel_id"] = model["kernel"]["id"]
         global_state["session_id"] = model["id"]
+        global_state["session"] = Session(
+                session=global_state["session_id"], config=self.config
+            )
         self.kernel_manager.add_restart_callback(
             global_state["initial_kernel_id"], self.kernel_restart_callback
         )
@@ -94,6 +106,7 @@ class Handler(IPythonHandler):
             self.session = Session(
                 session=global_state["session_id"], config=self.config
             )
+            self.session = global_state["session"]
         else:
             self.session = Session(config=self.config)
             raise NotImplementedError()
@@ -109,7 +122,9 @@ class Handler(IPythonHandler):
         stream.channel = "shell"
 
         stream = self.channels["shell"]
+        self.log.info(f"\n\nSending to kernel: {message}")
         self.session.send(stream, message)
+        return
 
 
 def load_jupyter_server_extension(nb_server_app):
@@ -122,4 +137,6 @@ def load_jupyter_server_extension(nb_server_app):
     web_app = nb_server_app.web_app
     host_pattern = ".*$"
     route_pattern = url_path_join(web_app.settings["base_url"], "/PythonNotebook")
+    web_app.add_handlers(host_pattern, [(route_pattern, Handler)])
+    route_pattern = url_path_join(web_app.settings["base_url"], "/Notebook")
     web_app.add_handlers(host_pattern, [(route_pattern, Handler)])
