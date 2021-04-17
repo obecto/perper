@@ -1,5 +1,8 @@
+const IgniteClient = require('apache-ignite-client');
+const ComplexObjectType = IgniteClient.ComplexObjectType;
+
 function PerperInstanceData (ignite, serializer) {
-  this.signite = ignite;
+  this.ignite = ignite;
   this.serializer = serializer;
 
   this.nextStreamParameterIndex = 0;
@@ -44,19 +47,24 @@ PerperInstanceData.prototype.getStreamParameterIndex = function () {
   }
 };
 
-PerperInstanceData.prototype.setTriggerValue = function (trigger) {
-  // TODO: Implement caches
-  if (trigger.includes('Call')) {
-    this.instanceName = trigger.Call;
-    // callsCache = this.ignite.getOrCreateCache('calls');
+PerperInstanceData.prototype.setTriggerValue = async function (trigger) {
+  let instanceCache;
+  const instanceName = trigger.InstanceName;
+  this.instanceName = instanceName;
+
+  if (trigger.IsCall) {
+    instanceCache = await this.ignite.getOrCreateCache('calls');
   } else {
-    this.instanceName = trigger.Stream;
-    // streamsCache = this.ignite.getOrCreateCache('streams');
+    instanceCache = await this.ignite.getOrCreateCache('streams');
   }
 
-  // const instanceDataBinary = instanceCache.get(instanceName);
-  // this.agent = instanceDataBinary.agent;
-  // this.parameters = instanceDataBinary.parameters;
-
+  instanceCache.setValueType(new ComplexObjectType({}, 'CallData'));
+  const instanceData = await instanceCache.get(instanceName);
+  this.agent = instanceData.Agent;
+  this.parameters = instanceData.Parameters;
   this.initialized = true;
+
+  console.log(instanceData);
 };
+
+module.exports = PerperInstanceData;
