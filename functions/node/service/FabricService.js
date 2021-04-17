@@ -79,9 +79,9 @@ BinaryUtils.checkStandardTypeCompatibility = function (
 ) {
   if (typeCode === BinaryUtils.TYPE_CODE.LONG) return;
   if (typeCode === BinaryUtils.TYPE_CODE.COLLECTION) {
-    if (!(type && value instanceof Set && type._isSet && type._isSet() || value instanceof Array)) {
-      throw Errors.IgniteClientError.typeCastError(valueType, type && type._isSet() ? 'set' : typeCode);
-    }
+    // if (!(type && value instanceof Set && type._isSet && type._isSet() || value instanceof Array)) {
+    //   throw Errors.IgniteClientError.typeCastError(valueType, type && type._isSet() ? 'set' : typeCode);
+    // }
     return;
   }
 
