@@ -15,8 +15,9 @@ Serializer.prototype.deserialize = function (data, type) {
     if (dataConstructor === type) {
       return data;
     } else if (type === String) {
-      console.debug('Primitive type conversion applied: Converted ' + dataConstructor.name + ' to String.');
-      return data.toString();
+      let res = data.toString();
+      console.debug('Primitive type conversion applied: Converted ' + dataConstructor.name + ' to String - "' + res + '".');
+      return res;
     } else if (type === Boolean) {
       let res = (typeof data === 'number' && data > 0) || (typeof data === 'string' && data.toLowerCase() === 'true');
       console.debug('Primitive type conversion applied: Converted ' + dataConstructor.name + ' "' + data + '" to ' + res + ' of type Boolean.');

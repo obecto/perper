@@ -7,7 +7,6 @@ module.exports = async function(context, input) {
     [Boolean, String, String, Number, Number],
     async function(a, b, c, d, e) {
       console.log(d + e);
-
     }
   );
 };
