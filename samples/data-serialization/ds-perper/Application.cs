@@ -27,9 +27,9 @@ namespace ds_perper
 
             logger.LogInformation("Started SimpleDataSerialization.Application");
 
-            object[] obj = new object[] {"True", false, (double) 5.9, "8.2"};
+            // object[] obj = new object[] {"True", false, (double) 5.9, "8.2", 8};
+            (string, bool, double, string, int) obj = ("True", false, 5.9, "8.2", 8);
             await context.StartAgentAsync<object>("Functions.PerperFunction", obj);
-            
 
             // var (testStream, testStreamName) = await context.CreateBlankStreamAsync<dynamic>();
             // logger.LogInformation("Stream name: {0}", testStreamName);
