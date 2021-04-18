@@ -27,7 +27,7 @@ namespace ds_perper
 
             logger.LogInformation("Started SimpleDataSerialization.Application");
 
-            object[] obj = new object[] {"Volvo", true, (double) 5.9, "8.2"};
+            object[] obj = new object[] {"True", false, (double) 5.9, "8.2"};
             await context.StartAgentAsync<object>("Functions.PerperFunction", obj);
             
 

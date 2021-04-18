@@ -18,12 +18,12 @@ Serializer.prototype.deserialize = function (data, type) {
       console.warn('Primitive type conversion applied: Converted ' + dataConstructor.name + ' to String.');
       return data.toString();
     } else if (type === Boolean) {
-      let res = (typeof value === 'number' && value > 0) || (typeof value === 'string' && value.toLowerCase() === 'true');
+      let res = (typeof data === 'number' && data > 0) || (typeof data === 'string' && data.toLowerCase() === 'true');
       console.warn('Primitive type conversion applied: Converted ' + data + ' to ' + res + ' of type Boolean.');
       return res;
     } else if (type === Number && !isNaN(parseFloat(data))) {
       let res = parseFloat(data);
-      console.warn('Primitive type conversion applied: Converted ' + data + ' to ' + res + ' of type Number.');
+      console.warn('Primitive type conversion applied: Converted ' + dataConstructor.name + ' "' + data + '" to ' + res + ' of type Number.');
       return res;
     } else {
       throw new Error('Primitive type mismatch: Cannot convert ' + dataConstructor.name + ' to ' + type + '.');
