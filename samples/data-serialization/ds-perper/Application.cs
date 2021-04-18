@@ -27,9 +27,8 @@ namespace ds_perper
 
             logger.LogInformation("Started SimpleDataSerialization.Application");
 
-
-            object[] arr = new object[] {"Volvo", "BMW", "Ford", "Mazda"};
-            await context.StartAgentAsync<object>("Functions.PerperFunction", arr);
+            object[] obj = new object[] {"Volvo", true, (double) 5.9, "8.2"};
+            await context.StartAgentAsync<object>("Functions.PerperFunction", obj);
             
 
             // var (testStream, testStreamName) = await context.CreateBlankStreamAsync<dynamic>();
