@@ -47,7 +47,7 @@ PerperInstanceData.prototype.getStreamParameterIndex = function () {
   }
 };
 
-PerperInstanceData.prototype.setTriggerValue = async function (trigger) {
+PerperInstanceData.prototype.setTriggerValue = async function (trigger, type) {
   let instanceCache;
   const instanceName = trigger.InstanceName;
   this.instanceName = instanceName;
@@ -60,11 +60,11 @@ PerperInstanceData.prototype.setTriggerValue = async function (trigger) {
 
   instanceCache.setValueType(new ComplexObjectType({}, 'CallData'));
   const instanceData = await instanceCache.get(instanceName);
-  this.agent = instanceData.Agent;
-  this.parameters = instanceData.Parameters;
+  const deserialized = this.serializer.deserialize(instanceData.Parameters, type)
   this.initialized = true;
-
-  console.log(instanceData);
+  this.agent = instanceData.Agent;
+  this.parameters = deserialized;
+  return deserialized;
 };
 
 module.exports = PerperInstanceData;
