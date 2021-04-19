@@ -6,11 +6,12 @@ module.exports = async function(context, input) {
   expectedMap.set(1, String);
 
   await perper(
-    { fabric_host: "127.0.0.1" },
     input,
     [Boolean, String, String, Number, Number, expectedMap],
     async function(a, b, c, d, e, f) {
       console.log([a, b, c, d, e, f]);
-    }
+    },
+    {}, // igniteConfig - optional | defaults to {}
+    false // mapArrayToParams - optional | defaults to true
   );
 };

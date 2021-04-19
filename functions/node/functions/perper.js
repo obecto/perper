@@ -2,14 +2,14 @@ const initializeIgnite = require("../utils/initializeIgnite");
 const Serializer = require("../service/Serializer");
 const PerperInstanceData = require("../cache/PerperInstanceData");
 
-module.exports = async function perper(igniteConfig, input, type, callback) {
-  const igniteClient = await initializeIgnite(igniteConfig);
+module.exports = async function perper(input, type, callback, igniteConfig = {}, mapArrayToParams = true) {
+  const igniteClient = await initializeIgnite(Object.assign({ fabric_host: "127.0.0.1" }, igniteConfig));
   const perperInstance = new PerperInstanceData(igniteClient, new Serializer());
   const parameters = await perperInstance.setTriggerValue(input, type);
 
-  if (parameters instanceof Array) {
+  if (parameters instanceof Array && mapArrayToParams) {
     callback.apply(this, parameters);
   } else {
-    callback();
+    callback.call(this, parameters);
   }
 };
