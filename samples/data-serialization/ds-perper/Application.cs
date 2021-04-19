@@ -1,4 +1,5 @@
 using System.Threading;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using ds_perper.Models;
 using ds_perper.Streams;
@@ -26,9 +27,13 @@ namespace ds_perper
             // In the current implementation we use a blank stream and populate it with data via CallActionAsync
 
             logger.LogInformation("Started SimpleDataSerialization.Application");
+            Dictionary<int, string> dict1 = new Dictionary<int, string>(){
+                {1, "Cho"},
+                {0, "Radi"}
+            };
 
-            // object[] obj = new object[] {"True", false, (double) 5.9, "8.2", 8};
-            (string, bool, double, string, int) obj = ("True", false, 5.9, "8.2", 8);
+            object[] obj = new object[] {"True", false, (double) 5.9, "8.2", 8, dict1};
+            // (string, bool, double, string, int) obj = ("True", false, 5.9, "8.2", 8);
             await context.StartAgentAsync<object>("Functions.PerperFunction", obj);
 
             // var (testStream, testStreamName) = await context.CreateBlankStreamAsync<dynamic>();
