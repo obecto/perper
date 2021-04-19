@@ -28,8 +28,8 @@ namespace ds_perper
 
             logger.LogInformation("Started SimpleDataSerialization.Application");
             Dictionary<int, string> dict1 = new Dictionary<int, string>(){
-                {1, "Cho"},
-                {0, "Radi"}
+                {0, "True"},
+                {1, "Radi Cho"}
             };
 
             object[] obj = new object[] {"True", false, (double) 5.9, "8.2", 8, dict1};

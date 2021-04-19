@@ -55,6 +55,24 @@ Serializer.prototype.deserialize = function (data, type) {
     }
   };
 
+  if (type === Map) { // Provided a Map class as a type.
+    if (data instanceof Map) return data;
+    if (typeof data === 'object') {
+      console.debug('Attempting object to Map conversion...');
+      return new Map(Object.entries(data));
+    }
+
+    throw new Error('Cannot deserialize ' + typeof data + ' to Map.')
+  } else if (data instanceof Map) { // Provided a Map instance with key/value subtypes.
+    if (!(type instanceof Map)) throw new Error('Got map data incompatible with the provided type.');    
+    let res = new Map();
+    for (let [key, value] of data.entries()) {
+      res.set(key, this.deserialize(value, type.get(key)));
+    }
+
+    return res;
+  }
+
   console.debug('Data:');
   console.debug(data);
   throw new Error('Could not handle deserialization. Unexpected combination of required types and incoming data.');
