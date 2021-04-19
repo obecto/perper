@@ -10,7 +10,7 @@ module.exports = async function(context, input) {
     input,
     [Boolean, String, String, Number, Number, expectedMap],
     async function(a, b, c, d, e, f) {
-      console.log(f);
+      console.log([a, b, c, d, e, f]);
     }
   );
 };

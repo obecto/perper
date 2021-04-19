@@ -4,6 +4,17 @@ Serializer.prototype.serialize = function (data) {
   return data;
 };
 
+function checkTuple (data, type) {
+  return (data.length === type.length + 1) && (data[data.length - 1] === type.length);
+}
+
+function handleTupleData (data) {
+  console.debug('Handling a tuple. If this is a mistake please check out the length of your types and the incoming data.');
+  console.debug('Data:');
+  console.debug(data);
+  data.pop();
+}
+
 Serializer.prototype.deserialize = function (data, type) {
   const dataType = typeof data;
   const dataConstructor = data.constructor;
@@ -31,15 +42,19 @@ Serializer.prototype.deserialize = function (data, type) {
     }
   }
 
-  if (data instanceof Array) {
+  if (type === Array) { // Provided an Array class as a type.
+    if (data instanceof Array) {
+      if (checkTuple(data, type)) handleTupleData(data);
+      return data;
+    }
+
+    throw new Error('Cannot deserialize ' + typeof data + ' to Array.')
+  } else if (data instanceof Array) { // Provided an Array instance with value subtypes.
     if (!(type instanceof Array)) throw new Error('Got collection data incompatible with the provided type.');
-    var isTuple = (data.length === type.length + 1) && (data[data.length - 1] === type.length);
+    var isTuple = checkTuple(data, type);
     if (data.length === type.length || isTuple) {
       if (isTuple) {
-        console.debug('Handling a tuple. If this is a mistake please check out the length of your types and the incoming data.');
-        console.debug('Data:');
-        console.debug(data);
-        data.pop();
+        handleTupleData(data);
       }
 
       let res = Array(data.length);
