@@ -7,11 +7,9 @@ module.exports = async function(context, input) {
 
   await perper(
     input,
-    [Boolean, String, String, Number, Number, expectedMap],
+    [Boolean, String, String, Number, Number, Map, expectedMap, [String, Boolean, String], Array],
     async function(a, b, c, d, e, f) {
       console.log([a, b, c, d, e, f]);
-    },
-    {}, // igniteConfig - optional | defaults to {}
-    false // mapArrayToParams - optional | defaults to true
+    }
   );
 };
