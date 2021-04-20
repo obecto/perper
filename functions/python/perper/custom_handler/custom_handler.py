@@ -24,13 +24,17 @@ class Handler(IPythonHandler):
     # Using azure functions only post is available
     @gen.coroutine
     def post(self):
-
         if "initial_kernel_id" not in global_state:
             self.log.info("Starting a kernel")
-            yield maybe_future(self.start_notebook_kernel())
+            yield self.start_notebook_kernel()
             kernel_id = global_state["initial_kernel_id"]
         if not global_state["perper_imported"]:
-            yield maybe_future(self.import_perper())
+            yield self.import_perper()
+            # Wait until perper is imported, then continue
+            yield gen.sleep(4)
+            # self.set_status(200)
+            # self.finish({"Outputs":{}, "Logs":["Started kernel and imported perper"], "ReturnValue":None})
+            # return
 
         kernel_id = global_state["initial_kernel_id"]
         message = self.get_json_body()
@@ -49,23 +53,20 @@ class Handler(IPythonHandler):
             message_form["content"]["data"] = message["InstanceName"]
             self.log.info("\n\n\n This is a C# message")
 
-        self.send_to_kernel(message_form, kernel_id)
+        yield maybe_future(self.send_to_kernel(message_form, kernel_id))
         # TODO:Take care of kernel restarts
         self.set_status(200)
-        self.finish({"Outputs":{}, "Logs":["Sucssscess"], "ReturnValue":None})
+        self.finish({"Outputs":{}, "Logs":["Success"], "ReturnValue":None})
 
     @gen.coroutine
     def import_perper(self):
         kernel_id = global_state["initial_kernel_id"]
-        self.log.info("\n\n\nRegistering handler, importing perper.jupyter")
         perper_message = Message_placeholders().execute_form
         perper_message['content']['code'] = "import perper.jupyter as jupyter"
+        self.log.warning("Before the yield")
         yield maybe_future(self.send_to_kernel(perper_message, kernel_id))
-        self.log.info("Imported perper, comm registered")
         global_state["perper_imported"] = True
-        # self.set_status(200)
-        # self.finish({"Outputs":{}, "Logs":["Started kernel and imported perper"], "ReturnValue":None})
-        self.log.info("Kernel started, perper imported")
+        self.log.info("\n\nKernel started, perper imported\n\n")
 
     @gen.coroutine
     def start_standalone_kernel(self):
@@ -100,6 +101,7 @@ class Handler(IPythonHandler):
         self.log.info("Custom handler: kernel restarted")
         global_state["kernel_restarted"] = True
 
+    @gen.coroutine
     def send_to_kernel(self, message, kernel_id):
         self.channels = {}
         if "session_id" in global_state:
@@ -124,7 +126,6 @@ class Handler(IPythonHandler):
         stream = self.channels["shell"]
         self.log.info(f"\n\nSending to kernel: {message}")
         self.session.send(stream, message)
-        return
 
 
 def load_jupyter_server_extension(nb_server_app):
