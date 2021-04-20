@@ -80,8 +80,8 @@ Context.prototype.call = async function call (
     caller: this.instance.instanceName,
     finished: false,
     localtodata: true,
-    error: ''
-    // (parameters = (1, parameters))
+    error: '',
+    parameters: [1, parameters] // TODO: Chcek what's this number.
   };
 
   await callsCache.put(callName, callData);
