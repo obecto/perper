@@ -34,7 +34,7 @@ namespace ds_perper
                 {1, "Radi Cho"}
             };
             
-            object[] obj = new object[] {"True", false, (double) 5.9, "8.2", 8, dict1, dict1, strs, strs};
+            object[] obj = new object[] {"True", false, (double) 5.9, "8.2", 8, dict1, dict1, strs};
             // (string, bool, double, string, int) obj = ("True", false, 5.9, "8.2", 8);
             await context.StartAgentAsync<object>("Functions.PerperFunction", obj);
 
