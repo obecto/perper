@@ -10,7 +10,7 @@
   },
   "customHandler": {
     "description": {
-      "defaultExecutablePath": "jupyter-lab",
+      "defaultExecutablePath": "jupyter-notebook",
       "arguments": ["--port",
         "%FUNCTIONS_CUSTOMHANDLER_PORT%"
       ]
