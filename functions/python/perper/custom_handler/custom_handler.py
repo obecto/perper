@@ -4,7 +4,9 @@ import json
 import time
 
 from tornado import gen, web
+from tornado.web import RedirectHandler
 
+from jupyterlab.labapp import LabApp
 from notebook.utils import url_path_join, maybe_future
 from notebook.base.handlers import IPythonHandler
 from ipykernel.comm import Comm
@@ -32,9 +34,6 @@ class Handler(IPythonHandler):
             yield self.import_perper()
             # Wait until perper is imported, then continue
             yield gen.sleep(4)
-            # self.set_status(200)
-            # self.finish({"Outputs":{}, "Logs":["Started kernel and imported perper"], "ReturnValue":None})
-            # return
 
         kernel_id = global_state["initial_kernel_id"]
         message = self.get_json_body()
@@ -48,10 +47,10 @@ class Handler(IPythonHandler):
 
         try:
             message_form["content"]["data"] = message["content"]["data"]
-            self.log.info("\n\n\n This is a Postman message")
+            # This is a Postman message
         except:
             message_form["content"]["data"] = message["InstanceName"]
-            self.log.info("\n\n\n This is a C# message")
+            # This is a C# message
 
         yield maybe_future(self.send_to_kernel(message_form, kernel_id))
         # TODO:Take care of kernel restarts
@@ -63,10 +62,8 @@ class Handler(IPythonHandler):
         kernel_id = global_state["initial_kernel_id"]
         perper_message = Message_placeholders().execute_form
         perper_message['content']['code'] = "import perper.jupyter as jupyter"
-        self.log.warning("Before the yield")
         yield maybe_future(self.send_to_kernel(perper_message, kernel_id))
         global_state["perper_imported"] = True
-        self.log.info("\n\nKernel started, perper imported\n\n")
 
     @gen.coroutine
     def start_standalone_kernel(self):
@@ -124,20 +121,45 @@ class Handler(IPythonHandler):
         stream.channel = "shell"
 
         stream = self.channels["shell"]
-        self.log.info(f"\n\nSending to kernel: {message}")
+        self.log.debug(f"Sending to kernel: {message}")
         self.session.send(stream, message)
 
 
-def load_jupyter_server_extension(nb_server_app):
+def load_jupyter_server_extension(server_app):
     """
     Called when the extension is loaded.
 
     Args:
-        nb_server_app (NotebookWebApplication): handle to the Notebook webserver instance.
+        server_app (NotebookWebApplication): handle to the Notebook webserver instance.
     """
-    web_app = nb_server_app.web_app
+    web_app = server_app.web_app
     host_pattern = ".*$"
     route_pattern = url_path_join(web_app.settings["base_url"], "/PythonNotebook")
     web_app.add_handlers(host_pattern, [(route_pattern, Handler)])
     route_pattern = url_path_join(web_app.settings["base_url"], "/Notebook")
     web_app.add_handlers(host_pattern, [(route_pattern, Handler)])
+
+    extension = LabApp()
+    extension.serverapp = serverapp
+    extension.load_config_file()
+    extension.update_config(serverapp.config)
+    extension.parse_command_line(serverapp.extra_args)
+    extension.handlers.extend([
+        (r"/static/favicons/favicon.ico", RedirectHandler,
+            {"url": url_path_join(serverapp.base_url, "static/base/images/favicon.ico")}),
+        (r"/static/favicons/favicon-busy-1.ico", RedirectHandler,
+            {"url": url_path_join(serverapp.base_url, "static/base/images/favicon-busy-1.ico")}),
+        (r"/static/favicons/favicon-busy-2.ico", RedirectHandler,
+            {"url": url_path_join(serverapp.base_url, "static/base/images/favicon-busy-2.ico")}),
+        (r"/static/favicons/favicon-busy-3.ico", RedirectHandler,
+            {"url": url_path_join(serverapp.base_url, "static/base/images/favicon-busy-3.ico")}),
+        (r"/static/favicons/favicon-file.ico", RedirectHandler,
+            {"url": url_path_join(serverapp.base_url, "static/base/images/favicon-file.ico")}),
+        (r"/static/favicons/favicon-notebook.ico", RedirectHandler,
+            {"url": url_path_join(serverapp.base_url, "static/base/images/favicon-notebook.ico")}),
+        (r"/static/favicons/favicon-terminal.ico", RedirectHandler,
+            {"url": url_path_join(serverapp.base_url, "static/base/images/favicon-terminal.ico")}),
+        (r"/static/logo/logo.png", RedirectHandler,
+            {"url": url_path_join(serverapp.base_url, "static/base/images/logo.png")}),
+    ])
+    extension.initialize()
