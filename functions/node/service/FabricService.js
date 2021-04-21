@@ -108,7 +108,7 @@ function FabricService (ignite, config) {
 
   this.agentDelegate = process.env.PERPER_AGENT_NAME;
   if (!this.agentDelegate) this.agentDelegate = this.getAgentDelegateFromPath();
-  // this.agentDelegate = "Application1"; // TEST
+  this.agentDelegate = "Application1"; // TEST
 
   let rootAgent = process.env.PERPER_ROOT_AGENT;
   if (!rootAgent) rootAgent = '';
@@ -225,7 +225,6 @@ FabricService.prototype.getCacheItem = async function (key) {
       .then(async nc => {
         const incomingKey = configureNotificationKey(nc, key);
         const incomingNotification = await nc.get(incomingKey);
-
         resolve(incomingNotification);
       })
       .catch(e => reject(e));
@@ -239,13 +238,13 @@ FabricService.prototype.getCacheItem = async function (key) {
  * @param {String=} key.stringAffinity The string affinity value
  * @param {Number=} key.intAffinity The int affinity value
  */
-FabricService.prototype.consumeNotification = function (key) {
+FabricService.prototype.consumeNotification = function (notification) {
   return this.notificationsCache.then(async nc => {
-    const incomingKey = configureNotificationKey(nc, key);
+    const incomingKey = configureNotificationKey(nc, notification[0]);
     await nc.getAndRemove(incomingKey);
 
     console.log('Consumed notification: ');
-    console.log(key);
+    console.log(incomingKey);
   });
 };
 
