@@ -1,29 +1,23 @@
 const perper = require("perper");
 
-// await perper({
-//         function1: {
-//             parameters: [Number, Number, Number],
-//             action: function1
-//         },
-//         function2: {
-//             parameters: [Number, Number, Number],
-//             action: function2
-//         }
-//     }
-// )
+const expectedMap = new Map();
+expectedMap.set(0, Boolean);
+expectedMap.set(1, String);
 
-// module.exports = async function(context, input) {
-//   const expectedMap = new Map();
-//   expectedMap.set(0, Boolean);
-//   expectedMap.set(1, String);
-
-//   await perper(
-//     input,
-//     [Boolean, String, String, Number, Number, Map, expectedMap, [String, Boolean, String]],
-//     async function(a, b, c, d, e, f, g, h) {
-//       console.log([a, b, c, d, e, f, g, h]);
-//     },
-//   );
-// };
-
-perper();
+perper({
+  Application1: {
+    parameters: [
+      Boolean,
+      String,
+      String,
+      Number,
+      Number,
+      Map,
+      expectedMap,
+      [String, Boolean, String]
+    ],
+    action: async function(a, b, c, d, e, f, g, h) {
+      console.log([a, b, c, d, e, f, g, h]);
+    }
+  }
+});
