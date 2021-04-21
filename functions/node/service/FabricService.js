@@ -102,13 +102,13 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
  * @param {Object} config Configuration
  * @param {String} config.fabric_host Host
  */
-function FabricService (ignite, config) {
+function FabricService (ignite, config, overrideAgent) {
   this.ignite = ignite;
   console.log('Initializing Node Perper Fabric Service...');
 
   this.agentDelegate = process.env.PERPER_AGENT_NAME;
   if (!this.agentDelegate) this.agentDelegate = this.getAgentDelegateFromPath();
-  this.agentDelegate = "Application1"; // TEST
+  if (overrideAgent) this.agentDelegate = overrideAgent;
 
   let rootAgent = process.env.PERPER_ROOT_AGENT;
   if (!rootAgent) rootAgent = '';
