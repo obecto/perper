@@ -1,11 +1,12 @@
 const perper = require("perper");
+const perperFunction = require("./PerperFunction/index");
 
 const expectedMap = new Map();
 expectedMap.set(0, Boolean);
 expectedMap.set(1, String);
 
 perper({
-  Application1: {
+  PerperFunction: {
     parameters: [
       Boolean,
       String,
@@ -16,8 +17,6 @@ perper({
       expectedMap,
       [String, Boolean, String]
     ],
-    action: async function(a, b, c, d, e, f, g, h) {
-      console.log([a, b, c, d, e, f, g, h]);
-    }
+    action: perperFunction
   }
 });
