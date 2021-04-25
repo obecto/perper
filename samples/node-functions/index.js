@@ -1,5 +1,6 @@
 const perper = require('perper');
 const perperFunction = require('./PerperFunction/index');
+const perperFunction2 = require('./PerperFunction2/index');
 
 const expectedMap = new Map();
 expectedMap.set(0, Boolean);
@@ -23,9 +24,7 @@ perper({
   },
   PerperFunction2: {
     parameters: pTypes,
-    action: (params) => {
-      console.log(params);
-    },
+    action: perperFunction2,
     mapArrayToParams: false
   }
 });
