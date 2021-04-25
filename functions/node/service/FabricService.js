@@ -296,7 +296,7 @@ FabricService.prototype.generateCallDataType = function () {
       Finished: true,
       LocalToData: true,
       Error: "",
-      Parameters: new ComplexObjectType({})
+      Parameters: null
     },
     "CallData"
   );
