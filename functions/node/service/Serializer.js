@@ -16,11 +16,11 @@ function handleTupleData (data) {
 }
 
 Serializer.prototype.deserialize = function (data, type) {
-  const dataType = typeof data;
-  const dataConstructor = data.constructor;
-
   if (data === null || data === undefined) return null;
   if (type === null || type === undefined) return data;
+
+  const dataType = typeof data;
+  const dataConstructor = data.constructor;
 
   if (['string', 'boolean', 'number'].includes(dataType)) {
     if (dataConstructor === type) {
