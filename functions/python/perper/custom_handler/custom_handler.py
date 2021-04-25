@@ -125,41 +125,16 @@ class Handler(IPythonHandler):
         self.session.send(stream, message)
 
 
-def load_jupyter_server_extension(server_app):
+def load_jupyter_server_extension(serverapp):
     """
     Called when the extension is loaded.
 
     Args:
-        server_app (NotebookWebApplication): handle to the Notebook webserver instance.
+        serverapp (NotebookWebApplication): handle to the Notebook webserver instance.
     """
-    web_app = server_app.web_app
+    web_app = serverapp.web_app
     host_pattern = ".*$"
     route_pattern = url_path_join(web_app.settings["base_url"], "/PythonNotebook")
     web_app.add_handlers(host_pattern, [(route_pattern, Handler)])
     route_pattern = url_path_join(web_app.settings["base_url"], "/Notebook")
     web_app.add_handlers(host_pattern, [(route_pattern, Handler)])
-
-    extension = LabApp()
-    extension.serverapp = serverapp
-    extension.load_config_file()
-    extension.update_config(serverapp.config)
-    extension.parse_command_line(serverapp.extra_args)
-    extension.handlers.extend([
-        (r"/static/favicons/favicon.ico", RedirectHandler,
-            {"url": url_path_join(serverapp.base_url, "static/base/images/favicon.ico")}),
-        (r"/static/favicons/favicon-busy-1.ico", RedirectHandler,
-            {"url": url_path_join(serverapp.base_url, "static/base/images/favicon-busy-1.ico")}),
-        (r"/static/favicons/favicon-busy-2.ico", RedirectHandler,
-            {"url": url_path_join(serverapp.base_url, "static/base/images/favicon-busy-2.ico")}),
-        (r"/static/favicons/favicon-busy-3.ico", RedirectHandler,
-            {"url": url_path_join(serverapp.base_url, "static/base/images/favicon-busy-3.ico")}),
-        (r"/static/favicons/favicon-file.ico", RedirectHandler,
-            {"url": url_path_join(serverapp.base_url, "static/base/images/favicon-file.ico")}),
-        (r"/static/favicons/favicon-notebook.ico", RedirectHandler,
-            {"url": url_path_join(serverapp.base_url, "static/base/images/favicon-notebook.ico")}),
-        (r"/static/favicons/favicon-terminal.ico", RedirectHandler,
-            {"url": url_path_join(serverapp.base_url, "static/base/images/favicon-terminal.ico")}),
-        (r"/static/logo/logo.png", RedirectHandler,
-            {"url": url_path_join(serverapp.base_url, "static/base/images/logo.png")}),
-    ])
-    extension.initialize()
