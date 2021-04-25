@@ -21,7 +21,7 @@ perper({
     action: perperFunction
   },
   PerperFunction2: {
-    parameters: Array,
+    parameters: [String, String, String],
     action: perperFunction2,
     mapArrayToParams: false
   }

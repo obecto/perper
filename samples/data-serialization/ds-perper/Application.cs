@@ -36,10 +36,11 @@ namespace ds_perper
             
             object[] obj1 = new object[] {"True", false, (double) 5.9, "8.2", 8, dict1, dict1, strs};
             object[] obj2 = new object[] {"A", "B", "C"};
+            (string, string, int) objtup = ("1", "2", 3);
 
-            // (string, bool, double, string, int) obj = ("True", false, 5.9, "8.2", 8);
             var agent = await context.StartAgentAsync<object>("PerperFunction", obj1);
             agent.Item1.CallFunctionAsync<object>("PerperFunction2", obj2);
+            agent.Item1.CallFunctionAsync<object>("PerperFunction2", objtup);
 
             // var (testStream, testStreamName) = await context.CreateBlankStreamAsync<dynamic>();
             // logger.LogInformation("Stream name: {0}", testStreamName);
