@@ -1,8 +1,5 @@
 const IgniteClient = require("apache-ignite-client");
 const IgniteClientConfiguration = IgniteClient.IgniteClientConfiguration;
-const ObjectType = IgniteClient.ObjectType;
-const ComplexObjectType = IgniteClient.ComplexObjectType;
-const ObjectArrayType = IgniteClient.ObjectArrayType;
 
 const Serializer = require("../service/Serializer");
 const PerperInstanceData = require("../cache/PerperInstanceData");
@@ -21,34 +18,8 @@ async function perper(functions = {}, mapArrayToParams = true) {
     if (notification[1] && notification[1].delegate && notification[1].call) {
       const cache = await igniteClient.getOrCreateCache("calls");
 
-      const compType = new ComplexObjectType(
-        {
-          Agent: "",
-          AgentDelegate: "",
-          Delegate: "",
-          CallerAgentDelegate: "",
-          Caller: "",
-          Finished: true,
-          LocalToData: true,
-          Error: "",
-          Parameters: new ComplexObjectType({})
-        },
-        "CallData"
-      );
-
-      compType.setFieldType("Agent", ObjectType.PRIMITIVE_TYPE.STRING);
-      compType.setFieldType("AgentDelegate", ObjectType.PRIMITIVE_TYPE.STRING);
-      compType.setFieldType("Delegate", ObjectType.PRIMITIVE_TYPE.STRING);
-      compType.setFieldType(
-        "CallerAgentDelegate",
-        ObjectType.PRIMITIVE_TYPE.STRING
-      );
-      compType.setFieldType("Caller", ObjectType.PRIMITIVE_TYPE.STRING);
-      compType.setFieldType("Finished", ObjectType.PRIMITIVE_TYPE.BOOLEAN);
-      compType.setFieldType("LocalToData", ObjectType.PRIMITIVE_TYPE.BOOLEAN);
-      compType.setFieldType("Error", new ComplexObjectType({})); // FIXME: is actually nullable string
-      compType.setFieldType("Parameters", new ObjectArrayType());
-      cache.setValueType(compType);
+      const callDataType = fs.generateCallDataType();
+      cache.setValueType(callDataType);
 
       const callData = await cache.get(notification[1].call);
       if (functions[callData.Delegate]) {

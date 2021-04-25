@@ -9,6 +9,7 @@ const ComplexObjectType = IgniteClient.ComplexObjectType;
 const CacheConfiguration = IgniteClient.CacheConfiguration;
 const CacheKeyConfiguration = IgniteClient.CacheKeyConfiguration;
 const ObjectType = IgniteClient.ObjectType;
+const ObjectArrayType = IgniteClient.ObjectArrayType;
 
 // Monkey patch for Ignite hashing
 // https://issues.apache.org/jira/browse/IGNITE-14369
@@ -283,5 +284,37 @@ FabricService.prototype.getCallNotification = function (call) {
     );
   });
 };
+
+FabricService.prototype.generateCallDataType = function () {
+  const compType = new ComplexObjectType(
+    {
+      Agent: "",
+      AgentDelegate: "",
+      Delegate: "",
+      CallerAgentDelegate: "",
+      Caller: "",
+      Finished: true,
+      LocalToData: true,
+      Error: "",
+      Parameters: new ComplexObjectType({})
+    },
+    "CallData"
+  );
+
+  compType.setFieldType("Agent", ObjectType.PRIMITIVE_TYPE.STRING);
+  compType.setFieldType("AgentDelegate", ObjectType.PRIMITIVE_TYPE.STRING);
+  compType.setFieldType("Delegate", ObjectType.PRIMITIVE_TYPE.STRING);
+  compType.setFieldType(
+    "CallerAgentDelegate",
+    ObjectType.PRIMITIVE_TYPE.STRING
+  );
+  compType.setFieldType("Caller", ObjectType.PRIMITIVE_TYPE.STRING);
+  compType.setFieldType("Finished", ObjectType.PRIMITIVE_TYPE.BOOLEAN);
+  compType.setFieldType("LocalToData", ObjectType.PRIMITIVE_TYPE.BOOLEAN);
+  compType.setFieldType("Error", new ComplexObjectType({})); // FIXME: is actually nullable string
+  compType.setFieldType("Parameters", new ObjectArrayType());
+
+  return compType;
+}
 
 module.exports = FabricService;
