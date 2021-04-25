@@ -1,7 +1,5 @@
 const IgniteClient = require('apache-ignite-client');
 const IgniteClientConfiguration = IgniteClient.IgniteClientConfiguration;
-const ObjectType = IgniteClient.ObjectType;
-const ComplexObjectType = IgniteClient.ComplexObjectType;
 const FabricService = require('./FabricService');
 
 async function test (streamNotifications) {
@@ -15,45 +13,21 @@ async function test (streamNotifications) {
   const callsCache = await igniteClient.getOrCreateCache('calls');
   const callName = 'TestStream--UUID';
 
-  const compType = new ComplexObjectType(
-    {
-      agent: '',
-      agentdelegate: '',
-      delegate: '',
-      calleragentdelegate: '',
-      caller: '',
-      finished: true,
-      localtodata: true,
-      error: ''
-    },
-    'CallData'
-  );
-
-  compType.setFieldType('agent', ObjectType.PRIMITIVE_TYPE.STRING);
-  compType.setFieldType('agentdelegate', ObjectType.PRIMITIVE_TYPE.STRING);
-  compType.setFieldType('delegate', ObjectType.PRIMITIVE_TYPE.STRING);
-  compType.setFieldType(
-    'calleragentdelegate',
-    ObjectType.PRIMITIVE_TYPE.STRING
-  );
-  compType.setFieldType('caller', ObjectType.PRIMITIVE_TYPE.STRING);
-  compType.setFieldType('finished', ObjectType.PRIMITIVE_TYPE.BOOLEAN);
-  compType.setFieldType('localtodata', ObjectType.PRIMITIVE_TYPE.BOOLEAN);
-  compType.setFieldType('error', ObjectType.PRIMITIVE_TYPE.STRING);
+  const compType = fs.generateCallDataType();
   callsCache.setValueType(compType);
 
   if (streamNotifications) {
     fs.getNotifications(console.log);
   } else {
     await callsCache.put(callName, {
-      agent: 'Application2',
-      agentdelegate: 'Application2',
-      delegate: 'Application2',
-      calleragentdelegate: fs.agentDelegate,
-      caller: 'test_instance',
-      finished: true,
-      localtodata: true,
-      error: ''
+      Agent: 'Application2',
+      AgentDelegate: 'Application2',
+      Delegate: 'Application2',
+      CallerAgentDelegate: fs.agentDelegate,
+      Caller: 'test_instance',
+      Finished: true,
+      LocalToData: true,
+      Error: ''
     });
 
     const notification = await fs.getCallNotification(callName);

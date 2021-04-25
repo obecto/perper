@@ -45,43 +45,19 @@ Context.prototype.call = async function call (
   const callsCache = await this.ignite.getOrCreateCache('calls');
   const callName = this.generateName(callDelegate);
 
-  const compType = new ComplexObjectType(
-    {
-      agent: '',
-      agentdelegate: '',
-      delegate: '',
-      calleragentdelegate: '',
-      caller: '',
-      finished: true,
-      localtodata: true,
-      error: ''
-    },
-    'CallData'
-  );
-
-  compType.setFieldType('agent', ObjectType.PRIMITIVE_TYPE.STRING);
-  compType.setFieldType('agentdelegate', ObjectType.PRIMITIVE_TYPE.STRING);
-  compType.setFieldType('delegate', ObjectType.PRIMITIVE_TYPE.STRING);
-  compType.setFieldType(
-    'calleragentdelegate',
-    ObjectType.PRIMITIVE_TYPE.STRING
-  );
-  compType.setFieldType('caller', ObjectType.PRIMITIVE_TYPE.STRING);
-  compType.setFieldType('finished', ObjectType.PRIMITIVE_TYPE.BOOLEAN);
-  compType.setFieldType('localtodata', ObjectType.PRIMITIVE_TYPE.BOOLEAN);
-  compType.setFieldType('error', ObjectType.PRIMITIVE_TYPE.STRING);
+  const compType = this.fabric.generateCallDataType();
   callsCache.setValueType(compType);
 
   const callData = {
-    agent: agentName,
-    agentdelegate: agentDelegate,
-    delegate: callDelegate,
-    calleragentdelegate: this.fabric.agentDelegate || '',
-    caller: this.instance.instanceName,
-    finished: false,
-    localtodata: true,
-    error: '',
-    parameters: [1, parameters] // TODO: Chcek what's this number.
+    Agent: agentName,
+    AgentDelegate: agentDelegate,
+    Delegate: callDelegate,
+    CallerAgentDelegate: this.fabric.agentDelegate || '',
+    Caller: this.instance.instanceName,
+    Finished: false,
+    LocalToData: true,
+    Error: '',
+    Parameters: parameters // TODO: Chcek what's this number.
   };
 
   await callsCache.put(callName, callData);
