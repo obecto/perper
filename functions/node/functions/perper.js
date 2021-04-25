@@ -14,10 +14,8 @@ async function perper(functions = {}) {
 
   const fs = new FabricService(igniteClient, config, Object.keys(functions)[0]);
   fs.getNotifications(async notification => {
-    console.log(notification);
     if (notification[1] && notification[1].delegate && notification[1].call) {
       const cache = await igniteClient.getOrCreateCache("calls");
-
       const callDataType = fs.generateCallDataType();
       cache.setValueType(callDataType);
 
@@ -27,9 +25,11 @@ async function perper(functions = {}) {
           igniteClient,
           new Serializer()
         );
+
         const parameters = await perperInstance.setTriggerValue(
           callData,
-          functions[callData.Delegate].parameters
+          functions[callData.Delegate].parameters,
+          false /* log */
         );
 
         if (
@@ -45,7 +45,7 @@ async function perper(functions = {}) {
         cache.replace(notification[1].call, callData);
       }
 
-      fs.consumeNotification(notification);
+      fs.consumeNotification(notification, false /* log */);
     }
   });
 }

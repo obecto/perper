@@ -47,8 +47,8 @@ PerperInstanceData.prototype.getStreamParameterIndex = function () {
   }
 };
 
-PerperInstanceData.prototype.setTriggerValue = async function (instanceData, type) {
-  const deserialized = this.serializer.deserialize(instanceData.Parameters, type)
+PerperInstanceData.prototype.setTriggerValue = async function (instanceData, type, log = true) {
+  const deserialized = this.serializer.deserialize(instanceData.Parameters, type, log)
   this.initialized = true;
   this.agent = instanceData.Agent;
   this.parameters = deserialized;

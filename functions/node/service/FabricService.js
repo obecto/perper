@@ -239,13 +239,15 @@ FabricService.prototype.getCacheItem = async function (key) {
  * @param {String=} key.stringAffinity The string affinity value
  * @param {Number=} key.intAffinity The int affinity value
  */
-FabricService.prototype.consumeNotification = function (notification) {
+FabricService.prototype.consumeNotification = function (notification, log = true) {
   return this.notificationsCache.then(async nc => {
     const incomingKey = configureNotificationKey(nc, notification[0]);
     await nc.getAndRemove(incomingKey);
 
-    console.log('Consumed notification: ');
-    console.log(incomingKey);
+    if (log) {
+      console.log('Consumed notification: ');
+      console.log(incomingKey);
+    }
   });
 };
 
