@@ -34,11 +34,12 @@ namespace ds_perper
                 {1, "Radi Cho"}
             };
             
-            object[] obj = new object[] {"True", false, (double) 5.9, "8.2", 8, dict1, dict1, strs};
+            object[] obj1 = new object[] {"True", false, (double) 5.9, "8.2", 8, dict1, dict1, strs};
+            object[] obj2 = new object[] {"A", "B", "C"};
 
             // (string, bool, double, string, int) obj = ("True", false, 5.9, "8.2", 8);
-            var agent = await context.StartAgentAsync<object>("PerperFunction", obj);
-            agent.Item1.CallFunctionAsync<object>("PerperFunction2", obj);
+            var agent = await context.StartAgentAsync<object>("PerperFunction", obj1);
+            agent.Item1.CallFunctionAsync<object>("PerperFunction2", obj2);
 
             // var (testStream, testStreamName) = await context.CreateBlankStreamAsync<dynamic>();
             // logger.LogInformation("Stream name: {0}", testStreamName);

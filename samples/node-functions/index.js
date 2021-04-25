@@ -6,24 +6,22 @@ const expectedMap = new Map();
 expectedMap.set(0, Boolean);
 expectedMap.set(1, String);
 
-const pTypes = [
-  Boolean,
-  String,
-  String,
-  Number,
-  Number,
-  Map,
-  expectedMap,
-  [String, Boolean, String]
-];
-
 perper({
   PerperFunction: {
-    parameters: pTypes,
+    parameters: [
+      Boolean,
+      String,
+      String,
+      Number,
+      Number,
+      Map,
+      expectedMap,
+      [String, Boolean, String]
+    ],
     action: perperFunction
   },
   PerperFunction2: {
-    parameters: pTypes,
+    parameters: Array,
     action: perperFunction2,
     mapArrayToParams: false
   }
