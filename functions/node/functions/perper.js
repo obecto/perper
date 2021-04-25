@@ -5,7 +5,7 @@ const Serializer = require("../service/Serializer");
 const PerperInstanceData = require("../cache/PerperInstanceData");
 const FabricService = require("../service/FabricService");
 
-async function perper(functions = {}, mapArrayToParams = true) {
+async function perper(functions = {}) {
   const config = { fabric_host: "127.0.0.1" };
   const igniteClient = new IgniteClient();
   await igniteClient.connect(
@@ -32,7 +32,10 @@ async function perper(functions = {}, mapArrayToParams = true) {
           functions[callData.Delegate].parameters
         );
 
-        if (parameters instanceof Array && mapArrayToParams) {
+        if (
+          parameters instanceof Array &&
+          (functions[callData.Delegate].mapArrayToParams !== false)
+        ) {
           functions[callData.Delegate].action.apply(this, parameters);
         } else {
           functions[callData.Delegate].action.call(this, parameters);

@@ -23,8 +23,9 @@ perper({
   },
   PerperFunction2: {
     parameters: pTypes,
-    action: (a) => {
-      console.log("Radi Cho is the best: " + a);
-    }
+    action: (params) => {
+      console.log(params);
+    },
+    mapArrayToParams: false
   }
 });
