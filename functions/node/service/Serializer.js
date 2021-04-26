@@ -62,7 +62,7 @@ Serializer.prototype.deserialize = function (data, type, log = true) {
 
       let res = Array(data.length);
       for (let i = 0; i < data.length; i++) {
-        res[i] = this.deserialize(data[i], type[i]);
+        res[i] = this.deserialize(data[i], type[i], log);
       }
 
       return res;

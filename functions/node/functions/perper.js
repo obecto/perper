@@ -1,6 +1,9 @@
 const IgniteClient = require("apache-ignite-client");
 const IgniteClientConfiguration = IgniteClient.IgniteClientConfiguration;
 
+const ComplexObjectType = IgniteClient.ComplexObjectType;
+const ObjectArrayType = IgniteClient.ObjectArrayType;
+
 const Serializer = require("../service/Serializer");
 const PerperInstanceData = require("../cache/PerperInstanceData");
 const FabricService = require("../service/FabricService");
@@ -17,6 +20,7 @@ async function perper(functions = {}) {
     if (notification[1] && notification[1].delegate && notification[1].call) {
       const cache = await igniteClient.getOrCreateCache("calls");
       const callDataType = fs.generateCallDataType();
+
       cache.setValueType(callDataType);
 
       const callData = await cache.get(notification[1].call);
@@ -34,7 +38,7 @@ async function perper(functions = {}) {
 
         if (
           parameters instanceof Array &&
-          (functions[callData.Delegate].mapArrayToParams !== false)
+          functions[callData.Delegate].mapArrayToParams !== false
         ) {
           functions[callData.Delegate].action.apply(this, parameters);
         } else {
@@ -42,7 +46,14 @@ async function perper(functions = {}) {
         }
 
         callData.Finished = true;
-        cache.replace(notification[1].call, callData);
+
+        try {
+          callDataType.setFieldType("Parameters", new ComplexObjectType({}));
+          await cache.replace(notification[1].call, callData);
+        } catch {
+          callDataType.setFieldType("Parameters", new ObjectArrayType());
+          await cache.replace(notification[1].call, callData);
+        }
       }
 
       fs.consumeNotification(notification, false /* log */);
