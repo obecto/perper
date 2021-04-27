@@ -69,11 +69,6 @@
     <PackageReference Include="Newtonsoft.Json">
       <Version>12.0.3</Version>
     </PackageReference>
-    <PackageReference Include="QuantConnect.Common" Version="2.4.9641" />
-    <PackageReference Include="QuantConnect.Lean" Version="2.4.9641">
-      <ExcludeAssets>build;buildMultitargeting;buildTransitive;analyzers</ExcludeAssets>
-      <PrivateAssets>none</PrivateAssets>
-    </PackageReference>
     <PackageReference Include="System.Linq.Async" Version="5.0.0" />
   </ItemGroup>
   <ItemGroup>
