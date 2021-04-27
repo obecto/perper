@@ -257,8 +257,7 @@ namespace Perper.WebJobs.Extensions.CustomHandler
 
         private async Task ConsumeCompletedNotificationsAsync(CancellationToken cancellationToken = default)
         {
-            // TODO: CancellationToken
-            while (true)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 var token = await _notificationsChannel.Reader.ReadAsync();
                 var (key, notification) = _notificationTokens[token];
