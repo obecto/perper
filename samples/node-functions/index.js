@@ -1,28 +1,29 @@
-const perper = require('perper');
-const perperFunction = require('./PerperFunction/index');
-const perperFunction2 = require('./PerperFunction2/index');
-
-const expectedMap = new Map();
-expectedMap.set(0, Boolean);
-expectedMap.set(1, String);
+const perper = require("perper");
+const Stream = require("perper/model/Stream");
+const generator = require("./generator/index");
+const processor = require("./processor/index");
+const consumer = require("./consumer/index");
 
 perper({
-  PerperFunction: {
-    parameters: [
-      Boolean,
-      String,
-      String,
-      Number,
-      Number,
-      Map,
-      expectedMap,
-      [String, Boolean, String]
-    ],
-    action: perperFunction
+  generator: {
+    parameters: [Number],
+    action: generator
   },
-  PerperFunction2: {
-    parameters: [String, String, String],
-    action: perperFunction2,
-    mapArrayToParams: false
+  processor: {
+    parameters: [Stream, Number],
+    action: processor
+  },
+  consumer: {
+    parameters: [Stream],
+    action: consumer
   }
 });
+
+// var generatorStream = perper.context.streamFunction("generator", 20);
+// var processorStream = perper.context.streamFunction(
+//   "processor",
+//   generatorStream,
+//   10
+// );
+
+// perper.context.streamAction("consumer", processorStream);
