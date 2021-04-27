@@ -19,3 +19,4 @@ venv
 .vscode/settings.json
 samples/PythonNotebook/jupyter_command.bat
 /cli/perper.exe
+/packages
