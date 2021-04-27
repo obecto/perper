@@ -35,6 +35,23 @@ Context.prototype.startAgent = async function (delegateName, parameters) {
   return [agent, result];
 };
 
+StreamDelegateType = {
+  function: 0,
+  action: 1,
+  external: 2
+}
+
+Context.prototype.streamFunction = function (
+  functionName,
+  parameters,
+  flags
+) {
+  const streamName = this.generateName(functionName);
+  this.createStream(streamName, StreamDelegateType.function, functionName, parameters, null, flags);
+
+  return new Stream(); // streamname=stream_name
+}
+
 Context.prototype.createStream = async function call (
   streamName,
   delegateType,
@@ -47,6 +64,7 @@ Context.prototype.createStream = async function call (
   const compType = Stream.generateStreamDataType();
   streamsCache.setValueType(compType);
 
+  // TODO: Implemnt flags.
   const streamData = {
     // Agent: this.fabric.agentDelegate,
     AgentDelegate: this.fabric.agentDelegate,
