@@ -1,5 +1,6 @@
 namespace SimpleAgent
 {
+    using System;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.WebJobs;
@@ -32,6 +33,9 @@ namespace SimpleAgent
 
             IStream consumer =
                 await context.StreamActionAsync(nameof(Consumer), processor);
+
+            var updatedMessage = await context.CallFunctionAsync<string>("UpdateMessage", "test-message");
+            Console.WriteLine(updatedMessage);
         }
     }
 }
