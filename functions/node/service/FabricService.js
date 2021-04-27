@@ -9,7 +9,6 @@ const ComplexObjectType = IgniteClient.ComplexObjectType;
 const CacheConfiguration = IgniteClient.CacheConfiguration;
 const CacheKeyConfiguration = IgniteClient.CacheKeyConfiguration;
 const ObjectType = IgniteClient.ObjectType;
-const ObjectArrayType = IgniteClient.ObjectArrayType;
 
 // Monkey patch for Ignite hashing
 // https://issues.apache.org/jira/browse/IGNITE-14369
@@ -142,9 +141,9 @@ function FabricService (ignite, config, overrideAgent) {
 FabricService.prototype.startInitialAgent = async function () {
   if (this.isInitialAgent) {
     const callDelegate = this.agentDelegate;
-    const agentName = callDelegate + "-$launchAgent";
-    const callName = callDelegate + "-$launchCall";
-       
+    const agentName = callDelegate + '-$launchAgent';
+    const callName = callDelegate + '-$launchCall';
+
     const callsCache = await this.ignite.getOrCreateCache('calls');
     const compType = FabricService.generateCallDataType();
     callsCache.setValueType(compType);
@@ -154,14 +153,14 @@ FabricService.prototype.startInitialAgent = async function () {
       AgentDelegate: this.agentDelegate,
       Parameters: null,
       Delegate: callDelegate,
-      CallerAgentDelegate: "",
-      Caller: "",
+      CallerAgentDelegate: '',
+      Caller: '',
       Finished: false,
       LocalToData: false,
       Error: null
     });
   }
-}
+};
 
 FabricService.prototype.getAgentDelegateFromPath = function () {
   return path.basename(process.cwd());
@@ -316,33 +315,33 @@ FabricService.prototype.getCallNotification = function (call) {
 FabricService.generateCallDataType = function () {
   const compType = new ComplexObjectType(
     {
-      Agent: "",
-      AgentDelegate: "",
-      Delegate: "",
-      CallerAgentDelegate: "",
-      Caller: "",
+      Agent: '',
+      AgentDelegate: '',
+      Delegate: '',
+      CallerAgentDelegate: '',
+      Caller: '',
       Finished: true,
       LocalToData: true,
-      Error: "",
+      Error: '',
       Parameters: null
     },
-    "CallData"
+    'CallData'
   );
 
-  compType.setFieldType("Agent", ObjectType.PRIMITIVE_TYPE.STRING);
-  compType.setFieldType("AgentDelegate", ObjectType.PRIMITIVE_TYPE.STRING);
-  compType.setFieldType("Delegate", ObjectType.PRIMITIVE_TYPE.STRING);
+  compType.setFieldType('Agent', ObjectType.PRIMITIVE_TYPE.STRING);
+  compType.setFieldType('AgentDelegate', ObjectType.PRIMITIVE_TYPE.STRING);
+  compType.setFieldType('Delegate', ObjectType.PRIMITIVE_TYPE.STRING);
   compType.setFieldType(
-    "CallerAgentDelegate",
+    'CallerAgentDelegate',
     ObjectType.PRIMITIVE_TYPE.STRING
   );
-  compType.setFieldType("Caller", ObjectType.PRIMITIVE_TYPE.STRING);
-  compType.setFieldType("Finished", ObjectType.PRIMITIVE_TYPE.BOOLEAN);
-  compType.setFieldType("LocalToData", ObjectType.PRIMITIVE_TYPE.BOOLEAN);
-  compType.setFieldType("Error", new ComplexObjectType({})); // FIXME: is actually nullable string
-  compType.setFieldType("Parameters", new ComplexObjectType({}));
+  compType.setFieldType('Caller', ObjectType.PRIMITIVE_TYPE.STRING);
+  compType.setFieldType('Finished', ObjectType.PRIMITIVE_TYPE.BOOLEAN);
+  compType.setFieldType('LocalToData', ObjectType.PRIMITIVE_TYPE.BOOLEAN);
+  compType.setFieldType('Error', new ComplexObjectType({})); // FIXME: is actually nullable string
+  compType.setFieldType('Parameters', new ComplexObjectType({}));
 
   return compType;
-}
+};
 
 module.exports = FabricService;

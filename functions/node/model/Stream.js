@@ -3,6 +3,12 @@ const FilterUtils = require('./FilterUtils');
 const IgniteClient = require('apache-ignite-client');
 const ScanQuery = IgniteClient.ScanQuery;
 
+const ObjectType = IgniteClient.ObjectType;
+const ComplexObjectType = IgniteClient.ComplexObjectType;
+const CollectionObjectType = IgniteClient.CollectionObjectType;
+const MapObjectType = IgniteClient.MapObjectType;
+const EnumItem = IgniteClient.EnumItem;
+
 function Stream () {}
 
 Stream.prototype.setParameters = function (streamName, ignite, fabric) {

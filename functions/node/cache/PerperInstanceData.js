@@ -1,6 +1,3 @@
-const IgniteClient = require('apache-ignite-client');
-const ComplexObjectType = IgniteClient.ComplexObjectType;
-
 function PerperInstanceData (ignite, serializer) {
   this.ignite = ignite;
   this.serializer = serializer;
@@ -48,7 +45,7 @@ PerperInstanceData.prototype.getStreamParameterIndex = function () {
 };
 
 PerperInstanceData.prototype.setTriggerValue = async function (instanceData, type, log = true) {
-  const deserialized = this.serializer.deserialize(instanceData.Parameters, type, log)
+  const deserialized = this.serializer.deserialize(instanceData.Parameters, type, log);
   this.initialized = true;
   this.agent = instanceData.Agent;
   this.parameters = deserialized;

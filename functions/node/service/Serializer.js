@@ -29,15 +29,15 @@ Serializer.prototype.deserialize = function (data, type, log = true) {
     if (dataConstructor === type) {
       return data;
     } else if (type === String) {
-      let res = data.toString();
+      const res = data.toString();
       if (log) console.debug('Primitive type conversion applied: Converted ' + dataConstructor.name + ' to String - "' + res + '".');
       return res;
     } else if (type === Boolean) {
-      let res = (typeof data === 'number' && data > 0) || (typeof data === 'string' && data.toLowerCase() === 'true');
+      const res = (typeof data === 'number' && data > 0) || (typeof data === 'string' && data.toLowerCase() === 'true');
       if (log) console.debug('Primitive type conversion applied: Converted ' + dataConstructor.name + ' "' + data + '" to ' + res + ' of type Boolean.');
       return res;
     } else if (type === Number && !isNaN(parseFloat(data))) {
-      let res = parseFloat(data);
+      const res = parseFloat(data);
       if (log) console.debug('Primitive type conversion applied: Converted ' + dataConstructor.name + ' "' + data + '" to ' + res + ' of type Number.');
       return res;
     } else {
@@ -54,13 +54,13 @@ Serializer.prototype.deserialize = function (data, type, log = true) {
     throw new Error('Cannot deserialize ' + typeof data + ' to Array.');
   } else if (data instanceof Array) { // Provided an Array instance with value subtypes.
     if (!(type instanceof Array)) throw new Error('Got collection data incompatible with the provided type.');
-    var isTuple = checkTuple(data, type);
+    const isTuple = checkTuple(data, type);
     if (data.length === type.length || isTuple) {
       if (isTuple) {
         handleTupleData(data, log);
       }
 
-      let res = Array(data.length);
+      const res = Array(data.length);
       for (let i = 0; i < data.length; i++) {
         res[i] = this.deserialize(data[i], type[i], log);
       }
@@ -86,8 +86,8 @@ Serializer.prototype.deserialize = function (data, type, log = true) {
     throw new Error('Cannot deserialize ' + typeof data + ' to Map.');
   } else if (data instanceof Map) { // Provided a Map instance with key/value subtypes.
     if (!(type instanceof Map)) throw new Error('Got map data incompatible with the provided type.');
-    let res = new Map();
-    for (let [key, value] of data.entries()) {
+    const res = new Map();
+    for (const [key, value] of data.entries()) {
       res.set(key, this.deserialize(value, type.get(key)));
     }
 
