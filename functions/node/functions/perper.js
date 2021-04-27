@@ -15,7 +15,12 @@ async function perper(functions = {}) {
     new IgniteClientConfiguration(config.fabric_host + ":10800")
   );
 
-  const fs = new FabricService(igniteClient, config, Object.keys(functions)[0]);
+  /// TEST ///
+  process.env.PERPER_ROOT_AGENT = "PerperFunction";
+  process.env.PERPER_AGENT_NAME = "PerperFunction";
+  /// TEST ///
+
+  const fs = new FabricService(igniteClient, config);
   fs.getNotifications(async notification => {
     if (notification[1] && notification[1].delegate && notification[1].call) {
       const cache = await igniteClient.getOrCreateCache("calls");
