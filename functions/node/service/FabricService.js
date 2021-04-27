@@ -115,6 +115,8 @@ function FabricService (ignite, config, overrideAgent) {
   if (!rootAgent) rootAgent = '';
 
   this.isInitialAgent = rootAgent === this.agentDelegate;
+  this.startInitialAgent();
+
   const cacheConfig = new CacheConfiguration();
   cacheConfig.setKeyConfigurations(
     new CacheKeyConfiguration('NotificationKey', 'affinity')
@@ -135,6 +137,30 @@ function FabricService (ignite, config, overrideAgent) {
   );
 
   this.notificationFilter = { agentDelegate: this.agentDelegate };
+}
+
+FabricService.prototype.startInitialAgent = async function () {
+  if (this.isInitialAgent) {
+    const callDelegate = this.agentDelegate;
+    const agentName = callDelegate + "-$launchAgent";
+    const callName = callDelegate + "-$launchCall";
+       
+    const callsCache = await this.ignite.getOrCreateCache('calls');
+    const compType = this.generateCallDataType();
+    callsCache.setValueType(compType);
+
+    await callsCache.put(callName, {
+      Agent: agentName,
+      AgentDelegate: this.agentDelegate,
+      Parameters: null,
+      Delegate: callDelegate,
+      CallerAgentDelegate: "",
+      Caller: "",
+      Finished: false,
+      LocalToData: false,
+      Error: null
+    });
+  }
 }
 
 FabricService.prototype.getAgentDelegateFromPath = function () {
@@ -314,7 +340,7 @@ FabricService.prototype.generateCallDataType = function () {
   compType.setFieldType("Finished", ObjectType.PRIMITIVE_TYPE.BOOLEAN);
   compType.setFieldType("LocalToData", ObjectType.PRIMITIVE_TYPE.BOOLEAN);
   compType.setFieldType("Error", new ComplexObjectType({})); // FIXME: is actually nullable string
-  compType.setFieldType("Parameters", new ObjectArrayType());
+  compType.setFieldType("Parameters", new ComplexObjectType({}));
 
   return compType;
 }
