@@ -1,12 +1,12 @@
-const uuid = require('uuid');
-const IgniteClient = require('apache-ignite-client');
-const FabricService = require('../service/FabricService');
+const uuid = require("uuid");
+const FabricService = require("../service/FabricService");
+const Stream = require("../model/Stream");
 
-const Agent = require('./Agent');
-const Serializer = require('../service/Serializer');
+const Agent = require("./Agent");
+const Serializer = require("../service/Serializer");
 
 // TODO: Fill up some missing Context methods.
-function Context (instance, fabric, state, ignite) {
+function Context(instance, fabric, state, ignite) {
   this.ignite = ignite;
   this.instance = instance;
   this.serializer = new Serializer();
@@ -20,11 +20,11 @@ function Context (instance, fabric, state, ignite) {
   );
 }
 
-Context.prototype.generateName = function (basename = null) {
-  return basename + '-' + uuid.v4();
+Context.prototype.generateName = function(basename = null) {
+  return basename + "-" + uuid.v4();
 };
 
-Context.prototype.startAgent = async function (delegateName, parameters) {
+Context.prototype.startAgent = async function(delegateName, parameters) {
   const agentDelegate = delegateName;
   const callDelegate = delegateName;
 
@@ -35,13 +35,41 @@ Context.prototype.startAgent = async function (delegateName, parameters) {
   return [agent, result];
 };
 
-Context.prototype.call = async function call (
+Context.prototype.createStream = async function call(
+  streamName,
+  delegateType,
+  delegateName,
+  parameters,
+  type,
+  flags
+) {
+  const streamsCache = await this.ignite.getOrCreateCache("streams");
+  const compType = Stream.generateStreamDataType();
+  streamsCache.setValueType(compType);
+
+  const streamData = {
+    // Agent: this.fabric.agentDelegate,
+    AgentDelegate: this.fabric.agentDelegate,
+    Delegate: delegateName,
+    DelegateType: delegateType, // delegatetype=(entity_id("StreamDelegateType"), delegate_type.value)
+    Parameters: parameters, // parameters=ParameterData(parameters=(1, parameters)),
+    Listeners: [],
+    IndexType: null, // (PerperTypeUtils.get_java_type_name(type_) or type_.name),
+    IndexFields: null, // (PerperTypeUtils.get_java_type_name(type_) or type_.name) if ((flags and StreamFlags.query) != 0 and type_ != None) else None
+    Ephemeral: false // (flags and StreamFlags.ephemeral) != 0
+  };
+
+  await streamsCache.put(streamName, streamData);
+  console.log("Stream name: " + streamName);
+};
+
+Context.prototype.call = async function call(
   agentName,
   agentDelegate,
   callDelegate,
   parameters
 ) {
-  const callsCache = await this.ignite.getOrCreateCache('calls');
+  const callsCache = await this.ignite.getOrCreateCache("calls");
   const callName = this.generateName(callDelegate);
 
   const compType = FabricService.generateCallDataType();
@@ -51,17 +79,17 @@ Context.prototype.call = async function call (
     Agent: agentName,
     AgentDelegate: agentDelegate,
     Delegate: callDelegate,
-    CallerAgentDelegate: this.fabric.agentDelegate || '',
+    CallerAgentDelegate: this.fabric.agentDelegate || "",
     Caller: this.instance.instanceName,
     Finished: false,
     LocalToData: true,
-    Error: '',
+    Error: "",
     Parameters: parameters // Be careful of what type the Parameters are.
   };
 
   await callsCache.put(callName, callData);
 
-  console.log('Call name: ' + callName);
+  console.log("Call name: " + callName);
   const notification = await this.fabric.getCallNotification(callName);
   await this.fabric.consumeNotification(notification[0]);
 
@@ -69,7 +97,7 @@ Context.prototype.call = async function call (
     const call = await callsCache.getAndRemove(notification[1]);
     return call;
   } catch (e) {
-    console.log('Exception in call to ' + callDelegate + ':');
+    console.log("Exception in call to " + callDelegate + ":");
     console.error(e);
   }
 };
