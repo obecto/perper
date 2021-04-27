@@ -20,6 +20,7 @@ async function perper(functions = {}) {
     if (notification[1] && notification[1].delegate && notification[1].call) {
       const cache = await igniteClient.getOrCreateCache("calls");
       const callDataType = fs.generateCallDataType();
+      callDataType.setFieldType("Parameters", new ObjectArrayType());
 
       cache.setValueType(callDataType);
 
