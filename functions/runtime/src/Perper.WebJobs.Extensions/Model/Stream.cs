@@ -202,9 +202,14 @@ namespace Perper.WebJobs.Extensions.Model
                 var streamsCache = _stream._ignite.GetCache<string, StreamData>("streams");
                 var currentValue = await streamsCache.GetAsync(_stream.StreamName);
 
-                currentValue.Listeners.RemoveAt(currentValue.Listeners.FindIndex(listener =>
+                var listenerIndex = currentValue.Listeners.FindIndex(listener =>
                     listener.Stream == _stream._instance.InstanceName && listener.Parameter == _stream._parameterIndex
-                ));
+                );
+
+                if (listenerIndex >= 0 && listenerIndex < currentValue.Listeners.Count)
+                {
+                    currentValue.Listeners.RemoveAt(listenerIndex);
+                }
 
                 await streamsCache.PutAsync(_stream.StreamName, currentValue);
             }
