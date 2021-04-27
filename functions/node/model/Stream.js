@@ -74,22 +74,22 @@ Stream.prototype.query = async function (query, callback = null) {
 Stream.getStreamListenerConfig = function () {
   const listenerTypes = new ComplexObjectType(
     {
-      agentdelegate: this.stream.fabric.agentDelegate,
-      stream: this.stream.streamName,
-      parameter: 0,
-      filter: this.filter,
-      replay: false,
-      localtodata: false
+      AgentDelegate: this.stream.fabric.agentDelegate,
+      Stream: this.stream.streamName,
+      Parameter: 0,
+      Filter: this.filter,
+      Replay: false,
+      LocalToData: false
     },
     'StreamListener'
   );
 
-  listenerTypes.setFieldType('agentdelegate', ObjectType.PRIMITIVE_TYPE.STRING);
-  listenerTypes.setFieldType('stream', ObjectType.PRIMITIVE_TYPE.STRING);
-  listenerTypes.setFieldType('parameter', ObjectType.PRIMITIVE_TYPE.INTEGER);
-  listenerTypes.setFieldType('filter', new MapObjectType());
-  listenerTypes.setFieldType('replay', ObjectType.PRIMITIVE_TYPE.BOOLEAN);
-  listenerTypes.setFieldType('localtodata', ObjectType.PRIMITIVE_TYPE.BOOLEAN);
+  listenerTypes.setFieldType('AgentDelegate', ObjectType.PRIMITIVE_TYPE.STRING);
+  listenerTypes.setFieldType('Stream', ObjectType.PRIMITIVE_TYPE.STRING);
+  listenerTypes.setFieldType('Parameter', ObjectType.PRIMITIVE_TYPE.INTEGER);
+  listenerTypes.setFieldType('Filter', new MapObjectType());
+  listenerTypes.setFieldType('Replay', ObjectType.PRIMITIVE_TYPE.BOOLEAN);
+  listenerTypes.setFieldType('LocalToData', ObjectType.PRIMITIVE_TYPE.BOOLEAN);
 
   const compType = new ComplexObjectType(
     {
