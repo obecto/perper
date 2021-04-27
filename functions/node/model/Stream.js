@@ -93,7 +93,7 @@ Stream.getStreamListenerConfig = function () {
 
   const compType = new ComplexObjectType(
     {
-      Agent: '',
+      // Agent: '',
       AgentDelegate: '',
       Delegate: '',
       DelegateType: new EnumItem(-738053697),
@@ -106,7 +106,7 @@ Stream.getStreamListenerConfig = function () {
     'StreamData'
   );
 
-  compType.setFieldType('Agent', ObjectType.PRIMITIVE_TYPE.STRING);
+  // compType.setFieldType('Agent', ObjectType.PRIMITIVE_TYPE.STRING);
   compType.setFieldType('AgentDelegate', ObjectType.PRIMITIVE_TYPE.STRING);
   compType.setFieldType('Delegate', ObjectType.PRIMITIVE_TYPE.STRING);
   compType.setFieldType('DelegateType', ObjectType.PRIMITIVE_TYPE.ENUM);
