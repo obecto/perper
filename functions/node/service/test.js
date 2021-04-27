@@ -13,7 +13,7 @@ async function test (streamNotifications) {
   const callsCache = await igniteClient.getOrCreateCache('calls');
   const callName = 'TestStream--UUID';
 
-  const compType = fs.generateCallDataType();
+  const compType = FabricService.generateCallDataType();
   callsCache.setValueType(compType);
 
   if (streamNotifications) {

@@ -24,7 +24,7 @@ async function perper(functions = {}) {
   fs.getNotifications(async notification => {
     if (notification[1] && notification[1].delegate && notification[1].call) {
       const cache = await igniteClient.getOrCreateCache("calls");
-      const callDataType = fs.generateCallDataType();
+      const callDataType = FabricService.generateCallDataType();
       callDataType.setFieldType("Parameters", new ObjectArrayType());
 
       cache.setValueType(callDataType);

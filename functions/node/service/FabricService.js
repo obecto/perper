@@ -146,7 +146,7 @@ FabricService.prototype.startInitialAgent = async function () {
     const callName = callDelegate + "-$launchCall";
        
     const callsCache = await this.ignite.getOrCreateCache('calls');
-    const compType = this.generateCallDataType();
+    const compType = FabricService.generateCallDataType();
     callsCache.setValueType(compType);
 
     await callsCache.put(callName, {
@@ -313,7 +313,7 @@ FabricService.prototype.getCallNotification = function (call) {
   });
 };
 
-FabricService.prototype.generateCallDataType = function () {
+FabricService.generateCallDataType = function () {
   const compType = new ComplexObjectType(
     {
       Agent: "",

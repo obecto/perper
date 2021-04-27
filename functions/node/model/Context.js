@@ -1,7 +1,6 @@
 const uuid = require('uuid');
 const IgniteClient = require('apache-ignite-client');
-const ComplexObjectType = IgniteClient.ComplexObjectType;
-const ObjectType = IgniteClient.ObjectType;
+const FabricService = require('../service/FabricService');
 
 const Agent = require('./Agent');
 const Serializer = require('../service/Serializer');
@@ -45,7 +44,7 @@ Context.prototype.call = async function call (
   const callsCache = await this.ignite.getOrCreateCache('calls');
   const callName = this.generateName(callDelegate);
 
-  const compType = this.fabric.generateCallDataType();
+  const compType = FabricService.generateCallDataType();
   callsCache.setValueType(compType);
 
   const callData = {
@@ -57,7 +56,7 @@ Context.prototype.call = async function call (
     Finished: false,
     LocalToData: true,
     Error: '',
-    Parameters: parameters // TODO: Chcek what's this number.
+    Parameters: parameters // Be careful of what type the Parameters are.
   };
 
   await callsCache.put(callName, callData);
