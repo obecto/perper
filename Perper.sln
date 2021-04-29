@@ -41,7 +41,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E8B2046D-1D1
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{2724D8E7-2306-4DDD-9ECF-36504B7F9A7B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleAgent.UnitTests", "samples\simple-agent\tests\SimpleAgent.UnitTests\SimpleAgent.UnitTests.csproj", "{A4FAE3F8-8FF9-4629-BE97-2E238D507F77}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SimpleAgent.UnitTests", "samples\simple-agent\tests\SimpleAgent.UnitTests\SimpleAgent.UnitTests.csproj", "{A4FAE3F8-8FF9-4629-BE97-2E238D507F77}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{D217CB78-0DD0-4F8B-8ACD-2383C1575585}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
