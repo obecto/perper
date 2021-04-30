@@ -20,7 +20,7 @@ async function main() {
     }
   });
 
-  var generatorStream = context.streamFunction("generator", 20);
+  var generatorStream = context.streamFunction("generator", [20]);
   // var processorStream = context.streamFunction(
   //   "processor",
   //   generatorStream,

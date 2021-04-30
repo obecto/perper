@@ -1,3 +1,5 @@
+const IgniteClient = require('apache-ignite-client');
+
 const uuid = require('uuid');
 const Agent = require('./Agent');
 const FabricService = require('../service/FabricService');
@@ -61,6 +63,7 @@ Context.prototype.createStream = async function call (
 ) {
   const streamsCache = await this.ignite.getOrCreateCache('streams');
   const compType = Stream.generateStreamDataType();
+  compType.setFieldType("Parameters", new IgniteClient.ObjectArrayType());
   streamsCache.setValueType(compType);
 
   // TODO: Implemnt flags.
