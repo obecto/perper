@@ -9,6 +9,8 @@ async function test (streamNotifications) {
     new IgniteClientConfiguration(config.fabric_host + ':10800')
   );
 
+  process.env.PERPER_ROOT_AGENT = "Application2";
+  process.env.PERPER_AGENT_NAME = "Application2";
   const fs = new FabricService(igniteClient, config);
   const callsCache = await igniteClient.getOrCreateCache('calls');
   const callName = 'TestStream--UUID';
@@ -17,7 +19,10 @@ async function test (streamNotifications) {
   callsCache.setValueType(compType);
 
   if (streamNotifications) {
-    fs.getNotifications(console.log);
+    const asyncGenerator = fs.getNotifications(console.log);
+    for await (let notification of asyncGenerator) {
+      console.log(notification);
+    }
   } else {
     await callsCache.put(callName, {
       Agent: 'Application2',
@@ -26,6 +31,7 @@ async function test (streamNotifications) {
       CallerAgentDelegate: fs.agentDelegate,
       Caller: 'test_instance',
       Finished: true,
+      Parameters: null,
       LocalToData: true,
       Error: ''
     });

@@ -169,7 +169,6 @@ StreamEnumerable.prototype.addListener = async function () {
     localtodata: this.localToData
   };
 
-  console.log(Stream);
   streamCache.setValueType(Stream.generateStreamDataType());
   const currentValue = await streamCache.get(this.stream.streamName);
   currentValue.Listeners.push(streamListener);
