@@ -1,5 +1,7 @@
 const uuid = require('uuid');
 const FabricService = require('../service/FabricService');
+const IgniteClient = require('apache-ignite-client');
+const EnumItem = IgniteClient.EnumItem;
 const Stream = require('../model/Stream');
 
 const Agent = require('./Agent');
@@ -36,9 +38,9 @@ Context.prototype.startAgent = async function (delegateName, parameters) {
 };
 
 StreamDelegateType = {
-  function: 0,
-  action: 1,
-  external: 2
+  function: new EnumItem(0),
+  action: new EnumItem(1),
+  external: new EnumItem(2)
 }
 
 Context.prototype.streamFunction = function (

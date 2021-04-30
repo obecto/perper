@@ -2,7 +2,6 @@ const StreamEnumerable = require('./StreamEnumerable');
 const FilterUtils = require('./FilterUtils');
 const IgniteClient = require('apache-ignite-client');
 const ScanQuery = IgniteClient.ScanQuery;
-
 const ObjectType = IgniteClient.ObjectType;
 const ComplexObjectType = IgniteClient.ComplexObjectType;
 const CollectionObjectType = IgniteClient.CollectionObjectType;
@@ -77,13 +76,13 @@ Stream.prototype.query = async function (query, callback = null) {
   }
 };
 
-Stream.getStreamListenerConfig = function () {
+Stream.generateStreamDataType = function () {
   const listenerTypes = new ComplexObjectType(
     {
-      AgentDelegate: this.stream.fabric.agentDelegate,
-      Stream: this.stream.streamName,
-      Parameter: 0,
-      Filter: this.filter,
+      AgentDelegate: "",
+      Stream: "",
+      Parameter: null,
+      Filter: null,
       Replay: false,
       LocalToData: false
     },

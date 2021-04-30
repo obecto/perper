@@ -17,11 +17,6 @@ async function perper (functions = {}) {
     new IgniteClientConfiguration(config.fabric_host + ':10800')
   );
 
-  /// TEST ///
-  process.env.PERPER_ROOT_AGENT = 'generator';
-  process.env.PERPER_AGENT_NAME = 'generator';
-  /// TEST ///
-
   const fs = new FabricService(igniteClient, config);
   const serializer = new Serializer();
   const perperInstance = new PerperInstanceData(igniteClient, serializer);

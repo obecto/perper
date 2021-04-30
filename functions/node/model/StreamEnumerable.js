@@ -42,7 +42,7 @@ StreamEnumerable.prototype.addListener = async function () {
     localtodata: this.localToData
   };
 
-  streamCache.setValueType(Stream.getStreamListenerConfig());
+  streamCache.setValueType(Stream.generateStreamDataType());
   const currentValue = await streamCache.get(this.stream.streamName);
   currentValue.Listeners.push(streamListener);
   currentValue.Parameters = null;
@@ -51,7 +51,7 @@ StreamEnumerable.prototype.addListener = async function () {
 
 StreamEnumerable.prototype.removeListener = async function () {
   const streamCache = await this.stream.ignite.getOrCreateCache('streams');
-  streamCache.setValueType(Stream.getStreamListenerConfig());
+  streamCache.setValueType(Stream.generateStreamDataType());
   const currentValue = await streamCache.get(this.stream.streamName);
 
   if (currentValue.Listeners) {
