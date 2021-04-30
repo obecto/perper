@@ -1,11 +1,8 @@
 const uuid = require('uuid');
-const FabricService = require('../service/FabricService');
-const IgniteClient = require('apache-ignite-client');
-const EnumItem = IgniteClient.EnumItem;
-const Stream = require('../model/Stream');
-
 const Agent = require('./Agent');
-const Serializer = require('../service/Serializer');
+const FabricService = require('../service/FabricService');
+const Stream = require('../model/Stream');
+const createEnumItem = require('../utils/createEnumItem');
 
 // TODO: Fill up some missing Context methods.
 function Context (instance, fabric, state, ignite, serializer) {
@@ -38,9 +35,9 @@ Context.prototype.startAgent = async function (delegateName, parameters) {
 };
 
 StreamDelegateType = {
-  function: new EnumItem(0),
-  action: new EnumItem(1),
-  external: new EnumItem(2)
+  function: createEnumItem('streamdelegatetype', 0),
+  action: createEnumItem('streamdelegatetype', 1),
+  external: createEnumItem('streamdelegatetype', 2)
 }
 
 Context.prototype.streamFunction = function (

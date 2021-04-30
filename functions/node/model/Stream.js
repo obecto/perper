@@ -5,7 +5,6 @@ const ObjectType = IgniteClient.ObjectType;
 const ComplexObjectType = IgniteClient.ComplexObjectType;
 const CollectionObjectType = IgniteClient.CollectionObjectType;
 const MapObjectType = IgniteClient.MapObjectType;
-const EnumItem = IgniteClient.EnumItem;
 
 function Stream () {}
 
@@ -100,7 +99,7 @@ Stream.generateStreamDataType = function () {
       // Agent: '',
       AgentDelegate: '',
       Delegate: '',
-      DelegateType: new EnumItem(-738053697),
+      DelegateType: null, //new EnumItem(-738053697)
       Parameters: null,
       Listeners: [],
       IndexType: null,
