@@ -146,12 +146,13 @@ FabricService.prototype.startInitialAgent = async function () {
 
     const callsCache = await this.ignite.getOrCreateCache('calls');
     const compType = FabricService.generateCallDataType();
+    compType.setFieldType("Parameters", new IgniteClient.ObjectArrayType()); /// TEST
     callsCache.setValueType(compType);
 
     await callsCache.put(callName, {
       Agent: agentName,
       AgentDelegate: this.agentDelegate,
-      Parameters: null,
+      Parameters: [1],
       Delegate: callDelegate,
       CallerAgentDelegate: '',
       Caller: '',

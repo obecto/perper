@@ -6,10 +6,10 @@ const Agent = require('./Agent');
 const Serializer = require('../service/Serializer');
 
 // TODO: Fill up some missing Context methods.
-function Context (instance, fabric, state, ignite) {
+function Context (instance, fabric, state, ignite, serializer) {
   this.ignite = ignite;
   this.instance = instance;
-  this.serializer = new Serializer();
+  this.serializer = serializer;
   this.fabric = fabric;
   this.state = state;
   this.agent = new Agent(

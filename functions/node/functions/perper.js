@@ -7,6 +7,8 @@ const ObjectArrayType = IgniteClient.ObjectArrayType;
 const Serializer = require('../service/Serializer');
 const PerperInstanceData = require('../cache/PerperInstanceData');
 const FabricService = require('../service/FabricService');
+const State = require('../model/State');
+const Context = require('../model/Context');
 
 async function perper (functions = {}) {
   const config = { fabric_host: '127.0.0.1' };
@@ -16,11 +18,16 @@ async function perper (functions = {}) {
   );
 
   /// TEST ///
-  process.env.PERPER_ROOT_AGENT = 'PerperFunction';
-  process.env.PERPER_AGENT_NAME = 'PerperFunction';
+  process.env.PERPER_ROOT_AGENT = 'generator';
+  process.env.PERPER_AGENT_NAME = 'generator';
   /// TEST ///
 
   const fs = new FabricService(igniteClient, config);
+  const serializer = new Serializer();
+  const perperInstance = new PerperInstanceData(igniteClient, serializer);
+  const state = new State(perperInstance, igniteClient, serializer);
+  const context = new Context(perperInstance, fs, state, igniteClient, serializer);
+
   fs.getNotifications(async notification => {
     if (notification[1] && notification[1].delegate && notification[1].call) {
       const cache = await igniteClient.getOrCreateCache('calls');
@@ -31,11 +38,6 @@ async function perper (functions = {}) {
 
       const callData = await cache.get(notification[1].call);
       if (functions[callData.Delegate]) {
-        const perperInstance = new PerperInstanceData(
-          igniteClient,
-          new Serializer()
-        );
-
         const parameters = await perperInstance.setTriggerValue(
           callData,
           functions[callData.Delegate].parameters,
@@ -65,6 +67,8 @@ async function perper (functions = {}) {
       fs.consumeNotification(notification, false /* log */);
     }
   });
+
+  return context;
 }
 
 module.exports = perper;

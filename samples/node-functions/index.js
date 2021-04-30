@@ -4,7 +4,7 @@ const generator = require("./generator/index");
 const processor = require("./processor/index");
 const consumer = require("./consumer/index");
 
-perper({
+const context = perper({
   generator: {
     parameters: [Number],
     action: generator
@@ -19,11 +19,11 @@ perper({
   }
 });
 
-// var generatorStream = perper.context.streamFunction("generator", 20);
-// var processorStream = perper.context.streamFunction(
+// var generatorStream = context.streamFunction("generator", 20);
+// var processorStream = context.streamFunction(
 //   "processor",
 //   generatorStream,
 //   10
 // );
 
-// perper.context.streamAction("consumer", processorStream);
+// context.streamAction("consumer", processorStream);
