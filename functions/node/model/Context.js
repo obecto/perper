@@ -42,6 +42,16 @@ StreamDelegateType = {
   external: createEnumItem('streamdelegatetype', 2)
 }
 
+Context.prototype.streamAction = async function (
+  actionName,
+  parameters,
+  flags
+) {
+  const streamName = this.generateName(actionName);
+  await this.createStream(streamName, StreamDelegateType.action, actionName, parameters, null, flags);
+  return new Stream(streamName, this.fabric, this.ignite);
+}
+
 Context.prototype.streamFunction = async function (
   functionName,
   parameters,
