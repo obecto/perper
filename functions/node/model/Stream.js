@@ -6,7 +6,9 @@ const ComplexObjectType = IgniteClient.ComplexObjectType;
 const CollectionObjectType = IgniteClient.CollectionObjectType;
 const MapObjectType = IgniteClient.MapObjectType;
 
-function Stream () {}
+function Stream (a, b, c) {
+  this.setParameters(a, b, c);
+}
 
 Stream.prototype.setParameters = function (streamName, ignite, fabric) {
   this.fabric = fabric;

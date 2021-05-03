@@ -20,13 +20,13 @@ async function main() {
     }
   });
 
-  var generatorStream = context.streamFunction("generator", [20]);
-  // var processorStream = context.streamFunction(
-  //   "processor",
-  //   generatorStream,
-  //   10
-  // );
+  var generatorStream = await context.streamFunction("generator", [20]);
+  var processorStream = await context.streamFunction(
+    "processor",
+    [ generatorStream, 10 ]
+  );
 
+  console.log(generatorStream);
   // context.streamAction("consumer", processorStream);
 }
 
