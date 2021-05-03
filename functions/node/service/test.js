@@ -2,6 +2,12 @@ const IgniteClient = require('apache-ignite-client');
 const IgniteClientConfiguration = IgniteClient.IgniteClientConfiguration;
 const FabricService = require('./FabricService');
 
+async function listenNotifications (asyncGenerator) {
+  for await (let notification of asyncGenerator) {
+    console.log(notification);
+  }
+}
+
 async function test (streamNotifications) {
   const config = { fabric_host: '127.0.0.1' };
   const igniteClient = new IgniteClient();
@@ -20,9 +26,7 @@ async function test (streamNotifications) {
 
   if (streamNotifications) {
     const asyncGenerator = fs.getNotifications(console.log);
-    for await (let notification of asyncGenerator) {
-      console.log(notification);
-    }
+    listenNotifications(asyncGenerator);
   } else {
     await callsCache.put(callName, {
       Agent: 'Application2',

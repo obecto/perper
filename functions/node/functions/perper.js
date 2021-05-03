@@ -10,31 +10,12 @@ const FabricService = require("../service/FabricService");
 const State = require("../model/State");
 const Context = require("../model/Context");
 
-async function perper(functions = {}) {
-  const config = { fabric_host: "127.0.0.1" };
-  const igniteClient = new IgniteClient();
-  await igniteClient.connect(
-    new IgniteClientConfiguration(config.fabric_host + ":10800")
-  );
-
-  const fs = new FabricService(igniteClient, config);
-  const serializer = new Serializer();
-  const perperInstance = new PerperInstanceData(igniteClient, serializer);
-  const state = new State(perperInstance, igniteClient, serializer);
-  const context = new Context(
-    perperInstance,
-    fs,
-    state,
-    igniteClient,
-    serializer
-  );
-
+async function listenNotifications (fs, igniteClient, perperInstance) {
   for await (let notification of fs.getNotifications(console.log)) {
     if (notification[1] && notification[1].delegate && notification[1].call) {
       const cache = await igniteClient.getOrCreateCache("calls");
       const callDataType = FabricService.generateCallDataType();
       callDataType.setFieldType("Parameters", new ObjectArrayType());
-
       cache.setValueType(callDataType);
 
       const callData = await cache.get(notification[1].call);
@@ -68,7 +49,28 @@ async function perper(functions = {}) {
       fs.consumeNotification(notification, false /* log */);
     }
   }
+}
 
+async function perper(functions = {}) {
+  const config = { fabric_host: "127.0.0.1" };
+  const igniteClient = new IgniteClient();
+  await igniteClient.connect(
+    new IgniteClientConfiguration(config.fabric_host + ":10800")
+  );
+
+  const fs = new FabricService(igniteClient, config);
+  const serializer = new Serializer();
+  const perperInstance = new PerperInstanceData(igniteClient, serializer);
+  const state = new State(perperInstance, igniteClient, serializer);
+  const context = new Context(
+    perperInstance,
+    fs,
+    state,
+    igniteClient,
+    serializer
+  );
+
+  listenNotifications(fs, igniteClient, perperInstance);
   return context;
 }
 
