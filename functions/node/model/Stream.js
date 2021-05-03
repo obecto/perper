@@ -150,9 +150,9 @@ StreamEnumerable.prototype.handleNotification = async function (notification, ca
 
 StreamEnumerable.prototype.run = async function (callback) {
   await this.addListener();
-  this.stream.fabric.getNotifications(notification =>
-    this.handleNotification(notification, callback)
-  );
+  // this.stream.fabric.getNotifications(notification =>
+  //   this.handleNotification(notification, callback)
+  // );
 
   if (this.stream.parameterIndex < 0) await this.removeListener();
 };
