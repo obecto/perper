@@ -138,23 +138,20 @@ function StreamEnumerable (stream, filter, localToData, replay) {
   this.replay = replay;
 }
 
-StreamEnumerable.prototype.handleNotification = async function (notification, callback) {
-  if (notification[1].cache) {
-    const cache = await this.stream.ignite.getOrCreateCache(notification[1].cache);
-    cache.setKeyType(ObjectType.PRIMITIVE_TYPE.LONG);
-    cache.setValueType(new ComplexObjectType({}));
-    const value = await cache.get(notification[1].key);
-    const serialized = this.stream.serializer.serialize(value);
-    callback.call(this, serialized);
-    await this.stream.fabric.consumeNotification(notification[0]);
-  }
-};
-
-StreamEnumerable.prototype.run = async function (callback) {
+StreamEnumerable.prototype.run = async function* () {
   await this.addListener();
-  // this.stream.fabric.getNotifications(notification =>
-  //   this.handleNotification(notification, callback)
-  // );
+
+  for await (notification of this.stream.fabric.getNotifications(console.log)) {
+    if (notification[1].cache) {
+      const cache = await this.stream.ignite.getOrCreateCache(notification[1].cache);
+      cache.setKeyType(ObjectType.PRIMITIVE_TYPE.LONG);
+      cache.setValueType(new ComplexObjectType({}));
+      const value = await cache.get(notification[1].key);
+      const serialized = this.stream.serializer.serialize(value);
+      await this.stream.fabric.consumeNotification(notification[0]);
+      yield serialized;
+    }
+  }
 
   if (this.stream.parameterIndex < 0) await this.removeListener();
 };
