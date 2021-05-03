@@ -42,15 +42,14 @@ StreamDelegateType = {
   external: createEnumItem('streamdelegatetype', 2)
 }
 
-Context.prototype.streamFunction = function (
+Context.prototype.streamFunction = async function (
   functionName,
   parameters,
   flags
 ) {
   const streamName = this.generateName(functionName);
-  this.createStream(streamName, StreamDelegateType.function, functionName, parameters, null, flags);
-
-  return new Stream(); // streamname=stream_name
+  await this.createStream(streamName, StreamDelegateType.function, functionName, parameters, null, flags);
+  return new Stream(streamName, this.fabric, this.ignite);
 }
 
 Context.prototype.createStream = async function call (
@@ -72,7 +71,7 @@ Context.prototype.createStream = async function call (
     AgentDelegate: this.fabric.agentDelegate,
     Delegate: delegateName,
     DelegateType: delegateType, // delegatetype=(entity_id("StreamDelegateType"), delegate_type.value)
-    Parameters: parameters, // parameters=ParameterData(parameters=(1, parameters)),
+    Parameters: this.serializer.serialize(parameters), // parameters=ParameterData(parameters=(1, parameters)),
     Listeners: [],
     IndexType: null, // (PerperTypeUtils.get_java_type_name(type_) or type_.name),
     IndexFields: null, // (PerperTypeUtils.get_java_type_name(type_) or type_.name) if ((flags and StreamFlags.query) != 0 and type_ != None) else None

@@ -1,6 +1,22 @@
+const Stream = require('../model/Stream');
 function Serializer () {}
 
-Serializer.prototype.serialize = function (data) {
+Serializer.prototype.serialize = function (data, log = true) {
+  if (data instanceof Array) {
+    const res = Array(data.length);
+    for (let i = 0; i < data.length; i++) {
+      res[i] = this.serialize(data[i], log);
+    }
+
+    return res;
+  }
+
+  if (data instanceof Stream) {
+    return {
+      StreamName: data.streamName,
+    }
+  }
+
   return data;
 };
 
