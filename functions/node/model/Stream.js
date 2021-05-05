@@ -1,6 +1,7 @@
 const FilterUtils = require('./FilterUtils');
 const IgniteClient = require('apache-ignite-client');
 const ScanQuery = IgniteClient.ScanQuery;
+const EnumItem = IgniteClient.EnumItem;
 const ObjectType = IgniteClient.ObjectType;
 const ComplexObjectType = IgniteClient.ComplexObjectType;
 const CollectionObjectType = IgniteClient.CollectionObjectType;
@@ -101,7 +102,7 @@ Stream.generateStreamDataType = function () {
       // Agent: '',
       AgentDelegate: '',
       Delegate: '',
-      DelegateType: null, //new EnumItem(-738053697)
+      DelegateType: new EnumItem(-738053697),
       Parameters: null,
       Listeners: [],
       IndexType: null,
@@ -159,12 +160,12 @@ StreamEnumerable.prototype.run = async function* () {
 StreamEnumerable.prototype.addListener = async function () {
   const streamCache = await this.stream.ignite.getOrCreateCache('streams');
   const streamListener = {
-    agentdelegate: this.stream.fabric.agentDelegate,
-    stream: this.stream.streamName,
-    parameter: 0,
-    filter: this.filter,
-    replay: this.replay,
-    localtodata: this.localToData
+    AgentDelegate: this.stream.fabric.agentDelegate,
+    Stream: this.stream.streamName,
+    Parameter: 0,
+    Filter: this.filter,
+    Replay: this.replay,
+    LocalToData: this.localToData
   };
 
   streamCache.setValueType(Stream.generateStreamDataType());
