@@ -9,6 +9,7 @@ const ComplexObjectType = IgniteClient.ComplexObjectType;
 const CacheConfiguration = IgniteClient.CacheConfiguration;
 const CacheKeyConfiguration = IgniteClient.CacheKeyConfiguration;
 const ObjectType = IgniteClient.ObjectType;
+const EnumItem = IgniteClient.EnumItem;
 
 // Monkey patch for Ignite hashing
 // https://issues.apache.org/jira/browse/IGNITE-14369
@@ -25,6 +26,13 @@ BinaryUtils.contentHashCode = function(buffer, startPos, endPos) {
   }
   return hash;
 };
+
+// Monkey patch empty enum values
+EnumItem.prototype._getType = async function(communicator, typeId) {
+  const type = await communicator.typeStorage.getType(typeId);
+  type._enumValues = [['streamdelegatetype', 0]];
+  return type;
+}
 
 // Monkey patch for Ignite affinity keys
 const affinityKeyFieldNames = {
