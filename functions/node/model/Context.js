@@ -59,7 +59,8 @@ Context.prototype.streamFunction = async function (
 ) {
   const streamName = this.generateName(functionName);
   await this.createStream(streamName, StreamDelegateType.function, functionName, parameters, null, flags);
-  return new Stream(streamName, this.fabric, this.ignite);
+  const stream = new Stream(streamName, this.fabric, this.ignite);
+  return stream;
 }
 
 Context.prototype.createStream = async function call (
@@ -82,7 +83,14 @@ Context.prototype.createStream = async function call (
     Delegate: delegateName,
     DelegateType: delegateType, // delegatetype=(entity_id("StreamDelegateType"), delegate_type.value)
     Parameters: this.serializer.serialize(parameters), // parameters=ParameterData(parameters=(1, parameters)),
-    Listeners: [],
+    Listeners: [{
+      AgentDelegate: this.fabric.agentDelegate,
+      Stream: streamName,
+      Parameter: 0,
+      Filter: new Map(),
+      Replay: false,
+      LocalToData: false
+    }],
     IndexType: null, // (PerperTypeUtils.get_java_type_name(type_) or type_.name),
     IndexFields: null, // (PerperTypeUtils.get_java_type_name(type_) or type_.name) if ((flags and StreamFlags.query) != 0 and type_ != None) else None
     Ephemeral: false // (flags and StreamFlags.ephemeral) != 0
