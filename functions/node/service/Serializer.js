@@ -110,6 +110,8 @@ Serializer.prototype.deserialize = function (data, type, log = true) {
     return res;
   }
 
+  if (typeof data === 'object' && type === Object) return data;
+
   if (log) {
     console.debug('Data:');
     console.debug(data);

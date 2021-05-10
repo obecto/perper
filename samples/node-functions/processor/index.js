@@ -1,4 +1,3 @@
 module.exports = function () {
-  console.log('Processor!');
-  console.log(arguments);
+  console.log('Processor! ' + JSON.stringify(arguments));
 };

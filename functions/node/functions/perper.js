@@ -17,7 +17,7 @@ async function listenNotifications (fs, igniteClient, perperInstance, functions)
     if (notification[1] && notification[1].delegate && notification[1].stream) {
       const cache = await igniteClient.getOrCreateCache("streams");
       const streamDataType = Stream.generateStreamDataType();
-      streamDataType.setFieldType("Parameters", new ObjectArrayType());
+      streamDataType.setFieldType("Parameters", new ComplexObjectType({}));
       cache.setKeyType(ObjectType.PRIMITIVE_TYPE.STRING);
       cache.setValueType(streamDataType);
       const streamData = await cache.get(notification[1].stream);
@@ -44,7 +44,7 @@ async function listenNotifications (fs, igniteClient, perperInstance, functions)
           streamDataType.setFieldType("Parameters", new ComplexObjectType({}));
           await cache.replace(notification[1].stream, streamData);
         } catch {
-          streamDataType.setFieldType("Parameters", new ComplexObjectType({}));
+          streamDataType.setFieldType("Parameters", new ObjectArrayType({}));
           await cache.replace(notification[1].stream, streamData);
         }
       }
@@ -55,7 +55,7 @@ async function listenNotifications (fs, igniteClient, perperInstance, functions)
     if (notification[1] && notification[1].delegate && notification[1].call) {
       const cache = await igniteClient.getOrCreateCache("calls");
       const callDataType = FabricService.generateCallDataType();
-      callDataType.setFieldType("Parameters", new ObjectArrayType());
+      callDataType.setFieldType("Parameters", new ObjectArrayType({}));
       cache.setValueType(callDataType);
 
       const callData = await cache.get(notification[1].call);
@@ -78,10 +78,10 @@ async function listenNotifications (fs, igniteClient, perperInstance, functions)
         callData.Finished = true;
 
         try {
-          callDataType.setFieldType("Parameters", new ObjectArrayType());
+          callDataType.setFieldType("Parameters", new ComplexObjectType({}));
           await cache.replace(notification[1].call, callData);
         } catch {
-          callDataType.setFieldType("Parameters", new ComplexObjectType({}));
+          callDataType.setFieldType("Parameters", new ObjectArrayType());
           await cache.replace(notification[1].call, callData);
         }
       }
