@@ -7,7 +7,7 @@ const consumer = require("./consumer/index");
 async function main() {
   const context = await perper({
     generator: {
-      parameters: Object,
+      parameters: [Number],
       action: generator
     },
     processor: {
@@ -20,11 +20,11 @@ async function main() {
     }
   });
 
-  var generatorStream = await context.streamFunction("generator", { 1: 20 });
-  var processorStream = await context.streamFunction(
-    "processor",
-    { 0: generatorStream, 1: 2}
-  );
+  var generatorStream = await context.streamFunction("generator", [20]);
+  // var processorStream = await context.streamFunction(
+  //   "processor",
+  //   { 0: generatorStream }
+  // );
 
   // var consumerAction = await context.streamAction("consumer", [ processorStream ]);
   // console.log(consumerAction);

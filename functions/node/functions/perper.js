@@ -17,7 +17,7 @@ async function listenNotifications (fs, igniteClient, perperInstance, functions)
     if (notification[1] && notification[1].delegate && notification[1].stream) {
       const cache = await igniteClient.getOrCreateCache("streams");
       const streamDataType = Stream.generateStreamDataType();
-      streamDataType.setFieldType("Parameters", new ComplexObjectType({}));
+      streamDataType.setFieldType("Parameters", new ObjectArrayType());
       cache.setKeyType(ObjectType.PRIMITIVE_TYPE.STRING);
       cache.setValueType(streamDataType);
       const streamData = await cache.get(notification[1].stream);
@@ -44,7 +44,7 @@ async function listenNotifications (fs, igniteClient, perperInstance, functions)
           streamDataType.setFieldType("Parameters", new ComplexObjectType({}));
           await cache.replace(notification[1].stream, streamData);
         } catch {
-          streamDataType.setFieldType("Parameters", new ObjectArrayType({}));
+          streamDataType.setFieldType("Parameters", new ObjectArrayType());
           await cache.replace(notification[1].stream, streamData);
         }
       }

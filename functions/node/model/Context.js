@@ -75,7 +75,7 @@ Context.prototype.createStream = async function call (
   parameters = this.serializer.serialize(parameters);
   const streamsCache = await this.ignite.getOrCreateCache('streams');
   const compType = Stream.generateStreamDataType();
-  compType.setFieldType("Parameters", new IgniteClient.ComplexObjectType(parameters));
+  compType.setFieldType("Parameters", new IgniteClient.ObjectArrayType());
   streamsCache.setValueType(compType);
 
   // TODO: Implemnt flags.
