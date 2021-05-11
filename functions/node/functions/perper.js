@@ -17,10 +17,21 @@ async function listenNotifications (fs, igniteClient, perperInstance, functions)
     if (notification[1] && notification[1].delegate && notification[1].stream) {
       const cache = await igniteClient.getOrCreateCache("streams");
       const streamDataType = Stream.generateStreamDataType();
-      streamDataType.setFieldType("Parameters", new ObjectArrayType());
       cache.setKeyType(ObjectType.PRIMITIVE_TYPE.STRING);
-      cache.setValueType(streamDataType);
-      const streamData = await cache.get(notification[1].stream);
+
+      let streamData = {};
+
+      try {
+        streamDataType.setFieldType("Parameters", new ObjectArrayType());
+        cache.setValueType(streamDataType);
+        streamData = await cache.get(notification[1].stream);
+        console.log(streamData); /// TEST
+        if (streamData.Parameters.some(x => x instanceof IgniteClient.BinaryObject)) throw new Error('Got non-serialized buffer.');
+      } catch {
+        streamDataType.setFieldType("Parameters", new ObjectArrayType(new ComplexObjectType({})));
+        cache.setValueType(streamDataType);
+        streamData = await cache.get(notification[1].stream);
+      }
 
       if (functions[streamData.Delegate]) {
         const parameters = await perperInstance.setTriggerValue(
@@ -55,7 +66,7 @@ async function listenNotifications (fs, igniteClient, perperInstance, functions)
     if (notification[1] && notification[1].delegate && notification[1].call) {
       const cache = await igniteClient.getOrCreateCache("calls");
       const callDataType = FabricService.generateCallDataType();
-      callDataType.setFieldType("Parameters", new ObjectArrayType({}));
+      callDataType.setFieldType("Parameters", new ObjectArrayType());
       cache.setValueType(callDataType);
 
       const callData = await cache.get(notification[1].call);

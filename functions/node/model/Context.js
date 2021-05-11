@@ -73,9 +73,17 @@ Context.prototype.createStream = async function call (
   flags
 ) {
   parameters = this.serializer.serialize(parameters);
+  const complexParameters = parameters.some(x => typeof x !== 'boolean' && typeof x !== 'string' && typeof x !== 'number');
   const streamsCache = await this.ignite.getOrCreateCache('streams');
   const compType = Stream.generateStreamDataType();
-  compType.setFieldType("Parameters", new IgniteClient.ObjectArrayType());
+  if (complexParameters) {
+    // TODO: CLEANUP
+    const parametersSubptype = new ComplexObjectType({StreamName: ''}, 'Stream');
+    parametersSubptype.setFieldType('StreamName', IgniteClient.ObjectArrayType.PRIMITIVE_TYPE.STRING);
+    compType.setFieldType("Parameters", new IgniteClient.ObjectArrayType(parametersSubptype));
+  } else {
+    compType.setFieldType("Parameters", new IgniteClient.ObjectArrayType());
+  }
   streamsCache.setValueType(compType);
 
   // TODO: Implemnt flags.
