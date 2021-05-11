@@ -10,6 +10,7 @@ const CacheConfiguration = IgniteClient.CacheConfiguration;
 const CacheKeyConfiguration = IgniteClient.CacheKeyConfiguration;
 const ObjectType = IgniteClient.ObjectType;
 const EnumItem = IgniteClient.EnumItem;
+const BinaryObject = IgniteClient.BinaryObject;
 
 // Monkey patch for Ignite hashing
 // https://issues.apache.org/jira/browse/IGNITE-14369
@@ -63,6 +64,12 @@ BinaryType.prototype._write = async function(buffer) {
     await schema._write(buffer);
   }
 };
+
+// Patch: Fix missing _maxListeners
+BinaryCommunicator.prototype._writeComplexObject = async function(buffer, object, objectType) {
+  if (object) object._maxListeners = null;
+  await this._writeBinaryObject(buffer, await BinaryObject.fromObject(object, objectType));  
+}
 
 // Patch: Support reading longs as string
 const oldReadTypedObject = BinaryCommunicator.prototype._readTypedObject;
