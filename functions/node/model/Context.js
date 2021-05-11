@@ -1,4 +1,5 @@
 const IgniteClient = require('apache-ignite-client');
+const ComplexObjectType = IgniteClient.ComplexObjectType;
 
 const uuid = require('uuid');
 const Agent = require('./Agent');
@@ -71,6 +72,7 @@ Context.prototype.createStream = async function call (
   type,
   flags
 ) {
+  parameters = this.serializer.serialize(parameters);
   const streamsCache = await this.ignite.getOrCreateCache('streams');
   const compType = Stream.generateStreamDataType();
   compType.setFieldType("Parameters", new IgniteClient.ComplexObjectType(parameters));
@@ -82,7 +84,7 @@ Context.prototype.createStream = async function call (
     AgentDelegate: this.fabric.agentDelegate,
     Delegate: delegateName,
     DelegateType: delegateType, // delegatetype=(entity_id("StreamDelegateType"), delegate_type.value)
-    Parameters: this.serializer.serialize(parameters), // parameters=ParameterData(parameters=(1, parameters)),
+    Parameters: parameters, // parameters=ParameterData(parameters=(1, parameters)),
     Listeners: [{
       AgentDelegate: this.fabric.agentDelegate,
       Stream: streamName,

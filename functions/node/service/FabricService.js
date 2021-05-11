@@ -65,11 +65,6 @@ BinaryType.prototype._write = async function(buffer) {
   }
 };
 
-// Patch: Fix missing _maxListeners
-BinaryCommunicator.prototype._writeComplexObject = async function(buffer, object, objectType) {
-  if (object) object._maxListeners = null;
-  await this._writeBinaryObject(buffer, await BinaryObject.fromObject(object, objectType));  
-}
 
 // Patch: Support reading longs as string
 const oldReadTypedObject = BinaryCommunicator.prototype._readTypedObject;

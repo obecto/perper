@@ -20,10 +20,10 @@ async function main() {
     }
   });
 
-  var generatorStream = await context.streamFunction("generator", { 0: 20 });
+  var generatorStream = await context.streamFunction("generator", { 1: 20 });
   var processorStream = await context.streamFunction(
     "processor",
-    { 0: generatorStream, 1: 10 }
+    { 0: generatorStream, 1: 2}
   );
 
   // var consumerAction = await context.streamAction("consumer", [ processorStream ]);

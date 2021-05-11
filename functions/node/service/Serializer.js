@@ -17,6 +17,15 @@ Serializer.prototype.serialize = function (data, log = true) {
     }
   }
 
+  if (typeof data === 'object') {
+    const result = {};
+    Object.keys(data).forEach(entry => {
+      result[entry] = this.serialize(data[entry]);
+    });
+
+    return result;
+  }
+
   return data;
 };
 
