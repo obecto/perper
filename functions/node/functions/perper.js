@@ -14,87 +14,50 @@ const Stream = require("../model/Stream");
 
 async function listenNotifications (fs, igniteClient, perperInstance, functions) {
   for await (let notification of fs.getNotifications(console.log)) {
-    if (notification[1] && notification[1].delegate && notification[1].stream) {
-      const cache = await igniteClient.getOrCreateCache("streams");
-      const streamDataType = Stream.generateStreamDataType();
-      cache.setKeyType(ObjectType.PRIMITIVE_TYPE.STRING);
+    if (notification[1] && notification[1].delegate) {
+      let notValue, cache, dataType;
 
-      let streamData = {};
+      if (notification[1].stream) {
+        notValue = notification[1].stream;
+        cache = await igniteClient.getOrCreateCache("streams");
+        dataType = Stream.generateStreamDataType();
+      } else {
+        notValue = notification[1].call;
+        cache = await igniteClient.getOrCreateCache("calls");
+        dataType = FabricService.generateCallDataType();
+      }
+
+      cache.setKeyType(ObjectType.PRIMITIVE_TYPE.STRING);
+      let data = {};
 
       try {
-        streamDataType.setFieldType("Parameters", new ObjectArrayType());
-        cache.setValueType(streamDataType);
-        streamData = await cache.get(notification[1].stream);
-        console.log(streamData); /// TEST
-        if (streamData.Parameters.some(x => x instanceof IgniteClient.BinaryObject)) throw new Error('Got non-serialized buffer.');
+        dataType.setFieldType("Parameters", new ObjectArrayType());
+        cache.setValueType(dataType);
+        data = await cache.get(notValue);
+        if (data.Parameters.some(x => x instanceof IgniteClient.BinaryObject)) throw new Error('Got non-serialized buffer.');
       } catch {
-        streamDataType.setFieldType("Parameters", new ObjectArrayType(new ComplexObjectType({})));
-        cache.setValueType(streamDataType);
-        streamData = await cache.get(notification[1].stream);
+        dataType.setFieldType("Parameters", new ObjectArrayType(new ComplexObjectType({})));
+        cache.setValueType(dataType);
+        data = await cache.get(notValue);
       }
 
-      if (functions[streamData.Delegate]) {
+      if (functions[data.Delegate]) {
         const parameters = await perperInstance.setTriggerValue(
-          streamData,
-          functions[streamData.Delegate].parameters,
+          data,
+          functions[data.Delegate].parameters,
           false /* log */
         );
 
         if (
           parameters instanceof Array &&
-          functions[streamData.Delegate].mapArrayToParams !== false
+          functions[data.Delegate].mapArrayToParams !== false
         ) {
-          functions[streamData.Delegate].action.apply(this, parameters);
+          functions[data.Delegate].action.apply(this, parameters);
         } else {
-          functions[streamData.Delegate].action.call(this, parameters);
+          functions[data.Delegate].action.call(this, parameters);
         }
 
-        streamData.Finished = true;
-
-        try {
-          streamDataType.setFieldType("Parameters", new ComplexObjectType({}));
-          await cache.replace(notification[1].stream, streamData);
-        } catch {
-          streamDataType.setFieldType("Parameters", new ObjectArrayType());
-          await cache.replace(notification[1].stream, streamData);
-        }
-      }
-
-      fs.consumeNotification(notification, false /* log */);
-    }
-
-    if (notification[1] && notification[1].delegate && notification[1].call) {
-      const cache = await igniteClient.getOrCreateCache("calls");
-      const callDataType = FabricService.generateCallDataType();
-      callDataType.setFieldType("Parameters", new ObjectArrayType());
-      cache.setValueType(callDataType);
-
-      const callData = await cache.get(notification[1].call);
-      if (functions[callData.Delegate]) {
-        const parameters = await perperInstance.setTriggerValue(
-          callData,
-          functions[callData.Delegate].parameters,
-          false /* log */
-        );
-
-        if (
-          parameters instanceof Array &&
-          functions[callData.Delegate].mapArrayToParams !== false
-        ) {
-          functions[callData.Delegate].action.apply(this, parameters);
-        } else {
-          functions[callData.Delegate].action.call(this, parameters);
-        }
-
-        callData.Finished = true;
-
-        try {
-          callDataType.setFieldType("Parameters", new ComplexObjectType({}));
-          await cache.replace(notification[1].call, callData);
-        } catch {
-          callDataType.setFieldType("Parameters", new ObjectArrayType());
-          await cache.replace(notification[1].call, callData);
-        }
+        data.Finished = true;
       }
 
       fs.consumeNotification(notification, false /* log */);
