@@ -6,6 +6,7 @@ const ObjectType = IgniteClient.ObjectType;
 const ComplexObjectType = IgniteClient.ComplexObjectType;
 const CollectionObjectType = IgniteClient.CollectionObjectType;
 const MapObjectType = IgniteClient.MapObjectType;
+const ObjectArrayType = IgniteClient.ObjectArrayType;
 
 function Stream (a, b, c) {
   this.setParameters(a, b, c);
@@ -116,7 +117,7 @@ Stream.generateStreamDataType = function () {
   compType.setFieldType('AgentDelegate', ObjectType.PRIMITIVE_TYPE.STRING);
   compType.setFieldType('Delegate', ObjectType.PRIMITIVE_TYPE.STRING);
   compType.setFieldType('DelegateType', ObjectType.PRIMITIVE_TYPE.ENUM);
-  compType.setFieldType('Parameters', new ComplexObjectType({}));
+  compType.setFieldType('Parameters', new ObjectArrayType());
   compType.setFieldType(
     'Listeners',
     new CollectionObjectType(
@@ -168,10 +169,20 @@ StreamEnumerable.prototype.addListener = async function () {
     LocalToData: this.localToData
   };
 
-  streamCache.setValueType(Stream.generateStreamDataType());
-  const currentValue = await streamCache.get(this.stream.streamName);
+  const dataType = Stream.generateStreamDataType();
+  let currentValue = {};
+  try {
+    dataType.setFieldType("Parameters", new ObjectArrayType());
+    streamCache.setValueType(dataType);
+    currentValue = await streamCache.get(this.stream.streamName);
+    if (currentValue.Parameters.some(x => x instanceof IgniteClient.BinaryObject)) throw new Error('Got non-serialized buffer.');
+  } catch {
+    dataType.setFieldType("Parameters", new ObjectArrayType(new ComplexObjectType({StreamName: ''}))); // TODO: Unify types
+    streamCache.setValueType(dataType);
+    currentValue = await streamCache.get(this.stream.streamName);
+  }
+
   currentValue.Listeners.push(streamListener);
-  currentValue.Parameters = null;
   await streamCache.replace(this.stream.streamName, currentValue);
 };
 

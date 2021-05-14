@@ -50,7 +50,9 @@ Context.prototype.streamAction = async function (
 ) {
   const streamName = this.generateName(actionName);
   await this.createStream(streamName, StreamDelegateType.action, actionName, parameters, null, flags);
-  return new Stream(streamName, this.fabric, this.ignite);
+  const stream = new Stream(streamName, this.ignite, this.fabric);
+  await stream.getEnumerable(new Map(), false, false).addListener();
+  return stream;
 }
 
 Context.prototype.streamFunction = async function (
@@ -60,7 +62,8 @@ Context.prototype.streamFunction = async function (
 ) {
   const streamName = this.generateName(functionName);
   await this.createStream(streamName, StreamDelegateType.function, functionName, parameters, null, flags);
-  const stream = new Stream(streamName, this.fabric, this.ignite);
+  const stream = new Stream(streamName, this.ignite, this.fabric);
+  await stream.getEnumerable(new Map(), false, false).addListener();
   return stream;
 }
 
@@ -84,6 +87,7 @@ Context.prototype.createStream = async function call (
   } else {
     compType.setFieldType("Parameters", new IgniteClient.ObjectArrayType());
   }
+
   streamsCache.setValueType(compType);
 
   // TODO: Implemnt flags.
@@ -93,14 +97,7 @@ Context.prototype.createStream = async function call (
     Delegate: delegateName,
     DelegateType: delegateType, // delegatetype=(entity_id("StreamDelegateType"), delegate_type.value)
     Parameters: parameters, // parameters=ParameterData(parameters=(1, parameters)),
-    Listeners: [{
-      AgentDelegate: this.fabric.agentDelegate,
-      Stream: streamName,
-      Parameter: 0,
-      Filter: new Map(),
-      Replay: false,
-      LocalToData: false
-    }],
+    Listeners: [],
     IndexType: null, // (PerperTypeUtils.get_java_type_name(type_) or type_.name),
     IndexFields: null, // (PerperTypeUtils.get_java_type_name(type_) or type_.name) if ((flags and StreamFlags.query) != 0 and type_ != None) else None
     Ephemeral: false // (flags and StreamFlags.ephemeral) != 0

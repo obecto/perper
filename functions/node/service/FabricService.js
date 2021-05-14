@@ -31,7 +31,7 @@ BinaryUtils.contentHashCode = function(buffer, startPos, endPos) {
 // Monkey patch empty enum values
 EnumItem.prototype._getType = async function(communicator, typeId) {
   const type = await communicator.typeStorage.getType(typeId);
-  type._enumValues = [['streamdelegatetype', 0]];
+  type._enumValues = new Array(100).fill(0).map((_, i) => ['streamdelegatetype', i]);
   return type;
 }
 
