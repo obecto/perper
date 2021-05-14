@@ -15,7 +15,7 @@ async function main() {
       action: processor
     },
     consumer: {
-      parameters: [Stream],
+      parameters: [Object],
       action: consumer
     }
   });
@@ -26,8 +26,7 @@ async function main() {
     [generatorStream]
   );
 
-  // var consumerAction = await context.streamAction("consumer", [ processorStream ]);
-  // console.log(consumerAction);
+  var consumerAction = await context.streamAction("consumer", [ processorStream ]);
 }
 
 main();
