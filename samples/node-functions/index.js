@@ -11,11 +11,11 @@ async function main() {
       action: generator
     },
     processor: {
-      parameters: [Object],
+      parameters: [Stream],
       action: processor
     },
     consumer: {
-      parameters: [Object],
+      parameters: [Stream],
       action: consumer
     }
   });

@@ -119,7 +119,10 @@ Serializer.prototype.deserialize = function (data, type, log = true) {
     return res;
   }
 
-  if (typeof data === 'object' && type === Object) return data;
+  if (typeof data === 'object') {
+    if (type === Object) return data;
+    if (type === Stream && data.StreamName) return data;
+  }
 
   if (log) {
     console.debug('Data:');
