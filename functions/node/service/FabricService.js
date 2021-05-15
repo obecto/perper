@@ -268,6 +268,13 @@ FabricService.prototype.consumeNotification = function(
   });
 };
 
+FabricService.prototype.consumeItem = async function (cacheName, itemKey, configureItemKey = null) {
+  const itemCache = await this.ignite.getCache(cacheName);
+  let incomingKey = itemKey;
+  if (configureItemKey) incomingKey = configureItemKey(itemCache, itemKey);
+  return await itemCache.getAndRemove(incomingKey);
+}
+
 /**
  * @param {Object} notificationData
  */

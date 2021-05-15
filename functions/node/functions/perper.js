@@ -52,9 +52,9 @@ async function listenNotifications (fs, igniteClient, perperInstance, functions)
           parameters instanceof Array &&
           functions[data.Delegate].mapArrayToParams !== false
         ) {
-          functions[data.Delegate].action.apply(this, parameters);
+          functions[data.Delegate].action.apply({fs: fs}, parameters);
         } else {
-          functions[data.Delegate].action.call(this, parameters);
+          functions[data.Delegate].action.call({fs: fs}, parameters);
         }
 
         data.Finished = true;
