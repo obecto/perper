@@ -81,8 +81,8 @@ Stream.prototype.query = async function (query, callback = null) {
 Stream.generateStreamDataType = function () {
   const listenerTypes = new ComplexObjectType(
     {
-      AgentDelegate: "",
-      Stream: "",
+      AgentDelegate: '',
+      Stream: '',
       Parameter: null,
       Filter: null,
       Replay: false,
@@ -132,7 +132,6 @@ Stream.generateStreamDataType = function () {
   return compType;
 };
 
-
 function StreamEnumerable (stream, filter, localToData, replay) {
   this.stream = stream;
   this.localToData = localToData;
@@ -140,10 +139,10 @@ function StreamEnumerable (stream, filter, localToData, replay) {
   this.replay = replay;
 }
 
-StreamEnumerable.prototype.run = async function* () {
+StreamEnumerable.prototype.run = async function * () {
   await this.addListener();
 
-  for await (notification of this.stream.fabric.getNotifications(console.log)) {
+  for await (const notification of this.stream.fabric.getNotifications(console.log)) {
     if (notification[1].cache) {
       const cache = await this.stream.ignite.getOrCreateCache(notification[1].cache);
       cache.setKeyType(ObjectType.PRIMITIVE_TYPE.LONG);
@@ -172,12 +171,12 @@ StreamEnumerable.prototype.addListener = async function () {
   const dataType = Stream.generateStreamDataType();
   let currentValue = {};
   try {
-    dataType.setFieldType("Parameters", new ObjectArrayType());
+    dataType.setFieldType('Parameters', new ObjectArrayType());
     streamCache.setValueType(dataType);
     currentValue = await streamCache.get(this.stream.streamName);
     if (currentValue.Parameters.some(x => x instanceof IgniteClient.BinaryObject)) throw new Error('Got non-serialized buffer.');
   } catch {
-    dataType.setFieldType("Parameters", new ObjectArrayType(new ComplexObjectType({StreamName: ''}))); // TODO: Unify types
+    dataType.setFieldType('Parameters', new ObjectArrayType(new ComplexObjectType({ StreamName: '' }))); // TODO: Unify types
     streamCache.setValueType(dataType);
     currentValue = await streamCache.get(this.stream.streamName);
   }

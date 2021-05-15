@@ -13,8 +13,8 @@ Serializer.prototype.serialize = function (data, log = true) {
 
   if (data instanceof Stream) {
     return {
-      StreamName: data.streamName,
-    }
+      StreamName: data.streamName
+    };
   }
 
   if (typeof data === 'object') {

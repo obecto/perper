@@ -37,11 +37,11 @@ Context.prototype.startAgent = async function (delegateName, parameters) {
   return [agent, result];
 };
 
-StreamDelegateType = {
+const StreamDelegateType = {
   function: createEnumItem('streamdelegatetype', 0),
   action: createEnumItem('streamdelegatetype', 1),
   external: createEnumItem('streamdelegatetype', 2)
-}
+};
 
 Context.prototype.streamAction = async function (
   actionName,
@@ -53,7 +53,7 @@ Context.prototype.streamAction = async function (
   const stream = new Stream(streamName, this.ignite, this.fabric);
   await stream.getEnumerable(new Map(), false, false).addListener();
   return stream;
-}
+};
 
 Context.prototype.streamFunction = async function (
   functionName,
@@ -65,7 +65,7 @@ Context.prototype.streamFunction = async function (
   const stream = new Stream(streamName, this.ignite, this.fabric);
   await stream.getEnumerable(new Map(), false, false).addListener();
   return stream;
-}
+};
 
 Context.prototype.createStream = async function call (
   streamName,
@@ -81,11 +81,11 @@ Context.prototype.createStream = async function call (
   const compType = Stream.generateStreamDataType();
   if (complexParameters) {
     // TODO: CLEANUP
-    const parametersSubptype = new ComplexObjectType({StreamName: ''}, 'Stream');
+    const parametersSubptype = new ComplexObjectType({ StreamName: '' }, 'Stream');
     parametersSubptype.setFieldType('StreamName', IgniteClient.ObjectArrayType.PRIMITIVE_TYPE.STRING);
-    compType.setFieldType("Parameters", new IgniteClient.ObjectArrayType(parametersSubptype));
+    compType.setFieldType('Parameters', new IgniteClient.ObjectArrayType(parametersSubptype));
   } else {
-    compType.setFieldType("Parameters", new IgniteClient.ObjectArrayType());
+    compType.setFieldType('Parameters', new IgniteClient.ObjectArrayType());
   }
 
   streamsCache.setValueType(compType);

@@ -3,7 +3,7 @@ const IgniteClientConfiguration = IgniteClient.IgniteClientConfiguration;
 const FabricService = require('./FabricService');
 
 async function listenNotifications (asyncGenerator) {
-  for await (let notification of asyncGenerator) {
+  for await (const notification of asyncGenerator) {
     console.log(notification);
   }
 }
@@ -15,8 +15,8 @@ async function test (streamNotifications) {
     new IgniteClientConfiguration(config.fabric_host + ':10800')
   );
 
-  process.env.PERPER_ROOT_AGENT = "Application2";
-  process.env.PERPER_AGENT_NAME = "Application2";
+  process.env.PERPER_ROOT_AGENT = 'Application2';
+  process.env.PERPER_AGENT_NAME = 'Application2';
   const fs = new FabricService(igniteClient, config);
   const callsCache = await igniteClient.getOrCreateCache('calls');
   const callName = 'TestStream--UUID';
