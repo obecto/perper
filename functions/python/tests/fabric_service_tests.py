@@ -11,12 +11,12 @@ from contextlib import redirect_stdout
 from io import StringIO
 
 from perper.services import FabricService, PerperConfig
+from perper.cache import CallData
 from perper.cache.notifications import StreamItemNotification, StreamTriggerNotification, \
                                        CallResultNotification, CallTriggerNotification, \
-                                       CallData, NotificationKeyString, NotificationKeyLong
+                                       NotificationKeyString, NotificationKeyLong, FabricStub
 
 from perper.utils.perper_thin_client import PerperThinClient
-from perper.cache.notifications import FabricStub
 
 
 class FabricServiceTests(unittest.TestCase):
@@ -56,3 +56,6 @@ class FabricServiceTests(unittest.TestCase):
 
         fabric.start_initial_agent.assert_called_with()
         assert fabric.is_initial_agent
+
+if __name__ == '__main__':
+    unittest.main()
