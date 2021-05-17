@@ -56,6 +56,3 @@ class FabricServiceTests(unittest.TestCase):
 
         fabric.start_initial_agent.assert_called_with()
         assert fabric.is_initial_agent
-
-if __name__ == '__main__':
-    unittest.main()
