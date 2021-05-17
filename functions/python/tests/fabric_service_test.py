@@ -1,12 +1,13 @@
-from services.fabric_service import FabricService
-from utils.perper_thin_client import PerperThinClient
-from services.perper_config import PerperConfig
 import asyncio
 import os
 import pyignite
+
+from perper.services.fabric_service import FabricService
+from perper.utils.perper_thin_client import PerperThinClient
+from perper.services.perper_config import PerperConfig
+from perper.cache import CallData
 from perper.cache.notifications import NotificationKeyLong, NotificationKeyString, StreamItemNotification, StreamTriggerNotification, \
-                                       CallResultNotification, CallTriggerNotification, \
-                                       CallData
+                                       CallResultNotification, CallTriggerNotification
 
 test_agent_delegate = "Application2"
 os.environ["PERPER_AGENT_NAME"] = test_agent_delegate
@@ -54,12 +55,13 @@ async def test_call_notification(_agent_name, _agent_delegate, _call_delegate, _
         finished = True, # Has to be set to True by the thing that computes stuff
         localtodata = True,
         error = "",
-        parameters = (1, {})
+        parameters = None
     ))
 
     print(test_agent_delegate, fs.agent_delegate, call_name)
 
     key, notification = await fs.get_call_notification(call_name)
+    print(notification)
     fs.consume_notification(key)
 
     call_result = calls_cache.get_and_remove(notification.call)
@@ -75,6 +77,7 @@ async def test_consumption():
     config = PerperConfig()
     fs = FabricService(ignite, config)
     fs.start()
+    print('Started fabric service')
 
     async for (k, n) in fs.get_notifications():
         if isinstance(n, StreamItemNotification):
@@ -87,5 +90,10 @@ async def test_consumption():
 
 
 if __name__ == "__main__":
+    # Python 3.6
+    # loop = asyncio.get_event_loop()
+    # result = loop.run_until_complete(test_call_notification("Application2", "Application2", "Application", None))
+
+    # Python 3.7+
     asyncio.run(test_consumption())
     # asyncio.run(test_call_notification("Application2", "Application2", "Application", None))
