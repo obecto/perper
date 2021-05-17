@@ -128,12 +128,12 @@ class FabricService(object):
                 _call_name,
                 CallData(
                     agent=_agent_name,
-                    agent_delegate=self.agent_delegate,
+                    agentdelegate=self.agent_delegate,
                     delegate=_call_delegate,
-                    caller_agent_delegate="",
+                    calleragentdelegate="",
                     caller="",
                     finished=False,
-                    local_to_data=False,
+                    localtodata=False,
                 ),
             )
 
