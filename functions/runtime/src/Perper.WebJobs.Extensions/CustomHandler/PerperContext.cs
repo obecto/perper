@@ -172,6 +172,18 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             return (parameters, token);
         }
 
+        public async Task SetActionCompletedAsync(string token)
+        {
+            var callsCache = _igniteClient.GetCache<string, CallData>("calls");
+
+            var callData = await callsCache.GetAsync(token);
+            callData.Finished = true;
+
+            await callsCache.ReplaceAsync(token, callData);
+
+            await _notificationsChannel.Writer.WriteAsync(token);
+        }
+
         public async Task SetCallResultAsync(string token, object result)
         {
             var callsCache = _igniteClient.GetCache<string, CallData>("calls");
