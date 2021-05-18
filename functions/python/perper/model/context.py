@@ -64,8 +64,11 @@ class Context:
             None,
             flags,
         )
-        # return Stream(stream_name, self.fabric, self.ignite, instance = self.instance, serializer = self.serializer, state = self.state)
-        return Stream(streamname=stream_name)
+
+        stream = Stream(streamname=stream_name)
+        stream.set_parameters(self.ignite, self.fabric, instance=self.instance, serializer = self.serializer, state = self.state)
+        stream.get_enumerable({}, False, False).add_listener() # TODO: Think of a better solution for the trigger listener
+        return stream
 
     def stream_action(self, action_name, parameters, flags):
         stream_name = self.generate_name(action_name)
