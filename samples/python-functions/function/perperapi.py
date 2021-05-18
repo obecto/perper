@@ -29,13 +29,12 @@ class PerperApi():
         self.context = Context(self.instance, self.fs, self.state, self.ignite)
 
 
-    async def handle_notifications(self): 
+    async def handle_notifications(self, functions): 
         async for (k, n) in self.fs.get_notifications():
-            print(n)
+            if isinstance(n, StreamTriggerNotification):
+                streams_cache = self.ignite.get_cache("streams")
+                stream_data = streams_cache.get(n.stream)
+                parameter_data = stream_data.parameters
+                functions[n.delegate](self, *parameter_data.parameters)
 
-            # if isinstance(n, StreamTriggerNotification):
-            #     cache = self.ignite.get_cache(n.cache)
-            #     item = cache.get(n.key)
-            #     print(f"Item received from [{n.cache}]: " + str(item))
-            #     self.fs.consume_notification(k)
-            pass
+            self.fs.consume_notification(k)
