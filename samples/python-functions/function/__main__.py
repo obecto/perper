@@ -1,5 +1,5 @@
 import asyncio
-from perperapi import Perper
+from perper.functions import Perper
 from perper.cache.stream_data import ParameterData
 
 def generator(perper_instance, *kwargs):
@@ -30,15 +30,15 @@ context = perper.context
 
 async def execute():
     generator_stream = context.stream_function("generator", {0: 20}, None)
-    asyncio.sleep(1000)
+    asyncio.sleep(2000)
     processor_stream = context.stream_function("processor", {0: 21, 1: generator_stream}, None)
-    asyncio.sleep(1000)
+    asyncio.sleep(2000)
     context.stream_action("consumer", {0: processor_stream}, None)
 
-# asyncio.run(execute(functions))
-# asyncio.run(perper.functions(functions))
+asyncio.run(execute())
+asyncio.run(perper.functions(functions))
 
 # Python 3.6
-loop = asyncio.get_event_loop()
-loop.run_until_complete(execute())
-loop.run_until_complete(perper.functions(functions))
+# loop = asyncio.get_event_loop()
+# loop.run_until_complete(execute())
+# loop.run_until_complete(perper.functions(functions))
