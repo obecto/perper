@@ -28,12 +28,17 @@ functions = {
 perper = Perper()
 context = perper.context
 
-generator_stream = context.stream_function("generator", {0: 20}, None)
-processor_stream = context.stream_function("processor", {0: 21, 1: generator_stream}, None)
-consumer_stream = context.stream_action("consumer", {0: processor_stream}, None)
+async def execute():
+    generator_stream = context.stream_function("generator", {0: 20}, None)
+    asyncio.sleep(1000)
+    processor_stream = context.stream_function("processor", {0: 21, 1: generator_stream}, None)
+    asyncio.sleep(1000)
+    context.stream_action("consumer", {0: processor_stream}, None)
 
+# asyncio.run(execute(functions))
 # asyncio.run(perper.functions(functions))
 
 # Python 3.6
 loop = asyncio.get_event_loop()
-context = loop.run_until_complete(perper.functions(functions))
+loop.run_until_complete(execute())
+loop.run_until_complete(perper.functions(functions))
