@@ -1,17 +1,23 @@
 import asyncio
 from perperapi import Perper
+from perper.cache.stream_data import ParameterData
 
-def generator(perperapi_instance, *kwargs):
+def generator(perper_instance, *kwargs):
     print("GENERATOR!")
 
-def processor(perperapi_instance, *kwargs):
+def processor(perper_instance, *kwargs):
     print("PROCESSOR!")
+    streams_cache = perper_instance.ignite.get_cache('streams')
+    stream_data = streams_cache.get(kwargs[1][1].streamname)
+    stream_data.parameters = ParameterData(parameters=(1, {0:kwargs[1][0]}))
+    streams_cache.put(kwargs[1][1].streamname, stream_data)
 
-def consumer(perperapi_instance, *kwargs):
+def consumer(perper_instance, *kwargs):
     print("CONSUMER!")
-    streams_cache = perperapi_instance.ignite.get_cache('streams')
+    streams_cache = perper_instance.ignite.get_cache('streams')
+    result = streams_cache.get_and_remove(kwargs[1][0].streamname)
     print("Consumed:")
-    print(streams_cache.get_and_remove(kwargs[1][0].streamname))
+    print(result)
 
 functions = {
     "generator": generator,
@@ -26,5 +32,8 @@ generator_stream = context.stream_function("generator", {0: 20}, None)
 processor_stream = context.stream_function("processor", {0: 21, 1: generator_stream}, None)
 consumer_stream = context.stream_action("consumer", {0: processor_stream}, None)
 
+# asyncio.run(perper.functions(functions))
+
+# Python 3.6
 loop = asyncio.get_event_loop()
 context = loop.run_until_complete(perper.functions(functions))
