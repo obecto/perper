@@ -13,7 +13,7 @@ from perper.cache.notifications import StreamTriggerNotification
 
 
 # TODO: Move it under functions/python
-class PerperApi():
+class Perper():
     def __init__(self):
         serializer = Serializer()
         self.ignite = PerperThinClient()
@@ -29,12 +29,13 @@ class PerperApi():
         self.context = Context(self.instance, self.fs, self.state, self.ignite)
 
 
-    async def handle_notifications(self, functions): 
+    async def functions(self, functions): 
         async for (k, n) in self.fs.get_notifications():
             if isinstance(n, StreamTriggerNotification):
                 streams_cache = self.ignite.get_cache("streams")
                 stream_data = streams_cache.get(n.stream)
                 parameter_data = stream_data.parameters
-                functions[n.delegate](self, *parameter_data.parameters)
+                if n.delegate in functions:
+                    functions[n.delegate](self, *parameter_data.parameters)
 
             self.fs.consume_notification(k)
