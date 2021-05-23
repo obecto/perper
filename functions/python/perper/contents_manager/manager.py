@@ -287,16 +287,16 @@ class PerperManager(FileManagerMixin, ContentsManager):
             
         return model
 
-    async def afun(self):
+    async def afun(self, content):
         for x in range(5):
             await asyncio.sleep(1)
-            print('Hello World!')
+            print(content)
 
-    def fire_and_forget(self, loop):
+    def fire_and_forget(self, loop, content):
         if not self.is_running:
             self.is_running = True
             asyncio.set_event_loop(loop)
-            loop.run_until_complete(self.afun())
+            loop.run_until_complete(self.afun(content))
             self.is_running = False
             print('Async function finished!')
         else:
@@ -339,11 +339,6 @@ class PerperManager(FileManagerMixin, ContentsManager):
     def save(self, model, path=''):
         path = path.strip('/')
 
-        if path == 'stream.perper':
-            # PYTHON 3.6:
-            loop = asyncio.new_event_loop()
-            thread = threading.Thread(target=self.fire_and_forget, args=(loop,))
-            thread.start()
 
         if 'type' not in model:
             raise web.HTTPError(400, u'No file type provided')
@@ -357,6 +352,7 @@ class PerperManager(FileManagerMixin, ContentsManager):
 
         try:
             if model['type'] == 'notebook':
+                print('NOTEBOOK') # TODO: Custom handling
                 nb = nbformat.from_dict(model['content'])
                 self.check_and_sign(nb, path)
                 self._save_notebook(os_path, nb)
@@ -364,6 +360,11 @@ class PerperManager(FileManagerMixin, ContentsManager):
                 if not self.checkpoints.list_checkpoints(path):
                     self.create_checkpoint(path)
             elif model['type'] == 'file':
+                if model['path'][-5:] == '.json':
+                    loop = asyncio.new_event_loop()
+                    thread = threading.Thread(target=self.fire_and_forget, args=(loop,model['content']))
+                    thread.start()
+
                 # Missing format will be handled internally by _save_file.
                 self._save_file(os_path, model['content'], model.get('format'))
             elif model['type'] == 'directory':
