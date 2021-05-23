@@ -61,6 +61,7 @@ def _post_save_script(model, os_path, contents_manager, **kwargs):
 class PerperManager(FileManagerMixin, ContentsManager):
 
     root_dir = Unicode(config=True)
+    is_running = False
 
     @default('root_dir')
     def _default_root_dir(self):
@@ -292,8 +293,14 @@ class PerperManager(FileManagerMixin, ContentsManager):
             print('Hello World!')
 
     def fire_and_forget(self, loop):
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.afun())
+        if not self.is_running:
+            self.is_running = True
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self.afun())
+            self.is_running = False
+            print('Async function finished!')
+        else:
+            print('RUNNING!')
 
     def get(self, path, content=True, type=None, format=None):
         path = path.strip('/')
@@ -301,12 +308,6 @@ class PerperManager(FileManagerMixin, ContentsManager):
         if not self.exists(path):
             raise web.HTTPError(404, u'No such file or directory: %s' % path)
 
-        if content == True and path == 'stream.perper':
-            # PYTHON 3.6:
-            loop = asyncio.new_event_loop()
-            thread = threading.Thread(target=self.fire_and_forget, args=(loop,))
-            thread.start()
-            return {'name': 'stream.perper', 'path': 'stream.perper', 'last_modified': datetime(2021, 5, 22), 'created': datetime(2021, 5, 22), 'content': '[]', 'format': 'text', 'mimetype': None, 'size': 0, 'writable': True, 'type': 'file'}
 
         os_path = self._get_os_path(path)
         if os.path.isdir(os_path):
@@ -337,6 +338,12 @@ class PerperManager(FileManagerMixin, ContentsManager):
 
     def save(self, model, path=''):
         path = path.strip('/')
+
+        if path == 'stream.perper':
+            # PYTHON 3.6:
+            loop = asyncio.new_event_loop()
+            thread = threading.Thread(target=self.fire_and_forget, args=(loop,))
+            thread.start()
 
         if 'type' not in model:
             raise web.HTTPError(400, u'No file type provided')
