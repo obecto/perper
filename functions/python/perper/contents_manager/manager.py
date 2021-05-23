@@ -32,6 +32,9 @@ from notebook.transutils import _
 
 from os.path import samefile
 
+import asyncio
+import threading
+
 _script_exporter = None
 
 
@@ -283,15 +286,26 @@ class PerperManager(FileManagerMixin, ContentsManager):
             
         return model
 
+    async def afun(self):
+        for x in range(5):
+            await asyncio.sleep(1)
+            print('Hello World!')
+
+    def fire_and_forget(self, loop):
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self.afun())
+
     def get(self, path, content=True, type=None, format=None):
         path = path.strip('/')
-        print(path)
 
         if not self.exists(path):
             raise web.HTTPError(404, u'No such file or directory: %s' % path)
 
         if content == True and path == 'stream.perper':
-            print('Perper handler')
+            # PYTHON 3.6:
+            loop = asyncio.new_event_loop()
+            thread = threading.Thread(target=self.fire_and_forget, args=(loop,))
+            thread.start()
             return {'name': 'stream.perper', 'path': 'stream.perper', 'last_modified': datetime(2021, 5, 22), 'created': datetime(2021, 5, 22), 'content': '[]', 'format': 'text', 'mimetype': None, 'size': 0, 'writable': True, 'type': 'file'}
 
         os_path = self._get_os_path(path)
