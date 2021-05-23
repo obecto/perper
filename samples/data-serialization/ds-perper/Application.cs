@@ -28,25 +28,25 @@ namespace ds_perper
 
             logger.LogInformation("Started SimpleDataSerialization.Application");
 
-            string[] strs = new string[] {"True", "False", "Radi Cho"};
-            Dictionary<int, string> dict1 = new Dictionary<int, string>(){
-                {0, "True"},
-                {1, "Radi Cho"}
-            };
+            // string[] strs = new string[] {"True", "False", "Radi Cho"};
+            // Dictionary<int, string> dict1 = new Dictionary<int, string>(){
+            //     {0, "True"},
+            //     {1, "Radi Cho"}
+            // };
             
-            object[] obj1 = new object[] {"True", false, (double) 5.9, "8.2", 8, dict1, dict1, strs};
-            object[] obj2 = new object[] {"A", "B", "C"};
-            (string, string, int) objtup = ("1", "2", 3);
+            // object[] obj1 = new object[] {"True", false, (double) 5.9, "8.2", 8, dict1, dict1, strs};
+            // object[] obj2 = new object[] {"A", "B", "C"};
+            // (string, string, int) objtup = ("1", "2", 3);
 
-            var agent = await context.StartAgentAsync<object>("PerperFunction", obj1);
-            agent.Item1.CallFunctionAsync<object>("PerperFunction2", obj2);
-            agent.Item1.CallFunctionAsync<object>("PerperFunction2", objtup);
+            // var agent = await context.StartAgentAsync<object>("PerperFunction", obj1);
+            // agent.Item1.CallFunctionAsync<object>("PerperFunction2", obj2);
+            // agent.Item1.CallFunctionAsync<object>("PerperFunction2", objtup);
 
-            // var (testStream, testStreamName) = await context.CreateBlankStreamAsync<dynamic>();
-            // logger.LogInformation("Stream name: {0}", testStreamName);
-            // int count = 5000;
+            var (testStream, testStreamName) = await context.CreateBlankStreamAsync<dynamic>();
+            logger.LogInformation("Stream name: {0}", testStreamName);
+            int count = 5000;
 
-            // await context.CallActionAsync("BlankGenerator", (testStreamName, count));
+            await context.CallActionAsync("BlankGenerator", (testStreamName, count));
 
             // The following is an option for creating a custom stream with a separate definition
 
@@ -64,13 +64,12 @@ namespace ds_perper
 
         [FunctionName("BlankGenerator")]
         public static async Task BlankGenerator(
-            [PerperTrigger] object? input,
-            [Perper(Stream="-7286c2c7-bd1d-47c2-b92a-f5b7e99ba9a9")] IAsyncCollector<dynamic> output,
-            // [PerperTrigger(ParameterExpression = "{\"stream\":0}")] (string _, int to) parameters,
-            // [Perper] IAsyncCollector<dynamic> output,
+            // [PerperTrigger] object? input,
+            // [Perper(Stream="-7286c2c7-bd1d-47c2-b92a-f5b7e99ba9a9")] IAsyncCollector<dynamic> output,
+            [PerperTrigger(ParameterExpression = "{\"stream\":0}")] (string _, int to) parameters,
+            [Perper] IAsyncCollector<dynamic> output,
             ILogger logger)
         {
-            logger.LogInformation("Input: {0}", input);
             for (var i = 0; ; i++)
             {
                 logger.LogInformation("Generating: {0}", i);
