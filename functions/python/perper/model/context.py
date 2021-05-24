@@ -66,8 +66,10 @@ class Context:
         )
 
         stream = Stream(streamname=stream_name)
+        # TODO: Think of a better solution for the trigger listener
         stream.set_parameters(self.ignite, self.fabric, instance=self.instance, serializer = self.serializer, state = self.state)
-        stream.get_enumerable({}, False, False).add_listener() # TODO: Think of a better solution for the trigger listener
+        stream.get_enumerable({}, False, False).add_listener()
+
         return stream
 
     def stream_action(self, action_name, parameters, flags):
@@ -105,11 +107,15 @@ class Context:
             flags,
         )
 
-    def create_blank_stream(self, flags=StreamFlags.default):
-        stream_name = self.generate_name()
+    def create_blank_stream(self, flags=StreamFlags.default, basename=None):
+        stream_name = self.generate_name(basename=basename)
         self.create_stream(
             stream_name, StreamDelegateType.external, "", {}, None, flags
         )
+
+        stream = Stream(streamname=stream_name)
+        stream.set_parameters(self.ignite, self.fabric, instance=self.instance, serializer = self.serializer, state = self.state)
+        return stream
 
     def create_stream(
         self, stream_name, delegate_type, delegate_name, parameters, type_, flags
