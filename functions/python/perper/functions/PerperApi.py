@@ -14,8 +14,6 @@ import json
 import asyncio
 import threading
 
-os.environ["PERPER_AGENT_NAME"] = "python-functions"
-
 # TODO: Move it under functions/python
 class Perper():
     def __init__(self):
@@ -38,9 +36,7 @@ class Perper():
         loop.run_until_complete(method(self, *params))
 
     async def functions(self, functions): 
-        import json
-        result = []
-
+        # TODO: Implement Call Triggers        
         async for (k, n) in self.fs.get_notifications():
             incoming_type = n.__class__.__name__
             if incoming_type == 'StreamTriggerNotification':
@@ -56,13 +52,3 @@ class Perper():
                         args=(loop, functions[n.delegate], parameter_data.parameters)
                     )
                     thread.start()
-
-            # elif incoming_type == 'StreamItemNotification':
-            #     stream_cache = self.ignite.get_cache(n.cache)
-            #     item_data = stream_cache.get(n.key)
-            #     if item_data is not None:
-            #         result.append(json.loads(item_data.json))
-            #     json_obj = json.loads(item_data.json)
-            #     print(json_obj)
-
-            self.fs.consume_notification(k)
