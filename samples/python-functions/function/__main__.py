@@ -21,7 +21,9 @@ async def blank_generator(perper_instance, *kwargs):
     print('Generating...')
     streams_cache = perper_instance.ignite.get_cache(kwargs[1][0])
     for x in range(kwargs[1][1]):
-        streams_cache.put(x, SimpleData(name='radi', priority=1, json='{ "id" : ' + str(x + 1) + ' }'))
+        data = SimpleData(name='radi', priority=1, json='{ "id" : ' + str(x + 1) + ', "price": 1234 }')
+        print(data)
+        streams_cache.put(x, data)
         await asyncio.sleep(2)
 
 # def processor(perper_instance, *kwargs):

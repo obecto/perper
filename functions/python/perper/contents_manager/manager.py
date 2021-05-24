@@ -31,12 +31,16 @@ from notebook.base.handlers import AuthenticatedFileHandler
 from notebook.transutils import _
 
 from os.path import samefile
-
-import asyncio
-import threading
-
 _script_exporter = None
 
+import json
+import asyncio
+import threading
+from perper.functions import Perper
+
+os.environ["PERPER_AGENT_NAME"] = "python-functions"
+FINAL_ID = 10
+perper = Perper()
 
 def _post_save_script(model, os_path, contents_manager, **kwargs):
     from nbconvert.exporters.script import ScriptExporter
@@ -62,6 +66,7 @@ class PerperManager(FileManagerMixin, ContentsManager):
 
     root_dir = Unicode(config=True)
     is_running = False
+    current_data = ''
 
     @default('root_dir')
     def _default_root_dir(self):
@@ -288,9 +293,23 @@ class PerperManager(FileManagerMixin, ContentsManager):
         return model
 
     async def afun(self, content):
-        for x in range(5):
-            await asyncio.sleep(1)
-            print(content)
+        result = ''
+        result = result + 'id,price\n' #TODO: UPDATE
+        async for (k, n) in perper.fs.get_notifications():
+            incoming_type = n.__class__.__name__
+            if incoming_type == 'StreamItemNotification':
+                cache = perper.ignite.get_cache(n.cache)
+                item_data = cache.get(n.key)
+                if item_data is not None:
+                    # result.append(json.loads(item_data.json))
+                    json_obj = json.loads(item_data.json)
+                    result = result + str(json_obj['id']) + ',' + str(json_obj['price']) + '\n'
+                    perper.fs.consume_notification(k)
+                    if json_obj['id'] == FINAL_ID:
+                        f = open('output.csv', 'w')
+                        f.write(result)
+                        f.close()
+                        return
 
     def fire_and_forget(self, loop, content):
         if not self.is_running:

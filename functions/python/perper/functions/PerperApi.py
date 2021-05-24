@@ -9,9 +9,12 @@ from perper.services.serializer import Serializer
 from perper.utils.perper_thin_client import PerperThinClient
 from perper.cache.notifications import StreamItemNotification, StreamTriggerNotification
 
+import os
 import json
 import asyncio
 import threading
+
+os.environ["PERPER_AGENT_NAME"] = "python-functions"
 
 # TODO: Move it under functions/python
 class Perper():
@@ -54,12 +57,12 @@ class Perper():
                     )
                     thread.start()
 
-            elif incoming_type == 'StreamItemNotification':
-                stream_cache = self.ignite.get_cache(n.cache)
-                item_data = stream_cache.get(n.key)
-                if item_data is not None:
-                    result.append(json.loads(item_data.json))
-                json_obj = json.loads(item_data.json)
-                print(json_obj)
+            # elif incoming_type == 'StreamItemNotification':
+            #     stream_cache = self.ignite.get_cache(n.cache)
+            #     item_data = stream_cache.get(n.key)
+            #     if item_data is not None:
+            #         result.append(json.loads(item_data.json))
+            #     json_obj = json.loads(item_data.json)
+            #     print(json_obj)
 
             self.fs.consume_notification(k)
