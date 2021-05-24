@@ -17,12 +17,12 @@ class SimpleData(metaclass=GenericObjectMeta, schema=OrderedDict([
     pass
 
 
-def blank_generator(perper_instance, *kwargs):
-    print(kwargs)
+async def blank_generator(perper_instance, *kwargs):
+    print('Generating...')
     streams_cache = perper_instance.ignite.get_cache(kwargs[1][0])
     for x in range(kwargs[1][1]):
-        streams_cache.put(x, SimpleData(name='radi', priority=1, json='{ "test" : 0 }'))
-        time.sleep(1)
+        streams_cache.put(x, SimpleData(name='radi', priority=1, json='{ "id" : ' + str(x + 1) + ' }'))
+        await asyncio.sleep(2)
 
 # def processor(perper_instance, *kwargs):
 #     streams_cache = perper_instance.ignite.get_cache(kwargs[1][1].streamname)
@@ -46,11 +46,7 @@ async def execute():
     # BLANK GENERATOR EXAMPLE
     stream = context.create_blank_stream(basename='generator')
     stream.get_enumerable({}, False, False).add_listener()
-    # context.agent.call_action
-
-    context.stream_action("blank_generator", {0: stream.stream_name, 1: 20}, None)
-    # generator_stream = context.call("generator", {0: stream.stream_name, 1: 20}, None)
-    # print(generator_stream)
+    context.stream_action("blank_generator", {0: stream.stream_name, 1: 10}, None)
 
 # asyncio.run(execute())
 # asyncio.run(perper.functions(functions))

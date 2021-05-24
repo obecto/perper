@@ -9,6 +9,9 @@ from perper.services.serializer import Serializer
 from perper.utils.perper_thin_client import PerperThinClient
 from perper.cache.notifications import StreamItemNotification, StreamTriggerNotification
 
+import json
+import asyncio
+import threading
 
 # TODO: Move it under functions/python
 class Perper():
@@ -27,19 +30,30 @@ class Perper():
         self.context = Context(self.instance, self.fs, self.state, self.ignite)
 
 
+    def trigger(self, loop, method, params):
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(method(self, *params))
+
     async def functions(self, functions): 
         import json
         result = []
+
         async for (k, n) in self.fs.get_notifications():
             incoming_type = n.__class__.__name__
-            print(incoming_type)
             if incoming_type == 'StreamTriggerNotification':
                 self.fs.consume_notification(k)
                 streams_cache = self.ignite.get_cache("streams")
                 stream_data = streams_cache.get(n.stream)
                 parameter_data = stream_data.parameters
+
                 if n.delegate in functions:
-                    functions[n.delegate](self, *parameter_data.parameters)
+                    loop = asyncio.new_event_loop() # TODO: Use newer asyncio
+                    thread = threading.Thread(
+                        target=self.trigger,
+                        args=(loop, functions[n.delegate], parameter_data.parameters)
+                    )
+                    thread.start()
+
             elif incoming_type == 'StreamItemNotification':
                 stream_cache = self.ignite.get_cache(n.cache)
                 item_data = stream_cache.get(n.key)
@@ -47,6 +61,5 @@ class Perper():
                     result.append(json.loads(item_data.json))
                 json_obj = json.loads(item_data.json)
                 print(json_obj)
-                pass
 
             self.fs.consume_notification(k)
