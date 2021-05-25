@@ -32,7 +32,7 @@ dotnet_sort_system_directives_first = true
 dotnet_diagnostic.CA1000.severity = error
 
 # CA1001: Types that own disposable fields should be disposable
-dotnet_diagnostic.CA1001.severity = error
+dotnet_diagnostic.CA1001.severity = suggestion
 
 # CA1002: Do not expose generic lists
 dotnet_diagnostic.CA1002.severity = error
@@ -95,7 +95,7 @@ dotnet_diagnostic.CA1034.severity = error
 dotnet_diagnostic.CA1036.severity = error
 
 # CA1040: Avoid empty interfaces
-dotnet_diagnostic.CA1040.severity = error
+dotnet_diagnostic.CA1040.severity = warning
 
 # CA1041: Provide ObsoleteAttribute message
 dotnet_diagnostic.CA1041.severity = error
@@ -146,7 +146,7 @@ dotnet_diagnostic.CA1060.severity = error
 dotnet_diagnostic.CA1061.severity = error
 
 # CA1062: Validate arguments of public methods
-dotnet_diagnostic.CA1062.severity = error
+dotnet_diagnostic.CA1062.severity = warning
 
 # CA1063: Implement IDisposable correctly
 dotnet_diagnostic.CA1063.severity = error
@@ -182,7 +182,7 @@ dotnet_diagnostic.CA1303.severity = error
 dotnet_diagnostic.CA1304.severity = error
 
 # CA1305: Specify IFormatProvider
-dotnet_diagnostic.CA1305.severity = error
+dotnet_diagnostic.CA1305.severity = warning
 
 # CA1307: Specify StringComparison for clarity
 dotnet_diagnostic.CA1307.severity = error
@@ -194,7 +194,7 @@ dotnet_diagnostic.CA1308.severity = error
 dotnet_diagnostic.CA1309.severity = error
 
 # CA1310: Specify StringComparison for correctness
-dotnet_diagnostic.CA1310.severity = error
+dotnet_diagnostic.CA1310.severity = warning
 
 # CA1401: P/Invokes should not be visible
 dotnet_diagnostic.CA1401.severity = error
@@ -209,7 +209,7 @@ dotnet_diagnostic.CA1417.severity = error
 dotnet_diagnostic.CA1501.severity = error
 
 # CA1502: Avoid excessive complexity
-dotnet_diagnostic.CA1502.severity = error
+dotnet_diagnostic.CA1502.severity = warning
 
 # CA1505: Avoid unmaintainable code
 dotnet_diagnostic.CA1505.severity = error
@@ -239,7 +239,7 @@ dotnet_diagnostic.CA1708.severity = error
 dotnet_diagnostic.CA1710.severity = error
 
 # CA1711: Identifiers should not have incorrect suffix
-dotnet_diagnostic.CA1711.severity = error
+dotnet_diagnostic.CA1711.severity = warning
 
 # CA1712: Do not prefix enum values with type name
 dotnet_diagnostic.CA1712.severity = error
@@ -371,10 +371,10 @@ dotnet_diagnostic.CA2000.severity = error
 dotnet_diagnostic.CA2002.severity = error
 
 # CA2007: Do not directly await a Task
-dotnet_diagnostic.CA2007.severity = error
+dotnet_diagnostic.CA2007.severity = warning
 
 # CA2008: Do not create tasks without passing a TaskScheduler
-dotnet_diagnostic.CA2008.severity = error
+dotnet_diagnostic.CA2008.severity = warning
 
 # CA2009: Do not call ToImmutableCollection on an ImmutableCollection value
 dotnet_diagnostic.CA2009.severity = error
@@ -828,7 +828,7 @@ dotnet_diagnostic.IDE0020.severity = error
 dotnet_diagnostic.IDE0021.severity = error
 
 # IDE0022: Use expression body for methods
-dotnet_diagnostic.IDE0022.severity = error
+dotnet_diagnostic.IDE0022.severity = warning
 
 # IDE0023: Use expression body for conversion operators
 dotnet_diagnostic.IDE0023.severity = error
@@ -939,7 +939,7 @@ dotnet_diagnostic.IDE0058.severity = suggestion
 dotnet_diagnostic.IDE0059.severity = error
 
 # IDE0060: Remove unused parameter
-dotnet_diagnostic.IDE0060.severity = error
+dotnet_diagnostic.IDE0060.severity = warning
 
 # IDE0061: Use expression body for local functions
 dotnet_diagnostic.IDE0061.severity = error
