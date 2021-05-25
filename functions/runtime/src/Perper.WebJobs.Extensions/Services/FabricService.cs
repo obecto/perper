@@ -78,7 +78,7 @@ namespace Perper.WebJobs.Extensions.Services
             return agentDelegate;
         }
 
-        public Task StartAsync(CancellationToken token)
+        public Task StartAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("Started FabricService for agent '" + AgentDelegate + "'");
             _serviceCancellation = new CancellationTokenSource();
@@ -90,7 +90,7 @@ namespace Perper.WebJobs.Extensions.Services
             return Task.CompletedTask;
         }
 
-        public Task StopAsync(CancellationToken token)
+        public Task StopAsync(CancellationToken cancellationToken)
         {
             _serviceCancellation.Cancel();
             return _serviceTask ?? Task.CompletedTask;

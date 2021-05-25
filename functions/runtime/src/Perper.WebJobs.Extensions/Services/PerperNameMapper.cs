@@ -69,12 +69,12 @@ namespace Perper.WebJobs.Extensions.Services
             return null;
         }
 
-        public string GetTypeName(string typeName)
+        public string GetTypeName(string name)
         {
-            var type = Type.GetType(typeName);
-            if (type == null && !_fullNameMap.TryGetValue(typeName, out type))
+            var type = Type.GetType(name);
+            if (type == null && !_fullNameMap.TryGetValue(name, out type))
             {
-                return typeName;
+                return name;
             }
 
             return GetTypeName(type);
@@ -124,9 +124,9 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        public string GetFieldName(string fieldName)
+        public string GetFieldName(string name)
         {
-            return fieldName;
+            return name;
         }
     }
 }

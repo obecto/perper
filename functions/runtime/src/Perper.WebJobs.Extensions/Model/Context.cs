@@ -29,10 +29,10 @@ namespace Perper.WebJobs.Extensions.Model
             _logger = logger;
         }
 
-        public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string delegateName, object? parameters = default)
+        public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, object? parameters = default)
         {
-            var agentDelegate = delegateName;
-            var callDelegate = delegateName;
+            var agentDelegate = name;
+            var callDelegate = name;
 
             var agentName = GenerateName(agentDelegate);
             var agent = new Agent(agentName, agentDelegate, this, _serializer);

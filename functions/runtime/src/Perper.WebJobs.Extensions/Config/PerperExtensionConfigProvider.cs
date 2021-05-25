@@ -24,9 +24,9 @@ namespace Perper.WebJobs.Extensions.Config
                 _services = services;
             }
 
-            public IAsyncCollector<T> Convert(PerperAttribute attribute)
+            public IAsyncCollector<T> Convert(PerperAttribute input)
             {
-                return (IAsyncCollector<T>)ActivatorUtilities.CreateInstance(_services, typeof(PerperCollector<T>), attribute.Stream);
+                return (IAsyncCollector<T>)ActivatorUtilities.CreateInstance(_services, typeof(PerperCollector<T>), input.Stream);
             }
         }
 

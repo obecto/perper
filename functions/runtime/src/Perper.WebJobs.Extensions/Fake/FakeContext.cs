@@ -17,11 +17,11 @@ namespace Perper.WebJobs.Extensions.Fake
 
         public FakeContext() : this(new FakeAgent()) { }
 
-        public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string delegateName, object? parameters = default)
+        public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, object? parameters = default)
         {
-            var callDelegate = delegateName;
+            var callDelegate = name;
 
-            var agent = Agent.CreateAgent(delegateName);
+            var agent = Agent.CreateAgent(name);
             var result = await agent.CallFunctionAsync<TResult>(callDelegate, parameters);
 
             return (agent, result);
@@ -33,9 +33,9 @@ namespace Perper.WebJobs.Extensions.Fake
             return Task.FromResult<IStream<TItem>>(new FakeStream<TItem>(asyncEnumerableTask));
         }
 
-        public Task<IStream> StreamActionAsync(string functionName, object? parameters = default, StreamFlags flags = StreamFlags.Default)
+        public Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamFlags flags = StreamFlags.Default)
         {
-            var task = Agent.CallActionAsync(functionName, parameters);
+            var task = Agent.CallActionAsync(actionName, parameters);
             return Task.FromResult<IStream>(new FakeStream { ExecutionTask = task });
         }
 

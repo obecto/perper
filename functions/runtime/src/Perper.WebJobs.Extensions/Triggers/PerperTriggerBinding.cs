@@ -50,7 +50,7 @@ namespace Perper.WebJobs.Extensions.Triggers
                 _fabric, context.Descriptor.ShortName, _ignite, context.Executor, _logger));
         }
 
-        public async Task<ITriggerData> BindAsync(object value, ValueBindingContext valueBindingContext)
+        public async Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
             var trigger = (JObject)value;
 
