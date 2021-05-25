@@ -25,14 +25,11 @@ namespace Perper.WebJobs.Extensions.Model
 
         private static object? _parseFieldValue(Expression subexpression)
         {
-            switch (subexpression)
+            return subexpression switch
             {
-                case ConstantExpression constant:
-                    return constant.Value;
-                default:
-                    // Ugly way to read FieldExpression-s (used by e.g. local variables)
-                    return Expression.Lambda(subexpression).Compile().DynamicInvoke();
-            }
+                ConstantExpression constant => constant.Value,
+                _ => Expression.Lambda(subexpression).Compile().DynamicInvoke(),// Ugly way to read FieldExpression-s (used by e.g. local variables)
+            };
         }
 
         private static void _addToFilter(Dictionary<string, object?> filter, Expression subexpression)
