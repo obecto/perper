@@ -17,7 +17,7 @@ import threading
 # TODO: Move it under functions/python
 class Perper():
     def __init__(self):
-        serializer = Serializer()
+        self.serializer = Serializer()
         self.ignite = PerperThinClient()
         self.ignite.compact_footer = True
         self.ignite.connect('localhost', 10800)
@@ -26,8 +26,8 @@ class Perper():
         self.fs = FabricService(self.ignite, config)
         self.fs.start()
 
-        self.instance = PerperInstanceData(self.ignite, serializer)
-        self.state = State(self.instance, self.ignite, serializer)
+        self.instance = PerperInstanceData(self.ignite, self.serializer)
+        self.state = State(self.instance, self.ignite, self.serializer)
         self.context = Context(self.instance, self.fs, self.state, self.ignite)
 
 
