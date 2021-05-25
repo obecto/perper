@@ -294,9 +294,13 @@ class PerperManager(FileManagerMixin, ContentsManager):
         return model
 
     async def afun(self, content):
+        file_data = json.loads(content)
+        if 'StreamName' not in file_data:
+            return
+
         result = ''
         result = result + 'id,price\n' #TODO: UPDATE
-        stream = Stream(streamname='generator-2caae224-6962-4d81-9f8d-7dd0d472c892')
+        stream = Stream(streamname=file_data['StreamName'])
         stream.set_parameters(perper.ignite, perper.fs)
         stream.set_additional_parameters({
             'serializer': perper.serializer,
@@ -307,9 +311,9 @@ class PerperManager(FileManagerMixin, ContentsManager):
         async_gen = await stream.get_async_generator()
         async for item in async_gen:
             if item is not None and hasattr(item, 'json'):
-                json_obj = json.loads(item.json)
-                result = result + str(json_obj['id']) + ',' + str(json_obj['price']) + '\n' # TODO: Complex json handling!
-                if json_obj['id'] == FINAL_ID:
+                inc_json = json.loads(item.json)
+                result = result + str(inc_json['id']) + ',' + str(inc_json['price']) + '\n' # TODO: Complex json handling!
+                if inc_json['id'] == FINAL_ID:
                     f = open('output.csv', 'w')
                     f.write(result)
                     f.close()
