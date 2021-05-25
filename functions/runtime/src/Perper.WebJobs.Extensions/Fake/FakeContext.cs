@@ -19,7 +19,6 @@ namespace Perper.WebJobs.Extensions.Fake
 
         public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string delegateName, object? parameters = default)
         {
-            var agentDelegate = delegateName;
             var callDelegate = delegateName;
 
             var agent = Agent.CreateAgent(delegateName);
