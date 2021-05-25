@@ -24,13 +24,13 @@ namespace SimpleAgent
             const int messagesCount = 28;
             const int batchCount = 10;
 
-            IStream<string> generator =
+            var generator =
                 await context.StreamFunctionAsync<string>(nameof(Generator), messagesCount);
 
-            IStream<string[]> processor =
+            var processor =
                 await context.StreamFunctionAsync<string[]>(nameof(Processor), (generator, batchCount));
 
-            IStream consumer =
+            var consumer =
                 await context.StreamActionAsync(nameof(Consumer), processor);
         }
     }

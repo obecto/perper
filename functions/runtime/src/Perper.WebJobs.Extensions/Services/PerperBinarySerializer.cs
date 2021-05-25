@@ -146,7 +146,7 @@ namespace Perper.WebJobs.Extensions.Services
                 case ICollection collection:
                     {
                         var serialized = new ArrayList();
-                        foreach (object? item in collection)
+                        foreach (var item in collection)
                         {
                             serialized.Add(Serialize(item));
                         }
@@ -248,7 +248,7 @@ namespace Perper.WebJobs.Extensions.Services
                         var addMethod = finalType.GetMethod(nameof(ICollection<object>.Add))!;
 
                         var value = (ICollection)Activator.CreateInstance(finalType)!;
-                        foreach (object? item in collection)
+                        foreach (var item in collection)
                         {
                             addMethod.Invoke(value, new object?[] { Deserialize(item, elementType) });
                         }

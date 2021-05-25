@@ -14,9 +14,9 @@ namespace SimpleAgent.Streams
             [PerperTrigger] int count,
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
-                string message = $"{i}. Message";
+                var message = $"{i}. Message";
 
                 yield return message;
 

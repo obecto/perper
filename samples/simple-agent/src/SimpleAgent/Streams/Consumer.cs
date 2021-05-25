@@ -15,7 +15,7 @@ namespace SimpleAgent.Streams
             ILogger logger,
             CancellationToken cancellationToken)
         {
-            await foreach (string[] messagesBatch in input.WithCancellation(cancellationToken))
+            await foreach (var messagesBatch in input.WithCancellation(cancellationToken))
             {
                 logger.LogInformation($"Received batch of {messagesBatch.Length} messages.\n{string.Join(", ", messagesBatch)}");
             }

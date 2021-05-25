@@ -41,7 +41,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public static string? GetJavaTypeName(Type type)
         {
-            int arrayNesting = 0;
+            var arrayNesting = 0;
             while (type.IsArray)
             {
                 type = type.GetElementType()!;

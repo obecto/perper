@@ -12,8 +12,8 @@ namespace SimpleAgent.UnitTests
         public async Task RunAsync_ShouldBuildValidGraph()
         {
             // Arrange
-            IContext contextMock = A.Fake<IContext>();
-            CancellationToken cancellationToken = new CancellationToken();
+            var contextMock = A.Fake<IContext>();
+            var cancellationToken = new CancellationToken();
 
             // Act
             await Launcher.RunAsync(default, contextMock, cancellationToken);

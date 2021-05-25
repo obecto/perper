@@ -15,10 +15,10 @@ namespace SimpleAgent.Streams
             [PerperTrigger] (IAsyncEnumerable<string> generator, int batchSize) parameters,
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            int count = 0;
-            string[] messagesBatch = new string[parameters.batchSize];
+            var count = 0;
+            var messagesBatch = new string[parameters.batchSize];
 
-            await foreach (string message in parameters.generator.WithCancellation(cancellationToken))
+            await foreach (var message in parameters.generator.WithCancellation(cancellationToken))
             {
                 if (count == parameters.batchSize)
                 {
@@ -26,7 +26,7 @@ namespace SimpleAgent.Streams
                     count = 0;
                 }
 
-                string updatedMessage = message + "_processed";
+                var updatedMessage = message + "_processed";
                 messagesBatch[count] = updatedMessage;
 
                 count++;

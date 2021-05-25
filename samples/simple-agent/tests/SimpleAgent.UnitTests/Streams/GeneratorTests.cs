@@ -14,16 +14,16 @@ namespace SimpleAgent.UnitTests.Streams
         public async Task RunAsync_WithValidCount_ShouldGenerateMessages()
         {
             // Arrange
-            int count = 2;
-            CancellationToken cancellationToken = new CancellationToken();
+            var count = 2;
+            var cancellationToken = new CancellationToken();
 
-            List<string> expectedMessages = new List<string> { "0. Message", "1. Message" };
+            var expectedMessages = new List<string> { "0. Message", "1. Message" };
 
             // Act
-            IAsyncEnumerable<string> actual = Generator.RunAsync(count, cancellationToken);
+            var actual = Generator.RunAsync(count, cancellationToken);
 
             // Assert
-            List<string> actualMessages = await actual.ToListAsync();
+            var actualMessages = await actual.ToListAsync();
 
             actualMessages.Should().BeEquivalentTo(expectedMessages);
         }

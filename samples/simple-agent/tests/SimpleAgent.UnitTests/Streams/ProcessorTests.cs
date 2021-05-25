@@ -14,8 +14,8 @@ namespace SimpleAgent.UnitTests.Streams
         public async Task RunAsync_WithValidMessages_ShouldReturnedBatchedMessages()
         {
             // Arrange
-            int batchSize = 3;
-            IAsyncEnumerable<string> messages = new List<string>
+            var batchSize = 3;
+            var messages = new List<string>
             {
                 "0. Message",
                 "1. Message",
@@ -24,9 +24,9 @@ namespace SimpleAgent.UnitTests.Streams
                 "4. Message",
             }.ToAsyncEnumerable();
 
-            CancellationToken cancellationToken = new CancellationToken();
+            var cancellationToken = new CancellationToken();
 
-            List<string> expectedMessages = new List<string>
+            var expectedMessages = new List<string>
             {
                 "0. Message_processed",
                 "1. Message_processed",
@@ -34,10 +34,10 @@ namespace SimpleAgent.UnitTests.Streams
             };
 
             // Act
-            IAsyncEnumerable<string[]> actual = Processor.RunAsync((messages, batchSize), cancellationToken);
+            var actual = Processor.RunAsync((messages, batchSize), cancellationToken);
 
             // Assert
-            string[] actualMessages = await actual.FirstOrDefaultAsync();
+            var actualMessages = await actual.FirstOrDefaultAsync();
 
             actualMessages.Should().BeEquivalentTo(expectedMessages);
         }
