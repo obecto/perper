@@ -47,7 +47,7 @@ namespace Perper.WebJobs.Extensions.Config
 
             context.AddConverter<JObject, DirectInvokeString>((src, attribute, bindingContext) =>
             {
-                return Task.FromResult<DirectInvokeString>(new DirectInvokeString(src.ToString(Formatting.None)));
+                return Task.FromResult(new DirectInvokeString(src.ToString(Formatting.None)));
             });
         }
     }

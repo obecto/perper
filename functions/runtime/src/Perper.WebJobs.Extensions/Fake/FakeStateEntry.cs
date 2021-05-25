@@ -16,17 +16,17 @@ namespace Perper.WebJobs.Extensions.Fake
             State = state ?? new FakeState();
             Name = name ?? Guid.NewGuid().ToString();
             DefaultValueFactory = defaultValueFactory ?? (Func<T>)(() => default(T)!);
-            Value = unloaded ? default(T)! : State.GetValue<T>(Name, DefaultValueFactory);
+            Value = unloaded ? default(T)! : State.GetValue(Name, DefaultValueFactory);
         }
 
         public async Task Load()
         {
-            Value = await ((IState)State).GetValue<T>(Name, DefaultValueFactory);
+            Value = await ((IState)State).GetValue(Name, DefaultValueFactory);
         }
 
         public Task Store()
         {
-            return ((IState)State).SetValue<T>(Name, Value);
+            return ((IState)State).SetValue(Name, Value);
         }
     }
 }

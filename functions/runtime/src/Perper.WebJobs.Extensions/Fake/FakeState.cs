@@ -11,12 +11,12 @@ namespace Perper.WebJobs.Extensions.Fake
 
         Task<T> IState.GetValue<T>(string key, Func<T> defaultValueFactory) // FIXME: Rename methods in state to Async?
         {
-            return Task.FromResult(GetValue<T>(key, defaultValueFactory));
+            return Task.FromResult(GetValue(key, defaultValueFactory));
         }
 
         Task IState.SetValue<T>(string key, T value)
         {
-            SetValue<T>(key, value);
+            SetValue(key, value);
             return Task.CompletedTask;
         }
 

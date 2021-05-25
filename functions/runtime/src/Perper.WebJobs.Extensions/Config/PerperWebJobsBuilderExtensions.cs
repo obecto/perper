@@ -37,7 +37,7 @@ namespace Perper.WebJobs.Extensions.Config
 
             builder.Services.AddSingleton<PerperBinarySerializer>();
 
-            builder.Services.AddSingleton<FabricService>(services =>
+            builder.Services.AddSingleton(services =>
             {
                 var fabric = ActivatorUtilities.CreateInstance<FabricService>(services);
                 fabric.StartAsync(default).Wait();
@@ -47,7 +47,7 @@ namespace Perper.WebJobs.Extensions.Config
             // NOTE: Due to how Ignite works, we cannot add more type configurations after starting
             // However, during Azure WebJobs startup, we cannot access the assembly containing functions/types
             // Therefore, care must be taken to not resolve IIgniteClient until Azure has loaded the user's assembly...
-            builder.Services.AddSingleton<IIgniteClient>(services =>
+            builder.Services.AddSingleton(services =>
             {
                 var config = services.GetRequiredService<IOptions<PerperConfig>>().Value;
                 var serializer = services.GetRequiredService<PerperBinarySerializer>();

@@ -39,12 +39,12 @@ namespace Perper.WebJobs.Extensions.Model
 
         public override async Task Load()
         {
-            Value = await _state.GetValue<T>(Name, DefaultValueFactory);
+            Value = await _state.GetValue(Name, DefaultValueFactory);
         }
 
         public override Task Store()
         {
-            return _state.SetValue<T>(Name, Value);
+            return _state.SetValue(Name, Value);
         }
     }
 
