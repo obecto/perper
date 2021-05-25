@@ -51,7 +51,7 @@ namespace Perper.WebJobs.Extensions.Model
                                 throw new NotImplementedException("Support for comparing two fields  is not implemented yet.");
                             if (fieldNameLeft == null && fieldNameRight == null)
                                 throw new NotImplementedException("Expected a field/property on one side of the equality test.");
-                            var fieldName = string.Join(".", (fieldNameLeft != null ? fieldNameLeft : fieldNameRight)!);
+                            var fieldName = string.Join(".", (fieldNameLeft ?? fieldNameRight)!);
                             var fieldValue = fieldNameLeft != null ? _parseFieldValue(binary.Right) : _parseFieldValue(binary.Left);
                             filter.Add(fieldName, fieldValue);
                             break;
