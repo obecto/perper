@@ -9,7 +9,7 @@ namespace Perper.WebJobs.Extensions.Model
 {
     public class State : IState
     {
-        public string Agent { get => _instance.Agent; }
+        public string Agent => _instance.Agent;
 
         private readonly PerperInstanceData _instance;
         private IIgniteClient _ignite;

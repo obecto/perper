@@ -8,7 +8,7 @@ namespace Perper.WebJobs.Extensions.Fake
     public class FakeContext : IContext
     {
         public FakeAgent Agent { get; }
-        IAgent IContext.Agent { get => Agent; }
+        IAgent IContext.Agent => Agent;
 
         public FakeContext(FakeAgent agent)
         {

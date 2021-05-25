@@ -132,7 +132,7 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             throw new NotImplementedException();
         }
 
-        public IAgent Agent { get => _host.Services.GetService<IContext>()!.Agent; }
+        public IAgent Agent => _host.Services.GetService<IContext>()!.Agent;
 
         public Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, object? parameters = default)
         {
