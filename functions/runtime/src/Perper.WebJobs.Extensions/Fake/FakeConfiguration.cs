@@ -6,7 +6,7 @@ namespace Perper.WebJobs.Extensions.Fake
     {
         public static bool SerializeObjects { get; set; } = true;
 
-        private static PerperBinarySerializer? Serializer = new PerperBinarySerializer(null);
+        private static readonly PerperBinarySerializer? Serializer = new PerperBinarySerializer(null);
 
         internal static object? Serialize<T>(T value)
         {

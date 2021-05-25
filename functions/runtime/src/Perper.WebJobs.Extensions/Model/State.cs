@@ -12,8 +12,8 @@ namespace Perper.WebJobs.Extensions.Model
         public string Agent => _instance.Agent;
 
         private readonly PerperInstanceData _instance;
-        private IIgniteClient _ignite;
-        private PerperBinarySerializer _serializer;
+        private readonly IIgniteClient _ignite;
+        private readonly PerperBinarySerializer _serializer;
 
         [NonSerialized] public List<StateEntry> Entries = new List<StateEntry>();
 

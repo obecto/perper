@@ -29,12 +29,12 @@ namespace Perper.WebJobs.Extensions.Services
     public class FabricService : IHostedService
     {
         public string AgentDelegate { get; }
-        private bool isInitialAgent;
+        private readonly bool isInitialAgent;
 
         private readonly IIgniteClient _ignite;
-        private ILogger _logger;
+        private readonly ILogger _logger;
 
-        private GrpcChannel _grpcChannel;
+        private readonly GrpcChannel _grpcChannel;
         private readonly ICacheClient<NotificationKey, Notification> _notificationsCache;
         private readonly ConcurrentDictionary<(string, int?), Channel<(NotificationKey, Notification)>> _channels = new ConcurrentDictionary<(string, int?), Channel<(NotificationKey, Notification)>>();
 

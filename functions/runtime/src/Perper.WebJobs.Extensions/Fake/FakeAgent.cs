@@ -10,9 +10,9 @@ namespace Perper.WebJobs.Extensions.Fake
 {
     public class FakeAgent : IAgent
     {
-        private Dictionary<string, Func<object?, Task<object?>>> functions = new Dictionary<string, Func<object?, Task<object?>>>();
-        private Dictionary<string, Func<FakeAgent>> agentConstructors = new Dictionary<string, Func<FakeAgent>>();
-        private static ConcurrentDictionary<string, ChannelWriter<object?>> blankStreams = new ConcurrentDictionary<string, ChannelWriter<object?>>();
+        private readonly Dictionary<string, Func<object?, Task<object?>>> functions = new Dictionary<string, Func<object?, Task<object?>>>();
+        private readonly Dictionary<string, Func<FakeAgent>> agentConstructors = new Dictionary<string, Func<FakeAgent>>();
+        private static readonly ConcurrentDictionary<string, ChannelWriter<object?>> blankStreams = new ConcurrentDictionary<string, ChannelWriter<object?>>();
 
         public Task<TResult> CallFunctionAsync<TResult>(string functionName, object? parameters = default)
         {

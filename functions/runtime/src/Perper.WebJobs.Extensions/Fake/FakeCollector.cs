@@ -8,7 +8,7 @@ namespace Perper.WebJobs.Extensions.Fake
 {
     public class FakeCollector<T> : IAsyncCollector<T>
     {
-        private ChannelWriter<object?> _channelWriter;
+        private readonly ChannelWriter<object?> _channelWriter;
 
         public FakeCollector(ChannelWriter<object?> writer)
         {

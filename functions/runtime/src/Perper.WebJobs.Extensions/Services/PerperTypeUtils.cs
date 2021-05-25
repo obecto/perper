@@ -8,7 +8,7 @@ namespace Perper.WebJobs.Extensions.Services
 {
     public static class PerperTypeUtils
     {
-        private static Dictionary<Type, string> javaTypeNames = new Dictionary<Type, string>()
+        private static readonly Dictionary<Type, string> javaTypeNames = new Dictionary<Type, string>()
         {
             {typeof (bool), "java.lang.Boolean"},
             {typeof (byte), "java.lang.Byte"},

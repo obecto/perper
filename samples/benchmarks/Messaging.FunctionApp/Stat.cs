@@ -31,7 +31,7 @@ namespace Messaging.FunctionApp
 
         public class Reader
         {
-            private Stat Stat;
+            private readonly Stat Stat;
             private long LastValue;
 
             public Reader(Stat stat)

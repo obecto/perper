@@ -13,7 +13,7 @@ namespace Perper.WebJobs.Extensions.Model
 
     public class StateEntry<T> : StateEntry, IStateEntry<T>
     {
-        [NonSerialized] private State _state;
+        [NonSerialized] private readonly State _state;
         [NonSerialized] public Func<T> DefaultValueFactory = () => default(T)!;
 
         [IgnoreDataMember]
