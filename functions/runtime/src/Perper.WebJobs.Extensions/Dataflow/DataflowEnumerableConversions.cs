@@ -26,7 +26,7 @@ namespace Perper.WebJobs.Extensions.Dataflow
             {
                 if (completedTask.Status == TaskStatus.Faulted) ((IDataflowBlock)block).Fault(completedTask.Exception!);
                 else if (completedTask.Status == TaskStatus.RanToCompletion) block.Complete();
-            });
+            }, cancellationToken);
 
             return block;
         }

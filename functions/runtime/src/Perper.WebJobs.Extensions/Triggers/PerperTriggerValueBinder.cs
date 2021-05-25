@@ -74,7 +74,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             var collector = new PerperCollector<T>(_ignite, _serializer, stream);
             await foreach (var value in values.WithCancellation(cancellationToken))
             {
-                await collector.AddAsync(value);
+                await collector.AddAsync(value, cancellationToken);
             }
         }
 

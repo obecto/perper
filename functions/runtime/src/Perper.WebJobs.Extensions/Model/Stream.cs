@@ -165,7 +165,7 @@ namespace Perper.WebJobs.Extensions.Model
                             {
                                 await ((State)_stream._state).StoreStateEntries();
 
-                                await _stream._fabric.ConsumeNotification(key);
+                                await _stream._fabric.ConsumeNotification(key, cancellationToken);
                             }
                         }
                     }

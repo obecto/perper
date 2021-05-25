@@ -139,7 +139,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         private async Task RunAsync(CancellationToken cancellationToken = default)
         {
-            _ = StartInitialAgent();
+            _ = StartInitialAgent(cancellationToken);
 
             var client = new Fabric.FabricClient(_grpcChannel);
             using var notifications = client.Notifications(new NotificationFilter { AgentDelegate = AgentDelegate }, null, null, cancellationToken);
@@ -161,13 +161,13 @@ namespace Perper.WebJobs.Extensions.Services
                 switch (notification)
                 {
                     case StreamItemNotification si:
-                        await GetChannel(si.Stream, si.Parameter).Writer.WriteAsync((key, notification));
+                        await GetChannel(si.Stream, si.Parameter).Writer.WriteAsync((key, notification), cancellationToken);
                         break;
                     case StreamTriggerNotification st:
-                        await GetChannel(st.Delegate).Writer.WriteAsync((key, notification));
+                        await GetChannel(st.Delegate).Writer.WriteAsync((key, notification), cancellationToken);
                         break;
                     case CallTriggerNotification ct:
-                        await GetChannel(ct.Delegate).Writer.WriteAsync((key, notification));
+                        await GetChannel(ct.Delegate).Writer.WriteAsync((key, notification), cancellationToken);
                         break;
                     case CallResultNotification cr:
                         // pass
@@ -201,7 +201,7 @@ namespace Perper.WebJobs.Extensions.Services
             {
                 AgentDelegate = AgentDelegate,
                 CallName = call
-            });
+            }, cancellationToken: cancellationToken);
             var key = GetNotificationKey(notification);
 
             var fullNotification = await _notificationsCache.GetAsync(key);

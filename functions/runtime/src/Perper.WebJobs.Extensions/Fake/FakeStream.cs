@@ -138,7 +138,7 @@ namespace Perper.WebJobs.Extensions.Fake
 
                 // NOTE: Race condition: can miss elements while switching from replay to realtime
 
-                await foreach (var i in _stream.GetChannel().ReadAllAsync())
+                await foreach (var i in _stream.GetChannel().ReadAllAsync(cancellationToken))
                 {
                     var value = FakeConfiguration.Deserialize<T>(_stream.StoredData[i]);
 

@@ -63,7 +63,7 @@ namespace Perper.WebJobs.Extensions.Triggers
         private async Task ListenAsync(CancellationToken cancellationToken)
         {
             var taskCollection = new TaskCollection();
-            await foreach (var (key, notification) in _fabric.GetNotifications(_delegate).WithCancellation(cancellationToken))
+            await foreach (var (key, notification) in _fabric.GetNotifications(_delegate, cancellationToken: cancellationToken).WithCancellation(cancellationToken))
             {
                 taskCollection.Add(async () =>
                 {
