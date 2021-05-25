@@ -268,7 +268,7 @@ namespace Perper.WebJobs.Extensions.Services
                         {
                             // NOTE: Can cache deserializeMethod for type
                             var deserializeMethod = typeof(IBinaryObject).GetMethod(nameof(IBinaryObject.Deserialize))!.MakeGenericMethod(type);
-                            return deserializeMethod.Invoke(binaryObject, new object[] { });
+                            return deserializeMethod.Invoke(binaryObject, Array.Empty<object>());
                         }
                     }
 
