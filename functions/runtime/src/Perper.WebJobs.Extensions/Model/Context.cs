@@ -131,7 +131,7 @@ namespace Perper.WebJobs.Extensions.Model
             }
         }
 
-        private string GenerateName(string? baseName = null)
+        private static string GenerateName(string? baseName = null)
         {
             return $"{baseName}-{Guid.NewGuid()}";
         }

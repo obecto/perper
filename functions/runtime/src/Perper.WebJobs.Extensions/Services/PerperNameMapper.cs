@@ -47,7 +47,7 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        private string? GetWellKnownTypeName(Type type)
+        private static string? GetWellKnownTypeName(Type type)
         {
             var attribute = type.GetCustomAttribute<PerperDataAttribute>();
             if (attribute != null)

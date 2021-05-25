@@ -60,7 +60,7 @@ namespace Perper.WebJobs.Extensions.Services
 #endif
         }
 
-        private string GetAgentDelegateFromPath()
+        private static string GetAgentDelegateFromPath()
         {
             var projectRootPath = Path.GetDirectoryName(Path.GetDirectoryName(Directory.GetCurrentDirectory()));
             var agentDelegate = Path.GetFileName(projectRootPath)!;
@@ -96,7 +96,7 @@ namespace Perper.WebJobs.Extensions.Services
             return _serviceTask ?? Task.CompletedTask;
         }
 
-        private NotificationKey GetNotificationKey(NotificationProto notification)
+        private static NotificationKey GetNotificationKey(NotificationProto notification)
         {
             return (notification.AffinityCase switch
             {
