@@ -1,8 +1,10 @@
-import asyncio
+import sys
 import time
+import random
+import asyncio
+
 from perper.functions import Perper
 from perper.cache.stream_data import ParameterData
-
 
 from collections import OrderedDict
 from pyignite import GenericObjectMeta
@@ -21,10 +23,16 @@ async def blank_generator(perper_instance, *kwargs):
     print('Generating...')
     streams_cache = perper_instance.ignite.get_cache(kwargs[1][0])
     for x in range(kwargs[1][1]):
-        data = SimpleData(name='radi', priority=1, json='{ "id" : ' + str(x + 1) + ', "price": 1234 }')
+        data = SimpleData(
+            name='RadiTest',
+            priority=1,
+            json='{ "id" : ' + str(x + 1) + ', "price": ' + str(random.randrange(1000, 2000)) + ' }'
+        )
+        # TODO: Think of a better way for generating item keys
+        streams_cache.put(random.randrange(1, sys.maxsize), data)
+        
         print(data)
-        streams_cache.put(x, data)
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
 
 # def processor(perper_instance, *kwargs):
 #     streams_cache = perper_instance.ignite.get_cache(kwargs[1][1].streamname)
@@ -44,11 +52,14 @@ functions = {
 perper = Perper()
 context = perper.context
 
+stream = context.create_blank_stream(basename='generator')
+print(stream)
+
+input("Press Enter to continue...")
+
 async def execute():
     # BLANK GENERATOR EXAMPLE
-    stream = context.create_blank_stream(basename='generator')
-    stream.get_enumerable({}, False, False).add_listener()
-    context.stream_action("blank_generator", {0: stream.stream_name, 1: 10}, None)
+    context.stream_action("blank_generator", {0: stream.stream_name, 1: 20}, None)
 
 # asyncio.run(execute())
 # asyncio.run(perper.functions(functions))
