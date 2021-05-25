@@ -183,7 +183,7 @@ namespace Perper.WebJobs.Extensions.CustomHandler
 
         private async Task Handler(IHttpContext context)
         {
-            var invocationId = Guid.Parse(context.Request.Headers["X-Azure-Functions-Invocationid"]);
+            _ = Guid.Parse(context.Request.Headers["X-Azure-Functions-Invocationid"]);
             dynamic payload = JsonConvert.DeserializeObject(await context.GetRequestBodyAsStringAsync())!;
             if (payload.Metadata.triggerAttribute == "PerperTrigger")
             {

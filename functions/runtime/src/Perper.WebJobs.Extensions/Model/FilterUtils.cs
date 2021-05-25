@@ -14,9 +14,9 @@ namespace Perper.WebJobs.Extensions.Model
                     var left = _parseFieldName(member.Expression);
                     left?.Add(member.Member.Name);
                     return left;
-                case ParameterExpression parameter:
+                case ParameterExpression _:
                     return new List<string>(); // Assuming there is only one parameter
-                case ConstantExpression constant:
+                case ConstantExpression _:
                     return null;
                 default:
                     throw new NotImplementedException("Support for " + subexpression.GetType() + " in IPerperStream.Filter is not implemented yet.");

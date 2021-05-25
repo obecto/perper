@@ -169,7 +169,7 @@ namespace Perper.WebJobs.Extensions.Services
                     case CallTriggerNotification ct:
                         await GetChannel(ct.Delegate).Writer.WriteAsync((key, notification), cancellationToken);
                         break;
-                    case CallResultNotification cr:
+                    case CallResultNotification _:
                         // pass
                         break;
                 }

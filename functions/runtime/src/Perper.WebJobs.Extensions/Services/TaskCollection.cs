@@ -40,7 +40,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         public void Remove(Task task)
         {
-            if (_tasks.TryRemove(task, out var _value))
+            if (_tasks.TryRemove(task, out _))
             {
                 if (task.IsFaulted)
                 {
