@@ -20,7 +20,7 @@ namespace Perper.WebJobs.Extensions.Fake
     {
         private List<object?> StoredData { get; set; } = new List<object?>();
         private readonly ConcurrentDictionary<ChannelWriter<int>, bool> _channels = new ConcurrentDictionary<ChannelWriter<int>, bool>();
-        private bool _finished = false;
+        private bool _finished;
 
         public FakeStream(Task<IAsyncEnumerable<T>> source)
         {

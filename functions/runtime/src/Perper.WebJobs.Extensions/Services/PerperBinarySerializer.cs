@@ -18,7 +18,7 @@ namespace Perper.WebJobs.Extensions.Services
         public struct NullPlaceholder { };
 
         private readonly IServiceProvider? _services;
-        private IBinary? _binary = null;
+        private IBinary? _binary;
 
         public PerperBinarySerializer(IServiceProvider? services)
         {

@@ -11,8 +11,8 @@ namespace Perper.WebJobs.Extensions.Services
 
         private readonly TaskCompletionSource<EmptyStruct> _completionSource = new TaskCompletionSource<EmptyStruct>();
         private readonly ConcurrentDictionary<Task, EmptyStruct> _tasks = new ConcurrentDictionary<Task, EmptyStruct>();
-        private long _count = 0;
-        private bool _mayComplete = false;
+        private long _count;
+        private bool _mayComplete;
 
         public Task GetTask()
         {

@@ -14,9 +14,9 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly IIgniteClient _ignite;
         private readonly PerperBinarySerializer _serializer;
 
-        private int _nextStreamParameterIndex = 0;
-        private int _nextAnonymousStreamParameterIndex = 0;
-        private bool _initialized = false;
+        private int _nextStreamParameterIndex;
+        private int _nextAnonymousStreamParameterIndex;
+        private bool _initialized;
 
         public string InstanceName { get; private set; } = default!;
         public string Agent { get; private set; } = default!;
