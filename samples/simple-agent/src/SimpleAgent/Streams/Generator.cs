@@ -7,7 +7,7 @@ namespace SimpleAgent.Streams
     using Microsoft.Azure.WebJobs;
     using Perper.WebJobs.Extensions.Triggers;
 
-    public class Generator
+    public static class Generator
     {
         [FunctionName(nameof(Generator))]
         public static async IAsyncEnumerable<string> RunAsync(

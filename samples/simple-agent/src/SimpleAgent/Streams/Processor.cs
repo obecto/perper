@@ -8,7 +8,7 @@ namespace SimpleAgent.Streams
     using Microsoft.Azure.WebJobs;
     using Perper.WebJobs.Extensions.Triggers;
 
-    public class Processor
+    public static class Processor
     {
         [FunctionName(nameof(Processor))]
         public static async IAsyncEnumerable<string[]> RunAsync(

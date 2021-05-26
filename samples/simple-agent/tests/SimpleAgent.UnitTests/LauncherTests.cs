@@ -1,6 +1,5 @@
 namespace SimpleAgent.UnitTests
 {
-    using System.Threading;
     using System.Threading.Tasks;
     using FakeItEasy;
     using Perper.WebJobs.Extensions.Model;
@@ -13,10 +12,9 @@ namespace SimpleAgent.UnitTests
         {
             // Arrange
             var contextMock = A.Fake<IContext>();
-            var cancellationToken = new CancellationToken();
 
             // Act
-            await Launcher.RunAsync(default, contextMock, cancellationToken);
+            await Launcher.RunAsync(default, contextMock);
 
             // Assert
             A.CallTo(() => contextMock.StreamFunctionAsync<string>("Generator", A<object>.Ignored, A<StreamOptions>.Ignored)).MustHaveHappened()

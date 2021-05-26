@@ -7,7 +7,7 @@ namespace SimpleAgent.Streams
     using Microsoft.Extensions.Logging;
     using Perper.WebJobs.Extensions.Triggers;
 
-    public class Consumer
+    public static class Consumer
     {
         [FunctionName(nameof(Consumer))]
         public static async Task RunAsync(

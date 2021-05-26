@@ -1,6 +1,5 @@
 namespace SimpleAgent
 {
-    using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.WebJobs;
     using Perper.WebJobs.Extensions.Model;
@@ -13,13 +12,12 @@ namespace SimpleAgent
     /// `Processor` stream is used to modify each message by adding suffix `_processed` and also batch messages in a collection of `batchCount` items.
     /// `Consumer` stream is used to consume the batched messages and log them.
     /// </summary>
-    public class Launcher
+    public static class Launcher
     {
         [FunctionName(nameof(Launcher))]
         public static async Task RunAsync(
-            [PerperTrigger] object input,
-            IContext context,
-            CancellationToken cancellationToken)
+            [PerperTrigger] object _,
+            IContext context)
         {
             const int messagesCount = 28;
             const int batchCount = 10;
