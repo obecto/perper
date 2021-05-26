@@ -123,7 +123,7 @@ namespace Perper.WebJobs.Extensions.Model
 
             if (call.Error != null)
             {
-                throw new Exception("Exception in call to '" + callDelegate + "': " + call.Error);
+                throw new InvalidOperationException("Exception in call to '" + callDelegate + "': " + call.Error);
             }
             else
             {

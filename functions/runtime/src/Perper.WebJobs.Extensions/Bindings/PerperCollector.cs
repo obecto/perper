@@ -26,7 +26,7 @@ namespace Perper.WebJobs.Extensions.Bindings
             var result = await cache.PutIfAbsentAsync(key, _serializer.SerializeRoot(item));
             if (!result)
             {
-                throw new Exception($"Duplicate stream item key! {key}");
+                throw new ArgumentException($"Duplicate stream item key! {key}");
             }
         }
 

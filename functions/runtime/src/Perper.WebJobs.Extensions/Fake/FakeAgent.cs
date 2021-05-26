@@ -58,7 +58,7 @@ namespace Perper.WebJobs.Extensions.Fake
         {
             if (!agentConstructors.TryGetValue(agentDelegate, out var constructor))
             {
-                throw new IndexOutOfRangeException("Agent '" + agentDelegate + "' is not registered.");
+                throw new ArgumentOutOfRangeException("Agent '" + agentDelegate + "' is not registered.");
             }
             return constructor();
         }
@@ -67,7 +67,7 @@ namespace Perper.WebJobs.Extensions.Fake
         {
             if (!functions.TryGetValue(functionDelegate, out var function))
             {
-                throw new IndexOutOfRangeException("Function '" + functionDelegate + "' is not registered.");
+                throw new ArgumentOutOfRangeException("Function '" + functionDelegate + "' is not registered.");
             }
             var input = FakeConfiguration.Serialize(parameters);
             var result = await function(input);
