@@ -61,10 +61,5 @@ async def execute():
     # BLANK GENERATOR EXAMPLE
     context.stream_action("blank_generator", {0: stream.stream_name, 1: 20}, None)
 
-# asyncio.run(execute())
-# asyncio.run(perper.functions(functions))
-
-# Python 3.6
-loop = asyncio.get_event_loop()
-loop.run_until_complete(execute())
-loop.run_until_complete(perper.functions(functions))
+asyncio.run(execute())
+asyncio.run(perper.functions(functions))

@@ -31,10 +31,6 @@ class Perper():
         self.context = Context(self.instance, self.fs, self.state, self.ignite)
 
 
-    def trigger(self, loop, method, params):
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(method(self, *params))
-
     async def functions(self, functions): 
         # TODO: Implement Call Triggers        
         async for (k, n) in self.fs.get_notifications():
@@ -46,9 +42,4 @@ class Perper():
                 parameter_data = stream_data.parameters
 
                 if n.delegate in functions:
-                    loop = asyncio.new_event_loop() # TODO: Use newer asyncio
-                    thread = threading.Thread(
-                        target=self.trigger,
-                        args=(loop, functions[n.delegate], parameter_data.parameters)
-                    )
-                    thread.start()
+                    await asyncio.create_task(functions[n.delegate](self, *parameter_data.parameters))
