@@ -15,19 +15,10 @@ namespace Perper.WebJobs.Extensions.Fake
             _channelWriter = writer;
         }
 
-        public async Task AddAsync(T item, CancellationToken cancellationToken = default)
-        {
-            await _channelWriter.WriteAsync(FakeConfiguration.Serialize(item), cancellationToken);
-        }
+        public async Task AddAsync(T item, CancellationToken cancellationToken = default) => await _channelWriter.WriteAsync(FakeConfiguration.Serialize(item), cancellationToken);
 
-        public Task FlushAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+        public Task FlushAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-        public void Complete(Exception? exception = null)
-        {
-            _channelWriter.Complete(exception);
-        }
+        public void Complete(Exception? exception = null) => _channelWriter.Complete(exception);
     }
 }

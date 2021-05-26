@@ -16,13 +16,10 @@ namespace Structure.Streams
             [Perper("agentPingOutput")] IAsyncEnumerable<string> agentPingOutput,
             [Perper("agentPongOutput")] IAsyncEnumerable<string> agentPongOutput,
             ILogger logger,
-            CancellationToken cancellationToken)
-        {
-            await Task.WhenAll(
+            CancellationToken cancellationToken) => await Task.WhenAll(
                 agentPingOutput.ForEachAsync(message => logger.LogInformation($"Message in the environment: {message}"),
                     cancellationToken),
                 agentPongOutput.ForEachAsync(message => logger.LogInformation($"Message in the environment: {message}"),
                     cancellationToken));
-        }
     }
 }

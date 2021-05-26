@@ -17,9 +17,6 @@ namespace Perper.WebJobs.Extensions.Cache.Notifications
         [AffinityKeyMapped]
         public string Affinity { get; set; }
 
-        public override string ToString()
-        {
-            return $"({Key} [{Affinity}])";
-        }
+        public override string ToString() => $"({Key} [{Affinity}])";
     }
 }

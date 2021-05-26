@@ -50,15 +50,9 @@ namespace Perper.WebJobs.Extensions.Triggers
             await Task.WhenAny(_listenTask!, Task.Delay(Timeout.Infinite, cancellationToken));
         }
 
-        public void Cancel()
-        {
-            StopAsync(CancellationToken.None).Wait();
-        }
+        public void Cancel() => StopAsync(CancellationToken.None).Wait();
 
-        public void Dispose()
-        {
-            _listenCancellationTokenSource.Dispose();
-        }
+        public void Dispose() => _listenCancellationTokenSource.Dispose();
 
         private async Task ListenAsync(CancellationToken cancellationToken)
         {

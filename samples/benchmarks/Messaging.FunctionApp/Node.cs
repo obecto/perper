@@ -17,15 +17,12 @@ namespace Messaging.FunctionApp
             [Perper("queried")] IPerperStream[] queried,
             [Perper("i")] int i,
             [Perper("n")] int n,
-            [Perper("output")] IAsyncCollector<Message> output)
-        {
-            await Task.WhenAll(
+            [Perper("output")] IAsyncCollector<Message> output) => await Task.WhenAll(
                 ProcessEnumerated(i, enumerated),
                 ProcessFiltered(i, filtered),
                 ProcessQueried(i, queried.Select(stream => context.Query<Message>(stream))),
                 SendOutput(i, n, output)
             );
-        }
 
         private async Task ProcessEnumerated(int i, IAsyncEnumerable<Message> enumerated)
         {

@@ -51,19 +51,10 @@ namespace Perper.WebJobs.Extensions.Model
             return entry;
         }
 
-        public StateEntry<T> UnloadedEntry<T>(string key, Func<T> defaultValueFactory)
-        {
-            return new StateEntry<T>(this, key, defaultValueFactory);
-        }
+        public StateEntry<T> UnloadedEntry<T>(string key, Func<T> defaultValueFactory) => new StateEntry<T>(this, key, defaultValueFactory);
 
-        public Task LoadStateEntries()
-        {
-            return Task.WhenAll(Entries.Select(x => x.Load()));
-        }
+        public Task LoadStateEntries() => Task.WhenAll(Entries.Select(x => x.Load()));
 
-        public Task StoreStateEntries()
-        {
-            return Task.WhenAll(Entries.Select(x => x.Store()));
-        }
+        public Task StoreStateEntries() => Task.WhenAll(Entries.Select(x => x.Store()));
     }
 }

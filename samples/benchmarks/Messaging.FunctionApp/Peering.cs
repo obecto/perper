@@ -12,9 +12,6 @@ namespace Messaging.FunctionApp
         [FunctionName(nameof(Peering))]
         public async Task Run([PerperStreamTrigger] PerperStreamContext context,
             [Perper("streams")] List<IPerperStream> streams,
-            CancellationToken cancellationToken)
-        {
-            await context.BindOutput(streams, cancellationToken);
-        }
+            CancellationToken cancellationToken) => await context.BindOutput(streams, cancellationToken);
     }
 }

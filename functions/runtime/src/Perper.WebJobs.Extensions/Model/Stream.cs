@@ -68,35 +68,17 @@ namespace Perper.WebJobs.Extensions.Model
             StreamName = streamName;
         }
 
-        private StreamAsyncEnumerable GetEnumerable(Dictionary<string, object?> filter, bool replay, bool localToData)
-        {
-            return new StreamAsyncEnumerable(this, filter, replay, localToData);
-        }
+        private StreamAsyncEnumerable GetEnumerable(Dictionary<string, object?> filter, bool replay, bool localToData) => new StreamAsyncEnumerable(this, filter, replay, localToData);
 
-        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-        {
-            return GetEnumerable(new Dictionary<string, object?>(), false, false).GetAsyncEnumerator(cancellationToken);
-        }
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) => GetEnumerable(new Dictionary<string, object?>(), false, false).GetAsyncEnumerator(cancellationToken);
 
-        public IAsyncEnumerable<T> DataLocal()
-        {
-            return GetEnumerable(new Dictionary<string, object?>(), false, true);
-        }
+        public IAsyncEnumerable<T> DataLocal() => GetEnumerable(new Dictionary<string, object?>(), false, true);
 
-        public IAsyncEnumerable<T> Filter(Expression<Func<T, bool>> filter, bool dataLocal = false)
-        {
-            return GetEnumerable(FilterUtils.ConvertFilter(filter), false, dataLocal);
-        }
+        public IAsyncEnumerable<T> Filter(Expression<Func<T, bool>> filter, bool dataLocal = false) => GetEnumerable(FilterUtils.ConvertFilter(filter), false, dataLocal);
 
-        public IAsyncEnumerable<T> Replay(bool dataLocal = false)
-        {
-            return GetEnumerable(new Dictionary<string, object?>(), true, dataLocal);
-        }
+        public IAsyncEnumerable<T> Replay(bool dataLocal = false) => GetEnumerable(new Dictionary<string, object?>(), true, dataLocal);
 
-        public IAsyncEnumerable<T> Replay(Expression<Func<T, bool>> filter, bool dataLocal = false)
-        {
-            return GetEnumerable(FilterUtils.ConvertFilter(filter), true, dataLocal);
-        }
+        public IAsyncEnumerable<T> Replay(Expression<Func<T, bool>> filter, bool dataLocal = false) => GetEnumerable(FilterUtils.ConvertFilter(filter), true, dataLocal);
 
         public async IAsyncEnumerable<TResult> Query<TResult>(Func<IQueryable<T>, IQueryable<TResult>> query)
         {
@@ -126,10 +108,7 @@ namespace Perper.WebJobs.Extensions.Model
                 LocalToData = localToData;
             }
 
-            public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken())
-            {
-                return Impl(cancellationToken).GetAsyncEnumerator(cancellationToken);
-            }
+            public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken()) => Impl(cancellationToken).GetAsyncEnumerator(cancellationToken);
 
             private async IAsyncEnumerable<T> Impl([EnumeratorCancellation] CancellationToken cancellationToken = default)
             {

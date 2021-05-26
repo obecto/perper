@@ -99,15 +99,9 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             server.RunAsync();
         }
 
-        public Task<TResult> GetParametersAsync<TResult>()
-        {
-            throw new NotImplementedException();
-        }
+        public Task<TResult> GetParametersAsync<TResult>() => throw new NotImplementedException();
 
-        public Task SetResultAsync(object result)
-        {
-            throw new NotImplementedException();
-        }
+        public Task SetResultAsync(object result) => throw new NotImplementedException();
 
         public async Task<(TResult, Guid)> GetCallParametersAsync<TResult>(string delegateName) where TResult : JObject
         {
@@ -117,69 +111,33 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             return ((TResult)parameters, callId);
         }
 
-        public async Task SetCallResultAsync(Guid callId, object result)
-        {
-            await _callResultChannels[callId].Writer.WriteAsync((JObject)result);
-        }
+        public async Task SetCallResultAsync(Guid callId, object result) => await _callResultChannels[callId].Writer.WriteAsync((JObject)result);
 
-        public Task<(TResult, Guid)> GetStreamParametersAsync<TResult>(string delegateName)
-        {
-            throw new NotImplementedException();
-        }
+        public Task<(TResult, Guid)> GetStreamParametersAsync<TResult>(string delegateName) => throw new NotImplementedException();
 
-        public Task AddStreamOutputAsync(Guid streamId, object output)
-        {
-            throw new NotImplementedException();
-        }
+        public Task AddStreamOutputAsync(Guid streamId, object output) => throw new NotImplementedException();
 
         public IAgent Agent => _host.Services.GetService<IContext>()!.Agent;
 
-        public Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, object? parameters = default)
-        {
-            return _host.Services.GetService<IContext>()!.StartAgentAsync<TResult>(name, parameters);
-        }
+        public Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, object? parameters = default) => _host.Services.GetService<IContext>()!.StartAgentAsync<TResult>(name, parameters);
 
         public Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default,
-            StreamOptions flags = StreamOptions.Ephemeral)
-        {
-            return _host.Services.GetService<IContext>()!.StreamFunctionAsync<TItem>(functionName, parameters, flags);
-        }
+            StreamOptions flags = StreamOptions.Ephemeral) => _host.Services.GetService<IContext>()!.StreamFunctionAsync<TItem>(functionName, parameters, flags);
 
-        public Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamOptions flags = StreamOptions.Ephemeral)
-        {
-            return _host.Services.GetService<IContext>()!.StreamActionAsync(actionName, parameters, flags);
-        }
+        public Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamOptions flags = StreamOptions.Ephemeral) => _host.Services.GetService<IContext>()!.StreamActionAsync(actionName, parameters, flags);
 
-        public IStream<TItem> DeclareStreamFunction<TItem>(string functionName)
-        {
-            return _host.Services.GetService<IContext>()!.DeclareStreamFunction<TItem>(functionName);
-        }
+        public IStream<TItem> DeclareStreamFunction<TItem>(string functionName) => _host.Services.GetService<IContext>()!.DeclareStreamFunction<TItem>(functionName);
 
         public Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default,
-            StreamOptions flags = StreamOptions.Ephemeral)
-        {
-            return _host.Services.GetService<IContext>()!.InitializeStreamFunctionAsync(stream, parameters, flags);
-        }
+            StreamOptions flags = StreamOptions.Ephemeral) => _host.Services.GetService<IContext>()!.InitializeStreamFunctionAsync(stream, parameters, flags);
 
-        public Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamOptions flags = StreamOptions.Ephemeral)
-        {
-            return _host.Services.GetService<IContext>()!.CreateBlankStreamAsync<TItem>(flags);
-        }
+        public Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamOptions flags = StreamOptions.Ephemeral) => _host.Services.GetService<IContext>()!.CreateBlankStreamAsync<TItem>(flags);
 
-        public Task<T> GetValue<T>(string key, Func<T> defaultValueFactory)
-        {
-            return _host.Services.GetService<IState>()!.GetValue(key, defaultValueFactory);
-        }
+        public Task<T> GetValue<T>(string key, Func<T> defaultValueFactory) => _host.Services.GetService<IState>()!.GetValue(key, defaultValueFactory);
 
-        public Task SetValue<T>(string key, T value)
-        {
-            return _host.Services.GetService<IState>()!.SetValue(key, value);
-        }
+        public Task SetValue<T>(string key, T value) => _host.Services.GetService<IState>()!.SetValue(key, value);
 
-        public Task<IStateEntry<T>> Entry<T>(string key, Func<T> defaultValueFactory)
-        {
-            return _host.Services.GetService<IState>()!.Entry(key, defaultValueFactory);
-        }
+        public Task<IStateEntry<T>> Entry<T>(string key, Func<T> defaultValueFactory) => _host.Services.GetService<IState>()!.Entry(key, defaultValueFactory);
 
         private async Task Handler(IHttpContext context)
         {

@@ -14,20 +14,11 @@ namespace Messaging.FunctionApp
             Max = max;
         }
 
-        public bool Increment()
-        {
-            return Interlocked.Increment(ref Value) < Max || Max == -1;
-        }
+        public bool Increment() => Interlocked.Increment(ref Value) < Max || Max == -1;
 
-        public long Get()
-        {
-            return Interlocked.Read(ref Value);
-        }
+        public long Get() => Interlocked.Read(ref Value);
 
-        public bool IsMax()
-        {
-            return Interlocked.Read(ref Value) >= Max && Max != -1;
-        }
+        public bool IsMax() => Interlocked.Read(ref Value) >= Max && Max != -1;
 
         public class Reader
         {
@@ -51,9 +42,6 @@ namespace Messaging.FunctionApp
             }
         }
 
-        public Reader Read()
-        {
-            return new Reader(this);
-        }
+        public Reader Read() => new Reader(this);
     }
 }

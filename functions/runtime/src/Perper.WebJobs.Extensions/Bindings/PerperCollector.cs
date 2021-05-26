@@ -30,9 +30,6 @@ namespace Perper.WebJobs.Extensions.Bindings
             }
         }
 
-        public Task FlushAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+        public Task FlushAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }

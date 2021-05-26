@@ -124,9 +124,6 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        public string GetFieldName(string name)
-        {
-            return name;
-        }
+        public string GetFieldName(string name) => name;
     }
 }

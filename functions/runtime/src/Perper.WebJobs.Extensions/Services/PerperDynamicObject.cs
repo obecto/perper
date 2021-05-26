@@ -76,9 +76,6 @@ namespace Perper.WebJobs.Extensions.Services
             return true;
         }
 
-        public override string ToString()
-        {
-            return BinaryObject.ToString()!;
-        }
+        public override string ToString() => BinaryObject.ToString()!;
     }
 }

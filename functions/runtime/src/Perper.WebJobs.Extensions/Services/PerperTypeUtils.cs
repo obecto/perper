@@ -54,15 +54,20 @@ namespace Perper.WebJobs.Extensions.Services
             return arrayNesting == 0 ? result : new string('[', arrayNesting) + "L" + result;
         }
 
+
+/* Unmerged change from project 'Perper.WebJobs.Extensions (net5.0)'
+Before:
         public static bool IsAnonymousType(Type type)
         {
             return type.GetCustomAttributes<CompilerGeneratedAttribute>().Count() > 0 && type.BaseType == typeof(object);
-        }
+After:
+        public static bool IsAnonymousType(Type type) type.GetCustomAttributes<CompilerGeneratedAttribute>().Count() > 0 && type.BaseType == typeof(object);
+*/
+        public static bool IsAnonymousType(Type type) => => type.GetCustomAttributes<CompilerGeneratedAttribute>().Count() > 0 && type.BaseType == typeof(object);
 
-        public static bool IsTupleType(Type type)
-        {
+        public static bool IsTupleType(Type type) =>
 #if !NETSTANDARD2_0
-            return typeof(ITuple).IsAssignableFrom(type);
+            typeof(ITuple).IsAssignableFrom(type);
 #else
             var definition = type.GetGenericTypeDefinition();
             return (definition == typeof(Tuple<>)
@@ -85,7 +90,6 @@ namespace Perper.WebJobs.Extensions.Services
                 || definition == typeof(ValueTuple<,,,,,,,>));
 #endif
 
-        }
 
         public static Type? GetGenericInterface(Type type, Type genericInterface)
         {

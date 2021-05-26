@@ -30,9 +30,6 @@ namespace Perper.WebJobs.Extensions.Triggers
             return Task.FromResult<object?>(value);
         }
 
-        public string ToInvokeString()
-        {
-            return _trigger.ToString()!;
-        }
+        public string ToInvokeString() => _trigger.ToString()!;
     }
 }

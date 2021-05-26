@@ -55,10 +55,7 @@ namespace DotNet.FunctionApp
         }
 
         [FunctionName("Log")]
-        public static void Log([PerperTrigger] string message)
-        {
-            Console.WriteLine(message);
-        }
+        public static void Log([PerperTrigger] string message) => Console.WriteLine(message);
 
         [FunctionName("Dynamic")]
         public static dynamic Dynamic([PerperTrigger] dynamic item)
@@ -68,10 +65,7 @@ namespace DotNet.FunctionApp
         }
 
         [FunctionName("Called")]
-        public static int Called([PerperTrigger] (int a, int b) parameters, CancellationToken cancellationToken)
-        {
-            return parameters.a / parameters.b;
-        }
+        public static int Called([PerperTrigger] (int a, int b) parameters, CancellationToken cancellationToken) => parameters.a / parameters.b;
 
         [FunctionName("StatefulSum")]
         public static async Task<int> StatefulSum([PerperTrigger] int n, IState state, CancellationToken cancellationToken)

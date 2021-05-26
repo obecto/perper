@@ -31,15 +31,9 @@ namespace Perper.WebJobs.Extensions.Fake
 
         public FakeStream(IEnumerable<T> source) : this(source.ToAsyncEnumerable()) { }
 
-        private FakeStreamAsyncEnumerable GetEnumerable(Func<T, bool> filter, bool replay)
-        {
-            return new FakeStreamAsyncEnumerable(this, filter, replay);
-        }
+        private FakeStreamAsyncEnumerable GetEnumerable(Func<T, bool> filter, bool replay) => new FakeStreamAsyncEnumerable(this, filter, replay);
 
-        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-        {
-            return GetEnumerable((_) => true, false).GetAsyncEnumerator(cancellationToken);
-        }
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) => GetEnumerable((_) => true, false).GetAsyncEnumerator(cancellationToken);
 
         public IAsyncEnumerable<T> DataLocal()
             => GetEnumerable((_) => true, false);
@@ -116,10 +110,7 @@ namespace Perper.WebJobs.Extensions.Fake
                 Filter = filter;
             }
 
-            public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken())
-            {
-                return Impl(cancellationToken).GetAsyncEnumerator(cancellationToken);
-            }
+            public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken()) => Impl(cancellationToken).GetAsyncEnumerator(cancellationToken);
 
             private async IAsyncEnumerable<T> Impl([EnumeratorCancellation] CancellationToken cancellationToken = default)
             {
@@ -166,9 +157,6 @@ namespace Perper.WebJobs.Extensions.Fake
 
         public DeclaredFakeStream() : this(new TaskCompletionSource<Task<IAsyncEnumerable<T>>>()) { }
 
-        public void SetSource(Task<IAsyncEnumerable<T>> source)
-        {
-            _source.SetResult(source);
-        }
+        public void SetSource(Task<IAsyncEnumerable<T>> source) => _source.SetResult(source);
     }
 }

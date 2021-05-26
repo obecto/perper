@@ -27,9 +27,7 @@ namespace Perper.WebJobs.Extensions.Services
         }
 
         public void Add(Func<Task> taskFactory) // Sugar
-        {
-            Add(taskFactory());
-        }
+=> Add(taskFactory());
 
         public void Add(Task task)
         {

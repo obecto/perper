@@ -39,10 +39,7 @@ namespace Perper.WebJobs.Extensions.Fake
             return Task.FromResult<IStream>(new FakeStream { ExecutionTask = task });
         }
 
-        public IStream<TItem> DeclareStreamFunction<TItem>(string functionName)
-        {
-            return new DeclaredFakeStream<TItem>() { FunctionName = functionName };
-        }
+        public IStream<TItem> DeclareStreamFunction<TItem>(string functionName) => new DeclaredFakeStream<TItem>() { FunctionName = functionName };
 
         public Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default, StreamOptions flags = StreamOptions.Default)
         {

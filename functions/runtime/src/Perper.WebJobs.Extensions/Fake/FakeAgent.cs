@@ -14,15 +14,9 @@ namespace Perper.WebJobs.Extensions.Fake
         private readonly Dictionary<string, Func<FakeAgent>> agentConstructors = new Dictionary<string, Func<FakeAgent>>();
         private static readonly ConcurrentDictionary<string, ChannelWriter<object?>> blankStreams = new ConcurrentDictionary<string, ChannelWriter<object?>>();
 
-        public Task<TResult> CallFunctionAsync<TResult>(string functionName, object? parameters = default)
-        {
-            return CallAsync<object?, TResult>(functionName, parameters);
-        }
+        public Task<TResult> CallFunctionAsync<TResult>(string functionName, object? parameters = default) => CallAsync<object?, TResult>(functionName, parameters);
 
-        public Task CallActionAsync(string actionName, object? parameters = default)
-        {
-            return CallFunctionAsync<object?>(actionName, parameters);
-        }
+        public Task CallActionAsync(string actionName, object? parameters = default) => CallFunctionAsync<object?>(actionName, parameters);
 
         public FakeAgent RegisterFunction<TParams, TResult>(string functionDelegate, Func<TParams, Task<TResult>> function)
         {
@@ -83,15 +77,9 @@ namespace Perper.WebJobs.Extensions.Fake
             return (stream, name);
         }
 
-        public static async Task WriteToBlankStream<T>(string name, T value)
-        {
-            await blankStreams[name].WriteAsync(value);
-        }
+        public static async Task WriteToBlankStream<T>(string name, T value) => await blankStreams[name].WriteAsync(value);
 
-        public static FakeCollector<T> GetBlankStreamCollector<T>(string name)
-        {
-            return new FakeCollector<T>(blankStreams[name]);
-        }
+        public static FakeCollector<T> GetBlankStreamCollector<T>(string name) => new FakeCollector<T>(blankStreams[name]);
 
         public static (FakeCollector<T>, IStream<T>) CreateBlankStreamCollector<T>()
         {

@@ -30,10 +30,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             _logger = logger;
         }
 
-        public Task<object?> GetValueAsync()
-        {
-            return Task.FromResult<object?>(null);
-        }
+        public Task<object?> GetValueAsync() => Task.FromResult<object?>(null);
 
         public async Task SetValueAsync(object? value, CancellationToken cancellationToken)
         {
@@ -78,9 +75,6 @@ namespace Perper.WebJobs.Extensions.Triggers
             }
         }
 
-        public string ToInvokeString()
-        {
-            return _trigger.ToString()!;
-        }
+        public string ToInvokeString() => _trigger.ToString()!;
     }
 }

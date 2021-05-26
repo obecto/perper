@@ -66,13 +66,10 @@ namespace Perper.WebJobs.Extensions.Model
             }
         }
 
-        private static object? ParseFieldValue(Expression subexpression)
+        private static object? ParseFieldValue(Expression subexpression) => subexpression switch
         {
-            return subexpression switch
-            {
-                ConstantExpression constant => constant.Value,
-                _ => Expression.Lambda(subexpression).Compile().DynamicInvoke(),// Ugly way to read FieldExpression-s (used by e.g. local variables)
-            };
-        }
+            ConstantExpression constant => constant.Value,
+            _ => Expression.Lambda(subexpression).Compile().DynamicInvoke(),// Ugly way to read FieldExpression-s (used by e.g. local variables)
+        };
     }
 }

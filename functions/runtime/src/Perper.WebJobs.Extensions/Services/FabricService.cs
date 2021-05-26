@@ -96,19 +96,16 @@ namespace Perper.WebJobs.Extensions.Services
             return _serviceTask ?? Task.CompletedTask;
         }
 
-        private static NotificationKey GetNotificationKey(NotificationProto notification)
+        private static NotificationKey GetNotificationKey(NotificationProto notification) => (notification.AffinityCase switch
         {
-            return (notification.AffinityCase switch
-            {
-                NotificationProto.AffinityOneofCase.StringAffinity => new NotificationKeyString(
-                    notification.NotificationKey,
-                    notification.StringAffinity),
-                NotificationProto.AffinityOneofCase.IntAffinity => new NotificationKeyLong(
-                    notification.NotificationKey,
-                    notification.IntAffinity),
-                _ => default!
-            })!;
-        }
+            NotificationProto.AffinityOneofCase.StringAffinity => new NotificationKeyString(
+                notification.NotificationKey,
+                notification.StringAffinity),
+            NotificationProto.AffinityOneofCase.IntAffinity => new NotificationKeyLong(
+                notification.NotificationKey,
+                notification.IntAffinity),
+            _ => default!
+        })!;
 
         private Channel<(NotificationKey, Notification)> GetChannel(string instance, int? parameter = null) =>
             _channels.GetOrAdd((instance, parameter), _ =>
@@ -176,10 +173,7 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        public Task ConsumeNotification(NotificationKey key)
-        {
-            return _notificationsCache.RemoveAsync(key);
-        }
+        public Task ConsumeNotification(NotificationKey key) => _notificationsCache.RemoveAsync(key);
 
         public async IAsyncEnumerable<(NotificationKey, Notification)> GetNotifications(
             string instance, int? parameter = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)

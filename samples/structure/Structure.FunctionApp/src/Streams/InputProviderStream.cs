@@ -15,9 +15,6 @@ namespace Structure.Streams
             [Perper("input")] IPerperStream input,
             [Perper("output")] IAsyncCollector<IPerperStream> output,
             ILogger logger,
-            CancellationToken cancellationToken)
-        {
-            await output.AddAsync(input, cancellationToken);
-        }
+            CancellationToken cancellationToken) => await output.AddAsync(input, cancellationToken);
     }
 }

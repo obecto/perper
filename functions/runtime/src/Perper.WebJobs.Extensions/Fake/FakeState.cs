@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
+
 using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Fake
@@ -9,10 +10,8 @@ namespace Perper.WebJobs.Extensions.Fake
     {
         public ConcurrentDictionary<string, object?> Values { get; } = new ConcurrentDictionary<string, object?>();
 
-        Task<T> IState.GetValue<T>(string key, Func<T> defaultValueFactory) // FIXME: Rename methods in state to Async?
-        {
-            return Task.FromResult(GetValue(key, defaultValueFactory));
-        }
+        // FIXME: Rename methods in state to Async?
+        Task<T> IState.GetValue<T>(string key, Func<T> defaultValueFactory) => Task.FromResult(GetValue(key, defaultValueFactory));
 
         Task IState.SetValue<T>(string key, T value)
         {
@@ -22,24 +21,12 @@ namespace Perper.WebJobs.Extensions.Fake
 
         Task<IStateEntry<T>> IState.Entry<T>(string key, Func<T> defaultValueFactory) => Task.FromResult(Entry(key, defaultValueFactory));
 
-        public IStateEntry<T> Entry<T>(string key, Func<T> defaultValueFactory)
-        {
-            return new FakeStateEntry<T>(this, key, defaultValueFactory, false);
-        }
+        public IStateEntry<T> Entry<T>(string key, Func<T> defaultValueFactory) => new FakeStateEntry<T>(this, key, defaultValueFactory, false);
 
-        public T GetValue<T>(string key)
-        {
-            return FakeConfiguration.Deserialize<T>(Values[key]);
-        }
+        public T GetValue<T>(string key) => FakeConfiguration.Deserialize<T>(Values[key]);
 
-        public T GetValue<T>(string key, Func<T> defaultValueFactory)
-        {
-            return FakeConfiguration.Deserialize<T>(Values.GetOrAdd(key, _k => FakeConfiguration.Serialize(defaultValueFactory())));
-        }
+        public T GetValue<T>(string key, Func<T> defaultValueFactory) => FakeConfiguration.Deserialize<T>(Values.GetOrAdd(key, _k => FakeConfiguration.Serialize(defaultValueFactory())));
 
-        public void SetValue<T>(string key, T value)
-        {
-            Values[key] = FakeConfiguration.Serialize(value);
-        }
+        public void SetValue<T>(string key, T value) => Values[key] = FakeConfiguration.Serialize(value);
     }
 }

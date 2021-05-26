@@ -51,10 +51,7 @@ namespace Perper.WebJobs.Extensions.Services
             _initialized = true;
         }
 
-        public object? GetParameters(Type type)
-        {
-            return _serializer.Deserialize(parameters, type);
-        }
+        public object? GetParameters(Type type) => _serializer.Deserialize(parameters, type);
 
         public object?[] GetParameters()
         {

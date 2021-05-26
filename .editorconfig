@@ -826,7 +826,7 @@ dotnet_diagnostic.IDE0020.severity = error
 dotnet_diagnostic.IDE0021.severity = error
 
 # IDE0022: Use expression body for methods
-dotnet_diagnostic.IDE0022.severity = none
+dotnet_diagnostic.IDE0022.severity = error
 
 # IDE0023: Use expression body for conversion operators
 dotnet_diagnostic.IDE0023.severity = error
@@ -1033,6 +1033,11 @@ file_header_template = unset
 csharp_style_var_elsewhere = true:error
 csharp_style_var_for_built_in_types = true:error
 csharp_style_var_when_type_is_apparent = true:error
+
+# Prefer method-like constructs to have a block body
+csharp_style_expression_bodied_methods = true:error
+csharp_style_expression_bodied_constructors = true:error
+csharp_style_expression_bodied_operators = true:error
 
 # New line preferences
 csharp_new_line_before_catch = true

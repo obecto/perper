@@ -39,9 +39,6 @@ namespace Perper.WebJobs.Extensions.Model
             return (TResult)_serializer.DeserializeRoot(callData.Result, typeof(TResult))!;
         }
 
-        public Task CallActionAsync(string actionName, object? parameters = default)
-        {
-            return ((Context)_context).CallAsync(AgentName, AgentDelegate, actionName, parameters);
-        }
+        public Task CallActionAsync(string actionName, object? parameters = default) => ((Context)_context).CallAsync(AgentName, AgentDelegate, actionName, parameters);
     }
 }

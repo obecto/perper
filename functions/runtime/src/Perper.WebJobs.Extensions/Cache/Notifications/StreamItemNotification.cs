@@ -12,9 +12,6 @@ namespace Perper.WebJobs.Extensions.Cache.Notifications
         public long Key { get; set; }
         public bool Ephemeral { get; set; }
 
-        public override string ToString()
-        {
-            return $"Stream Item: ({Stream}, {Parameter}, {Cache}, {Key}, {Ephemeral})";
-        }
+        public override string ToString() => $"Stream Item: ({Stream}, {Parameter}, {Cache}, {Key}, {Ephemeral})";
     }
 }

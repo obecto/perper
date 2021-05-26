@@ -44,11 +44,8 @@ namespace Perper.WebJobs.Extensions.Triggers
             BindingDataContract = CreateBindingDataContract();
         }
 
-        public Task<IListener> CreateListenerAsync(ListenerFactoryContext context)
-        {
-            return Task.FromResult<IListener>(new PerperTriggerListener(
+        public Task<IListener> CreateListenerAsync(ListenerFactoryContext context) => Task.FromResult<IListener>(new PerperTriggerListener(
                 _fabric, context.Descriptor.ShortName, _ignite, context.Executor, _logger));
-        }
 
         public async Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
@@ -68,10 +65,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             };
         }
 
-        public ParameterDescriptor ToParameterDescriptor()
-        {
-            return new TriggerParameterDescriptor();
-        }
+        public ParameterDescriptor ToParameterDescriptor() => new TriggerParameterDescriptor();
 
         private IReadOnlyDictionary<string, Type> CreateBindingDataContract()
         {

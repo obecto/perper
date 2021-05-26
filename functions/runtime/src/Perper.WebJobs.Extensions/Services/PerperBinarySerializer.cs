@@ -25,10 +25,7 @@ namespace Perper.WebJobs.Extensions.Services
             _services = services;
         }
 
-        public void SetBinary(IBinary binary)
-        {
-            _binary = binary;
-        }
+        public void SetBinary(IBinary binary) => _binary = binary;
 
         #region GetProperties
         private class TypeData
@@ -276,10 +273,7 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        public object SerializeRoot(object? value)
-        {
-            return Serialize(value) ?? new NullPlaceholder();
-        }
+        public object SerializeRoot(object? value) => Serialize(value) ?? new NullPlaceholder();
 
         public object? DeserializeRoot(object value, Type type)
         {

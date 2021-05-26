@@ -51,33 +51,18 @@ namespace Perper.WebJobs.Extensions.Bindings
                 _services = services;
             }
 
-            public Task<IValueProvider> BindAsync(BindingContext context)
-            {
-                return Task.FromResult<IValueProvider>(this);
-            }
+            public Task<IValueProvider> BindAsync(BindingContext context) => Task.FromResult<IValueProvider>(this);
 
-            public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
-            {
-                return Task.FromResult<IValueProvider>(this);
-            }
+            public Task<IValueProvider> BindAsync(object value, ValueBindingContext context) => Task.FromResult<IValueProvider>(this);
 
-            public Task<object> GetValueAsync()
-            {
-                return Task.FromResult(_services.GetService(Type));
-            }
+            public Task<object> GetValueAsync() => Task.FromResult(_services.GetService(Type));
 
-            public ParameterDescriptor ToParameterDescriptor()
+            public ParameterDescriptor ToParameterDescriptor() => new ParameterDescriptor
             {
-                return new ParameterDescriptor
-                {
-                    Name = Type.Name
-                };
-            }
+                Name = Type.Name
+            };
 
-            public string ToInvokeString()
-            {
-                return Type.Name;
-            }
+            public string ToInvokeString() => Type.Name;
         }
     }
 }

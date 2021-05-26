@@ -37,15 +37,9 @@ namespace Perper.WebJobs.Extensions.Model
             DefaultValueFactory = defaultValueFactory;
         }
 
-        public override async Task Load()
-        {
-            Value = await _state.GetValue(Name, DefaultValueFactory);
-        }
+        public override async Task Load() => Value = await _state.GetValue(Name, DefaultValueFactory);
 
-        public override Task Store()
-        {
-            return _state.SetValue(Name, Value);
-        }
+        public override Task Store() => _state.SetValue(Name, Value);
     }
 
     public class StateEntryDI<T> : IStateEntry<T>
