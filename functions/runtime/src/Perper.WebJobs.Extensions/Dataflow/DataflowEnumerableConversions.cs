@@ -24,8 +24,14 @@ namespace Perper.WebJobs.Extensions.Dataflow
 
             helper().ContinueWith(completedTask =>
             {
-                if (completedTask.Status == TaskStatus.Faulted) ((IDataflowBlock)block).Fault(completedTask.Exception!);
-                else if (completedTask.Status == TaskStatus.RanToCompletion) block.Complete();
+                if (completedTask.Status == TaskStatus.Faulted)
+                {
+                    ((IDataflowBlock)block).Fault(completedTask.Exception!);
+                }
+                else if (completedTask.Status == TaskStatus.RanToCompletion)
+                {
+                    block.Complete();
+                }
             }, cancellationToken);
 
             return block;

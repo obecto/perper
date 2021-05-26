@@ -31,9 +31,15 @@ namespace Perper.WebJobs.Extensions.Model
                             var fieldNameLeft = ParseFieldName(binary.Left);
                             var fieldNameRight = ParseFieldName(binary.Right);
                             if (fieldNameLeft != null && fieldNameRight != null)
+                            {
                                 throw new NotImplementedException("Support for comparing two fields  is not implemented yet.");
+                            }
+
                             if (fieldNameLeft == null && fieldNameRight == null)
+                            {
                                 throw new NotImplementedException("Expected a field/property on one side of the equality test.");
+                            }
+
                             var fieldName = string.Join(".", (fieldNameLeft ?? fieldNameRight)!);
                             var fieldValue = fieldNameLeft != null ? ParseFieldValue(binary.Right) : ParseFieldValue(binary.Left);
                             filter.Add(fieldName, fieldValue);

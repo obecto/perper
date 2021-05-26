@@ -42,7 +42,10 @@ namespace Messaging.FunctionApp
             {
                 Launcher.MessagesProcessed.Increment();
                 Launcher.MessagesFiltered.Increment();
-                if (item.To != i) System.Console.WriteLine("!!!!!");
+                if (item.To != i)
+                {
+                    System.Console.WriteLine("!!!!!");
+                }
             }
         }
 
@@ -82,7 +85,10 @@ namespace Messaging.FunctionApp
             {
                 await output.AddAsync(new Message(i, RandomNumberGenerator.GetInt32(n)));
                 Launcher.MessagesProcessed.Increment();
-                if (!Launcher.MessagesSent.Increment()) break;
+                if (!Launcher.MessagesSent.Increment())
+                {
+                    break;
+                }
             }
         }
     }
