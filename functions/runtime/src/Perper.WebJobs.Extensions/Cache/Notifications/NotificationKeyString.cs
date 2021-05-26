@@ -6,10 +6,10 @@ namespace Perper.WebJobs.Extensions.Cache.Notifications
     [PerperData]
     public class NotificationKeyString : NotificationKey
     {
-        public NotificationKeyString(long _key, string _affinity)
+        public NotificationKeyString(long key, string affinity)
         {
-            Key = _key;
-            Affinity = _affinity;
+            Key = key;
+            Affinity = affinity;
         }
 
         public long Key { get; set; }
