@@ -59,7 +59,8 @@ class FabricService(object):
             ],
         }
 
-        self._notifications_cache = self._ignite.get_cache(cache_config)
+        # NOTE: The get_cache method now only accepts a string parameter.
+        self._notifications_cache = self._ignite.get_cache(f"{self.agent_delegate}-$notifications")
 
         self._ignite.register_binary_type(
             NotificationKeyLong, affinity_key_field="affinity"
