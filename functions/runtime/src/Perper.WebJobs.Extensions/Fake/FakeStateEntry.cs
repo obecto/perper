@@ -15,7 +15,7 @@ namespace Perper.WebJobs.Extensions.Fake
         {
             State = state ?? new FakeState();
             Name = name ?? Guid.NewGuid().ToString();
-            DefaultValueFactory = defaultValueFactory ?? (Func<T>)(() => default!);
+            DefaultValueFactory = defaultValueFactory ?? (() => default!);
             Value = unloaded ? default! : State.GetValue(Name, DefaultValueFactory);
         }
 
