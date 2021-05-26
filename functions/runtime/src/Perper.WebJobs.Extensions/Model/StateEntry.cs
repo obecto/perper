@@ -14,7 +14,7 @@ namespace Perper.WebJobs.Extensions.Model
     public class StateEntry<T> : StateEntry, IStateEntry<T>
     {
         [NonSerialized] private readonly State _state;
-        [NonSerialized] public Func<T> DefaultValueFactory = () => default!;
+        [NonSerialized] private readonly Func<T> _defaultValueFactory = () => default!;
 
         [IgnoreDataMember]
         public T Value { get; set; } = default!;
@@ -34,10 +34,10 @@ namespace Perper.WebJobs.Extensions.Model
             : this(state)
         {
             Name = name;
-            DefaultValueFactory = defaultValueFactory;
+            this._defaultValueFactory = defaultValueFactory;
         }
 
-        public override async Task Load() => Value = await _state.GetValue(Name, DefaultValueFactory);
+        public override async Task Load() => Value = await _state.GetValue(Name, _defaultValueFactory);
 
         public override Task Store() => _state.SetValue(Name, Value);
     }
