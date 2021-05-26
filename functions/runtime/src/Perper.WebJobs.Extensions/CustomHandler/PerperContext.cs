@@ -94,7 +94,9 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             _callResultChannels = new Dictionary<Guid, Channel<JObject>>();
 
             var url = $"http://localhost:{Environment.GetEnvironmentVariable("FUNCTIONS_CUSTOMHANDLER_PORT")}/";
+#pragma warning disable CA2000 // Dispose objects before losing scope
             using var server = new WebServer(o => o.WithUrlPrefix(url).WithMode(HttpListenerMode.EmbedIO))
+#pragma warning restore CA2000 // Dispose objects before losing scope
                 .WithModule(new ActionModule("/", HttpVerbs.Any, Handler));
             server.RunAsync();
         }
