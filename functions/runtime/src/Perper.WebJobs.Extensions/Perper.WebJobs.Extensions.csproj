@@ -83,4 +83,8 @@
     <Compile Include="CustomHandler/**/*.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="GlobalSuppressions.cs" />
+  </ItemGroup>
+
 </Project>

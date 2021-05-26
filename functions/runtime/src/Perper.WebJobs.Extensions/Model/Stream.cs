@@ -86,7 +86,7 @@ namespace Perper.WebJobs.Extensions.Model
             }
         }
 
-        public class StreamAsyncEnumerable : IAsyncEnumerable<T>
+        private class StreamAsyncEnumerable : IAsyncEnumerable<T>
         {
             protected Stream<T> Stream { get; }
 
