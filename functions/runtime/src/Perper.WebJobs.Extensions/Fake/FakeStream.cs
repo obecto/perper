@@ -109,9 +109,9 @@ namespace Perper.WebJobs.Extensions.Fake
                 Filter = filter;
             }
 
-            public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken()) => Impl(cancellationToken).GetAsyncEnumerator(cancellationToken);
+            public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken()) => Impl().GetAsyncEnumerator(cancellationToken);
 
-            private async IAsyncEnumerable<T> Impl([EnumeratorCancellation] CancellationToken cancellationToken = default)
+            private async IAsyncEnumerable<T> Impl()
             {
                 if (Replay)
                 {
@@ -128,7 +128,7 @@ namespace Perper.WebJobs.Extensions.Fake
 
                 // NOTE: Race condition: can miss elements while switching from replay to realtime
 
-                await foreach (var i in _stream.GetChannel().ReadAllAsync(cancellationToken))
+                await foreach (var i in _stream.GetChannel().ReadAllAsync())
                 {
                     var value = FakeConfiguration.Deserialize<T>(_stream.StoredData[i]);
 
