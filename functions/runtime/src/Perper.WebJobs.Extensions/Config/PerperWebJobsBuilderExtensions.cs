@@ -55,7 +55,7 @@ namespace Perper.WebJobs.Extensions.Config
                 var nameMapper = ActivatorUtilities.CreateInstance<PerperNameMapper>(services);
                 nameMapper.InitializeFromAppDomain();
 
-                string? getAffinityKeyFieldName(Type type)
+                static string? getAffinityKeyFieldName(Type type)
                 {
                     foreach (var prop in type.GetProperties())
                     {
