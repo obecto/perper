@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 namespace Perper.WebJobs.Extensions.Services
 {
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "<Pending>")]
     public class TaskCollection
     {
         private struct EmptyStruct { }
