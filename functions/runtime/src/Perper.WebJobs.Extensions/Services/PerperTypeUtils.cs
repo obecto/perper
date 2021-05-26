@@ -63,7 +63,7 @@ Before:
 After:
         public static bool IsAnonymousType(Type type) type.GetCustomAttributes<CompilerGeneratedAttribute>().Count() > 0 && type.BaseType == typeof(object);
 */
-        public static bool IsAnonymousType(Type type) => => type.GetCustomAttributes<CompilerGeneratedAttribute>().Count() > 0 && type.BaseType == typeof(object);
+        public static bool IsAnonymousType(Type type) => type.GetCustomAttributes<CompilerGeneratedAttribute>().Any() && type.BaseType == typeof(object);
 
         public static bool IsTupleType(Type type) =>
 #if !NETSTANDARD2_0
