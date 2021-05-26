@@ -10,10 +10,7 @@ namespace Perper.WebJobs.Extensions.Fake
         public FakeAgent Agent { get; }
         IAgent IContext.Agent => Agent;
 
-        public FakeContext(FakeAgent agent)
-        {
-            Agent = agent;
-        }
+        public FakeContext(FakeAgent agent) => Agent = agent;
 
         public FakeContext() : this(new FakeAgent()) { }
 

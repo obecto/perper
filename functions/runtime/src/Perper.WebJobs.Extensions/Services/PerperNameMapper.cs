@@ -16,10 +16,7 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly Dictionary<string, Type> _fullNameMap = new Dictionary<string, Type>();
         public Dictionary<Type, string> WellKnownTypes { get; } = new Dictionary<Type, string>();
 
-        public PerperNameMapper(ILogger<PerperNameMapper> logger)
-        {
-            _logger = logger;
-        }
+        public PerperNameMapper(ILogger<PerperNameMapper> logger) => _logger = logger;
 
         public void InitializeFromAppDomain()
         {

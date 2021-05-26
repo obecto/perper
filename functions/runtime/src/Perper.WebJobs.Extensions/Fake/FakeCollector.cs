@@ -10,10 +10,7 @@ namespace Perper.WebJobs.Extensions.Fake
     {
         private readonly ChannelWriter<object?> _channelWriter;
 
-        public FakeCollector(ChannelWriter<object?> writer)
-        {
-            _channelWriter = writer;
-        }
+        public FakeCollector(ChannelWriter<object?> writer) => _channelWriter = writer;
 
         public async Task AddAsync(T item, CancellationToken cancellationToken = default) => await _channelWriter.WriteAsync(FakeConfiguration.Serialize(item), cancellationToken);
 

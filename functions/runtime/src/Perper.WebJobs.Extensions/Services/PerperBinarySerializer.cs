@@ -20,10 +20,7 @@ namespace Perper.WebJobs.Extensions.Services
         private readonly IServiceProvider? _services;
         private IBinary? _binary;
 
-        public PerperBinarySerializer(IServiceProvider? services)
-        {
-            _services = services;
-        }
+        public PerperBinarySerializer(IServiceProvider? services) => _services = services;
 
         public void SetBinary(IBinary binary) => _binary = binary;
 
@@ -36,14 +33,8 @@ namespace Perper.WebJobs.Extensions.Services
         private struct FieldOrPropertyInfo
         {
             public MemberInfo Member { get; }
-            public FieldOrPropertyInfo(FieldInfo field)
-            {
-                Member = field;
-            }
-            public FieldOrPropertyInfo(PropertyInfo property)
-            {
-                Member = property;
-            }
+            public FieldOrPropertyInfo(FieldInfo field) => Member = field;
+            public FieldOrPropertyInfo(PropertyInfo property) => Member = property;
 
             public string Name => Member.Name;
 #pragma warning disable CS8509 // Switch handles all possibilities

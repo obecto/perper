@@ -34,15 +34,9 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        public PerperDynamicObject(IBinaryObject binaryObject)
-        {
-            _binaryObject = binaryObject;
-        }
+        public PerperDynamicObject(IBinaryObject binaryObject) => _binaryObject = binaryObject;
 
-        public PerperDynamicObject(IBinaryObjectBuilder binaryObjectBuilder)
-        {
-            _binaryObjectBuilder = binaryObjectBuilder;
-        }
+        public PerperDynamicObject(IBinaryObjectBuilder binaryObjectBuilder) => _binaryObjectBuilder = binaryObjectBuilder;
 
         public override bool TryGetMember(GetMemberBinder binder, out object? result)
         {

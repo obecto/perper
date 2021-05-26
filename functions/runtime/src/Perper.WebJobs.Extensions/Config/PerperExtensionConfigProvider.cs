@@ -19,20 +19,14 @@ namespace Perper.WebJobs.Extensions.Config
         {
             private readonly IServiceProvider _services;
 
-            public PerperCollectorConverter(IServiceProvider services)
-            {
-                _services = services;
-            }
+            public PerperCollectorConverter(IServiceProvider services) => _services = services;
 
             public IAsyncCollector<T> Convert(PerperAttribute input) => (IAsyncCollector<T>)ActivatorUtilities.CreateInstance(_services, typeof(PerperCollector<T>), input.Stream);
         }
 
         private readonly IServiceProvider _services;
 
-        public PerperExtensionConfigProvider(IServiceProvider services)
-        {
-            _services = services;
-        }
+        public PerperExtensionConfigProvider(IServiceProvider services) => _services = services;
 
         public void Initialize(ExtensionConfigContext context)
         {

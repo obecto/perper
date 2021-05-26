@@ -22,10 +22,7 @@ namespace Perper.WebJobs.Extensions.Fake
         private readonly ConcurrentDictionary<ChannelWriter<int>, bool> _channels = new ConcurrentDictionary<ChannelWriter<int>, bool>();
         private bool _finished;
 
-        public FakeStream(Task<IAsyncEnumerable<T>> source)
-        {
-            ExecutionTask = Produce(source);
-        }
+        public FakeStream(Task<IAsyncEnumerable<T>> source) => ExecutionTask = Produce(source);
 
         public FakeStream(IAsyncEnumerable<T> source) : this(Task.FromResult(source)) { }
 
@@ -150,10 +147,7 @@ namespace Perper.WebJobs.Extensions.Fake
 
         private readonly TaskCompletionSource<Task<IAsyncEnumerable<T>>> _source;
 
-        public DeclaredFakeStream(TaskCompletionSource<Task<IAsyncEnumerable<T>>> source) : base(source.Task.Unwrap())
-        {
-            _source = source;
-        }
+        public DeclaredFakeStream(TaskCompletionSource<Task<IAsyncEnumerable<T>>> source) : base(source.Task.Unwrap()) => _source = source;
 
         public DeclaredFakeStream() : this(new TaskCompletionSource<Task<IAsyncEnumerable<T>>>()) { }
 

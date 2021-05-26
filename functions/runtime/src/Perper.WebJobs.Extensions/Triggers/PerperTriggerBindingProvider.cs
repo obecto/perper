@@ -10,10 +10,7 @@ namespace Perper.WebJobs.Extensions.Triggers
     {
         private readonly IServiceProvider _services;
 
-        public PerperTriggerBindingProvider(IServiceProvider services)
-        {
-            _services = services;
-        }
+        public PerperTriggerBindingProvider(IServiceProvider services) => _services = services;
 
         public Task<ITriggerBinding?> TryCreateAsync(TriggerBindingProviderContext context)
         {

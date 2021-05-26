@@ -33,10 +33,7 @@ namespace Perper.WebJobs.Extensions.Model
 #pragma warning restore CS8618
 
         public Stream(string streamName, FabricService fabric, IIgniteClient ignite)
-            : this(fabric, ignite)
-        {
-            StreamName = streamName;
-        }
+            : this(fabric, ignite) => StreamName = streamName;
     }
 
     [PerperData(Name = "PerperStream")]
@@ -63,10 +60,7 @@ namespace Perper.WebJobs.Extensions.Model
         }
 
         public Stream(string streamName, PerperInstanceData instance, FabricService fabric, IIgniteClient ignite, PerperBinarySerializer serializer, IState state, ILogger logger)
-            : this(instance, fabric, ignite, serializer, state, logger)
-        {
-            StreamName = streamName;
-        }
+            : this(instance, fabric, ignite, serializer, state, logger) => StreamName = streamName;
 
         private StreamAsyncEnumerable GetEnumerable(Dictionary<string, object?> filter, bool replay, bool localToData) => new StreamAsyncEnumerable(this, filter, replay, localToData);
 
