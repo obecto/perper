@@ -44,9 +44,9 @@ namespace Perper.WebJobs.Extensions.Model
 
     public class StateEntryDI<T> : IStateEntry<T>
     {
-        protected IStateEntry<T>? _implementation;
-        [NonSerialized] protected IState _state;
-        [NonSerialized] protected PerperInstanceData _instance;
+        private IStateEntry<T>? _implementation;
+        [NonSerialized] private readonly IState _state;
+        [NonSerialized] private readonly PerperInstanceData _instance;
 
         [PerperInject]
         public StateEntryDI(IState state, PerperInstanceData instance)
