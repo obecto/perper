@@ -15,7 +15,7 @@ namespace Perper.WebJobs.Extensions.Services
     public class PerperBinarySerializer : IBinarySerializer
     {
         [PerperData(Name = "<null>")]
-        public struct NullPlaceholder { };
+        private struct NullPlaceholder { };
 
         private readonly IServiceProvider? _services;
         private IBinary? _binary;
