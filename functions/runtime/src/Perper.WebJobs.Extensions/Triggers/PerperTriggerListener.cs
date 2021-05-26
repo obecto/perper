@@ -52,7 +52,22 @@ namespace Perper.WebJobs.Extensions.Triggers
 
         public void Cancel() => StopAsync(CancellationToken.None).Wait();
 
-        public void Dispose() => _listenCancellationTokenSource.Dispose();
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (_listenCancellationTokenSource != null)
+                {
+                    _listenCancellationTokenSource.Dispose();
+                }
+            }
+        }
 
         private async Task ListenAsync(CancellationToken cancellationToken)
         {
