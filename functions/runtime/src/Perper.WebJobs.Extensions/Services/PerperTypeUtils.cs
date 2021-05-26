@@ -71,7 +71,7 @@ namespace Perper.WebJobs.Extensions.Services
             typeof(ITuple).IsAssignableFrom(type);
 #else
             var definition = type.GetGenericTypeDefinition();
-            return (definition == typeof(Tuple<>)
+            return definition == typeof(Tuple<>)
                 || definition == typeof(Tuple<,>)
                 || definition == typeof(Tuple<,,>)
                 || definition == typeof(Tuple<,,,>)
@@ -88,7 +88,7 @@ namespace Perper.WebJobs.Extensions.Services
                 || definition == typeof(ValueTuple<,,,,,>)
                 || definition == typeof(ValueTuple<,,,,,,>)
                 || definition == typeof(ValueTuple<,,,,,,,>)
-                || definition == typeof(ValueTuple<,,,,,,,>));
+                || definition == typeof(ValueTuple<,,,,,,,>);
 #endif
         }
 

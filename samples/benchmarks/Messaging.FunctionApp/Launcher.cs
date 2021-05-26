@@ -51,7 +51,7 @@ namespace Messaging.FunctionApp
                 {
                     enumerated = (EnumerateMessages ? peering : dummy).Subscribe(),
                     filtered = (FilterMessages ? peering : dummy).Filter<Message>(x => x.To == i).Subscribe(),
-                    queried = (QueryMessages ? streams.ToArray() : new IPerperStream[0] { }),
+                    queried = QueryMessages ? streams.ToArray() : new IPerperStream[0] { },
                     i,
                     n = NodeCount,
                 });
