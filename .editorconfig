@@ -826,7 +826,7 @@ dotnet_diagnostic.IDE0020.severity = error
 dotnet_diagnostic.IDE0021.severity = error
 
 # IDE0022: Use expression body for methods
-dotnet_diagnostic.IDE0022.severity = error
+dotnet_diagnostic.IDE0022.severity = none
 
 # IDE0023: Use expression body for conversion operators
 dotnet_diagnostic.IDE0023.severity = error

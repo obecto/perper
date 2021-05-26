@@ -26,8 +26,8 @@ namespace Perper.WebJobs.Extensions.Services
             return _completionSource.Task;
         }
 
-        public void Add(Func<Task> taskFactory) // Sugar
-=> Add(taskFactory());
+        // Sugar
+        public void Add(Func<Task> taskFactory) => Add(taskFactory());
 
         public void Add(Task task)
         {
