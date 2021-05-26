@@ -447,7 +447,7 @@ namespace Perper.WebJobs.Extensions.Services
                 }
                 catch (Exception e)
                 {
-                    throw new Exception($"Failed reading value for {obj.GetType()}.{property.Name}", e);
+                    throw new InvalidOperationException($"Failed reading value for {obj.GetType()}.{property.Name}", e);
                 }
             }
         }
