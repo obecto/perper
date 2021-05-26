@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
+
 using Perper.WebJobs.Extensions.Config;
 using Perper.WebJobs.Extensions.Model;
 

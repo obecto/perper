@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+
 using Microsoft.Azure.WebJobs;
 
 namespace Perper.WebJobs.Extensions.Fake

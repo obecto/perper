@@ -4,8 +4,11 @@ namespace SimpleAgent.UnitTests.Streams
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
+
     using FluentAssertions;
+
     using SimpleAgent.Streams;
+
     using Xunit;
 
     public class GeneratorTests

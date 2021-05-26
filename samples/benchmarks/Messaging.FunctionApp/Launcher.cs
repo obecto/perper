@@ -32,7 +32,7 @@ namespace Messaging.FunctionApp
         {
             var streams = new List<IPerperStream>();
 
-            for (var i = 0; i < NodeCount; i++)
+            for (var i = 0 ; i < NodeCount ; i++)
             {
                 var stream = context.DeclareStream("Node-" + i, typeof(Node), typeof(Message));
                 streams.Add(stream);
@@ -45,7 +45,7 @@ namespace Messaging.FunctionApp
 
             var dummy = await context.StreamFunctionAsync("DummyInput", "Dummy", new { }, typeof(Message));
 
-            for (var i = 0; i < NodeCount; i++)
+            for (var i = 0 ; i < NodeCount ; i++)
             {
                 await context.StreamFunctionAsync(streams[i], new
                 {

@@ -1,4 +1,5 @@
 using System;
+
 using Microsoft.Azure.WebJobs.Description;
 
 namespace Perper.WebJobs.Extensions.Bindings

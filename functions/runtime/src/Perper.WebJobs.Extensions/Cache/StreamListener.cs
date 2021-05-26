@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using Perper.WebJobs.Extensions.Model;
 
 #pragma warning disable 8618

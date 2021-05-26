@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using Apache.Ignite.Core.Client;
+
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Model

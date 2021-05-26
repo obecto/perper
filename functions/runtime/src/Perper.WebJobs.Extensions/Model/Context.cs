@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
 using Apache.Ignite.Core.Client;
+
 using Microsoft.Extensions.Logging;
+
 using Perper.WebJobs.Extensions.Cache;
 using Perper.WebJobs.Extensions.Services;
 

@@ -1,4 +1,5 @@
 using Apache.Ignite.Core.Cache.Affinity;
+
 using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Cache.Notifications

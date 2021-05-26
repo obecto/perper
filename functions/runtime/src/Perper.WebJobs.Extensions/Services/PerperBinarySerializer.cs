@@ -7,7 +7,9 @@ using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.Serialization;
+
 using Apache.Ignite.Core.Binary;
+
 using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Services
@@ -104,7 +106,7 @@ namespace Perper.WebJobs.Extensions.Services
                 case Array arr:
                     {
                         var serialized = new object?[arr.Length];
-                        for (var i = 0; i < arr.Length; i++)
+                        for (var i = 0 ; i < arr.Length ; i++)
                         {
                             serialized[i] = Serialize(arr.GetValue(i));
                         }
@@ -115,7 +117,7 @@ namespace Perper.WebJobs.Extensions.Services
                         // Cannot use ITuple cast since it doesn't work in netstandard2
                         var typeData = GetTypeData(tuple.GetType());
                         var serialized = new object?[typeData.Properties.Count];
-                        for (var i = 0; i < typeData.Properties.Count; i++)
+                        for (var i = 0 ; i < typeData.Properties.Count ; i++)
                         {
                             var tupleElement = typeData.Properties[i].GetValue(tuple);
                             serialized[i] = Serialize(tupleElement);
@@ -190,7 +192,7 @@ namespace Perper.WebJobs.Extensions.Services
                     {
                         var elementType = type.GetElementType()!;
                         var value = Array.CreateInstance(elementType, arr.Length);
-                        for (var i = 0; i < arr.Length; i++)
+                        for (var i = 0 ; i < arr.Length ; i++)
                         {
                             value.SetValue(Deserialize(arr.GetValue(i), elementType), i);
                         }
@@ -202,7 +204,7 @@ namespace Perper.WebJobs.Extensions.Services
                         // Can potentitially rework this to use TypeData, similar to the code serializing tuples
                         var types = type.GetGenericArguments();
                         var parameters = new object?[types.Length];
-                        for (var i = 0; i < types.Length && i < arr.Length; i++)
+                        for (var i = 0 ; i < types.Length && i < arr.Length ; i++)
                         {
                             parameters[i] = Deserialize(arr.GetValue(i), types[i]);
                         }

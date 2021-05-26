@@ -3,10 +3,14 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Apache.Ignite.Core.Client;
+
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Extensions.Logging;
+
 using Newtonsoft.Json.Linq;
+
 using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Cache;
 using Perper.WebJobs.Extensions.Services;

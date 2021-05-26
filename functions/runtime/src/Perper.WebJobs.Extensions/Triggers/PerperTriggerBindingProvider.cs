@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
+
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.Extensions.DependencyInjection;
 

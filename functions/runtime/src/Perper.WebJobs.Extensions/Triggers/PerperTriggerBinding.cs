@@ -3,14 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+
 using Apache.Ignite.Core.Client;
+
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using Newtonsoft.Json.Linq;
+
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Triggers

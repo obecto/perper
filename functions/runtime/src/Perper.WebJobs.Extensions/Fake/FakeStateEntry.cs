@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+
 using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Fake

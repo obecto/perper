@@ -3,8 +3,10 @@ namespace SimpleAgent.Streams
     using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
+
     using Microsoft.Azure.WebJobs;
     using Microsoft.Extensions.Logging;
+
     using Perper.WebJobs.Extensions.Triggers;
 
     public static class Consumer

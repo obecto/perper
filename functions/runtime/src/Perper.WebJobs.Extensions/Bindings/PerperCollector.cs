@@ -1,9 +1,12 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
+
 using Microsoft.Azure.WebJobs;
+
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Bindings

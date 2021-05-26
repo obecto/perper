@@ -1,8 +1,11 @@
 namespace SimpleAgent.UnitTests
 {
     using System.Threading.Tasks;
+
     using FakeItEasy;
+
     using Perper.WebJobs.Extensions.Model;
+
     using Xunit;
 
     public class LauncherTests

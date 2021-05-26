@@ -1,9 +1,12 @@
 namespace SimpleAgent
 {
     using System.Threading.Tasks;
+
     using Microsoft.Azure.WebJobs;
+
     using Perper.WebJobs.Extensions.Model;
     using Perper.WebJobs.Extensions.Triggers;
+
     using SimpleAgent.Streams;
 
     /// <summary>

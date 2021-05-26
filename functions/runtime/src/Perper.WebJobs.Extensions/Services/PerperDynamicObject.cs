@@ -1,5 +1,6 @@
 using System;
 using System.Dynamic;
+
 using Apache.Ignite.Core.Binary;
 
 namespace Perper.WebJobs.Extensions.Services

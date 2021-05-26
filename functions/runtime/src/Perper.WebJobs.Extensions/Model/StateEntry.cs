@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
+
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Model

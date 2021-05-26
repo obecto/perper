@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
+
 using Apache.Ignite.Core.Binary;
+
 using Microsoft.Extensions.Logging;
+
 using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Services

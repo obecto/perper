@@ -5,7 +5,9 @@ namespace SimpleAgent.Streams
     using System.Runtime.CompilerServices;
     using System.Threading;
     using System.Threading.Tasks;
+
     using Microsoft.Azure.WebJobs;
+
     using Perper.WebJobs.Extensions.Triggers;
 
     public static class Processor

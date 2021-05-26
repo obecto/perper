@@ -2,14 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Cache.Affinity;
 using Apache.Ignite.Core.Client;
+
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+
 using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Services;

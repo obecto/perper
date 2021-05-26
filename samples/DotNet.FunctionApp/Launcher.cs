@@ -82,7 +82,7 @@ namespace DotNet.FunctionApp
             [Perper] IAsyncCollector<dynamic> output,
             ILogger logger)
         {
-            for (var i = 0; i <= parameters.to; i++)
+            for (var i = 0 ; i <= parameters.to ; i++)
             {
                 logger.LogDebug("Generating: {0}", i);
                 await output.AddAsync(new { Num = i });
@@ -94,7 +94,7 @@ namespace DotNet.FunctionApp
         public static async IAsyncEnumerable<dynamic> Generator([PerperTrigger] dynamic parameters, ILogger logger)
         {
             yield return null;
-            for (var i = 0; i <= parameters.Count; i++)
+            for (var i = 0 ; i <= parameters.Count ; i++)
             {
                 logger.LogDebug("Generating: {0}", i);
                 yield return new { Num = i };

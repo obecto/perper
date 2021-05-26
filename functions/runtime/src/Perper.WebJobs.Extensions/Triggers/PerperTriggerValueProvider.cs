@@ -1,8 +1,11 @@
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
+
 using Microsoft.Azure.WebJobs.Host.Bindings;
+
 using Newtonsoft.Json.Linq;
+
 using Perper.WebJobs.Extensions.Services;
 
 namespace Perper.WebJobs.Extensions.Triggers
