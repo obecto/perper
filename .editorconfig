@@ -117,7 +117,7 @@ dotnet_diagnostic.CA1047.severity = error
 dotnet_diagnostic.CA1050.severity = error
 
 # CA1051: Do not declare visible instance fields
-dotnet_diagnostic.CA1051.severity = error
+dotnet_diagnostic.CA1051.severity = warning
 
 # CA1052: Static holder types should be sealed
 dotnet_diagnostic.CA1052.severity = error
