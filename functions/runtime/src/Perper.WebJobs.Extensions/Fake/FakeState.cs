@@ -20,11 +20,11 @@ namespace Perper.WebJobs.Extensions.Fake
             return Task.CompletedTask;
         }
 
-        async Task<IStateEntry<T>> IState.Entry<T>(string key, Func<T> defaultValueFactory)
+        Task<IStateEntry<T>> IState.Entry<T>(string key, Func<T> defaultValueFactory) => Task.FromResult(Entry(key, defaultValueFactory));
+
+        public IStateEntry<T> Entry<T>(string key, Func<T> defaultValueFactory)
         {
-            var entry = new FakeStateEntry<T>(this, key, defaultValueFactory);
-            await entry.Load();
-            return entry;
+            return new FakeStateEntry<T>(this, key, defaultValueFactory, false);
         }
 
         public T GetValue<T>(string key)
