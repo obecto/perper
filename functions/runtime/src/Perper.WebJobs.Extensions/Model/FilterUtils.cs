@@ -6,33 +6,16 @@ namespace Perper.WebJobs.Extensions.Model
 {
     internal static class FilterUtils
     {
-        private static List<string>? _parseFieldName(Expression subexpression)
+        public static Dictionary<string, object?> ConvertFilter<T>(Expression<Func<T, bool>> filter)
         {
-            switch (subexpression)
-            {
-                case MemberExpression member:
-                    var left = _parseFieldName(member.Expression);
-                    left?.Add(member.Member.Name);
-                    return left;
-                case ParameterExpression _:
-                    return new List<string>(); // Assuming there is only one parameter
-                case ConstantExpression _:
-                    return null;
-                default:
-                    throw new NotImplementedException("Support for " + subexpression.GetType() + " in IPerperStream.Filter is not implemented yet.");
-            }
+            var result = new Dictionary<string, object?>();
+
+            AddToFilter(result, filter.Body);
+
+            return result;
         }
 
-        private static object? _parseFieldValue(Expression subexpression)
-        {
-            return subexpression switch
-            {
-                ConstantExpression constant => constant.Value,
-                _ => Expression.Lambda(subexpression).Compile().DynamicInvoke(),// Ugly way to read FieldExpression-s (used by e.g. local variables)
-            };
-        }
-
-        private static void _addToFilter(Dictionary<string, object?> filter, Expression subexpression)
+        private static void AddToFilter(Dictionary<string, object?> filter, Expression subexpression)
         {
             switch (subexpression)
             {
@@ -40,19 +23,19 @@ namespace Perper.WebJobs.Extensions.Model
                     switch (binary.NodeType)
                     {
                         case ExpressionType.And:
-                            _addToFilter(filter, binary.Left);
-                            _addToFilter(filter, binary.Right);
+                            AddToFilter(filter, binary.Left);
+                            AddToFilter(filter, binary.Right);
                             break;
 
                         case ExpressionType.Equal:
-                            var fieldNameLeft = _parseFieldName(binary.Left);
-                            var fieldNameRight = _parseFieldName(binary.Right);
+                            var fieldNameLeft = ParseFieldName(binary.Left);
+                            var fieldNameRight = ParseFieldName(binary.Right);
                             if (fieldNameLeft != null && fieldNameRight != null)
                                 throw new NotImplementedException("Support for comparing two fields  is not implemented yet.");
                             if (fieldNameLeft == null && fieldNameRight == null)
                                 throw new NotImplementedException("Expected a field/property on one side of the equality test.");
                             var fieldName = string.Join(".", (fieldNameLeft ?? fieldNameRight)!);
-                            var fieldValue = fieldNameLeft != null ? _parseFieldValue(binary.Right) : _parseFieldValue(binary.Left);
+                            var fieldValue = fieldNameLeft != null ? ParseFieldValue(binary.Right) : ParseFieldValue(binary.Left);
                             filter.Add(fieldName, fieldValue);
                             break;
 
@@ -66,13 +49,30 @@ namespace Perper.WebJobs.Extensions.Model
             }
         }
 
-        public static Dictionary<string, object?> ConvertFilter<T>(Expression<Func<T, bool>> filter)
+        private static List<string>? ParseFieldName(Expression subexpression)
         {
-            var result = new Dictionary<string, object?>();
+            switch (subexpression)
+            {
+                case MemberExpression member:
+                    var left = ParseFieldName(member.Expression);
+                    left?.Add(member.Member.Name);
+                    return left;
+                case ParameterExpression _:
+                    return new List<string>(); // Assuming there is only one parameter
+                case ConstantExpression _:
+                    return null;
+                default:
+                    throw new NotImplementedException("Support for " + subexpression.GetType() + " in IPerperStream.Filter is not implemented yet.");
+            }
+        }
 
-            _addToFilter(result, filter.Body);
-
-            return result;
+        private static object? ParseFieldValue(Expression subexpression)
+        {
+            return subexpression switch
+            {
+                ConstantExpression constant => constant.Value,
+                _ => Expression.Lambda(subexpression).Compile().DynamicInvoke(),// Ugly way to read FieldExpression-s (used by e.g. local variables)
+            };
         }
     }
 }
