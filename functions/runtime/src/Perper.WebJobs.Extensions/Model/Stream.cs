@@ -15,6 +15,7 @@ using Perper.WebJobs.Extensions.Services;
 namespace Perper.WebJobs.Extensions.Model
 {
     [PerperData(Name = "PerperStream")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "<Pending>")]
     public class Stream : IStream
     {
         public string StreamName { get; protected set; }
@@ -39,6 +40,7 @@ namespace Perper.WebJobs.Extensions.Model
     }
 
     [PerperData(Name = "PerperStream")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "<Pending>")]
     public class Stream<T> : Stream, IStream<T>
     {
         [NonSerialized] public string? FunctionName; // HACK: Used for Declare/InitiaizeStream
