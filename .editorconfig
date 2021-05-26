@@ -33,7 +33,7 @@ dotnet_diagnostic.CA1000.severity = error
 dotnet_diagnostic.CA1001.severity = suggestion
 
 # CA1002: Do not expose generic lists
-dotnet_diagnostic.CA1002.severity = error
+dotnet_diagnostic.CA1002.severity = warning
 
 # CA1003: Use generic event handler instances
 dotnet_diagnostic.CA1003.severity = error
