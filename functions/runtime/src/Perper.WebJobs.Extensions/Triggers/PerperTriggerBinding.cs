@@ -60,7 +60,7 @@ namespace Perper.WebJobs.Extensions.Triggers
 
             var valueProvider = new PerperTriggerValueProvider(trigger, _parameter, instanceData);
             var returnValueProvider = new PerperTriggerValueBinder(trigger, _ignite, _services.GetRequiredService<PerperBinarySerializer>(), _logger);
-            var bindingData = await GetBindingData(instanceData, trigger);
+            var bindingData = await GetBindingData(instanceData);
 
             return new TriggerData(valueProvider, bindingData)
             {
@@ -82,7 +82,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             return result;
         }
 
-        private Task<Dictionary<string, object>> GetBindingData(PerperInstanceData instanceData, JObject trigger)
+        private Task<Dictionary<string, object>> GetBindingData(PerperInstanceData instanceData)
         {
             var result = new Dictionary<string, object>();
 

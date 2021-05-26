@@ -10,7 +10,7 @@ namespace Perper.WebJobs.Extensions.Model
             return state.GetValue(key, () => new T());
         }
 
-        public static Task<IStateEntry<T>> Entry<T>(this IState state, string key, Func<T> defaultValueFactory) where T : new()
+        public static Task<IStateEntry<T>> Entry<T>(this IState state, string key) where T : new()
         {
             return state.Entry(key, () => new T());
         }

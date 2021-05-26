@@ -114,7 +114,7 @@ namespace Perper.WebJobs.Extensions.Services
             _channels.GetOrAdd((instance, parameter), _ =>
                 Channel.CreateUnbounded<(NotificationKey, Notification)>());
 
-        private async Task StartInitialAgent(CancellationToken cancellationToken = default)
+        private async Task StartInitialAgent()
         {
             if (isInitialAgent)
             {
@@ -139,7 +139,7 @@ namespace Perper.WebJobs.Extensions.Services
 
         private async Task RunAsync(CancellationToken cancellationToken = default)
         {
-            _ = StartInitialAgent(cancellationToken);
+            _ = StartInitialAgent();
 
             var client = new Fabric.FabricClient(_grpcChannel);
             using var notifications = client.Notifications(new NotificationFilter { AgentDelegate = AgentDelegate }, null, null, cancellationToken);
@@ -176,7 +176,7 @@ namespace Perper.WebJobs.Extensions.Services
             }
         }
 
-        public Task ConsumeNotification(NotificationKey key, CancellationToken cancellationToken = default)
+        public Task ConsumeNotification(NotificationKey key)
         {
             return _notificationsCache.RemoveAsync(key);
         }
