@@ -8,8 +8,8 @@ namespace Perper.WebJobs.Extensions.Cache.Notifications
     {
         public NotificationKeyLong(long _key, long _affinity)
         {
-            this.Key = _key;
-            this.Affinity = _affinity;
+            Key = _key;
+            Affinity = _affinity;
         }
 
         public long Key { get; set; }
