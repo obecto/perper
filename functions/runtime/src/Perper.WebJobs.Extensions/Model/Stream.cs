@@ -121,7 +121,7 @@ namespace Perper.WebJobs.Extensions.Model
                             {
                                 value = await cache.GetAsync(si.Key);
                             }
-                            catch
+                            catch (KeyNotFoundException)
                             {
                                 Stream._logger.LogError($"Error AffinityKey({key}) Cache Not Found key: {si.Key} in {si.Cache}");
                                 continue;
