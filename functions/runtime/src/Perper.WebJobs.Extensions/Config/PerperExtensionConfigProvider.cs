@@ -1,12 +1,15 @@
 using System;
 using System.Threading.Tasks;
+
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Extensions.DependencyInjection;
+
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+
 using Perper.WebJobs.Extensions.Bindings;
 using Perper.WebJobs.Extensions.Triggers;
 
@@ -15,15 +18,6 @@ namespace Perper.WebJobs.Extensions.Config
     [Extension("Perper")]
     public class PerperExtensionConfigProvider : IExtensionConfigProvider
     {
-        private class PerperCollectorConverter<T> : IConverter<PerperAttribute, IAsyncCollector<T>>
-        {
-            private readonly IServiceProvider _services;
-
-            public PerperCollectorConverter(IServiceProvider services) => _services = services;
-
-            public IAsyncCollector<T> Convert(PerperAttribute input) => (IAsyncCollector<T>)ActivatorUtilities.CreateInstance(_services, typeof(PerperCollector<T>), input.Stream);
-        }
-
         private readonly IServiceProvider _services;
 
         public PerperExtensionConfigProvider(IServiceProvider services) => _services = services;
