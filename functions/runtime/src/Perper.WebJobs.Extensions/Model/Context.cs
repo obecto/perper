@@ -59,8 +59,10 @@ namespace Perper.WebJobs.Extensions.Model
         public IStream<TItem> DeclareStreamFunction<TItem>(string functionName)
         {
             var streamName = GenerateName(functionName);
-            var stream = new Stream<TItem>(streamName, _instance, _fabric, _ignite, _serializer, _state, _logger);
-            stream.FunctionName = functionName;
+            var stream = new Stream<TItem>(streamName, _instance, _fabric, _ignite, _serializer, _state, _logger)
+            {
+                FunctionName = functionName
+            };
             return stream;
         }
 
