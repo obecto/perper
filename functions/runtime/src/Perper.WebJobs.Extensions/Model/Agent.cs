@@ -34,7 +34,7 @@ namespace Perper.WebJobs.Extensions.Model
 
             if (callData.Result == null)
             {
-                return default(TResult)!;
+                return default!;
             }
             return (TResult)_serializer.DeserializeRoot(callData.Result, typeof(TResult))!;
         }

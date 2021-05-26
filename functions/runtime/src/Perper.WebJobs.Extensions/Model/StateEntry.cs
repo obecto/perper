@@ -14,10 +14,10 @@ namespace Perper.WebJobs.Extensions.Model
     public class StateEntry<T> : StateEntry, IStateEntry<T>
     {
         [NonSerialized] private readonly State _state;
-        [NonSerialized] public Func<T> DefaultValueFactory = () => default(T)!;
+        [NonSerialized] public Func<T> DefaultValueFactory = () => default!;
 
         [IgnoreDataMember]
-        public T Value { get; set; } = default(T)!;
+        public T Value { get; set; } = default!;
 
         public string Name { get; private set; }
 
@@ -71,7 +71,7 @@ namespace Perper.WebJobs.Extensions.Model
                     {
                         return Activator.CreateInstance<T>();
                     }
-                    return default(T)!;
+                    return default!;
                 });
             }
             return _implementation;
