@@ -11,11 +11,13 @@ using Perper.WebJobs.Extensions.Model;
 
 namespace Perper.WebJobs.Extensions.Fake
 {
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "<Pending>")]
     public class FakeStream : IStream
     {
         public Task? ExecutionTask { get; set; }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "<Pending>")]
     public class FakeStream<T> : FakeStream, IStream<T>
     {
         private List<object?> StoredData { get; set; } = new List<object?>();
@@ -141,6 +143,7 @@ namespace Perper.WebJobs.Extensions.Fake
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "<Pending>")]
     public class DeclaredFakeStream<T> : FakeStream<T>
     {
         public string? FunctionName;
