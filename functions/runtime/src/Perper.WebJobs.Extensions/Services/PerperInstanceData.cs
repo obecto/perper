@@ -11,6 +11,7 @@ namespace Perper.WebJobs.Extensions.Services
 {
     public class PerperInstanceData
     {
+        private object? parameters = default!;
         private readonly IIgniteClient _ignite;
         private readonly PerperBinarySerializer _serializer;
 
@@ -20,7 +21,6 @@ namespace Perper.WebJobs.Extensions.Services
 
         public string InstanceName { get; private set; } = default!;
         public string Agent { get; private set; } = default!;
-        public object? Parameters { get; private set; } = default!;
 
         public PerperInstanceData(IIgniteClient ignite, PerperBinarySerializer serializer)
         {
@@ -46,14 +46,14 @@ namespace Perper.WebJobs.Extensions.Services
             var instanceDataBinary = await instanceCache.GetAsync(InstanceName);
 
             Agent = instanceDataBinary.GetField<string>(nameof(IInstanceData.Agent));
-            Parameters = instanceDataBinary.GetField<object>(nameof(IInstanceData.Parameters));
+            parameters = instanceDataBinary.GetField<object>(nameof(IInstanceData.Parameters));
 
             _initialized = true;
         }
 
         public object? GetParameters(Type type)
         {
-            return _serializer.Deserialize(Parameters, type);
+            return _serializer.Deserialize(parameters, type);
         }
 
         public object?[] GetParameters()
