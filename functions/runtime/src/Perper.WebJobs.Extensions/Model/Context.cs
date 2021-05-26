@@ -42,14 +42,14 @@ namespace Perper.WebJobs.Extensions.Model
             return (agent, result);
         }
 
-        public async Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default, StreamFlags flags = StreamFlags.Default)
+        public async Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default, StreamOptions flags = StreamOptions.Default)
         {
             var streamName = GenerateName(functionName);
             await CreateStreamAsync(streamName, StreamDelegateType.Function, functionName, parameters, typeof(TItem), flags);
             return new Stream<TItem>(streamName, _instance, _fabric, _ignite, _serializer, _state, _logger);
         }
 
-        public async Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamFlags flags = StreamFlags.Default)
+        public async Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamOptions flags = StreamOptions.Default)
         {
             var streamName = GenerateName(actionName);
             await CreateStreamAsync(streamName, StreamDelegateType.Action, actionName, parameters, null, flags);
@@ -64,7 +64,7 @@ namespace Perper.WebJobs.Extensions.Model
             return stream;
         }
 
-        public async Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default, StreamFlags flags = StreamFlags.Default)
+        public async Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default, StreamOptions flags = StreamOptions.Default)
         {
             var streamInstance = (Stream<TItem>)stream;
             if (streamInstance.FunctionName == null)
@@ -75,14 +75,14 @@ namespace Perper.WebJobs.Extensions.Model
             streamInstance.FunctionName = null;
         }
 
-        public async Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Default)
+        public async Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamOptions flags = StreamOptions.Default)
         {
             var streamName = GenerateName();
             await CreateStreamAsync(streamName, StreamDelegateType.External, "", null, typeof(TItem), flags);
             return (new Stream<TItem>(streamName, _instance, _fabric, _ignite, _serializer, _state, _logger), streamName);
         }
 
-        private async Task CreateStreamAsync(string streamName, StreamDelegateType delegateType, string delegateName, object? parameters, Type? type, StreamFlags flags)
+        private async Task CreateStreamAsync(string streamName, StreamDelegateType delegateType, string delegateName, object? parameters, Type? type, StreamOptions flags)
         {
             var streamsCache = _ignite.GetCache<string, StreamData>("streams");
             await streamsCache.PutAsync(streamName, new StreamData
@@ -93,9 +93,9 @@ namespace Perper.WebJobs.Extensions.Model
                 DelegateType = delegateType,
                 Parameters = parameters,
                 Listeners = new List<StreamListener>(),
-                IndexType = (flags & StreamFlags.Query) != 0 && type != null ? PerperTypeUtils.GetJavaTypeName(type) ?? type.Name : null,
-                IndexFields = (flags & StreamFlags.Query) != 0 && type != null ? _serializer.GetQueriableFields(type) : null,
-                Ephemeral = (flags & StreamFlags.Ephemeral) != 0,
+                IndexType = (flags & StreamOptions.Query) != 0 && type != null ? PerperTypeUtils.GetJavaTypeName(type) ?? type.Name : null,
+                IndexFields = (flags & StreamOptions.Query) != 0 && type != null ? _serializer.GetQueriableFields(type) : null,
+                Ephemeral = (flags & StreamOptions.Ephemeral) != 0,
             });
         }
 

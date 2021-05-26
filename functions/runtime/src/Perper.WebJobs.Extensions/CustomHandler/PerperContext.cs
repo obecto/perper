@@ -140,12 +140,12 @@ namespace Perper.WebJobs.Extensions.CustomHandler
         }
 
         public Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default,
-            StreamFlags flags = StreamFlags.Ephemeral)
+            StreamOptions flags = StreamOptions.Ephemeral)
         {
             return _host.Services.GetService<IContext>()!.StreamFunctionAsync<TItem>(functionName, parameters, flags);
         }
 
-        public Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamFlags flags = StreamFlags.Ephemeral)
+        public Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamOptions flags = StreamOptions.Ephemeral)
         {
             return _host.Services.GetService<IContext>()!.StreamActionAsync(actionName, parameters, flags);
         }
@@ -156,12 +156,12 @@ namespace Perper.WebJobs.Extensions.CustomHandler
         }
 
         public Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default,
-            StreamFlags flags = StreamFlags.Ephemeral)
+            StreamOptions flags = StreamOptions.Ephemeral)
         {
             return _host.Services.GetService<IContext>()!.InitializeStreamFunctionAsync(stream, parameters, flags);
         }
 
-        public Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Ephemeral)
+        public Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamOptions flags = StreamOptions.Ephemeral)
         {
             return _host.Services.GetService<IContext>()!.CreateBlankStreamAsync<TItem>(flags);
         }

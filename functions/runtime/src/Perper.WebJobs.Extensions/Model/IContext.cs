@@ -8,12 +8,12 @@ namespace Perper.WebJobs.Extensions.Model
 
         Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, object? parameters = default);
 
-        Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default, StreamFlags flags = StreamFlags.Default);
-        Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamFlags flags = StreamFlags.Default);
+        Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default, StreamOptions flags = StreamOptions.Default);
+        Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamOptions flags = StreamOptions.Default);
 
         IStream<TItem> DeclareStreamFunction<TItem>(string functionName);
-        Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default, StreamFlags flags = StreamFlags.Default);
+        Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default, StreamOptions flags = StreamOptions.Default);
 
-        Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Default);
+        Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamOptions flags = StreamOptions.Default);
     }
 }

@@ -3,7 +3,7 @@ using System;
 namespace Perper.WebJobs.Extensions.Model
 {
     [Flags]
-    public enum StreamFlags
+    public enum StreamOptions
     {
         Ephemeral = 1,
 

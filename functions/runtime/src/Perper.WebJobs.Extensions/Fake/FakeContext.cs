@@ -27,13 +27,13 @@ namespace Perper.WebJobs.Extensions.Fake
             return (agent, result);
         }
 
-        public Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default, StreamFlags flags = StreamFlags.Default)
+        public Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default, StreamOptions flags = StreamOptions.Default)
         {
             var asyncEnumerableTask = Agent.CallFunctionAsync<IAsyncEnumerable<TItem>>(functionName, parameters);
             return Task.FromResult<IStream<TItem>>(new FakeStream<TItem>(asyncEnumerableTask));
         }
 
-        public Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamFlags flags = StreamFlags.Default)
+        public Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamOptions flags = StreamOptions.Default)
         {
             var task = Agent.CallActionAsync(actionName, parameters);
             return Task.FromResult<IStream>(new FakeStream { ExecutionTask = task });
@@ -44,7 +44,7 @@ namespace Perper.WebJobs.Extensions.Fake
             return new DeclaredFakeStream<TItem>() { FunctionName = functionName };
         }
 
-        public Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default, StreamFlags flags = StreamFlags.Default)
+        public Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, object? parameters = default, StreamOptions flags = StreamOptions.Default)
         {
             var streamInstance = (DeclaredFakeStream<TItem>)stream;
             if (streamInstance.FunctionName == null)
@@ -57,7 +57,7 @@ namespace Perper.WebJobs.Extensions.Fake
             return Task.CompletedTask;
         }
 
-        public Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Default)
+        public Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamOptions flags = StreamOptions.Default)
         {
             var (stream, name) = FakeAgent.CreateBlankStream<TItem>();
             return Task.FromResult(((IStream<TItem>)stream, name));

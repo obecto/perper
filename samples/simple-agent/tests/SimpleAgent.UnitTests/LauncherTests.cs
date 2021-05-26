@@ -19,9 +19,9 @@ namespace SimpleAgent.UnitTests
             await Launcher.RunAsync(default, contextMock, cancellationToken);
 
             // Assert
-            A.CallTo(() => contextMock.StreamFunctionAsync<string>("Generator", A<object>.Ignored, A<StreamFlags>.Ignored)).MustHaveHappened()
-                .Then(A.CallTo(() => contextMock.StreamFunctionAsync<string[]>("Processor", A<object>.Ignored, A<StreamFlags>.Ignored)).MustHaveHappened())
-                .Then(A.CallTo(() => contextMock.StreamActionAsync("Consumer", A<object>.Ignored, A<StreamFlags>.Ignored)).MustHaveHappened());
+            A.CallTo(() => contextMock.StreamFunctionAsync<string>("Generator", A<object>.Ignored, A<StreamOptions>.Ignored)).MustHaveHappened()
+                .Then(A.CallTo(() => contextMock.StreamFunctionAsync<string[]>("Processor", A<object>.Ignored, A<StreamOptions>.Ignored)).MustHaveHappened())
+                .Then(A.CallTo(() => contextMock.StreamActionAsync("Consumer", A<object>.Ignored, A<StreamOptions>.Ignored)).MustHaveHappened());
         }
     }
 }
