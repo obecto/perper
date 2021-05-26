@@ -94,7 +94,7 @@ namespace Perper.WebJobs.Extensions.Model
 
         public class StreamAsyncEnumerable : IAsyncEnumerable<T>
         {
-            protected Stream<T> _stream;
+            protected Stream<T> Stream { get; }
 
             public Dictionary<string, object?> Filter { get; private set; }
             public bool Replay { get; private set; }
@@ -102,7 +102,7 @@ namespace Perper.WebJobs.Extensions.Model
 
             public StreamAsyncEnumerable(Stream<T> stream, Dictionary<string, object?> filter, bool replay, bool localToData)
             {
-                _stream = stream;
+                Stream = stream;
                 Replay = replay;
                 Filter = filter;
                 LocalToData = localToData;
@@ -116,11 +116,11 @@ namespace Perper.WebJobs.Extensions.Model
                 {
                     await AddListenerAsync();
 
-                    await foreach (var (key, notification) in _stream._fabric.GetNotifications(_stream._instance.InstanceName, _stream._parameterIndex, cancellationToken))
+                    await foreach (var (key, notification) in Stream._fabric.GetNotifications(Stream._instance.InstanceName, Stream._parameterIndex, cancellationToken))
                     {
                         if (notification is StreamItemNotification si)
                         {
-                            var cache = _stream._ignite.GetCache<long, object>(si.Cache).WithKeepBinary<long, object>();
+                            var cache = Stream._ignite.GetCache<long, object>(si.Cache).WithKeepBinary<long, object>();
 
                             object value;
                             try
@@ -129,29 +129,29 @@ namespace Perper.WebJobs.Extensions.Model
                             }
                             catch
                             {
-                                _stream._logger.LogError($"Error AffinityKey({key}) Cache Not Found key: {si.Key} in {si.Cache}");
+                                Stream._logger.LogError($"Error AffinityKey({key}) Cache Not Found key: {si.Key} in {si.Cache}");
                                 continue;
                             }
 
 
-                            await ((State)_stream._state).LoadStateEntries();
+                            await ((State)Stream._state).LoadStateEntries();
 
                             try
                             {
-                                yield return (T)_stream._serializer.DeserializeRoot(value, typeof(T))!;
+                                yield return (T)Stream._serializer.DeserializeRoot(value, typeof(T))!;
                             }
                             finally
                             {
-                                await ((State)_stream._state).StoreStateEntries();
+                                await ((State)Stream._state).StoreStateEntries();
 
-                                await _stream._fabric.ConsumeNotification(key);
+                                await Stream._fabric.ConsumeNotification(key);
                             }
                         }
                     }
                 }
                 finally
                 {
-                    if (_stream._parameterIndex < 0)
+                    if (Stream._parameterIndex < 0)
                     {
                         await RemoveListenerAsync();
                     }
@@ -160,32 +160,32 @@ namespace Perper.WebJobs.Extensions.Model
 
             private async Task AddListenerAsync()
             {
-                var streamsCache = _stream._ignite.GetCache<string, StreamData>("streams");
-                var currentValue = await streamsCache.GetAsync(_stream.StreamName);
+                var streamsCache = Stream._ignite.GetCache<string, StreamData>("streams");
+                var currentValue = await streamsCache.GetAsync(Stream.StreamName);
 
                 currentValue.Listeners.Add(new StreamListener
                 {
-                    AgentDelegate = _stream._fabric.AgentDelegate,
-                    Stream = _stream._instance.InstanceName,
-                    Parameter = _stream._parameterIndex,
+                    AgentDelegate = Stream._fabric.AgentDelegate,
+                    Stream = Stream._instance.InstanceName,
+                    Parameter = Stream._parameterIndex,
                     Filter = Filter,
                     Replay = Replay,
                     LocalToData = LocalToData,
                 });
 
-                await streamsCache.PutAsync(_stream.StreamName, currentValue);
+                await streamsCache.PutAsync(Stream.StreamName, currentValue);
             }
 
             private async Task RemoveListenerAsync()
             {
-                var streamsCache = _stream._ignite.GetCache<string, StreamData>("streams");
-                var currentValue = await streamsCache.GetAsync(_stream.StreamName);
+                var streamsCache = Stream._ignite.GetCache<string, StreamData>("streams");
+                var currentValue = await streamsCache.GetAsync(Stream.StreamName);
 
                 currentValue.Listeners.RemoveAt(currentValue.Listeners.FindIndex(listener =>
-                    listener.Stream == _stream._instance.InstanceName && listener.Parameter == _stream._parameterIndex
+                    listener.Stream == Stream._instance.InstanceName && listener.Parameter == Stream._parameterIndex
                 ));
 
-                await streamsCache.PutAsync(_stream.StreamName, currentValue);
+                await streamsCache.PutAsync(Stream.StreamName, currentValue);
             }
         }
     }
