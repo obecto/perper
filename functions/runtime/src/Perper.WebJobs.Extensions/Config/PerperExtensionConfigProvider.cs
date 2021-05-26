@@ -15,7 +15,7 @@ namespace Perper.WebJobs.Extensions.Config
     [Extension("Perper")]
     public class PerperExtensionConfigProvider : IExtensionConfigProvider
     {
-        public class PerperCollectorConverter<T> : IConverter<PerperAttribute, IAsyncCollector<T>>
+        private class PerperCollectorConverter<T> : IConverter<PerperAttribute, IAsyncCollector<T>>
         {
             private readonly IServiceProvider _services;
 
