@@ -219,7 +219,7 @@ dotnet_diagnostic.CA1506.severity = warning
 dotnet_diagnostic.CA1507.severity = error
 
 # CA1508: Avoid dead conditional code
-dotnet_diagnostic.CA1508.severity = error
+dotnet_diagnostic.CA1508.severity = suggestion
 
 # CA1509: Invalid entry in code metrics configuration file
 dotnet_diagnostic.CA1509.severity = error
