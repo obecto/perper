@@ -38,7 +38,7 @@ namespace Perper.WebJobs.Extensions.Bindings
             return Task.FromResult<IBinding?>(null);
         }
 
-        public class ServiceBinding : IBinding, IValueProvider
+        private class ServiceBinding : IBinding, IValueProvider
         {
             public bool FromAttribute => false;
 
