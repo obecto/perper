@@ -158,7 +158,7 @@ namespace DotNet.FunctionApp
             var lastI = -1;
             await foreach (var i in parameters.processor)
             {
-                consumerState.Value = consumerState.Value ?? 10;
+                consumerState.Value ??= 10;
                 if (i <= lastI)
                 {
                     throw new Exception("Incorrect order of received items!");
