@@ -7,7 +7,7 @@ with open("README.md") as f:
 setup(
     name='Perper',
     version='0.5.1',
-    packages=['perper', 'perper.jupyter', 'perper.model', 'perper.services', 'perper.cache', 'perper.cache.notifications'],
+    packages=['perper', 'perper.jupyter', 'perper.model', 'perper.functions', 'perper.services', 'perper.cache', 'perper.cache.notifications'],
     long_description=long_description,
     long_description_content_type='text/markdown',
     license='MIT License',
