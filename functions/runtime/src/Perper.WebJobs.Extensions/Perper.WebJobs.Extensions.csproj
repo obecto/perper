@@ -1,24 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <LangVersion>8</LangVersion>
-    <Nullable>enable</Nullable>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageVersion>0.6.0-alpha7</PackageVersion>
-    <Authors>Obecto EOOD</Authors>
-    <RepositoryUrl>https://github.com/obecto/perper</RepositoryUrl>
-    <Title>Perper Functions</Title>
-    <Description>Azure Functions Extension for Perper</Description>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/obecto/perper</PackageProjectUrl>
-    <RepositoryType>Git</RepositoryType>
-	  <TargetFrameworks>netstandard2.0;netcoreapp3.1</TargetFrameworks>
-  </PropertyGroup>
+	<PropertyGroup>
+		<LangVersion>8</LangVersion>
+		<Nullable>enable</Nullable>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageVersion>0.6.0-alpha7</PackageVersion>
+		<Authors>Obecto EOOD</Authors>
+		<RepositoryUrl>https://github.com/obecto/perper</RepositoryUrl>
+		<Title>Perper Functions</Title>
+		<Description>Azure Functions Extension for Perper</Description>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/obecto/perper</PackageProjectUrl>
+		<RepositoryType>Git</RepositoryType>
+		<TargetFrameworks>netstandard2.0;netcoreapp3.1</TargetFrameworks>
+	</PropertyGroup>
 
 	<PropertyGroup>
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-  </PropertyGroup>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Grpc.Tools" Version="2.32.0">
@@ -37,50 +37,50 @@
 		<PackageReference Include="System.Linq.Async" Version="4.1.1" />
 	</ItemGroup>
 
-	<ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
-    <PackageReference Include="Grpc.Net.Client" Version="2.32.0" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.7.0" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="EmbedIO" Version="3.4.3" />
-	  <PackageReference Include="Grpc.Core" Version="2.33.1" />
-    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="5.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
-  </ItemGroup>
-
-  <PropertyGroup>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <AnalysisMode>AllEnabledByDefault</AnalysisMode>
-    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-    <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <Protobuf Include="..\..\..\..\proto\fabric.proto" />
-    <Compile Include="Cache/**/*.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="Model/**/*.cs" />
-    <Compile Include="Services/**/*.cs" />
-    <Compile Include="Fake/**/*.cs" />
-    <Compile Include="Dataflow/**/*.cs" />
-  </ItemGroup>
+	<PropertyGroup>
+		<AnalysisMode>AllEnabledByDefault</AnalysisMode>
+		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+		<CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+	</PropertyGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
-    <Compile Include="Bindings/**/*.cs" />
-    <Compile Include="Config/**/*.cs" />
-    <Compile Include="Triggers/**/*.cs" />
-    <Compile Include="*.cs" />
-  </ItemGroup>
+		<PackageReference Include="Grpc.Net.Client" Version="2.32.0" />
+		<PackageReference Include="System.Configuration.ConfigurationManager" Version="4.7.0" />
+	</ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <Compile Include="CustomHandler/**/*.cs" />
-  </ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+		<PackageReference Include="EmbedIO" Version="3.4.3" />
+		<PackageReference Include="Grpc.Core" Version="2.33.1" />
+		<PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="5.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
+	</ItemGroup>
+
+	<PropertyGroup>
+		<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Protobuf Include="..\..\..\..\proto\fabric.proto" />
+		<Compile Include="Cache/**/*.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Include="Model/**/*.cs" />
+		<Compile Include="Services/**/*.cs" />
+		<Compile Include="Fake/**/*.cs" />
+		<Compile Include="Dataflow/**/*.cs" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
+		<Compile Include="Bindings/**/*.cs" />
+		<Compile Include="Config/**/*.cs" />
+		<Compile Include="Triggers/**/*.cs" />
+		<Compile Include="*.cs" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+		<Compile Include="CustomHandler/**/*.cs" />
+	</ItemGroup>
 
 </Project>

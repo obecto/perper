@@ -30,11 +30,11 @@ namespace Perper.WebJobs.Extensions.Model
         public async Task<T> GetValue<T>(string key, Func<T> defaultValueFactory)
         {
             var cache = _ignite.GetOrCreateCache<string, object>(Agent).WithKeepBinary<string, object>();
-            var result = await cache.TryGetAsync(key);
+            var result = await cache.TryGetAsync(key).ConfigureAwait(false);
             if (!result.Success)
             {
                 var defaultValue = defaultValueFactory();
-                await cache.PutAsync(key, _serializer.SerializeRoot(defaultValue));
+                await cache.PutAsync(key, _serializer.SerializeRoot(defaultValue)).ConfigureAwait(false);
                 return defaultValue;
             }
             return (T)_serializer.DeserializeRoot(result.Value, typeof(T))!;
@@ -49,7 +49,7 @@ namespace Perper.WebJobs.Extensions.Model
         public async Task<IStateEntry<T>> Entry<T>(string key, Func<T> defaultValueFactory)
         {
             var entry = UnloadedEntry(key, defaultValueFactory);
-            await entry.Load();
+            await entry.Load().ConfigureAwait(false);
             return entry;
         }
 

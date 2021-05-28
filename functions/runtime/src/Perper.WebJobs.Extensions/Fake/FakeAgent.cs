@@ -21,7 +21,7 @@ namespace Perper.WebJobs.Extensions.Fake
 
         public FakeAgent RegisterFunction<TParams, TResult>(string functionDelegate, Func<TParams, Task<TResult>> function)
         {
-            functions.Add(functionDelegate, async (input) => FakeConfiguration.Serialize(await function(FakeConfiguration.Deserialize<TParams>(input))));
+            functions.Add(functionDelegate, async (input) => FakeConfiguration.Serialize(await function(FakeConfiguration.Deserialize<TParams>(input)).ConfigureAwait(false)));
             return this;
         }
 
@@ -33,7 +33,7 @@ namespace Perper.WebJobs.Extensions.Fake
 
         public FakeAgent RegisterFunction<TParams>(string functionDelegate, Func<TParams, Task> function)
         {
-            functions.Add(functionDelegate, async (input) => { await function(FakeConfiguration.Deserialize<TParams>(input)); return null; });
+            functions.Add(functionDelegate, async (input) => { await function(FakeConfiguration.Deserialize<TParams>(input)).ConfigureAwait(false); return null; });
             return this;
         }
 
@@ -65,7 +65,7 @@ namespace Perper.WebJobs.Extensions.Fake
                 throw new ArgumentOutOfRangeException("Function '" + functionDelegate + "' is not registered.");
             }
             var input = FakeConfiguration.Serialize(parameters);
-            var result = await function(input);
+            var result = await function(input).ConfigureAwait(false);
             return FakeConfiguration.Deserialize<TResult>(result);
         }
 
@@ -78,7 +78,7 @@ namespace Perper.WebJobs.Extensions.Fake
             return (stream, name);
         }
 
-        public static async Task WriteToBlankStream<T>(string name, T value) => await blankStreams[name].WriteAsync(value);
+        public static async Task WriteToBlankStream<T>(string name, T value) => await blankStreams[name].WriteAsync(value).ConfigureAwait(false);
 
         public static FakeCollector<T> GetBlankStreamCollector<T>(string name) => new FakeCollector<T>(blankStreams[name]);
 

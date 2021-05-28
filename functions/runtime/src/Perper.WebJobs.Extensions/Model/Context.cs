@@ -40,7 +40,7 @@ namespace Perper.WebJobs.Extensions.Model
             var agentName = GenerateName(agentDelegate);
             var agent = new Agent(agentName, agentDelegate, this, _serializer);
 
-            var result = await agent.CallFunctionAsync<TResult>(callDelegate, parameters);
+            var result = await agent.CallFunctionAsync<TResult>(callDelegate, parameters).ConfigureAwait(false);
 
             return (agent, result);
         }
@@ -48,14 +48,14 @@ namespace Perper.WebJobs.Extensions.Model
         public async Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object? parameters = default, StreamOptions flags = StreamOptions.Default)
         {
             var streamName = GenerateName(functionName);
-            await CreateStreamAsync(streamName, StreamDelegateType.Function, functionName, parameters, typeof(TItem), flags);
+            await CreateStreamAsync(streamName, StreamDelegateType.Function, functionName, parameters, typeof(TItem), flags).ConfigureAwait(false);
             return new Stream<TItem>(streamName, _instance, _fabric, _ignite, _serializer, _state, _logger);
         }
 
         public async Task<IStream> StreamActionAsync(string actionName, object? parameters = default, StreamOptions flags = StreamOptions.Default)
         {
             var streamName = GenerateName(actionName);
-            await CreateStreamAsync(streamName, StreamDelegateType.Action, actionName, parameters, null, flags);
+            await CreateStreamAsync(streamName, StreamDelegateType.Action, actionName, parameters, null, flags).ConfigureAwait(false);
             return new Stream(streamName, _fabric, _ignite);
         }
 
@@ -76,14 +76,14 @@ namespace Perper.WebJobs.Extensions.Model
             {
                 throw new InvalidOperationException("Stream is already initialized");
             }
-            await CreateStreamAsync(streamInstance.StreamName, StreamDelegateType.Function, streamInstance.FunctionName!, parameters, typeof(TItem), flags);
+            await CreateStreamAsync(streamInstance.StreamName, StreamDelegateType.Function, streamInstance.FunctionName!, parameters, typeof(TItem), flags).ConfigureAwait(false);
             streamInstance.FunctionName = null;
         }
 
         public async Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamOptions flags = StreamOptions.Default)
         {
             var streamName = GenerateName();
-            await CreateStreamAsync(streamName, StreamDelegateType.External, "", null, typeof(TItem), flags);
+            await CreateStreamAsync(streamName, StreamDelegateType.External, "", null, typeof(TItem), flags).ConfigureAwait(false);
             return (new Stream<TItem>(streamName, _instance, _fabric, _ignite, _serializer, _state, _logger), streamName);
         }
 
@@ -101,7 +101,7 @@ namespace Perper.WebJobs.Extensions.Model
                 IndexType = (flags & StreamOptions.Query) != 0 && type != null ? PerperTypeUtils.GetJavaTypeName(type) ?? type.Name : null,
                 IndexFields = (flags & StreamOptions.Query) != 0 && type != null ? _serializer.GetQueriableFields(type) : null,
                 Ephemeral = (flags & StreamOptions.Ephemeral) != 0,
-            });
+            }).ConfigureAwait(false);
         }
 
         public async Task<CallData> CallAsync(string agentName, string agentDelegate, string callDelegate, object? parameters)
@@ -118,12 +118,12 @@ namespace Perper.WebJobs.Extensions.Model
                 Finished = false,
                 LocalToData = true,
                 Parameters = parameters,
-            });
+            }).ConfigureAwait(false);
 
-            var (key, notification) = await _fabric.GetCallNotification(callName);
-            await _fabric.ConsumeNotification(key);
+            var (key, notification) = await _fabric.GetCallNotification(callName).ConfigureAwait(false);
+            await _fabric.ConsumeNotification(key).ConfigureAwait(false);
 
-            var callResult = await callsCache.GetAndRemoveAsync(notification.Call);
+            var callResult = await callsCache.GetAndRemoveAsync(notification.Call).ConfigureAwait(false);
             var call = callResult.Value;
 
             if (call.Error != null)

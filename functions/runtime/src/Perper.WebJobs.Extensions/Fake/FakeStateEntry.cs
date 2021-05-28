@@ -20,7 +20,7 @@ namespace Perper.WebJobs.Extensions.Fake
             Value = unloaded ? default! : State.GetValue(Name, DefaultValueFactory);
         }
 
-        public async Task Load() => Value = await ((IState)State).GetValue(Name, DefaultValueFactory);
+        public async Task Load() => Value = await ((IState)State).GetValue(Name, DefaultValueFactory).ConfigureAwait(false);
 
         public Task Store() => ((IState)State).SetValue(Name, Value);
     }

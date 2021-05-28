@@ -31,7 +31,7 @@ namespace Perper.WebJobs.Extensions.Model
 
         public async Task<TResult> CallFunctionAsync<TResult>(string functionName, object? parameters = default)
         {
-            var callData = await ((Context)_context).CallAsync(AgentName, AgentDelegate, functionName, parameters);
+            var callData = await ((Context)_context).CallAsync(AgentName, AgentDelegate, functionName, parameters).ConfigureAwait(false);
 
             if (callData.Result == null)
             {

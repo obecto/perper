@@ -51,7 +51,7 @@ namespace Perper.WebJobs.Extensions.Triggers
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             _listenCancellationTokenSource.Cancel();
-            await Task.WhenAny(_listenTask!, Task.Delay(Timeout.Infinite, cancellationToken));
+            await Task.WhenAny(_listenTask!, Task.Delay(Timeout.Infinite, cancellationToken)).ConfigureAwait(false);
         }
 
         public void Cancel() => StopAsync(CancellationToken.None).Wait();
@@ -82,24 +82,24 @@ namespace Perper.WebJobs.Extensions.Triggers
                 {
                     if (notification is StreamTriggerNotification)
                     {
-                        await _fabric.ConsumeNotification(key); // Consume first, since execution might never end in this case
-                        await ExecuteAsync(notification, cancellationToken);
+                        await _fabric.ConsumeNotification(key).ConfigureAwait(false); // Consume first, since execution might never end in this case
+                        await ExecuteAsync(notification, cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
-                        await ExecuteAsync(notification, cancellationToken);
-                        await _fabric.ConsumeNotification(key);
+                        await ExecuteAsync(notification, cancellationToken).ConfigureAwait(false);
+                        await _fabric.ConsumeNotification(key).ConfigureAwait(false);
                     }
                 });
             }
-            await taskCollection.GetTask();
+            await taskCollection.GetTask().ConfigureAwait(false);
         }
 
         private async Task ExecuteAsync(Notification notification, CancellationToken cancellationToken)
         {
             var trigger = JObject.FromObject(notification);
             var input = new TriggeredFunctionData { TriggerValue = trigger };
-            var result = await _executor.TryExecuteAsync(input, cancellationToken);
+            var result = await _executor.TryExecuteAsync(input, cancellationToken).ConfigureAwait(false);
 
             string? error = null;
 
@@ -114,13 +114,13 @@ namespace Perper.WebJobs.Extensions.Triggers
                 // TODO: Can we somehow detect that PerperTriggerValueBinder was already invoked for this?
                 var call = (string)trigger["Call"]!;
                 var callsCache = _ignite.GetCache<string, CallData>("calls");
-                var callDataResult = await callsCache.TryGetAsync(call);
+                var callDataResult = await callsCache.TryGetAsync(call).ConfigureAwait(false);
                 if (callDataResult.Success)
                 {
                     var callData = callDataResult.Value;
                     callData.Finished = true;
                     callData.Error = error;
-                    await callsCache.ReplaceAsync(call, callData);
+                    await callsCache.ReplaceAsync(call, callData).ConfigureAwait(false);
                 }
             }
         }

@@ -130,7 +130,7 @@ namespace Perper.WebJobs.Extensions.Services
                     Caller = "",
                     Finished = false,
                     LocalToData = false
-                });
+                }).ConfigureAwait(false);
             }
         }
 
@@ -141,11 +141,11 @@ namespace Perper.WebJobs.Extensions.Services
             var client = new Fabric.FabricClient(_grpcChannel);
             using var notifications = client.Notifications(new NotificationFilter { AgentDelegate = AgentDelegate }, null, null, cancellationToken);
             var stream = notifications.ResponseStream;
-            while (await stream.MoveNext(cancellationToken))
+            while (await stream.MoveNext(cancellationToken).ConfigureAwait(false))
             {
                 var key = GetNotificationKey(stream.Current);
 
-                var notificationResult = await _notificationsCache.TryGetAsync(key);
+                var notificationResult = await _notificationsCache.TryGetAsync(key).ConfigureAwait(false);
 
                 if (!notificationResult.Success)
                 {
@@ -158,13 +158,13 @@ namespace Perper.WebJobs.Extensions.Services
                 switch (notification)
                 {
                     case StreamItemNotification si:
-                        await GetChannel(si.Stream, si.Parameter).Writer.WriteAsync((key, notification), cancellationToken);
+                        await GetChannel(si.Stream, si.Parameter).Writer.WriteAsync((key, notification), cancellationToken).ConfigureAwait(false);
                         break;
                     case StreamTriggerNotification st:
-                        await GetChannel(st.Delegate).Writer.WriteAsync((key, notification), cancellationToken);
+                        await GetChannel(st.Delegate).Writer.WriteAsync((key, notification), cancellationToken).ConfigureAwait(false);
                         break;
                     case CallTriggerNotification ct:
-                        await GetChannel(ct.Delegate).Writer.WriteAsync((key, notification), cancellationToken);
+                        await GetChannel(ct.Delegate).Writer.WriteAsync((key, notification), cancellationToken).ConfigureAwait(false);
                         break;
                     case CallResultNotification _:
                         // pass
@@ -182,7 +182,7 @@ namespace Perper.WebJobs.Extensions.Services
             var reader = GetChannel(instance, parameter).Reader;
             while (true)
             {
-                var value = await reader.ReadAsync(cancellationToken);
+                var value = await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
                 _logger.LogTrace($"FabricService sent: {value}");
                 yield return value;
             }
@@ -198,7 +198,7 @@ namespace Perper.WebJobs.Extensions.Services
             }, cancellationToken: cancellationToken);
             var key = GetNotificationKey(notification);
 
-            var fullNotification = await _notificationsCache.GetAsync(key);
+            var fullNotification = await _notificationsCache.GetAsync(key).ConfigureAwait(false);
             return (key, (CallResultNotification)fullNotification);
         }
     }

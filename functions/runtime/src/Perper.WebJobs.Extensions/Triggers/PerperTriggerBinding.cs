@@ -56,12 +56,12 @@ namespace Perper.WebJobs.Extensions.Triggers
             var trigger = (JObject)value;
 
             var instanceData = _services.GetRequiredService<PerperInstanceData>();
-            await instanceData.SetTriggerValue(trigger);
+            await instanceData.SetTriggerValue(trigger).ConfigureAwait(false);
 
 
             var valueProvider = new PerperTriggerValueProvider(trigger, _parameter, instanceData);
             var returnValueProvider = new PerperTriggerValueBinder(trigger, _ignite, _services.GetRequiredService<PerperBinarySerializer>(), _logger);
-            var bindingData = await GetBindingData(instanceData);
+            var bindingData = await GetBindingData(instanceData).ConfigureAwait(false);
 
             return new TriggerData(valueProvider, bindingData)
             {

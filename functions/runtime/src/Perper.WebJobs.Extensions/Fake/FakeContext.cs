@@ -20,7 +20,7 @@ namespace Perper.WebJobs.Extensions.Fake
             var callDelegate = name;
 
             var agent = Agent.CreateAgent(name);
-            var result = await agent.CallFunctionAsync<TResult>(callDelegate, parameters);
+            var result = await agent.CallFunctionAsync<TResult>(callDelegate, parameters).ConfigureAwait(false);
 
             return (agent, result);
         }

@@ -57,14 +57,14 @@ namespace Perper.WebJobs.Extensions.Fake
         {
             try
             {
-                await foreach (var item in await source)
+                await foreach (var item in await source.ConfigureAwait(false))
                 {
                     var index = StoredData.Count;
                     StoredData.Add(FakeConfiguration.Serialize(item));
 
                     foreach (var channel in _channels.Keys)
                     {
-                        await channel.WriteAsync(index);
+                        await channel.WriteAsync(index).ConfigureAwait(false);
                     }
                 }
 

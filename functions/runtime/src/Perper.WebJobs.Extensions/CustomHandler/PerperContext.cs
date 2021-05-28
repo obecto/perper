@@ -115,11 +115,11 @@ namespace Perper.WebJobs.Extensions.CustomHandler
         {
             var channel = _callParametersChannels.GetOrAdd(delegateName,
                 _ => Channel.CreateUnbounded<(JObject, Guid)>())!;
-            var (parameters, callId) = await channel.Reader.ReadAsync();
+            var (parameters, callId) = await channel.Reader.ReadAsync().ConfigureAwait(false);
             return ((TResult)parameters, callId);
         }
 
-        public async Task SetCallResultAsync(Guid callId, object result) => await _callResultChannels[callId].Writer.WriteAsync((JObject)result);
+        public async Task SetCallResultAsync(Guid callId, object result) => await _callResultChannels[callId].Writer.WriteAsync((JObject)result).ConfigureAwait(false);
 
         public Task<(TResult, Guid)> GetStreamParametersAsync<TResult>(string delegateName) => throw new NotImplementedException();
 
@@ -150,7 +150,7 @@ namespace Perper.WebJobs.Extensions.CustomHandler
         private async Task Handler(IHttpContext context)
         {
             _ = Guid.Parse(context.Request.Headers["X-Azure-Functions-Invocationid"]);
-            dynamic payload = JsonConvert.DeserializeObject(await context.GetRequestBodyAsStringAsync())!;
+            dynamic payload = JsonConvert.DeserializeObject(await context.GetRequestBodyAsStringAsync().ConfigureAwait(false))!;
             if (payload.Metadata.triggerAttribute == "PerperTrigger")
             {
 

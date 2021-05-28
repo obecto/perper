@@ -42,10 +42,10 @@ namespace Perper.WebJobs.Extensions.Triggers
             {
                 var call = (string)_trigger["Call"]!;
                 var callsCache = _ignite.GetCache<string, CallData>("calls");
-                var callData = await callsCache.GetAsync(call);
+                var callData = await callsCache.GetAsync(call).ConfigureAwait(false);
                 callData.Result = value;
                 callData.Finished = true;
-                await callsCache.ReplaceAsync(call, callData);
+                await callsCache.ReplaceAsync(call, callData).ConfigureAwait(false);
             }
             else
             {
@@ -66,7 +66,7 @@ namespace Perper.WebJobs.Extensions.Triggers
                 var processMethod = GetType().GetMethod(nameof(ProcessAsyncEnumerable), BindingFlags.NonPublic | BindingFlags.Instance)!
                     .MakeGenericMethod(cacheType);
 
-                await (Task)processMethod.Invoke(this, new object[] { stream, value, cancellationToken })!;
+                await ((Task)processMethod.Invoke(this, new object[] { stream, value, cancellationToken })!).ConfigureAwait(false);
             }
         }
 
@@ -75,7 +75,7 @@ namespace Perper.WebJobs.Extensions.Triggers
             var collector = new PerperCollector<T>(_ignite, _serializer, stream);
             await foreach (var value in values.WithCancellation(cancellationToken))
             {
-                await collector.AddAsync(value, cancellationToken);
+                await collector.AddAsync(value, cancellationToken).ConfigureAwait(false);
             }
         }
 

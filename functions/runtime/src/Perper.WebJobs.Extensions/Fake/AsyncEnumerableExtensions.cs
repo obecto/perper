@@ -20,7 +20,7 @@ namespace Perper.WebJobs.Extensions.Fake
         {
             while (true)
             {
-                yield return await reader.ReadAsync();
+                yield return await reader.ReadAsync().ConfigureAwait(false);
             }
         }
     }

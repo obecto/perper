@@ -83,7 +83,7 @@ namespace Perper.WebJobs.Extensions.Model
             var queryable = query(cache.AsCacheQueryable().Select(pair => pair.Value)).Select(x => (object?)x);
 
             using var enumerator = queryable.GetEnumerator();
-            while (await Task.Run(enumerator.MoveNext)) // Blocking, should run in background
+            while (await Task.Run(enumerator.MoveNext).ConfigureAwait(false)) // Blocking, should run in background
             {
                 yield return (TResult)_serializer.DeserializeRoot(enumerator.Current!, typeof(TResult))!;
             }
@@ -111,7 +111,7 @@ namespace Perper.WebJobs.Extensions.Model
             {
                 try
                 {
-                    await AddListenerAsync();
+                    await AddListenerAsync().ConfigureAwait(false);
 
                     await foreach (var (key, notification) in Stream._fabric.GetNotifications(Stream._instance.InstanceName, Stream._parameterIndex, cancellationToken))
                     {
@@ -122,7 +122,7 @@ namespace Perper.WebJobs.Extensions.Model
                             object value;
                             try
                             {
-                                value = await cache.GetAsync(si.Key);
+                                value = await cache.GetAsync(si.Key).ConfigureAwait(false);
                             }
                             catch (KeyNotFoundException)
                             {
@@ -131,7 +131,7 @@ namespace Perper.WebJobs.Extensions.Model
                             }
 
 
-                            await ((State)Stream._state).LoadStateEntries();
+                            await ((State)Stream._state).LoadStateEntries().ConfigureAwait(false);
 
                             try
                             {
@@ -139,9 +139,9 @@ namespace Perper.WebJobs.Extensions.Model
                             }
                             finally
                             {
-                                await ((State)Stream._state).StoreStateEntries();
+                                await ((State)Stream._state).StoreStateEntries().ConfigureAwait(false);
 
-                                await Stream._fabric.ConsumeNotification(key);
+                                await Stream._fabric.ConsumeNotification(key).ConfigureAwait(false);
                             }
                         }
                     }
@@ -150,7 +150,7 @@ namespace Perper.WebJobs.Extensions.Model
                 {
                     if (Stream._parameterIndex < 0)
                     {
-                        await RemoveListenerAsync();
+                        await RemoveListenerAsync().ConfigureAwait(false);
                     }
                 }
             }
@@ -158,7 +158,7 @@ namespace Perper.WebJobs.Extensions.Model
             private async Task AddListenerAsync()
             {
                 var streamsCache = Stream._ignite.GetCache<string, StreamData>("streams");
-                var currentValue = await streamsCache.GetAsync(Stream.StreamName);
+                var currentValue = await streamsCache.GetAsync(Stream.StreamName).ConfigureAwait(false);
 
                 currentValue.Listeners.Add(new StreamListener
                 {
@@ -170,19 +170,19 @@ namespace Perper.WebJobs.Extensions.Model
                     LocalToData = LocalToData,
                 });
 
-                await streamsCache.PutAsync(Stream.StreamName, currentValue);
+                await streamsCache.PutAsync(Stream.StreamName, currentValue).ConfigureAwait(false);
             }
 
             private async Task RemoveListenerAsync()
             {
                 var streamsCache = Stream._ignite.GetCache<string, StreamData>("streams");
-                var currentValue = await streamsCache.GetAsync(Stream.StreamName);
+                var currentValue = await streamsCache.GetAsync(Stream.StreamName).ConfigureAwait(false);
 
                 currentValue.Listeners.RemoveAt(currentValue.Listeners.FindIndex(listener =>
                     listener.Stream == Stream._instance.InstanceName && listener.Parameter == Stream._parameterIndex
                 ));
 
-                await streamsCache.PutAsync(Stream.StreamName, currentValue);
+                await streamsCache.PutAsync(Stream.StreamName, currentValue).ConfigureAwait(false);
             }
         }
     }

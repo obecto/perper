@@ -46,7 +46,7 @@ namespace Perper.WebJobs.Extensions.Services
                 instanceCache = _ignite.GetCache<string, StreamData>("streams").WithKeepBinary<string, IBinaryObject>();
             }
 
-            var instanceDataBinary = await instanceCache.GetAsync(InstanceName);
+            var instanceDataBinary = await instanceCache.GetAsync(InstanceName).ConfigureAwait(false);
 
             Agent = instanceDataBinary.GetField<string>(nameof(IInstanceData.Agent));
             parameters = instanceDataBinary.GetField<object>(nameof(IInstanceData.Parameters));

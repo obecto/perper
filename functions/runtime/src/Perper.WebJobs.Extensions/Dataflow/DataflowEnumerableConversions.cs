@@ -19,7 +19,7 @@ namespace Perper.WebJobs.Extensions.Dataflow
             {
                 await foreach (var item in enumerable.WithCancellation(cancellationToken))
                 {
-                    await block.SendAsync(item);
+                    await block.SendAsync(item).ConfigureAwait(false);
                 }
             }
 
@@ -45,7 +45,7 @@ namespace Perper.WebJobs.Extensions.Dataflow
                 T item;
                 try
                 {
-                    item = await block.ReceiveAsync(cancellationToken);
+                    item = await block.ReceiveAsync(cancellationToken).ConfigureAwait(false);
                 }
                 catch (InvalidOperationException)
                 {
@@ -53,7 +53,7 @@ namespace Perper.WebJobs.Extensions.Dataflow
                 }
                 yield return item;
             }
-            await block.Completion;
+            await block.Completion.ConfigureAwait(false);
         }
 
         public static ITargetBlock<T> ToDataflow<T>(this IAsyncCollector<T> collector, CancellationToken cancellationToken = default)

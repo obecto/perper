@@ -26,7 +26,7 @@ namespace Perper.WebJobs.Extensions.Bindings
         {
             var key = DateTime.UtcNow.Ticks - 62135596800000;
 
-            var result = await cache.PutIfAbsentAsync(key, _serializer.SerializeRoot(item));
+            var result = await cache.PutIfAbsentAsync(key, _serializer.SerializeRoot(item)).ConfigureAwait(false);
             if (!result)
             {
                 throw new ArgumentException($"Duplicate stream item key! {key}");
