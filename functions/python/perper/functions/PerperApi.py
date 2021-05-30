@@ -31,15 +31,25 @@ class Perper():
         self.context = Context(self.instance, self.fs, self.state, self.ignite)
 
 
-    async def functions(self, functions): 
-        # TODO: Implement Call Triggers        
+    async def functions(self, functions):
+        # TODO: Implement Call Triggers
         async for (k, n) in self.fs.get_notifications():
+            print(n)
             incoming_type = n.__class__.__name__
             if incoming_type == 'StreamTriggerNotification':
                 self.fs.consume_notification(k)
                 streams_cache = self.ignite.get_cache("streams")
                 stream_data = streams_cache.get(n.stream)
                 parameter_data = stream_data.parameters
+
+                if n.delegate in functions:
+                    await asyncio.create_task(functions[n.delegate](self, *parameter_data.parameters))
+
+            elif incoming_type == 'CallTriggerNotification':
+                self.fs.consume_notification(k)
+                calls_cache = self.ignite.get_cache("calls")
+                call_data = calls_cache.get(n.call)
+                parameter_data = call_data.parameters
 
                 if n.delegate in functions:
                     await asyncio.create_task(functions[n.delegate](self, *parameter_data.parameters))
