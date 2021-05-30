@@ -44,7 +44,7 @@ class Perper():
 
                 if n.delegate in functions:
                     result = await asyncio.create_task(functions[n.delegate](self, *parameter_data.parameters))
-                    stream_data.result = result
+                    stream_data.result = self.serializer.serialize(result)
                     stream_data.finished = True
                     streams_cache.replace(n.stream, stream_data)
 
@@ -56,6 +56,6 @@ class Perper():
 
                 if n.delegate in functions:
                     result = await asyncio.create_task(functions[n.delegate](self, *parameter_data.parameters))
-                    call_data.result = result
+                    call_data.result = self.serializer.serialize(result)
                     call_data.finished = True
                     calls_cache.replace(n.call, call_data)
