@@ -43,7 +43,10 @@ class Perper():
                 parameter_data = stream_data.parameters
 
                 if n.delegate in functions:
-                    await asyncio.create_task(functions[n.delegate](self, *parameter_data.parameters))
+                    result = await asyncio.create_task(functions[n.delegate](self, *parameter_data.parameters))
+                    stream_data.result = result
+                    stream_data.finished = True
+                    streams_cache.replace(n.stream, stream_data)
 
             elif incoming_type == 'CallTriggerNotification':
                 self.fs.consume_notification(k)
@@ -52,4 +55,7 @@ class Perper():
                 parameter_data = call_data.parameters
 
                 if n.delegate in functions:
-                    await asyncio.create_task(functions[n.delegate](self, *parameter_data.parameters))
+                    result = await asyncio.create_task(functions[n.delegate](self, *parameter_data.parameters))
+                    call_data.result = result
+                    call_data.finished = True
+                    calls_cache.replace(n.call, call_data)
