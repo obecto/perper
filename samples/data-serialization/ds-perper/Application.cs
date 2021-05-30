@@ -66,7 +66,7 @@ namespace ds_perper
         public static async Task BlankGenerator(
             // [PerperTrigger] object? input,
             // [Perper(Stream="-7286c2c7-bd1d-47c2-b92a-f5b7e99ba9a9")] IAsyncCollector<dynamic> output,
-            [PerperTrigger(ParameterExpression = "{\"stream\":0}")] (string _, int to) parameters,
+            [PerperTrigger(ParameterExpression = "{\"stream\":0}")] PerperTriggerValue parameters,
             [Perper] IAsyncCollector<dynamic> output,
             ILogger logger)
         {
