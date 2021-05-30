@@ -22,4 +22,4 @@ async def Bob(perper_instance, *kwargs):
     print(kwargs)
     return BoolResult(value=True)
 
-asyncio.run(perper.functions({'Bob': Bob}))
+asyncio.run(perper.listen_triggers({'Bob': Bob}))

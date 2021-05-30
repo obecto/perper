@@ -62,4 +62,4 @@ async def execute():
     context.stream_action("blank_generator", {0: stream.stream_name, 1: 20}, None)
 
 asyncio.run(execute())
-asyncio.run(perper.functions(functions))
+asyncio.run(perper.listen_triggers(functions))

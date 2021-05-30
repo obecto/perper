@@ -31,7 +31,7 @@ class Perper():
         self.context = Context(self.instance, self.fs, self.state, self.ignite)
 
 
-    async def functions(self, functions):
+    async def listen_triggers(self, functions):
         # TODO: Implement Call Triggers
         async for (k, n) in self.fs.get_notifications():
             print(n)
