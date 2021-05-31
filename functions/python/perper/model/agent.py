@@ -25,11 +25,12 @@ class Agent:
         self.agent_name = agent_name
         self.agent_delegate = agent_delegate
 
-    async def call_function(self, function_name: str, parameters):
+    async def call_function(self, function_name: str, parameters, logging=False):
         call_data = await self._context.call(
             self.agent_name, self.agent_delegate, function_name, parameters
         )
-        print("Result call data is:", call_data)
+        if logging:
+            print("Result call data is:", call_data)
         if call_data.result == None:
             return None
         return self._serializer.deserialize(call_data.result)
