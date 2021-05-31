@@ -14,7 +14,6 @@ import json
 import asyncio
 import threading
 
-# TODO: Move it under functions/python
 class Perper():
     def __init__(self):
         self.serializer = Serializer()
@@ -32,7 +31,6 @@ class Perper():
 
 
     async def listen_triggers(self, functions):
-        # TODO: Implement Call Triggers
         async for (k, n) in self.fs.get_notifications():
             incoming_type = n.__class__.__name__
             if incoming_type == 'StreamTriggerNotification':
