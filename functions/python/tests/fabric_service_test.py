@@ -90,10 +90,6 @@ async def test_consumption():
 
 
 if __name__ == "__main__":
-    # Python 3.6
-    # loop = asyncio.get_event_loop()
-    # result = loop.run_until_complete(test_call_notification("Application2", "Application2", "Application", None))
-
     # Python 3.7+
     asyncio.run(test_consumption())
     # asyncio.run(test_call_notification("Application2", "Application2", "Application", None))
