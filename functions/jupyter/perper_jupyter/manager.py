@@ -39,7 +39,7 @@ import threading
 from perper.functions import Perper
 from perper.model import Stream
 
-os.environ["PERPER_AGENT_NAME"] = "python-functions"
+os.environ["PERPER_AGENT_NAME"] = "python-functions" # TODO: Update agent delegates.
 FINAL_ID = 20
 perper = Perper()
 
