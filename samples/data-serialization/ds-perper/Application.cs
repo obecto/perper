@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Perper.WebJobs.Extensions.Model;
 using Perper.WebJobs.Extensions.Triggers;
 using Perper.WebJobs.Extensions.Bindings;
+using System;
 
 namespace ds_perper
 {
@@ -72,12 +73,14 @@ namespace ds_perper
         {
             for (var i = 0; ; i++)
             {
-                logger.LogInformation("Generating: {0}", i);
+                Random random = new Random();
+                int num = random.Next(10,50);
+                logger.LogInformation("Generating: {0}, {1}", i, num);
                 await Task.Delay(1000);
                 await output.AddAsync(new SimpleData{
                         Name = "Test",
                         Priority = i,
-                        Json = "{ 'test' : 0 }"
+                        Json = string.Format("{{ \"value\" : {0} }}", num)
                     });
             }
             await output.FlushAsync();

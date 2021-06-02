@@ -4,11 +4,13 @@ import numpy as np
 from perper.model import Stream
 import perper.jupyter as jupyter
 import asyncio
+import json
 
 class Test_env(ExternalEnv):
     def __init__(self, env):
         ExternalEnv.__init__(self, env.action_space, env.observation_space)
         self.env = env
+        self.event_loop = asyncio.new_event_loop()
         
     def isAlive(self):
         return True
@@ -20,7 +22,7 @@ class Test_env(ExternalEnv):
             print("Running...")
             action = self.get_action(episode_id, observation)
             print(f"The action: {action}")
-            obs, reward, done, info = asyncio.run(self.env.step(action))
+            obs, reward, done, info = self.event_loop.run_until_complete(self.env.step(action))
             self.log_returns(episode_id, reward, info=info)
             if done:
                 self.end_episode(episode_id, observation)
@@ -65,13 +67,17 @@ class Constant_env():
     async def step(self, action):
         if not self.generator_set:
             await self.set_generator()
+            
         try:
-            for i in range(5):
-                print(await self.async_gen.__anext__())
+            item = await self.async_gen.__anext__()
+            data = json.loads(item.Json)
         except Exception as e:
-            print(e)
+            raise e
+            data = None
+            
+        val = [int(data["value"])]
         self.counter += 1
         if self.counter == 100:
             self.done = 1
-        return np.array([-1]).copy(), action, self.done, {}
+        return np.array(val).copy(), action, self.done, {}
     
