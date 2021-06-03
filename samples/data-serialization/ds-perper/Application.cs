@@ -61,33 +61,22 @@ namespace ds_perper
                 // First we get the collumn names from the csv
                 var first_row = reader.ReadLine();
                 var column_names = first_row.Split(",");
-                logger.LogInformation(string.Join("", column_names));
                 // Then in a loop we send the data row by row
+                int i=1;
                 while (!reader.EndOfStream)
                 {
-                    await Task.Delay(200);
+                    await Task.Delay(600);
                     var row = reader.ReadLine();
-                    var values = row.Split(',');
                     await output.AddAsync(new SimpleData{
                         Name = "Test",
-                        Priority = 2,
-                        Json = string.Format("{{ \"value\" : {0} }}", values)
+                        Priority = i,
+                        Json = string.Format("{{ \"value\" : {0} }}", row)
                     });
+                    logger.LogInformation("Streamed row {0}", i);
+                    i++;
                 }
             }
             await output.FlushAsync();
-            for (var i = 0; ; i++)
-            {
-                Random random = new Random();
-                int num = random.Next(10,50);
-                logger.LogInformation("Generating: {0}, {1}", i, num);
-                await Task.Delay(1000);
-                await output.AddAsync(new SimpleData{
-                        Name = "Test",
-                        Priority = i,
-                        Json = string.Format("{{ \"value\" : {0} }}", num)
-                    });
-            }
         }
     }
 }
