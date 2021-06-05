@@ -10,14 +10,7 @@
   },
   "customHandler": {
     "description": {
-      "defaultExecutablePath": "jupyter-notebook",
-      "arguments": ["--port",
-        "%FUNCTIONS_CUSTOMHANDLER_PORT%",
-        "--NotebookApp.nbserver_extensions",
-        "{'perper.custom_handler.custom_handler':True}",
-        "--NotebookApp.default_url",
-        "/lab" 
-      ]
+      "defaultExecutablePath": "jupyter_command.bat"
     }
   }
 }

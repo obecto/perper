@@ -1,0 +1,12 @@
+*.csv
+__pycache__/
+__pycache__
+.idea/
+.idea/*
+.ipynb_checkpoints/*
+.ipynb_checkpoints
+Data/
+reg_commit.tar
+AutogluonModels/
+AutogluonModels/*
+*.json

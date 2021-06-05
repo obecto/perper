@@ -1,0 +1,15 @@
+name: rl
+
+channels:
+    - pytorch
+
+dependencies:
+    - numpy
+    - pandas
+    - matplotlib
+    - pytorch
+    - pip
+    - pip:
+	- ray
+	- gym
+    

@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Threading;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -28,20 +30,6 @@ namespace ds_perper
 
             logger.LogInformation("Started SimpleDataSerialization.Application");
 
-            // string[] strs = new string[] {"True", "False", "Radi Cho"};
-            // Dictionary<int, string> dict1 = new Dictionary<int, string>(){
-            //     {0, "True"},
-            //     {1, "Radi Cho"}
-            // };
-            
-            // object[] obj1 = new object[] {"True", false, (double) 5.9, "8.2", 8, dict1, dict1, strs};
-            // object[] obj2 = new object[] {"A", "B", "C"};
-            // (string, string, int) objtup = ("1", "2", 3);
-
-            // var agent = await context.StartAgentAsync<object>("PerperFunction", obj1);
-            // agent.Item1.CallFunctionAsync<object>("PerperFunction2", obj2);
-            // agent.Item1.CallFunctionAsync<object>("PerperFunction2", objtup);
-
             var (testStream, testStreamName) = await context.CreateBlankStreamAsync<dynamic>();
             logger.LogInformation("Stream name: {0}", testStreamName);
             int count = 5000;
@@ -64,21 +52,29 @@ namespace ds_perper
 
         [FunctionName("BlankGenerator")]
         public static async Task BlankGenerator(
-            // [PerperTrigger] object? input,
-            // [Perper(Stream="-7286c2c7-bd1d-47c2-b92a-f5b7e99ba9a9")] IAsyncCollector<dynamic> output,
             [PerperTrigger(ParameterExpression = "{\"stream\":0}")] PerperTriggerValue parameters,
             [Perper] IAsyncCollector<dynamic> output,
             ILogger logger)
         {
-            for (var i = 0; ; i++)
+            using(var reader = new StreamReader(@"..\..\Data\google_data.csv"))
             {
-                logger.LogInformation("Generating: {0}", i);
-                await Task.Delay(1000);
-                await output.AddAsync(new SimpleData{
+                // First we get the collumn names from the csv
+                var first_row = reader.ReadLine();
+                var column_names = first_row.Split(",");
+                // Then in a loop we send the data row by row
+                int i=1;
+                while (!reader.EndOfStream)
+                {
+                    await Task.Delay(600);
+                    var row = reader.ReadLine();
+                    await output.AddAsync(new SimpleData{
                         Name = "Test",
                         Priority = i,
-                        Json = "{ 'test' : 0 }"
+                        Json = string.Format("{{ \"value\" : {0} }}", row)
                     });
+                    logger.LogInformation("Streamed row {0}", i);
+                    i++;
+                }
             }
             await output.FlushAsync();
         }
