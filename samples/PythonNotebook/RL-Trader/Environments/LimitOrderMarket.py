@@ -18,6 +18,10 @@ from Environments.BaseMarket import MarketEnv
 #         'curiosity_reward' : 0
 #         }
 
+
+
+                
+
 class Order():
     def __init__(self, order_info):
         self.action_type = order_info['action_type']
