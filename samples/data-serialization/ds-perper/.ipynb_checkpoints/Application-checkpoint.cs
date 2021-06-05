@@ -67,12 +67,11 @@ namespace ds_perper
                 {
                     await Task.Delay(600);
                     var row = reader.ReadLine();
-                    SimpleData data = new SimpleData{
+                    await output.AddAsync(new SimpleData{
                         Name = "Test",
                         Priority = i,
-                        Json = row
-                    };
-                    await output.AddAsync(data);
+                        Json = string.Format("{{ \"value\" : {0} }}", row)
+                    });
                     logger.LogInformation("Streamed row {0}", i);
                     i++;
                 }

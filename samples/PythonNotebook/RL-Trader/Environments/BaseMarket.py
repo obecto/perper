@@ -42,6 +42,7 @@ class DataLoader():
         self.stream = Stream(stream_name)
         self.stream.set_parameters(jupyter.ignite, jupyter.fabric, instance=jupyter.instance, serializer=jupyter.serializer, state=None)
         self.episode_length = episode_length
+        self.column_names = None
         
     def get_stream_name(self):
         stream_name = None
@@ -58,6 +59,11 @@ class DataLoader():
             print("Stream name: " + stream_name)
             return stream_name
         
+    async def get_column_names(self):
+        item = await self.async_gen.__anext__()
+        columns = item.Json["columns"]
+        self.columns = pd.Series(columns[:-1].split(','))
+        
     async def get_generator(self):
         self.generator_got = True
         self.async_gen = await self.stream.get_async_generator()
@@ -66,11 +72,19 @@ class DataLoader():
     async def get_episode(self):
         if not self.generator_got:
             await self.get_generator()
+        
+        if self.column_names == None:
+            await self.get_column_names()
+            
         episode_data = []
-        for item_n in range(self.episode_length):
+        for _ in range(self.episode_length-1):
             item = await self.async_gen.__anext__()
-            data = json.loads(item.Json)
-            episode_data.append(data.value)
+            row = np.fromstring(item.Json["data"], dtype=float, sep=',')
+            episode_data.append(row)
+            episode.append(random_line)
+            
+        episode = np.array(episode)
+        episode = pd.DataFrame(data= episode, columns= columns)
         return episode_data
 
 class MarketEnv(gym.Env):
@@ -81,7 +95,7 @@ class MarketEnv(gym.Env):
         self.episode_length = env_config['episode_length']
         self.commission = env_config['commission']
         self.curiosity_scale = env_config['curiosity_reward']
-        #self.loader = EpisodeLoader(self.data, episode_length = self.episode_length)
+        self.loader = EpisodeLoader(self.data, episode_length = self.episode_length)
         self.high, self.low = self.loader.get_high_low()
         self.env_config = env_config
         
