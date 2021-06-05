@@ -39,7 +39,9 @@ import threading
 from perper.functions import Perper
 from perper.model import Stream
 
-os.environ["PERPER_AGENT_NAME"] = "python-functions" # TODO: Update agent delegates.
+os.environ["PERPER_AGENT_NAME"] = "jupyter"
+os.environ["PERPER_ROOT_AGENT"] = "jupyter"
+
 FINAL_ID = 20
 perper = Perper()
 
@@ -68,6 +70,17 @@ class PerperManager(FileManagerMixin, ContentsManager):
     root_dir = Unicode(config=True)
     is_running = False
     current_data = ''
+
+    def __init__(self, *args, **kwargs):
+        print('Initialized contents manager', args, kwargs)
+        self.loop = asyncio.new_event_loop()
+        self.loop.run_until_complete(self.__start_agent())
+
+    async def __start_agent(self):
+        (agent, result) = await perper.context.start_agent("jupyter_generator", {0: "jupyter"})
+        self.agent = agent
+
+        print('Agent initialization result: ', result)
 
     @default('root_dir')
     def _default_root_dir(self):
@@ -293,14 +306,10 @@ class PerperManager(FileManagerMixin, ContentsManager):
             
         return model
 
-    async def afun(self, content):
-        file_data = json.loads(content)
-        if 'StreamName' not in file_data:
-            return
-
+    async def listen_data(self, inc_stream):
         result = ''
         result = result + 'id,price\n' #TODO: UPDATE
-        stream = Stream(streamname=file_data['StreamName'])
+        stream = Stream(streamname=inc_stream.streamname)
         stream.set_parameters(perper.ignite, perper.fs)
         stream.set_additional_parameters({
             'serializer': perper.serializer,
@@ -319,11 +328,21 @@ class PerperManager(FileManagerMixin, ContentsManager):
                     f.close()
                     return
 
-    def fire_and_forget(self, loop, content):
+    async def generate_data(self, inc_stream):
+        await asyncio.sleep(5)
+        await self.agent.call_function('generate', {0: inc_stream.streamname, 1: 20})
+
+    async def fire_and_forget(self, content):
         if not self.is_running:
             self.is_running = True
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(self.afun(content))
+            inc_stream = await self.agent.call_function('get_stream', {})
+
+            # Call data generation; TODO: CLEANUP HERE
+            thread = threading.Thread(target=asyncio.new_event_loop().run_until_complete, args=(self.generate_data(inc_stream),))
+            thread.start()
+            # end
+
+            await self.listen_data(inc_stream)
             self.is_running = False
             print('Async function finished!')
         else:
@@ -387,9 +406,8 @@ class PerperManager(FileManagerMixin, ContentsManager):
                 if not self.checkpoints.list_checkpoints(path):
                     self.create_checkpoint(path)
             elif model['type'] == 'file':
-                if model['path'][-5:] == '.json':
-                    loop = asyncio.new_event_loop()
-                    thread = threading.Thread(target=self.fire_and_forget, args=(loop,model['content']))
+                if 'path' in model and model['path'][-5:] == '.json':
+                    thread = threading.Thread(target=self.loop.run_until_complete, args=(self.fire_and_forget(model['content']),))
                     thread.start()
 
                 # Missing format will be handled internally by _save_file.
