@@ -1,0 +1,76 @@
+Inidcator prediction:
+	
+
+Preprocessing:
+	AUTOGLUON DOESN'T WORK WITH REGRESSION LABELS-BUG
+	Autogluon:
+		1)0.5 pure labels; 50/50 split:		0.483 aucpr/ 0.461 percent 1's
+		2)0.5 reversed labels; 50/50 split	0.565 aucpr/ 0.538 percent 1's
+		3)0.5 valley label; 50/50 split:	0.109 aucpr/ 0.009 percent 1's
+		4)0.5 peaks label; 50/50 split:		0.098 aucpr/ 0.091 percent 1's	
+		5)1 pure labels; 50/50 split	 	0.473 aucpr/ 0.443 percent 1's
+		6)1 reversed labels; 50/50 split	0.576 aucpr/ 0.557 percent 1's
+		7)1 valley labels; 50/50 split	 	0.074 aucpr/ 0.057 percent 1's
+		8)1 peak labels; 50/50 split	 	0.041 aucpr/ 0.049 percent 1's
+		9)2 pure labels; 50/50 split:		0.448 aucpr/ 0.435 percent 1's
+		10)2 reversed labels; 50/50 split	0.586 aucpr/ 0.564 percent 1's
+		11)2 valley label; 50/50 split:		0.041 aucpr/ 0.032 percent 1's
+		12)2 peaks label; 50/50 split:		0.047 aucpr/ 0.026 percent 1's	
+		13)0.25 pure labels; 50/50 split	0.509 aucpr/ 0.483 percent 1's
+		14)0.25 reversed labels; 50/50 split	0.543 aucpr/ 0.516 percent 1's
+		15)0.25 valley labels; 50/50 split	0.184 aucpr/ 0.165 percent 1's
+		16)0.25 peak labels; 50/50 split	0.171 aucpr/ 0.157 percent 1's
+
+		
+	Google AutoML:
+		1)0.5 pure labels; 50/50 split:		0.491 aucpr/ 0.461 percent 1's roc 0.532
+		2)0.5 reversed labels; 50/50 split 	0.486 aucpr/ 0.461 percent 1's roc 0.525
+		3)0.5 valley labels; 50/50 split	0.149 aucpr/ 0.099 percent 1's roc 0.606
+		4)0.5 peaks labels; 50/50 split		0.161 aucpr/ 0.091 percent 1's roc 0.628
+		5)1 pure labels; 50/50 split:		0.463 aucpr/ 0.443 percent 1's roc 0.532
+		6)1 reversed labels; 50/50 split	0.481 aucpr/ 0.443 percent 1's roc 0.546
+		7)1 valley labels; 50/50 split		0.089 aucpr/ 0.057 percent 1's roc 0.601
+		8)1 peaks labels; 50/50 split		0.095 aucpr/ 0.049 percent 1's roc 0.627
+		9)0.25 peaks labels; 50/50 split	0.242 aucpr/ 0.157 percent 1's roc 0.622
+		10)0.25 valley labels; 50/50 split	0.233 aucpr/ 0.166 percent 1's roc 0.601
+		11)0.25 pure labels; 50/50 split	0.526 aucpr/ 0.483 percent 1's roc 0.544
+
+RL:
+	GROUND TRUTH test set = last 10%
+   	Ripe env:
+		1) No curiosity; fixed boxes		0.24 market beat on the test set
+		2) No curiosity; regression boxes	0.39 market beat on the test set
+			
+    	Simple env:
+        	1) Fixed level of buy and sell trained on noise to flip 0.3 continuous 10
+       	 	1.1) Noise to continuous 10
+        	    1.1.1)Noise to flip 0.3 - ~ 250% * capital test set
+        	    1.1.2)Noise to flip 0.4 - ~ 87% * capital test set
+        	1.2) No noise to continuous
+        	    1.2.1)Noise to flip 0.4 - ~ 85 % * capital test set
+
+	GENERATED LABELS test set = last 5 % - falls 13% 
+	Simple env:
+		1)Fixed Levels of buy and sell
+        	    1.1) No commission 101% * capital test set
+        	    1.2) 0.0015 commission - no trades
+        	    1.3) (33 iters) 0.0015 commission + curiosity - trades mostly at a loss/ 99% capital on test set
+    	   	2)Continuous action for buy and sell
+        	    2.1) (20 iters) No commission 94 % test set
+        	    2.2) 0.0015 commission - no or little trades that mostly lose money 
+	Ripe env:
+		1) No curiosity; fixed boxes; asset gain	-0.27 market beat on the test set	
+		2) Curiosity; fixed boxes; asset gain		-0.09 market beat on the test set
+		3) No curiosity; regression boxes; asset gain	-0.38 market beat on the test set
+		4) Curiosity; regression boxes; asset gain	-0.21 market beat on the test set
+		5) No curiosity; fixed boxes; market_beat	-0.23 market beat on the test set
+		6) Curiosity; fixed boxes; market_beat		 0.09 market beat on the test set
+		7) No curiosity; regression boxes; market_beat	-0.02 market beat on the test set
+		8) Curiosity; regression boxes; market_beat	-0.08 market beat on the test set
+
+
+	Stop loss env:
+		
+			
+		
+	
