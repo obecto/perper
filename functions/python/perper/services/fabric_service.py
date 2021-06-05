@@ -11,6 +11,7 @@ from perper.cache.notifications import (
 from perper.cache.notifications import fabric_pb2_grpc
 from perper.cache.notifications import fabric_pb2
 from perper.cache import CallData
+from perper.cache import StreamData
 
 from pyignite.datatypes.prop_codes import *
 from logging import Logger
@@ -73,6 +74,7 @@ class FabricService(object):
         self._ignite.register_binary_type(CallResultNotification)
         self._ignite.register_binary_type(CallTriggerNotification)
         self._ignite.register_binary_type(CallData)
+        self._ignite.register_binary_type(StreamData)
 
         address = f"{config.fabric_host}:40400"
 

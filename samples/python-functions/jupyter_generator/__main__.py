@@ -28,8 +28,8 @@ async def jupyter_generator(*args):
     return None
 
 async def get_stream(*args):
-    print(args)
-    stream = context.create_blank_stream(basename='generator')
+    await asyncio.sleep(5)
+    stream = context.stream_function('generate', {0: 1}, None)
     return stream
 
 async def generate(perper_instance, *args):
