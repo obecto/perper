@@ -28,13 +28,12 @@ async def jupyter_generator(*args):
     return None
 
 async def get_stream(*args):
-    await asyncio.sleep(5)
-    stream = context.stream_function('generate', {0: 1}, None)
-    return stream
+    return context.stream_action('generate', {1: 20}, None)
 
-async def generate(perper_instance, *args):
+async def generate(perper_instance, stream_name, *args):
+    await asyncio.sleep(2) #TODO: Fix stream trigger getting when listener is present.
     print('Generating...')
-    streams_cache = perper_instance.ignite.get_cache(args[1][0])
+    streams_cache = perper_instance.ignite.get_cache(stream_name)
     for x in range(args[1][1]):
         data = SimpleData(
             name='RadiTest',
@@ -53,5 +52,7 @@ functions = {
     'get_stream': get_stream,
     'generate': generate
 }
+
+# context.stream_action("generate", {1: 20}, None)
 
 asyncio.run(perper.listen_triggers(functions))

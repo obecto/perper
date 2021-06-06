@@ -307,6 +307,8 @@ class PerperManager(FileManagerMixin, ContentsManager):
         return model
 
     async def listen_data(self, inc_stream):
+        await asyncio.sleep(1) #TODO: Fix stream trigger getting when listener is present.
+
         result = ''
         result = result + 'id,price\n' #TODO: UPDATE
         stream = Stream(streamname=inc_stream.streamname)
@@ -328,19 +330,10 @@ class PerperManager(FileManagerMixin, ContentsManager):
                     f.close()
                     return
 
-    async def generate_data(self, inc_stream):
-        await asyncio.sleep(5)
-        await self.agent.call_function('generate', {0: inc_stream.streamname, 1: 20})
-
     async def fire_and_forget(self, content):
         if not self.is_running:
             self.is_running = True
             inc_stream = await self.agent.call_function('get_stream', {})
-
-            # Call data generation; TODO: CLEANUP HERE
-            thread = threading.Thread(target=asyncio.new_event_loop().run_until_complete, args=(self.generate_data(inc_stream),))
-            thread.start()
-            # end
 
             await self.listen_data(inc_stream)
             self.is_running = False
