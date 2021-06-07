@@ -1,15 +1,18 @@
+import asyncio
+import json
+import gc
+
 import pandas as pd
 import gym
-import matplotlib.pyplot as plt
 from gym import spaces
+import matplotlib.pyplot as plt
 import numpy as np
 from numpy import load
 import torch
-import gc
-import perper
 from ray.rllib.env import ExternalEnv
+
+import perper
 import perper.jupyter as jupyter
-import asyncio
 from perper.model import Stream
 
 class Test_env(ExternalEnv):
@@ -61,8 +64,8 @@ class DataLoader():
         
     async def get_column_names(self):
         item = await self.async_gen.__anext__()
-        columns = item.Json["columns"]
-        self.columns = pd.Series(columns[:-1].split(','))
+        col_names = json.loads(item.Json)["Columns"]
+        self.column_names = pd.Series(col_names.split(','))
         
     async def get_generator(self):
         self.generator_got = True
@@ -79,12 +82,11 @@ class DataLoader():
         episode_data = []
         for _ in range(self.episode_length-1):
             item = await self.async_gen.__anext__()
-            row = np.fromstring(item.Json["data"], dtype=float, sep=',')
+            row = np.fromstring(json.loads(item.Json)["Row"], dtype=float, sep=',')
             episode_data.append(row)
-            episode.append(random_line)
             
-        episode = np.array(episode)
-        episode = pd.DataFrame(data= episode, columns= columns)
+        episode_data = np.array(episode_data)
+        episode_data = pd.DataFrame(data= episode_data, columns= self.column_names)
         return episode_data
 
 class MarketEnv(gym.Env):

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading;
+using System.Text.Json;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ds_perper.Models;
@@ -56,21 +57,23 @@ namespace ds_perper
             [Perper] IAsyncCollector<dynamic> output,
             ILogger logger)
         {
-            using(var reader = new StreamReader(@"..\..\Data\google_data.csv"))
+            using(var reader = new StreamReader(@"..\..\Data\ray_data.csv"))
             {
                 // First we get the collumn names from the csv
-                var first_row = reader.ReadLine();
-                var column_names = first_row.Split(",");
+                var column_names = reader.ReadLine();
                 // Then in a loop we send the data row by row
                 int i=1;
                 while (!reader.EndOfStream)
                 {
-                    await Task.Delay(600);
+                    await Task.Delay(100);
                     var row = reader.ReadLine();
                     SimpleData data = new SimpleData{
                         Name = "Test",
                         Priority = i,
-                        Json = row
+                        Json = JsonSerializer.Serialize(new CsvRow{
+                            Columns = column_names,
+                            Row = row
+                        })
                     };
                     await output.AddAsync(data);
                     logger.LogInformation("Streamed row {0}", i);
