@@ -94,9 +94,6 @@ class StreamEnumerable:
         # This should be replace
         streams_cache.put(self._stream.stream_name, new_value)
 
-    def add_listener(self):
-        self.__add_listener()
-
     def __add_listener(self):
         stream_listener = StreamListener(
             agentdelegate=self._stream.fabric.agent_delegate,

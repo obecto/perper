@@ -43,7 +43,7 @@ class Perper():
                 parameter_data = stream_data.parameters
 
                 if n.delegate in functions:
-                    async for data in functions[n.delegate](self, n.stream, *parameter_data.parameters):
+                    async for data in functions[n.delegate](self, *parameter_data.parameters):
                         stream_cache.put(random.randrange(1, sys.maxsize), data)
 
             elif incoming_type == 'CallTriggerNotification':
