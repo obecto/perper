@@ -1,4 +1,3 @@
-import sys
 import os
 import time
 import random
@@ -28,23 +27,21 @@ async def jupyter_generator(*args):
     return None
 
 async def get_stream(*args):
-    return context.stream_action('generate', {1: 20}, None)
+    return context.stream_function('generate', {1: 20}, None)
 
 async def generate(perper_instance, stream_name, *args):
     await asyncio.sleep(2) #TODO: Fix stream trigger getting when listener is present.
     print('Generating...')
-    streams_cache = perper_instance.ignite.get_cache(stream_name)
     for x in range(args[1][1]):
         data = SimpleData(
             name='RadiTest',
             priority=1,
             json='{ "id" : ' + str(x + 1) + ', "price": ' + str(random.randrange(1000, 2000)) + ' }'
         )
-        # TODO: Think of a better way for generating item keys
-        streams_cache.put(random.randrange(1, sys.maxsize), data)
-        
-        print(data)
+
         await asyncio.sleep(1)
+        print(data)
+        yield data
 
 
 functions = {

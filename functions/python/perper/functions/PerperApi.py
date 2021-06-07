@@ -10,7 +10,9 @@ from perper.utils.perper_thin_client import PerperThinClient
 from perper.cache.notifications import StreamItemNotification, StreamTriggerNotification
 
 import os
+import sys
 import json
+import random
 import asyncio
 import threading
 
@@ -37,11 +39,12 @@ class Perper():
                 self.fs.consume_notification(k)
                 streams_cache = self.ignite.get_cache("streams")
                 stream_data = streams_cache.get(n.stream)
+                stream_cache = self.ignite.get_cache(n.stream)
                 parameter_data = stream_data.parameters
 
                 if n.delegate in functions:
-                    result = await asyncio.create_task(functions[n.delegate](self, n.stream, *parameter_data.parameters))
-                    #TODO: Create stream yielding.
+                    async for data in functions[n.delegate](self, n.stream, *parameter_data.parameters):
+                        stream_cache.put(random.randrange(1, sys.maxsize), data)
 
             elif incoming_type == 'CallTriggerNotification':
                 self.fs.consume_notification(k)
