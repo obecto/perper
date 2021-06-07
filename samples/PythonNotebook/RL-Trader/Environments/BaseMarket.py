@@ -15,7 +15,7 @@ import perper
 import perper.jupyter as jupyter
 from perper.model import Stream
 
-class Test_env(ExternalEnv):
+class TestEnv(ExternalEnv):
     def __init__(self, env):
         ExternalEnv.__init__(self, env.action_space, env.observation_space)
         self.env = env
@@ -40,12 +40,16 @@ class Test_env(ExternalEnv):
                 
 class DataLoader():
     def __init__(self, episode_length):
+        self.episode_length = episode_length
         self.stream_name = self.get_stream_name()
-        self.generator_got = False
         self.stream = Stream(stream_name)
         self.stream.set_parameters(jupyter.ignite, jupyter.fabric, instance=jupyter.instance, serializer=jupyter.serializer, state=None)
-        self.episode_length = episode_length
+        
         self.column_names = None
+        self.generator_got = False
+        
+        self.high = load('Data/indicator_dataset/' + 'high.npy')
+        self.low = load('Data/indicator_dataset/' + 'low.npy')
         
     def get_stream_name(self):
         stream_name = None
@@ -61,6 +65,9 @@ class DataLoader():
         else:
             print("Stream name: " + stream_name)
             return stream_name
+        
+    def get_high_low(self):
+        return self.high, self.low
         
     async def get_column_names(self):
         item = await self.async_gen.__anext__()
@@ -97,7 +104,8 @@ class MarketEnv(gym.Env):
         self.episode_length = env_config['episode_length']
         self.commission = env_config['commission']
         self.curiosity_scale = env_config['curiosity_reward']
-        self.loader = EpisodeLoader(self.data, episode_length = self.episode_length)
+        
+        self.loader = DataLoader(episode_length = self.episode_length)
         self.high, self.low = self.loader.get_high_low()
         self.env_config = env_config
         
