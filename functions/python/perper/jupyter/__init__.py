@@ -30,8 +30,9 @@ def azure_handler(comm, open_msg):
     open_message = open_msg["content"]["data"]
     comm.send(open_msg["content"]["data"])
 
-
-get_ipython().kernel.comm_manager.register_target("azure_handler", azure_handler)
+# There was a problem with ray, commented for testing reasons
+# TODO: Find an alternative to get_ipython() as it needs internal script to be run with ipython, which is inconvenient
+# get_ipython().kernel.comm_manager.register_target("azure_handler", azure_handler)
 
 # # other initialization of thin client, fabric, state, context
 

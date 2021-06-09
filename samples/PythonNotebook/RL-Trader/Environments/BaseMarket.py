@@ -27,11 +27,10 @@ class TestEnv(ExternalEnv):
     def run(self):
         episode_id = self.start_episode()
         observation = self.env.reset()
+        print("Running...")
         while True:
-            print("Running...")
             action = self.get_action(episode_id, observation)
-            print(f"The action: {action}")
-            obs, reward, done, info = self.event_loop.run_until_complete(self.env.step(action))
+            obs, reward, done, info = self.env.step(action)
             self.log_returns(episode_id, reward, info=info)
             if done:
                 self.end_episode(episode_id, observation)
@@ -42,7 +41,7 @@ class DataLoader():
     def __init__(self, episode_length):
         self.episode_length = episode_length
         self.stream_name = self.get_stream_name()
-        self.stream = Stream(stream_name)
+        self.stream = Stream(self.stream_name)
         self.stream.set_parameters(jupyter.ignite, jupyter.fabric, instance=jupyter.instance, serializer=jupyter.serializer, state=None)
         
         self.column_names = None
@@ -72,7 +71,7 @@ class DataLoader():
     async def get_column_names(self):
         item = await self.async_gen.__anext__()
         col_names = json.loads(item.Json)["Columns"]
-        self.column_names = pd.Series(col_names.split(','))
+        self.column_names = pd.Series(col_names.split(','))     
         
     async def get_generator(self):
         self.generator_got = True
@@ -82,8 +81,8 @@ class DataLoader():
     async def get_episode(self):
         if not self.generator_got:
             await self.get_generator()
-        
-        if self.column_names == None:
+
+        if type(self.column_names) == pd.core.series.Series:
             await self.get_column_names()
             
         episode_data = []
@@ -94,6 +93,7 @@ class DataLoader():
             
         episode_data = np.array(episode_data)
         episode_data = pd.DataFrame(data= episode_data, columns= self.column_names)
+        episode_data = episode_data.iloc[:, :-8]
         return episode_data
 
 class MarketEnv(gym.Env):
@@ -135,10 +135,11 @@ class MarketEnv(gym.Env):
         self.current_stocks = self.starting_stocks
         self.tick = 0
         
-        self.data = self.loader.get_episode()
+        self.data = asyncio.run(self.loader.get_episode())
         self.episode_length = len(self.data)
         
-        state = self.data.iloc[self.tick]     
+        state = self.data.iloc[self.tick] 
+        print(state)
         self.current_price = state['price']
         self.potential_initial_stock = self.starting_money/self.current_price + self.starting_stocks
         state = state.values
