@@ -47,8 +47,8 @@ class DataLoader():
         self.column_names = None
         self.generator_got = False
         
-        self.high = load('Data/indicator_dataset/' + 'high.npy')
-        self.low = load('Data/indicator_dataset/' + 'low.npy')
+        self.high = load('Data/ray_data/' + 'high.npy')
+        self.low = load('Data/ray_data/' + 'low.npy')
         
     def get_stream_name(self):
         stream_name = None
@@ -71,7 +71,7 @@ class DataLoader():
     async def get_column_names(self):
         item = await self.async_gen.__anext__()
         col_names = json.loads(item.Json)["Columns"]
-        self.column_names = pd.Series(col_names.split(','))     
+        self.column_names = pd.Series(col_names.split(','))
         
     async def get_generator(self):
         self.generator_got = True
@@ -82,7 +82,7 @@ class DataLoader():
         if not self.generator_got:
             await self.get_generator()
 
-        if type(self.column_names) == pd.core.series.Series:
+        if type(self.column_names) != pd.core.series.Series:
             await self.get_column_names()
             
         episode_data = []
@@ -93,7 +93,6 @@ class DataLoader():
             
         episode_data = np.array(episode_data)
         episode_data = pd.DataFrame(data= episode_data, columns= self.column_names)
-        episode_data = episode_data.iloc[:, :-8]
         return episode_data
 
 class MarketEnv(gym.Env):
@@ -114,6 +113,7 @@ class MarketEnv(gym.Env):
         
         self.observation_space = spaces.Box(high = np.inf, low = -np.inf, shape = (len(self.high),))
         self.set_action_space()
+        self.event_loop = asyncio.new_event_loop()
         
     def modify_high_low(self,):
         pass
@@ -135,11 +135,10 @@ class MarketEnv(gym.Env):
         self.current_stocks = self.starting_stocks
         self.tick = 0
         
-        self.data = asyncio.run(self.loader.get_episode())
+        self.data = self.event_loop.run_until_complete(self.loader.get_episode())
         self.episode_length = len(self.data)
         
         state = self.data.iloc[self.tick] 
-        print(state)
         self.current_price = state['price']
         self.potential_initial_stock = self.starting_money/self.current_price + self.starting_stocks
         state = state.values
@@ -193,7 +192,7 @@ class MarketEnv(gym.Env):
         return trade_info
     
     def normalize_state(self, state):
-        normalized_state = (state - self.low)/(self.high - self.low)
+        normalized_state = (state - self.low)/(self.high - self.low + 1e-17)
         
         return normalized_state
     
@@ -204,6 +203,7 @@ class MarketEnv(gym.Env):
         
     def step(self, action):
         action_info = self.extract_action_info(action)
+        print(f"Action info: {action_info}")
         return self.do_action(action_info)
 
     
