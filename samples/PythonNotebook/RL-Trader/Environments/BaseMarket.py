@@ -41,6 +41,7 @@ class DataLoader():
     def __init__(self, episode_length):
         self.episode_length = episode_length
         self.stream_name = self.get_stream_name()
+        # TODO: UPDATE STREAM REGISTRATION AND IMPLEMENTATION. https://bit.ly/3wlJfmM; https://bit.ly/3guvhZ3
         self.stream = Stream(self.stream_name)
         self.stream.set_parameters(jupyter.ignite, jupyter.fabric, instance=jupyter.instance, serializer=jupyter.serializer, state=None)
         
