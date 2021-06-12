@@ -1,21 +1,17 @@
 from perper.model.filter_utils import FilterUtils
 from perper.cache.stream_listener import StreamListener
-from pyignite import GenericObjectMeta
-from collections import OrderedDict
 from pyignite.datatypes import *
 from perper.cache.notifications import StreamItemNotification
 
 
-class Stream(
-    metaclass=GenericObjectMeta,
-    type_name="PerperStream`1[[SimpleData]]",
-    schema=OrderedDict([("streamname", String)]),
-):
+class Stream():
+    def __init__(self, *args, **kwargs):
+        self.stream_name  = kwargs["streamname"]
+
     def set_parameters(self, ignite, fabric, **kwargs):
         self.fabric = fabric
         self.ignite = ignite
         self._ignite = ignite
-        self.stream_name = self.streamname
 
         if len(kwargs) > 0:
             self.set_additional_parameters(kwargs)
