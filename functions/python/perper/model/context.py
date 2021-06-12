@@ -38,6 +38,9 @@ class Context:
             serializer=self.serializer,
         )
 
+    def register_stream_class(self, stream_class):
+        self.stream_class = stream_class
+
     async def start_agent(self, delegate_name, parameters):
         agent_delegate = delegate_name
         call_delegate = delegate_name
@@ -65,7 +68,7 @@ class Context:
             flags,
         )
 
-        stream = Stream(streamname=stream_name)
+        stream = self.stream_class(streamname=stream_name)
         return stream
 
     def stream_action(self, action_name, parameters, flags):
@@ -79,11 +82,11 @@ class Context:
             flags
         )
         # return Stream(stream_name, self.fabric, self.ignite, instance = self.instance, serializer = self.serializer, state = self.state)
-        return Stream(streamname=stream_name)
+        return self.stream_class(streamname=stream_name)
 
     def declare_stream_function(self, function_name):
         stream_name = self.generate_name(function_name)
-        stream = Stream(
+        stream = self.stream_class(
             stream_name,
             self.fabric,
             self.ignite,
@@ -114,7 +117,7 @@ class Context:
             stream_name, StreamDelegateType.external, "", {}, None, flags
         )
 
-        stream = Stream(streamname=stream_name)
+        stream = self.stream_class(streamname=stream_name)
         stream.set_parameters(self.ignite, self.fabric, instance=self.instance, serializer = self.serializer, state = self.state)
         return stream
 
