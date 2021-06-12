@@ -11,6 +11,7 @@ perper = Perper()
 context = perper.context
 
 async def run(stream_name):
+    # TODO: UPDATE STREAM REGISTRATION AND IMPLEMENTATION. https://bit.ly/3wlJfmM; https://bit.ly/3guvhZ3
     stream = Stream(streamname=stream_name)
     stream.set_parameters(context.ignite, context.fabric, instance=context.instance, serializer=context.serializer, state=context.state)
 
@@ -18,4 +19,4 @@ async def run(stream_name):
     async for item in async_gen:
         print(item)
 
-asyncio.run(run("-1d0f0a58-3731-4de9-8c07-35c9c5a9d976"))
+asyncio.run(run("-b75245f5-33c6-4464-acc3-666f838f3b1e"))

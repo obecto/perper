@@ -35,7 +35,7 @@ class Constant_env():
         self.observation_space = spaces.Box(low=-1.0, high=2.0, shape=(1,), dtype=np.float32)
         self.counter = None
         stream_name = self.determine_stream_name()
-        # TODO: Update stream implementation if needed! https://bit.ly/3wlJfmM; https://bit.ly/3guvhZ3
+        # TODO: UPDATE STREAM REGISTRATION AND IMPLEMENTATION. https://bit.ly/3wlJfmM; https://bit.ly/3guvhZ3
         self.stream = Stream(stream_name)
         self.stream.set_parameters(jupyter.ignite, jupyter.fabric, instance=jupyter.instance, serializer=jupyter.serializer, state=None)
         self.generator_set = False
