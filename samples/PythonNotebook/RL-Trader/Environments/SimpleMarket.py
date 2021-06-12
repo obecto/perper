@@ -92,7 +92,7 @@ class SimpleMarket(MarketEnv):
         self.zero_line = (self.zero_line * stocks_before_trade + stock_delta * self.current_price)/(stocks_before_trade + stock_delta)
         
     def normalize_state(self, state):
-        normalized_state = (state - self.low)/(self.high - self.low)
+        normalized_state = (state - self.low)/(self.high - self.low + 1e-17)
         
         return normalized_state
     
