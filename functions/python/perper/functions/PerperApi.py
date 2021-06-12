@@ -32,6 +32,10 @@ class Perper():
         self.context = Context(self.instance, self.fs, self.state, self.ignite)
 
 
+    def register_stream_class(self, stream_class):
+        self.context.register_stream_class(stream_class)
+        self.ignite.register_binary_type(stream_class)
+
     async def listen_triggers(self, functions):
         async for (k, n) in self.fs.get_notifications():
             incoming_type = n.__class__.__name__
