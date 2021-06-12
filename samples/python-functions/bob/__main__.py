@@ -4,6 +4,7 @@ import asyncio
 
 from perper.functions import Perper
 from perper.cache.stream_data import ParameterData
+from perper.model import Stream
 
 from collections import OrderedDict
 from pyignite import GenericObjectMeta
@@ -13,6 +14,15 @@ os.environ["PERPER_AGENT_NAME"] = "Bob"
 
 perper = Perper()
 context = perper.context
+
+class SimpleStream(Stream, 
+    metaclass=GenericObjectMeta,
+    type_name="PerperStream`1[[SimpleData]]",
+    schema=OrderedDict([("streamname", String)])
+):
+    pass
+
+perper.register_stream_class(SimpleStream)
 
 async def Bob(perper_instance, *kwargs):
     stream = context.create_blank_stream(basename='generator')
