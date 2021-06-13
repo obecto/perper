@@ -319,11 +319,14 @@ class PerperManager(FileManagerMixin, ContentsManager):
             
         return model
 
-    async def listen_data(self, inc_stream):
+    async def listen_data(self, inc_stream, file_content):
 
         result = ''
-        result = result + 'id,price\n' #TODO: UPDATE
-        stream = Stream(streamname=inc_stream.streamname)
+        for field in json.loads(file_content)['fields']:
+            result = result + field + ','
+        result = result + '\n'
+
+        stream = SimpleStream(streamname=inc_stream.streamname)
         stream.set_parameters(perper.ignite, perper.fs)
         stream.set_additional_parameters({
             'serializer': perper.serializer,
@@ -335,19 +338,23 @@ class PerperManager(FileManagerMixin, ContentsManager):
         async for item in async_gen:
             if item is not None and hasattr(item, 'json'):
                 inc_json = json.loads(item.json)
-                result = result + str(inc_json['id']) + ',' + str(inc_json['price']) + '\n' # TODO: Complex json handling!
+                for key in inc_json:
+                    result = result + str(inc_json[key]) + (',' if list(inc_json.keys()).index(key) < len(inc_json) - 1 else '')
+                
+                result = result + '\n'
+
                 if inc_json['id'] == FINAL_ID:
                     f = open('output.csv', 'w')
                     f.write(result)
                     f.close()
                     return
 
-    async def fire_and_forget(self, content):
+    async def fire_and_forget(self, file_content):
         if not self.is_running:
             self.is_running = True
             inc_stream = await self.agent.call_function('get_stream', {})
 
-            await self.listen_data(inc_stream)
+            await self.listen_data(inc_stream, file_content)
             self.is_running = False
             print('Async function finished!')
         else:
