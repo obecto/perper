@@ -14,11 +14,11 @@ class Stream():
         self._ignite = ignite
 
         if len(kwargs) > 0:
-            self.set_additional_parameters(kwargs)
+            self._set_additional_parameters(kwargs)
 
         self.function_name = None
 
-    def set_additional_parameters(self, kwargs):
+    def _set_additional_parameters(self, kwargs):
         self.serializer = kwargs["serializer"]
         self.state = kwargs["state"]
         self.instance = kwargs["instance"]

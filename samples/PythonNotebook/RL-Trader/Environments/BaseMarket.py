@@ -26,23 +26,28 @@ class TestEnv(ExternalEnv):
     
     def run(self):
         episode_id = self.start_episode()
-        observation = self.env.reset()
-        print("Running...")
+        obs = self.reset()
+        print(f"Running... ")
         while True:
-            action = self.get_action(episode_id, observation)
+            action = self.get_action(episode_id, obs)
             obs, reward, done, info = self.env.step(action)
             self.log_returns(episode_id, reward, info=info)
             if done:
-                self.end_episode(episode_id, observation)
-                observation = self.env.reset()
+                self.end_episode(episode_id, obs)
+#                 obs = self.reset()
                 episode_id = self.start_episode()
+                
+    def reset(self):
+        print(f"Reset External env wrapper")
+        obs = self.event_loop.run_until_complete(self.env.reset())
+        return obs
                 
 class DataLoader():
     def __init__(self, episode_length):
         self.episode_length = episode_length
         self.stream_name = self.get_stream_name()
         # TODO: Update stream implementation if needed! https://bit.ly/3wlJfmM; https://bit.ly/3guvhZ3
-        self.stream = Stream(self.stream_name)
+        self.stream = Stream(streamname = self.stream_name)
         self.stream.set_parameters(jupyter.ignite, jupyter.fabric, instance=jupyter.instance, serializer=jupyter.serializer, state=None)
         
         self.column_names = None
@@ -96,7 +101,7 @@ class DataLoader():
         episode_data = pd.DataFrame(data= episode_data, columns= self.column_names)
         return episode_data
 
-class MarketEnv(gym.Env):
+class MarketEnv():
     def __init__(self, env_config ):
         self.data = env_config['data']
         self.starting_money = env_config['starting_money']
@@ -114,7 +119,6 @@ class MarketEnv(gym.Env):
         
         self.observation_space = spaces.Box(high = np.inf, low = -np.inf, shape = (len(self.high),))
         self.set_action_space()
-        self.event_loop = asyncio.new_event_loop()
         
     def modify_high_low(self,):
         pass
@@ -131,12 +135,12 @@ class MarketEnv(gym.Env):
     def do_action(self, action_info):
         return NotImplemented
     
-    def reset(self,):
+    async def reset(self,):
         self.current_money = self.starting_money
         self.current_stocks = self.starting_stocks
         self.tick = 0
         
-        self.data = self.event_loop.run_until_complete(self.loader.get_episode())
+        self.data = await self.loader.get_episode()
         self.episode_length = len(self.data)
         
         state = self.data.iloc[self.tick] 
@@ -146,6 +150,7 @@ class MarketEnv(gym.Env):
         
         # Change state to be env specific
         state = self.modify_state(state)
+        print("Reset BaseMarket")
         return state.copy()
     
     def test(self,):

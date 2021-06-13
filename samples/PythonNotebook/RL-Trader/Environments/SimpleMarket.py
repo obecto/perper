@@ -33,9 +33,11 @@ class SimpleMarket(MarketEnv):
         state = np.append(state, [percentage_in_cash, self.current_money, not_liquid_assets, self.zero_line])
         return state
     
-    def reset(self,):
+    async def reset(self,):
         self.zero_line = 0
-        state = super().reset()
+        print("Reset SimpleMarket")
+        state = await super().reset()
+        print("Reset SimpleMarket before return")
         return state
     
     def test(self, ):
