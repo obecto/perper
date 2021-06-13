@@ -36,14 +36,27 @@ _script_exporter = None
 import json
 import asyncio
 import threading
+
 from perper.functions import Perper
 from perper.model import Stream
+
+from collections import OrderedDict
+from pyignite import GenericObjectMeta
+from pyignite.datatypes import String
 
 os.environ["PERPER_AGENT_NAME"] = "jupyter"
 os.environ["PERPER_ROOT_AGENT"] = "jupyter"
 
+class SimpleStream(Stream, 
+    metaclass=GenericObjectMeta,
+    type_name="PerperStream`1[[SimpleData]]",
+    schema=OrderedDict([("streamname", String)])
+):
+    pass
+
 FINAL_ID = 20
 perper = Perper()
+perper.register_stream_class(SimpleStream)
 
 def _post_save_script(model, os_path, contents_manager, **kwargs):
     from nbconvert.exporters.script import ScriptExporter
