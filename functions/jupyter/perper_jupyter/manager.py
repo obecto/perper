@@ -320,7 +320,6 @@ class PerperManager(FileManagerMixin, ContentsManager):
         return model
 
     async def listen_data(self, inc_stream):
-        await asyncio.sleep(1) #TODO: Fix stream trigger getting when listener is present.
 
         result = ''
         result = result + 'id,price\n' #TODO: UPDATE

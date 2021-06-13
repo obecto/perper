@@ -41,7 +41,6 @@ async def get_stream(*args):
     return context.stream_function('generate', {1: 20}, None)
 
 async def generate(perper_instance, *args):
-    await asyncio.sleep(2) #TODO: Fix stream trigger getting when listener is present.
     print('Generating...')
     for x in range(args[1][1]):
         data = SimpleData(
