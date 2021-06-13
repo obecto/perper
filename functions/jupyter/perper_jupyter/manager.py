@@ -36,14 +36,27 @@ _script_exporter = None
 import json
 import asyncio
 import threading
+
 from perper.functions import Perper
 from perper.model import Stream
+
+from collections import OrderedDict
+from pyignite import GenericObjectMeta
+from pyignite.datatypes import String
 
 os.environ["PERPER_AGENT_NAME"] = "jupyter"
 os.environ["PERPER_ROOT_AGENT"] = "jupyter"
 
+class SimpleStream(Stream, 
+    metaclass=GenericObjectMeta,
+    type_name="PerperStream`1[[SimpleData]]",
+    schema=OrderedDict([("streamname", String)])
+):
+    pass
+
 FINAL_ID = 20
 perper = Perper()
+perper.register_stream_class(SimpleStream)
 
 def _post_save_script(model, os_path, contents_manager, **kwargs):
     from nbconvert.exporters.script import ScriptExporter
@@ -306,12 +319,14 @@ class PerperManager(FileManagerMixin, ContentsManager):
             
         return model
 
-    async def listen_data(self, inc_stream):
-        await asyncio.sleep(1) #TODO: Fix stream trigger getting when listener is present.
+    async def listen_data(self, inc_stream, file_content):
 
         result = ''
-        result = result + 'id,price\n' #TODO: UPDATE
-        stream = Stream(streamname=inc_stream.streamname)
+        for field in json.loads(file_content)['fields']:
+            result = result + field + ','
+        result = result + '\n'
+
+        stream = SimpleStream(streamname=inc_stream.streamname)
         stream.set_parameters(perper.ignite, perper.fs)
         stream.set_additional_parameters({
             'serializer': perper.serializer,
@@ -323,19 +338,23 @@ class PerperManager(FileManagerMixin, ContentsManager):
         async for item in async_gen:
             if item is not None and hasattr(item, 'json'):
                 inc_json = json.loads(item.json)
-                result = result + str(inc_json['id']) + ',' + str(inc_json['price']) + '\n' # TODO: Complex json handling!
+                for key in inc_json:
+                    result = result + str(inc_json[key]) + (',' if list(inc_json.keys()).index(key) < len(inc_json) - 1 else '')
+                
+                result = result + '\n'
+
                 if inc_json['id'] == FINAL_ID:
                     f = open('output.csv', 'w')
                     f.write(result)
                     f.close()
                     return
 
-    async def fire_and_forget(self, content):
+    async def fire_and_forget(self, file_content):
         if not self.is_running:
             self.is_running = True
             inc_stream = await self.agent.call_function('get_stream', {})
 
-            await self.listen_data(inc_stream)
+            await self.listen_data(inc_stream, file_content)
             self.is_running = False
             print('Async function finished!')
         else:

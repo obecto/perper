@@ -5,6 +5,8 @@ import asyncio
 
 from perper.functions import Perper
 from perper.cache.stream_data import ParameterData
+from perper.model import Stream
+from perper.cache.stream_listener import StreamListener
 
 from collections import OrderedDict
 from pyignite import GenericObjectMeta
@@ -19,18 +21,26 @@ class SimpleData(metaclass=GenericObjectMeta, schema=OrderedDict([
 ])):
     pass
 
+class SimpleStream(Stream, 
+    metaclass=GenericObjectMeta,
+    type_name="PerperStream`1[[SimpleData]]",
+    schema=OrderedDict([("streamname", String)])
+):
+    pass
+
 perper = Perper()
 context = perper.context
+perper.register_stream_class(SimpleStream)
+perper.ignite.register_binary_type(StreamListener)
 
 async def jupyter_generator(*args):
     print('Agent started')
     return None
 
 async def get_stream(*args):
-    return context.stream_action('generate', {1: 20}, None)
+    return context.stream_function('generate', {1: 20}, None)
 
 async def generate(perper_instance, *args):
-    await asyncio.sleep(2) #TODO: Fix stream trigger getting when listener is present.
     print('Generating...')
     for x in range(args[1][1]):
         data = SimpleData(

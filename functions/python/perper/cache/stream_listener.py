@@ -5,6 +5,7 @@ from pyignite.datatypes import String, IntObject, BoolObject, MapObject
 
 class StreamListener(
     metaclass=GenericObjectMeta,
+    type_name="StreamListener",
     schema=OrderedDict(
         [
             ("agentdelegate", String),

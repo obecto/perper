@@ -12,6 +12,7 @@ class Stream():
         self.fabric = fabric
         self.ignite = ignite
         self._ignite = ignite
+        self.stream_name = self.streamname
 
         if len(kwargs) > 0:
             self._set_additional_parameters(kwargs)

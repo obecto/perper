@@ -57,15 +57,28 @@ namespace ds_perper
             [Perper] IAsyncCollector<dynamic> output,
             ILogger logger)
         {
-            for (var i = 0; ; i++)
+            using(var reader = new StreamReader(@"..\..\Data\ray_data.csv"))
             {
-                logger.LogInformation("Generating: {0}", i);
-                await Task.Delay(50);
-                await output.AddAsync(new SimpleData{
+                // First we get the collumn names from the csv
+                var column_names = reader.ReadLine();
+                // Then in a loop we send the data row by row
+                int i=1;
+                while (!reader.EndOfStream)
+                {
+                    await Task.Delay(50);
+                    var row = reader.ReadLine();
+                    SimpleData data = new SimpleData{
                         Name = "Test",
                         Priority = i,
-                        Json = "0"
-                    });
+                        Json = JsonSerializer.Serialize(new CsvRow{
+                            Columns = column_names,
+                            Row = row
+                        })
+                    };
+                    await output.AddAsync(data);
+                    logger.LogInformation("Streamed row {0}", i);
+                    i++;
+                }
             }
             await output.FlushAsync();
         }
