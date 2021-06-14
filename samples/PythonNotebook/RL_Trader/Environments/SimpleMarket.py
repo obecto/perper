@@ -34,33 +34,18 @@ class SimpleMarket(MarketEnv):
         return state
     
     async def reset(self,):
-        # from this env's reset
         self.zero_line = 0
-        
-        #from MarketEnv
-        self.current_money = self.starting_money
-        self.current_stocks = self.starting_stocks
-        self.tick = 0
-        
-        self.data = await self.loader.get_episode()
-        self.episode_length = len(self.data)
-        
-        state = self.data.iloc[self.tick] 
-        self.current_price = state['price']
-        self.potential_initial_stock = self.starting_money/self.current_price + self.starting_stocks
-        state = state.values
-        
-        # Change state to be env specific
-        state = self.modify_state(state)
-        print("Reset BaseMarket")
+        state = await super().reset()
+
+        print(f"Reset SimpleMarket before return: {state}")
+
         return state.copy()
     
-
-    
-    def test(self, ):
-        self.zero_line = 0
-        state = super().test()
-        return state
+#     Not actually implemented
+#     def test(self, ):
+#         self.zero_line = 0
+#         state = super().test()
+#         return state
     
     def extract_action_info(self, action):
         if self.is_continuous:            
@@ -136,8 +121,8 @@ class SimpleMarket(MarketEnv):
             trade_info = self.sell(amount)
             reward = self.calculate_reward(trade_info)
 
-            if self.current_stocks == 0:
-                self.zero_line = 0        
+        if self.current_stocks == 0:
+            self.zero_line = 0     
         
         self.tick += 1
         if self.tick == len(self.data)-1:

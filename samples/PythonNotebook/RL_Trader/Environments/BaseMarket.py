@@ -34,16 +34,17 @@ class TestEnv(ExternalEnv):
             self.log_returns(episode_id, reward, info=info)
             if done:
                 self.end_episode(episode_id, obs)
-#                 obs = self.reset()
+                obs = self.reset()
                 episode_id = self.start_episode()
                 
     def reset(self):
         print(f"Reset External env wrapper")
         obs = self.event_loop.run_until_complete(self.env.reset())
+#         self.env.reset()
         return obs
                 
 class DataLoader():
-    def __init__(self, episode_length):
+    def __init__(self, episode_length, data_path):
         self.episode_length = episode_length
         self.stream_name = self.get_stream_name()
         self.stream = Stream(streamname = self.stream_name)
@@ -52,8 +53,8 @@ class DataLoader():
         self.column_names = None
         self.generator_got = False
         
-        self.high = load('Data/ray_data/' + 'high.npy')
-        self.low = load('Data/ray_data/' + 'low.npy')
+        self.high = load(data_path + 'high.npy')
+        self.low = load(data_path + 'low.npy')
         
     def get_stream_name(self):
         stream_name = None
@@ -85,31 +86,33 @@ class DataLoader():
         
     async def get_episode(self):
         if not self.generator_got:
+            print(63)
             await self.get_generator()
-
         if type(self.column_names) != pd.core.series.Series:
+            print(64)
             await self.get_column_names()
-            
         episode_data = []
-        for _ in range(self.episode_length-1):
+        for i in range(self.episode_length):
             item = await self.async_gen.__anext__()
             row = np.fromstring(json.loads(item.Json)["Row"], dtype=float, sep=',')
             episode_data.append(row)
             
         episode_data = np.array(episode_data)
         episode_data = pd.DataFrame(data= episode_data, columns= self.column_names)
+        print("Get episode end")
         return episode_data
 
 class MarketEnv():
     def __init__(self, env_config ):
-        self.data = env_config['data']
         self.starting_money = env_config['starting_money']
         self.starting_stocks = env_config['starting_stocks']
         self.episode_length = env_config['episode_length']
         self.commission = env_config['commission']
         self.curiosity_scale = env_config['curiosity_reward']
+        data_path = env_config['data_path']
         
-        self.loader = DataLoader(episode_length = self.episode_length)
+        self.loader = DataLoader(self.episode_length, data_path)
+            
         self.high, self.low = self.loader.get_high_low()
         self.env_config = env_config
         
@@ -146,10 +149,7 @@ class MarketEnv():
         self.current_price = state['price']
         self.potential_initial_stock = self.starting_money/self.current_price + self.starting_stocks
         state = state.values
-        
-        # Change state to be env specific
         state = self.modify_state(state)
-        print("Reset BaseMarket")
         return state.copy()
     
     def test(self,):
@@ -208,7 +208,6 @@ class MarketEnv():
         
     def step(self, action):
         action_info = self.extract_action_info(action)
-        print(f"Action info: {action_info}")
         return self.do_action(action_info)
 
     

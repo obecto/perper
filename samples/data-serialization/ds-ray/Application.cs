@@ -65,6 +65,7 @@ namespace ds_perper
                 int i=1;
                 while (!reader.EndOfStream)
                 {
+                    await Task.Delay(20);
                     var row = reader.ReadLine();
                     SimpleData data = new SimpleData{
                         Name = "Test",
