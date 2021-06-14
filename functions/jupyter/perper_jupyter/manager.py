@@ -322,8 +322,9 @@ class PerperManager(FileManagerMixin, ContentsManager):
     async def listen_data(self, inc_stream, file_content):
 
         result = ''
-        for field in json.loads(file_content)['fields']:
-            result = result + field + ','
+        fields = json.loads(file_content)['fields']
+        for field in fields:
+            result = result + field + (',' if fields.index(field) < len(fields) - 1 else '')
         result = result + '\n'
 
         stream = SimpleStream(streamname=inc_stream.streamname)
