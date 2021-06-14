@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Linq;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
-using Apache.Ignite.Core.Cache.Affinity;
-using Apache.Ignite.Core.Client;
 
 namespace Perper.Protocol.Cache.Instance
 {

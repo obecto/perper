@@ -1,21 +1,8 @@
-﻿using System;
-using System.Collections;
-using System.Linq;
-using System.Collections.Generic;
+using System;
 using System.Threading.Tasks;
-using System.Threading;
-using System.Runtime.CompilerServices;
-using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
-using Apache.Ignite.Core.Cache.Affinity;
-using Apache.Ignite.Core.Client;
-using Apache.Ignite.Core.Client.Cache;
-using Perper.Protocol.Cache.Standard;
 using Perper.Protocol.Cache.Notifications;
-using Perper.Protocol.Protobuf;
-using Grpc.Net.Client;
-using Notification = Perper.Protocol.Cache.Notifications.Notification;
-using NotificationProto = Perper.Protocol.Protobuf.Notification;
+using Perper.Protocol.Cache.Standard;
 
 namespace Perper.Protocol.Extensions
 {
@@ -38,20 +25,26 @@ namespace Perper.Protocol.Extensions
 
         public static async Task CallWriteTask<TResult>(this PerperContext context, string call, Task<TResult> task)
         {
-            try {
+            try
+            {
                 var result = await task;
                 await context.CallWriteResult<TResult>(call, result);
-            } catch (Exception exception) {
+            }
+            catch (Exception exception)
+            {
                 await context.CallWriteException(call, exception);
             }
         }
 
         public static async Task CallWriteTask(this PerperContext context, string call, Task task)
         {
-            try {
+            try
+            {
                 await task;
                 await context.CallWriteFinished(call);
-            } catch (Exception exception) {
+            }
+            catch (Exception exception)
+            {
                 await context.CallWriteException(call, exception);
             }
         }
@@ -65,7 +58,8 @@ namespace Perper.Protocol.Extensions
         {
             var (error, result) = await context.CallReadErrorAndResult<TResult>(call);
 
-            if (error != null) {
+            if (error != null)
+            {
                 throw new Exception($"Call failed with error: {error}");
             }
 

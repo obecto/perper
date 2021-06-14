@@ -1,16 +1,15 @@
-﻿using System;
+using System;
 using System.Collections;
-using System.Linq;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
-using Apache.Ignite.Core.Cache.Affinity;
 using Apache.Ignite.Core.Client;
 using Grpc.Net.Client;
-using Perper.Protocol.Cache.Standard;
 using Perper.Protocol.Cache.Instance;
 using Perper.Protocol.Cache.Notifications;
+using Perper.Protocol.Cache.Standard;
 
 namespace Perper.Protocol
 {
@@ -41,15 +40,21 @@ namespace Perper.Protocol
                 await numbersCache.PutAsync("xyz", new PerperStream("testStream3"));
             }
 
-            try {
-                await perperContext.CallCreate("testCall1", "testInstance", "arrayListFunction", "testAgentDelegate", "testCaller", new ArrayList {"12345", "6789"});
-            } catch (Exception e) {
+            try
+            {
+                await perperContext.CallCreate("testCall1", "testInstance", "arrayListFunction", "testAgentDelegate", "testCaller", new ArrayList { "12345", "6789" });
+            }
+            catch (Exception e)
+            {
                 Console.WriteLine(e);
             }
 
-            try {
+            try
+            {
                 await perperContext.CallWriteResult("testCall3", "This is a result string");
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 Console.WriteLine(e);
             }
 
@@ -61,21 +66,30 @@ namespace Perper.Protocol
                 Console.WriteLine((await callsCache.TryGetAsync("testCall3")).Value);
             }
 
-            try {
-                await perperContext.StreamCreate("testStream1", "testInstance", "hashtableStream", StreamDelegateType.Function, new Hashtable {{"12345", "6789"}});
-            } catch (Exception e) {
+            try
+            {
+                await perperContext.StreamCreate("testStream1", "testInstance", "hashtableStream", StreamDelegateType.Function, new Hashtable { { "12345", "6789" } });
+            }
+            catch (Exception e)
+            {
                 Console.WriteLine(e);
             }
 
-            try {
+            try
+            {
                 await perperContext.StreamWriteItem("testStream1", 6);
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 Console.WriteLine(e);
             }
 
-            try {
+            try
+            {
                 await perperContext.StreamAddListener("testStream3", "testStream1", -3, null, true, false);
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 Console.WriteLine(e);
             }
 
@@ -87,7 +101,8 @@ namespace Perper.Protocol
 
             Console.WriteLine("-----");
 
-            var callResultsTask = Task.WhenAll(new [] {"testCall1", "testCall2", "testCall3"}.Select(async call => {
+            var callResultsTask = Task.WhenAll(new[] { "testCall1", "testCall2", "testCall3" }.Select(async call =>
+            {
                 var (key, notification) = await fabricService.GetCallResultNotification(call);
                 Console.WriteLine(notification);
                 Console.WriteLine(await perperContext.CallReadErrorAndResult<object>(call));
@@ -97,9 +112,11 @@ namespace Perper.Protocol
             await foreach (var (key, notification) in fabricService.GetNotifications())
             {
                 Console.WriteLine("{0} => {1}", key, notification);
-                if (notification is StreamItemNotification sn) {
+                if (notification is StreamItemNotification sn)
+                {
                     Console.WriteLine(await perperContext.StreamReadItem<object>(sn.Cache, sn.Key));
-                    var _ = Task.Delay(1000).ContinueWith(async x => {
+                    var _ = Task.Delay(1000).ContinueWith(async x =>
+                    {
                         await perperContext.StreamWriteItem("testStream1", 6);
                     });
                 }

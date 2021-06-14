@@ -1,21 +1,10 @@
-﻿using System;
+using System;
 using System.Collections;
-using System.Linq;
-using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Threading;
-using System.Runtime.CompilerServices;
-using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
-using Apache.Ignite.Core.Cache.Affinity;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
 using Perper.Protocol.Cache.Instance;
-using Perper.Protocol.Cache.Notifications;
-using Perper.Protocol.Protobuf;
-using Grpc.Net.Client;
-using Notification = Perper.Protocol.Cache.Notifications.Notification;
-using NotificationProto = Perper.Protocol.Protobuf.Notification;
 
 namespace Perper.Protocol
 {
@@ -46,7 +35,8 @@ namespace Perper.Protocol
             {
                 var existingValue = await cache.GetAsync(key);
                 var newValue = updateFunc(existingValue);
-                if (await cache.ReplaceAsync(key, existingValue, newValue)) {
+                if (await cache.ReplaceAsync(key, existingValue, newValue))
+                {
                     break;
                 }
             }
