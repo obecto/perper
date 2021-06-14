@@ -137,10 +137,10 @@ with ignite.connect('127.0.0.1', 10800):
         calls.put('testCall2', callData)
 
     calls.put_if_absent('testCall3', createCallData(
-        instance="testAgent",
-        agent="testAgentDelegate",
+        instance="testInstance",
+        agent="testAgent",
         delegate="testPyBoolFunctionDelegate",
-        callerAgent="testCallerAgentDelegate",
+        callerAgent="testAgent",
         caller="testCaller",
         localToData=False,
         parameters=False,
@@ -152,7 +152,7 @@ with ignite.connect('127.0.0.1', 10800):
     streamData = streams.get('testStream1')
     if streamData is not None:
         streamData = streamDataAddListener(streamData, createStreamListener(
-            callerAgent="testAgentDelegate",
+            callerAgent="testAgent",
             caller="testStream3",
             parameter=4,
             replay=False,
@@ -162,8 +162,8 @@ with ignite.connect('127.0.0.1', 10800):
         streams.put('testStream1', streamData)
 
     streams.put_if_absent('testStream3', createStreamData(
-        instance="testAgent",
-        agent="testAgentDelegate",
+        instance="testInstance",
+        agent="testAgent",
         delegate="testPyBoolStreamDelegate",
         delegateType=1,
         ephemeral=False,

@@ -2,7 +2,7 @@ syntax = "proto2";
 
 option java_multiple_files = true;
 option java_package = "com.obecto.perper.protobuf";
-option csharp_namespace = "Perper.WebJobs.Extensions.Protobuf";
+option csharp_namespace = "Perper.Protocol.Protobuf";
 
 package perper;
 
@@ -17,7 +17,7 @@ message NotificationFilter {
 
 message CallNotificationFilter {
     required string agent = 1;
-    required string callName = 2;
+    required string call = 2;
 }
 
 message Notification {

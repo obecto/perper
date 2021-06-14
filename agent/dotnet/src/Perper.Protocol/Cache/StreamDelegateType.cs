@@ -1,4 +1,4 @@
-namespace Perper.Protocol
+namespace Perper.Protocol.Cache
 {
     public enum StreamDelegateType
     {

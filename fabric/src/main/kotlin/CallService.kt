@@ -60,7 +60,7 @@ class CallService : JobService() {
                 val callData = event.value
                 log.debug({ "Call object modified $call" })
 
-                val notifiedDelegate: String
+                val notifiedAgent: String
                 val notificationKey: NotificationKey
                 val notification: Notification
 
@@ -68,17 +68,17 @@ class CallService : JobService() {
                     if (callData.callerAgent == "") {
                         continue
                     }
-                    notifiedDelegate = callData.callerAgent
+                    notifiedAgent = callData.callerAgent
                     notificationKey = NotificationKey(TransportService.getCurrentTicks(), if (callData.localToData) call else callData.caller)
                     notification = CallResultNotification(call, callData.caller)
                 } else {
-                    notifiedDelegate = callData.agent
+                    notifiedAgent = callData.agent
                     notificationKey = NotificationKey(TransportService.getCurrentTicks(), call)
                     notification = CallTriggerNotification(call, callData.delegate)
                 }
 
                 coroutineScope.launch {
-                    val notificationsCache = TransportService.getNotificationCache(ignite, notifiedDelegate)
+                    val notificationsCache = TransportService.getNotificationCache(ignite, notifiedAgent)
                     notificationsCache.put(notificationKey, notification)
                 }
             }

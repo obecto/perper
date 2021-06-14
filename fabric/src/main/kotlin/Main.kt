@@ -57,7 +57,7 @@ fun main(args: Array<String>) {
 //                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.CallData>(),
 //                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamData>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamDelegateType>(),
-//                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamListener>(),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamListener>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.CallResultNotification>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.CallTriggerNotification>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.Notification>(),
