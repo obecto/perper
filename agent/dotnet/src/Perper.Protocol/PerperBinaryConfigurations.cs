@@ -1,28 +1,15 @@
-﻿using System;
-using System.Collections;
-using System.Linq;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Threading;
-using System.Runtime.CompilerServices;
-using Apache.Ignite.Core;
+using System.Linq;
 using Apache.Ignite.Core.Binary;
-using Apache.Ignite.Core.Cache.Affinity;
-using Apache.Ignite.Core.Client;
-using Apache.Ignite.Core.Client.Cache;
 using Perper.Protocol.Cache.Instance;
-using Perper.Protocol.Cache.Standard;
 using Perper.Protocol.Cache.Notifications;
-using Perper.Protocol.Protobuf;
-using Grpc.Net.Client;
-using Notification = Perper.Protocol.Cache.Notifications.Notification;
-using NotificationProto = Perper.Protocol.Protobuf.Notification;
+using Perper.Protocol.Cache.Standard;
 
 namespace Perper.Protocol
 {
     public static class PerperBinaryConfigurations
     {
-        public static IBinaryNameMapper NameMapper { get; } = new BinaryBasicNameMapper() {IsSimpleName = true};
+        public static IBinaryNameMapper NameMapper { get; } = new BinaryBasicNameMapper() { IsSimpleName = true };
 
         public static ICollection<BinaryTypeConfiguration> CoreTypeConfigurations { get; } = new[]
         {

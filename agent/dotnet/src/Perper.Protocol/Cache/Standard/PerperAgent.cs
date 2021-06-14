@@ -1,4 +1,4 @@
-﻿namespace Perper.Protocol.Cache.Standard
+namespace Perper.Protocol.Cache.Standard
 {
     public class PerperAgent
     {

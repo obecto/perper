@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 
 #pragma warning disable 8618, 0649
 namespace Perper.Protocol.Cache.Instance
