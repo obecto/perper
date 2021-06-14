@@ -229,7 +229,7 @@ class TransportService(var port: Int) : Service {
         }
 
         override suspend fun callResultNotification(request: CallNotificationFilter): NotificationProto {
-            val callName = request.callName
+            val call = request.call
             val notificationCache = getNotificationCache(ignite, request.agent)
             lateinit var queryCursor: QueryCursor<Entry<NotificationKey, Notification>>
             val query = ContinuousQuery<NotificationKey, Notification>()
@@ -242,11 +242,11 @@ class TransportService(var port: Int) : Service {
             }
 
             query.remoteFilterFactory = Factory<CacheEntryEventFilter<NotificationKey, Notification>> {
-                CacheEntryEventFilter { event -> (event.value as? CallResultNotification)?.call == callName }
+                CacheEntryEventFilter { event -> (event.value as? CallResultNotification)?.call == call }
             }
 
             query.initialQuery = ScanQuery<NotificationKey, Notification>().also {
-                it.filter = IgniteBiPredicate { _, notification -> notification is CallResultNotification && notification.call == callName }
+                it.filter = IgniteBiPredicate { _, notification -> notification is CallResultNotification && notification.call == call }
             }
 
             queryCursor = notificationCache.query(query)
@@ -258,11 +258,11 @@ class TransportService(var port: Int) : Service {
                 } catch (e: java.util.NoSuchElementException) {} catch (e: org.apache.ignite.IgniteException) {} catch (e: org.apache.ignite.cache.query.QueryCancelledException) {}
             }
 
-            log.debug({ "Call result notification listener started for '${request.callName}'!" })
+            log.debug({ "Call result notification listener started for '$call'!" })
 
             val result = resultChannel.receive()
 
-            log.debug({ "Call result notification listener completed for '${request.callName}'!" })
+            log.debug({ "Call result notification listener completed for '$call'!" })
             queryCursor.close()
 
             return result.toNotification()

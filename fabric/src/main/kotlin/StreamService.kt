@@ -1,5 +1,6 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.StreamDelegateType
+import com.obecto.perper.fabric.cache.StreamListener
 import com.obecto.perper.fabric.cache.notification.NotificationKey
 import com.obecto.perper.fabric.cache.notification.StreamItemNotification
 import com.obecto.perper.fabric.cache.notification.StreamTriggerNotification
@@ -177,7 +178,8 @@ class StreamService : JobService() {
         suspend fun helper(targetStream: String) {
             val listeners = streamsCache.get(targetStream)?.listeners ?: return
             log.trace({ "Invoking stream updates for '$targetStream'; listeners: $listeners" })
-            for (listener in listeners) {
+            for (listenerBin in listeners) {
+                val listener = listenerBin.deserialize<StreamListener>()
                 if (!testFilter(listener.filter, itemValue)) continue
 
                 if (listener.parameter == forwardParameterIndex) {
