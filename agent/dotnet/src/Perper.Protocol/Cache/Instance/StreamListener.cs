@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 
 #pragma warning disable 8618, 0649
-namespace Perper.Protocol.Cache
+namespace Perper.Protocol.Cache.Instance
 {
     public class StreamListener
     {

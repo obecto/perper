@@ -8,12 +8,9 @@ using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Cache.Affinity;
 using Apache.Ignite.Core.Client;
 using Grpc.Net.Client;
-using Perper.Protocol.Cache;
+using Perper.Protocol.Cache.Standard;
+using Perper.Protocol.Cache.Instance;
 using Perper.Protocol.Cache.Notifications;
-
-class RawStream {
-    public string StreamName { get; set; }
-}
 
 namespace Perper.Protocol
 {
@@ -26,8 +23,8 @@ namespace Perper.Protocol
                 Endpoints = new List<string> { "127.0.0.1:10800" },
                 BinaryConfiguration = new BinaryConfiguration
                 {
-                    NameMapper = new BinaryBasicNameMapper {IsSimpleName = true},
-                    TypeConfigurations = FabricService.BinaryTypeConfigurations.Concat(PerperContext.BinaryTypeConfigurations).ToList()
+                    NameMapper = PerperBinaryConfigurations.NameMapper,
+                    TypeConfigurations = PerperBinaryConfigurations.TypeConfigurations
                 }
             });
 
@@ -38,20 +35,20 @@ namespace Perper.Protocol
             var fabricService = new FabricService(ignite, grpcChannel, "testAgent");
 
             {
-                var numbersCache = ignite.GetOrCreateCache<string, RawStream>("numbers");
+                var numbersCache = ignite.GetOrCreateCache<string, PerperStream>("numbers");
 
                 Console.WriteLine((await numbersCache.TryGetAsync("abc")).Value);
-                await numbersCache.PutAsync("xyz", new RawStream { StreamName = "15" });
+                await numbersCache.PutAsync("xyz", new PerperStream("testStream3"));
             }
 
             try {
-                await perperContext.CallCreate("testCall1", "testInstance", "arrayListFunction", "testAgentDelegate", "testCaller", false, new ArrayList {"12345", "6789"});
+                await perperContext.CallCreate("testCall1", "testInstance", "arrayListFunction", "testAgentDelegate", "testCaller", new ArrayList {"12345", "6789"});
             } catch (Exception e) {
                 Console.WriteLine(e);
             }
 
             try {
-                await perperContext.CallSetResult("testCall3", "This is a result string");
+                await perperContext.CallWriteResult("testCall3", "This is a result string");
             } catch (Exception e) {
                 Console.WriteLine(e);
             }
@@ -65,7 +62,7 @@ namespace Perper.Protocol
             }
 
             try {
-                await perperContext.StreamCreate("testStream1", "testInstance", "hashtableStream", StreamDelegateType.Function, false, new Hashtable {{"12345", "6789"}});
+                await perperContext.StreamCreate("testStream1", "testInstance", "hashtableStream", StreamDelegateType.Function, new Hashtable {{"12345", "6789"}});
             } catch (Exception e) {
                 Console.WriteLine(e);
             }
@@ -77,7 +74,7 @@ namespace Perper.Protocol
             }
 
             try {
-                await perperContext.StreamAddListener("testStream3", "testStream1", -3, true, false);
+                await perperContext.StreamAddListener("testStream3", "testStream1", -3, null, true, false);
             } catch (Exception e) {
                 Console.WriteLine(e);
             }
@@ -93,6 +90,7 @@ namespace Perper.Protocol
             var callResultsTask = Task.WhenAll(new [] {"testCall1", "testCall2", "testCall3"}.Select(async call => {
                 var (key, notification) = await fabricService.GetCallResultNotification(call);
                 Console.WriteLine(notification);
+                Console.WriteLine(await perperContext.CallReadErrorAndResult<object>(call));
                 await fabricService.ConsumeNotification(key);
             }));
 
@@ -101,7 +99,7 @@ namespace Perper.Protocol
                 Console.WriteLine("{0} => {1}", key, notification);
                 if (notification is StreamItemNotification sn) {
                     Console.WriteLine(await perperContext.StreamReadItem<object>(sn.Cache, sn.Key));
-                    Task.Delay(1000).ContinueWith(async x => {
+                    var _ = Task.Delay(1000).ContinueWith(async x => {
                         await perperContext.StreamWriteItem("testStream1", 6);
                     });
                 }

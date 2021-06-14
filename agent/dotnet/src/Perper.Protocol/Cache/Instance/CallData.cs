@@ -8,7 +8,7 @@ using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Cache.Affinity;
 using Apache.Ignite.Core.Client;
 
-namespace Perper.Protocol.Cache
+namespace Perper.Protocol.Cache.Instance
 {
     static class CallData
     {
