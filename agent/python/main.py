@@ -115,13 +115,13 @@ def setCallDataResult(call_data, result, resultType):
 ignite = Client()
 with ignite.connect('127.0.0.1', 10800):
     numbers = ignite.get_or_create_cache('numbers')
-    class RawStream(metaclass=GenericObjectMeta, schema=OrderedDict([
-        ('streamName', String)
+    class PerperStream(metaclass=GenericObjectMeta, schema=OrderedDict([
+        ('stream', String)
     ])):
         pass
 
-    numbers.put('abc', RawStream(
-        streamName='hah'
+    numbers.put('abc', PerperStream(
+        stream='hah'
     ))
     result = numbers.get('xyz')
     print(result)

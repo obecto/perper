@@ -8,7 +8,7 @@ using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Cache.Affinity;
 using Apache.Ignite.Core.Client;
 
-namespace Perper.Protocol.Cache
+namespace Perper.Protocol.Cache.Instance
 {
     public static class StreamData
     {
@@ -56,6 +56,24 @@ namespace Perper.Protocol.Cache
         {
             var listeners = streamData.GetField<ArrayList>("listeners");
             listeners.Remove(listener);
+            streamData.SetField("listeners", listeners);
+
+            return streamData;
+        }
+
+        public static IBinaryObjectBuilder RemoveListener(
+            IBinaryObjectBuilder streamData,
+            string caller,
+            int parameter)
+        {
+            var listeners = streamData.GetField<ArrayList>("listeners");
+            for (var i = 0; i < listeners.Count; i ++) {
+                var listener = (IBinaryObject)listeners[i]!;
+                if (listener.GetField<string>("caller") == caller && listener.GetField<int>("parameter") == parameter) {
+                    listeners.RemoveAt(i);
+                    break;
+                }
+            }
             streamData.SetField("listeners", listeners);
 
             return streamData;

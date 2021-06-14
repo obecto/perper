@@ -21,14 +21,6 @@ namespace Perper.Protocol
 {
     public class FabricService
     {
-        public static IEnumerable<BinaryTypeConfiguration> BinaryTypeConfigurations = new BinaryTypeConfiguration[]
-        {
-            new BinaryTypeConfiguration(typeof(CallTriggerNotification)),
-            new BinaryTypeConfiguration(typeof(CallResultNotification)),
-            new BinaryTypeConfiguration(typeof(StreamTriggerNotification)),
-            new BinaryTypeConfiguration(typeof(StreamItemNotification)),
-        };
-
         public FabricService(
             IIgniteClient ignite,
             GrpcChannel grpcChannel,

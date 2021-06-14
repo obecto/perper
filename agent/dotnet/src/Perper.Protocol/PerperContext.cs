@@ -10,7 +10,7 @@ using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Cache.Affinity;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
-using Perper.Protocol.Cache;
+using Perper.Protocol.Cache.Instance;
 using Perper.Protocol.Cache.Notifications;
 using Perper.Protocol.Protobuf;
 using Grpc.Net.Client;
@@ -21,11 +21,6 @@ namespace Perper.Protocol
 {
     public class PerperContext
     {
-        public static IEnumerable<BinaryTypeConfiguration> BinaryTypeConfigurations = new BinaryTypeConfiguration[]
-        {
-            new BinaryTypeConfiguration(typeof(StreamListener)),
-        };
-
         public PerperContext(
             IIgniteClient ignite,
             string agent)
@@ -43,7 +38,7 @@ namespace Perper.Protocol
         private ICacheClient<string, IBinaryObject> streamsCache;
         private ICacheClient<string, IBinaryObject> callsCache;
 
-        private long GetCurrentTicks() => DateTime.UtcNow.Ticks - 621355968000000000;
+        private long GetCurrentTicks() => DateTime.UtcNow.Ticks - DateTime.UnixEpoch.Ticks;
 
         public static async Task OptimisticUpdateAsync<K, V>(ICacheClient<K, V> cache, K key, Func<V, V> updateFunc)
         {
@@ -66,14 +61,14 @@ namespace Perper.Protocol
             }
         }
 
-        public Task StreamCreate<TParams>(string stream, string instance, string @delegate, StreamDelegateType delegateType, bool ephemeral, TParams parameters)
+        public Task StreamCreate<TParams>(string stream, string instance, string @delegate, StreamDelegateType delegateType, TParams parameters, bool ephemeral = true)
         {
             var streamData = StreamData.Create<TParams>(igniteBinary, agent, instance, @delegate, delegateType, ephemeral, parameters).Build();
 
             return PutIfAbsentOrThrowAsync(streamsCache, stream, streamData);
         }
 
-        public async Task<IBinaryObject> StreamAddListener(string stream, string caller, int parameter, bool replay, bool localToData, Hashtable? filter = null)
+        public async Task<IBinaryObject> StreamAddListener(string stream, string caller, int parameter, Hashtable? filter = null, bool replay = false, bool localToData = false)
         {
             var streamListener = igniteBinary.ToBinary<IBinaryObject>(new StreamListener(agent, caller, parameter, replay, localToData, filter));
 
@@ -82,9 +77,14 @@ namespace Perper.Protocol
             return streamListener;
         }
 
-        public Task StreamRemoveListener(string stream, IBinaryObject streamListener) // Maybe change to looser matching on agent+caller+parameter?
+        public Task StreamRemoveListener(string stream, IBinaryObject streamListener)
         {
             return OptimisticUpdateAsync(streamsCache, stream, value => StreamData.RemoveListener(value.ToBuilder(), streamListener).Build());
+        }
+
+        public Task StreamRemoveListener(string stream, string caller, int parameter)
+        {
+            return OptimisticUpdateAsync(streamsCache, stream, value => StreamData.RemoveListener(value.ToBuilder(), caller, parameter).Build());
         }
 
         public async Task<long> StreamWriteItem<TItem>(string stream, TItem item)
@@ -104,26 +104,36 @@ namespace Perper.Protocol
             return itemsCache.GetAsync(key);
         }
 
-        public Task CallCreate<TParams>(string call, string instance, string @delegate, string callerAgent, string caller, bool localToData, TParams parameters)
+        public Task CallCreate<TParams>(string call, string instance, string @delegate, string callerAgent, string caller, TParams parameters, bool localToData = false)
         {
             var callData = CallData.Create<TParams>(igniteBinary, agent, instance, @delegate, callerAgent, caller, localToData, parameters).Build();
 
             return PutIfAbsentOrThrowAsync(callsCache, call, callData);
         }
 
-        public Task CallSetResult<TResult>(string call, TResult result)
+        public Task CallWriteResult<TResult>(string call, TResult result)
         {
             return OptimisticUpdateAsync(callsCache, call, value => CallData.SetResult<TResult>(value.ToBuilder(), result).Build());
         }
 
-        public Task CallSetError(string call, string error)
+        public Task CallWriteError(string call, string error)
         {
             return OptimisticUpdateAsync(callsCache, call, value => CallData.SetError(value.ToBuilder(), error).Build());
         }
 
-        public Task CallSetFinished(string call)
+        public Task CallWriteFinished(string call)
         {
             return OptimisticUpdateAsync(callsCache, call, value => CallData.SetFinished(value.ToBuilder()).Build());
+        }
+
+        public async Task<(string?, TResult)> CallReadErrorAndResult<TResult>(string call) // NOTE: should return (string?, TResult?)
+        {
+            var callData = await callsCache.GetAsync(call);
+
+            var error = callData.HasField("error") ? callData.GetField<string>("error") : null;
+            var result = callData.HasField("result") ? callData.GetField<TResult>("result") : default!;
+
+            return (error, result);
         }
     }
 }
