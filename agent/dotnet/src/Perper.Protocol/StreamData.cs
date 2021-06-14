@@ -21,7 +21,7 @@ namespace Perper.Protocol
             StreamDelegateType delegateType,
             bool ephemeral,
             TParams parameters,
-            string indexType = "",
+            string? indexType = null,
             Hashtable? indexFields = null)
         {
             var builder = binary.GetBuilder($"StreamData_{agent}_{@delegate}");
@@ -33,7 +33,7 @@ namespace Perper.Protocol
             builder.SetField("ephemeral", ephemeral);
             builder.SetField("listeners", new ArrayList());
             builder.SetField("indexFields", indexFields);
-            builder.SetField("indexType", indexType ?? "");
+            builder.SetField("indexType", indexType);
             builder.SetField("parameters", parameters);
 
             return builder.Build();
@@ -41,8 +41,8 @@ namespace Perper.Protocol
 
         /*public class StreamListener
         {
-            public string agent { get; set; }
-            public string stream { get; set; }
+            public string callerAgent { get; set; }
+            public string caller { get; set; }
             public int parameter { get; set; }
             public Hashtable filter { get; set; }
             public bool replay { get; set; }
@@ -60,8 +60,8 @@ namespace Perper.Protocol
         {
             /*return binary.ToBinary<IBinaryObject>(new StreamListener
             {
-                agent = callerAgent,
-                stream = caller,
+                callerAgent = callerAgent,
+                caller = caller,
                 parameter = parameter,
                 filter = filter,
                 replay = replay,
@@ -70,8 +70,8 @@ namespace Perper.Protocol
 
             var builder = binary.GetBuilder("StreamListener");
 
-            builder.SetField("agent", callerAgent);
-            builder.SetField("stream", caller);
+            builder.SetField("callerAgent", callerAgent);
+            builder.SetField("caller", caller);
             builder.SetField("parameter", parameter);
             builder.SetField("filter", filter ?? new Hashtable());
             builder.SetField("replay", replay);

@@ -1,11 +1,11 @@
 from collections import OrderedDict
 from pyignite import Client, GenericObjectMeta
-from pyignite.utils import hashcode
+from pyignite.utils import entity_id
 from pyignite.datatypes import String, IntObject, LongObject, BoolObject, MapObject, EnumObject, CollectionObject
 
-StreamDelegateTypeId = hashcode("StreamDelegateType")
+StreamDelegateTypeId = entity_id("StreamDelegateType")
 
-def createStreamData(instance, agent, delegate, delegateType, ephemeral, parameters, parametersType, indexType="", indexFields={}):
+def createStreamData(instance, agent, delegate, delegateType, ephemeral, parameters, parametersType, indexType=None, indexFields=None):
     class StreamData(metaclass=GenericObjectMeta, type_name=f"StreamData_{agent}_{delegate}", schema=OrderedDict([
         ('instance', String),
         ('agent', String),
@@ -25,15 +25,15 @@ def createStreamData(instance, agent, delegate, delegateType, ephemeral, paramet
         delegate=delegate,
         delegateType=(StreamDelegateTypeId, delegateType),
         indexType=indexType,
-        indexFields=(MapObject.HASH_MAP, indexFields),
+        indexFields=None if indexFields is None else (MapObject.HASH_MAP, indexFields),
         ephemeral=ephemeral,
         listeners=(CollectionObject.ARR_LIST, []),
         parameters=parameters
     )
 
 class StreamListener(metaclass=GenericObjectMeta, schema=OrderedDict([
-    ('agent', String),
-    ('stream', String),
+    ('callerAgent', String),
+    ('caller', String),
     ('parameter', IntObject),
     ('filter', MapObject),
     ('replay', BoolObject),
@@ -41,10 +41,10 @@ class StreamListener(metaclass=GenericObjectMeta, schema=OrderedDict([
 ])):
     pass
 
-def createStreamListener(agent, stream, parameter, replay, localToData, filter={}):
+def createStreamListener(callerAgent, caller, parameter, replay, localToData, filter={}):
     return StreamListener(
-        agent=agent,
-        stream=stream,
+        callerAgent=callerAgent,
+        caller=caller,
         parameter=parameter,
         replay=replay,
         localToData=localToData,
@@ -152,8 +152,8 @@ with ignite.connect('127.0.0.1', 10800):
     streamData = streams.get('testStream1')
     if streamData is not None:
         streamData = streamDataAddListener(streamData, createStreamListener(
-            agent="testAgentDelegate",
-            stream="testStream3",
+            callerAgent="testAgentDelegate",
+            caller="testStream3",
             parameter=4,
             replay=False,
             localToData=False,
