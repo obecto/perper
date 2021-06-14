@@ -54,10 +54,10 @@ fun main(args: Array<String>) {
         }
         it.binaryConfiguration = BinaryConfiguration().also {
             it.typeConfigurations = listOf(
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.CallData>(),
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamData>(),
+//                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.CallData>(),
+//                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamData>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamDelegateType>(),
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamListener>(),
+//                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamListener>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.CallResultNotification>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.CallTriggerNotification>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.Notification>(),
@@ -67,7 +67,7 @@ fun main(args: Array<String>) {
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.StreamItemNotification>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.StreamTriggerNotification>(),
             )
-            it.serializer = PerperBinarySerializer()
+//             it.serializer = PerperBinarySerializer()
             it.nameMapper = BinaryBasicNameMapper(true)
         }
         it.setCacheKeyConfiguration(
@@ -76,7 +76,7 @@ fun main(args: Array<String>) {
         )
         it.setServiceConfiguration(
             singletonServiceConfiguration("CallService", CallService()),
-            singletonServiceConfiguration("StreamService", StreamService()),
+//             singletonServiceConfiguration("StreamService", StreamService()),
             singletonServiceConfiguration("TransportService", TransportService(grpcPort)),
         )
         it.gridLogger = Slf4jLogger()

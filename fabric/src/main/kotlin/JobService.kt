@@ -1,26 +1,24 @@
 package com.obecto.perper.fabric
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.apache.ignite.services.Service
 import org.apache.ignite.services.ServiceContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 abstract class JobService : Service {
-    lateinit var job: Job
+    lateinit var coroutineScope: CoroutineScope
 
-    open override fun init(ctx: ServiceContext) {}
+    open override fun init(ctx: ServiceContext) {
+        coroutineScope = CoroutineScope(EmptyCoroutineContext)
+    }
 
     override fun cancel(ctx: ServiceContext) {
-        job.cancel()
-        runBlocking {
-            job.join()
-        }
+        coroutineScope.cancel()
     }
 
     override fun execute(ctx: ServiceContext) {
-        job = GlobalScope.launch { execute(ctx) }
+        coroutineScope.launch { execute(ctx) }
     }
 
     abstract suspend fun CoroutineScope.execute(ctx: ServiceContext)

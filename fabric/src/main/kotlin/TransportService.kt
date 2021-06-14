@@ -50,8 +50,8 @@ import com.obecto.perper.protobuf.Notification as NotificationProto
 class TransportService(var port: Int) : Service {
 
     companion object Caches {
-        fun getNotificationCache(ignite: Ignite, agentDelegate: String): IgniteCache<NotificationKey, Notification> {
-            return ignite.getOrCreateCache<NotificationKey, Notification>("$agentDelegate-\$notifications")
+        fun getNotificationCache(ignite: Ignite, agent: String): IgniteCache<NotificationKey, Notification> {
+            return ignite.getOrCreateCache<NotificationKey, Notification>("$agent-\$notifications")
         }
 
         fun getNotificationQueue(ignite: Ignite, streamName: String): IgniteQueue<NotificationKey> {
@@ -122,8 +122,8 @@ class TransportService(var port: Int) : Service {
 
         @kotlinx.coroutines.ExperimentalCoroutinesApi
         override fun notifications(request: NotificationFilter) = channelFlow<NotificationProto> {
-            val notificationCache = getNotificationCache(ignite, request.agentDelegate)
-            val notificationAffinity = ignite.affinity<NotificationKey>(request.agentDelegate)
+            val notificationCache = getNotificationCache(ignite, request.agent)
+            val notificationAffinity = ignite.affinity<NotificationKey>(request.agent)
             val localNode = ignite.cluster().localNode()
             val finishChannel = Channel<Throwable>(Channel.CONFLATED)
 
@@ -210,7 +210,7 @@ class TransportService(var port: Int) : Service {
             query.initialQuery = ScanQuery<NotificationKey, Notification>().also { it.setLocal(true) }
             val queryCursor = notificationCache.query(query)
 
-            log.debug({ "Notifications listener started for '${request.agentDelegate}'!" })
+            log.debug({ "Notifications listener started for '${request.agent}'!" })
 
             invokeOnClose({ runBlocking { finishChannel.send(it ?: CancellationException()) } })
 
@@ -230,13 +230,13 @@ class TransportService(var port: Int) : Service {
                 remoteQueryCursor.close()
                 queryCursor.close()
 
-                log.debug({ "Notifications listener finished for '${request.agentDelegate}'!" })
+                log.debug({ "Notifications listener finished for '${request.agent}'!" })
             }
         }
 
         override suspend fun callResultNotification(request: CallNotificationFilter): NotificationProto {
             val callName = request.callName
-            val notificationCache = getNotificationCache(ignite, request.agentDelegate)
+            val notificationCache = getNotificationCache(ignite, request.agent)
             lateinit var queryCursor: QueryCursor<Entry<NotificationKey, Notification>>
             val query = ContinuousQuery<NotificationKey, Notification>()
             val resultChannel = Channel<NotificationKey>(Channel.CONFLATED)

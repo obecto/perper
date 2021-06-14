@@ -1,4 +1,4 @@
-package com.obecto.perper.fabric
+/*package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.StreamData
 import com.obecto.perper.fabric.cache.StreamDelegateType
 import com.obecto.perper.fabric.cache.StreamListener
@@ -112,7 +112,7 @@ class StreamService : JobService() {
     suspend fun engageStream(stream: String, streamData: StreamData) {
         if (createCache(stream, streamData)) {
             log.debug({ "Starting stream '$stream'" })
-            val notificationsCache = TransportService.getNotificationCache(ignite, streamData.agentDelegate)
+            val notificationsCache = TransportService.getNotificationCache(ignite, streamData.agent)
             notificationsCache.put(NotificationKey(TransportService.getCurrentTicks(), stream), StreamTriggerNotification(stream, streamData.delegate))
         }
     }
@@ -170,7 +170,7 @@ class StreamService : JobService() {
                     helper(listener.stream)
                 } else {
                     ephemeralCounter ++
-                    val notificationsCache = TransportService.getNotificationCache(ignite, listener.agentDelegate)
+                    val notificationsCache = TransportService.getNotificationCache(ignite, listener.agent)
                     val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.stream)
                     val key = NotificationKey(notificationKey, if (listener.localToData) itemKey else listener.stream)
                     notificationsQueue.put(key)
@@ -218,7 +218,7 @@ class StreamService : JobService() {
 
     fun writeFullReplay(stream: String, ephemeral: Boolean, listener: StreamListener) {
         val cache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, Any>()
-        val notificationsCache = TransportService.getNotificationCache(ignite, listener.agentDelegate)
+        val notificationsCache = TransportService.getNotificationCache(ignite, listener.agent)
         val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.stream)
 
         val query = ScanQuery<Long, Any>()
@@ -265,3 +265,4 @@ class StreamService : JobService() {
         }
     }
 }
+*/
