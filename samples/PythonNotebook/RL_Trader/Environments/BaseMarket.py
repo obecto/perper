@@ -40,21 +40,21 @@ class TestEnv(ExternalEnv):
     def reset(self):
         print(f"Reset External env wrapper")
         obs = self.event_loop.run_until_complete(self.env.reset())
+        self.env.reset()
         return obs
                 
 class DataLoader():
     def __init__(self, episode_length):
         self.episode_length = episode_length
         self.stream_name = self.get_stream_name()
-        # TODO: Update stream implementation if needed! https://bit.ly/3wlJfmM; https://bit.ly/3guvhZ3
         self.stream = Stream(streamname = self.stream_name)
         self.stream.set_parameters(jupyter.ignite, jupyter.fabric, instance=jupyter.instance, serializer=jupyter.serializer, state=None)
         
         self.column_names = None
         self.generator_got = False
         
-        self.high = load('Data/ray_data/' + 'high.npy')
-        self.low = load('Data/ray_data/' + 'low.npy')
+        self.high = load('RL_Trader/Data/ray_data/' + 'high.npy')
+        self.low = load('RL_Trader/Data/ray_data/' + 'low.npy')
         
     def get_stream_name(self):
         stream_name = None

@@ -12,7 +12,7 @@ class Stream():
         self.fabric = fabric
         self.ignite = ignite
         self._ignite = ignite
-        self.stream_name = self.streamname
+        # self.stream_name = self.streamname
 
         if len(kwargs) > 0:
             self._set_additional_parameters(kwargs)
@@ -121,8 +121,8 @@ class StreamEnumerable:
         for listener in current_listeners:
             if (
                 (listener is bin_obj)
-                and (bin_obj.stream == _stream._instance.instance_name)
-                and (bin_obj.parameter == _stream.kwargs["parameter_index"])
+                and (bin_obj.stream == self._stream._instance.instance_name)
+                and (bin_obj.parameter == self._stream.kwargs["parameter_index"])
             ):
                 current_listeners.remove(listener)
                 break

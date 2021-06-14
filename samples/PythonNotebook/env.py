@@ -8,6 +8,7 @@ import torch
 
 from perper.model import Stream
 import perper.jupyter as jupyter
+from RL_Trader.Environments.BaseMarket import DataLoader
 
 class TestEnv(ExternalEnv):
     def __init__(self, env):
@@ -25,11 +26,11 @@ class TestEnv(ExternalEnv):
             print("Running...")
             action = self.get_action(episode_id, obs)
             print(f"The action: {action}")
-            obs, reward, done, info = self.event_loop.run_until_complete(self.env.step(action))
+            obs, reward, done, info = self.env.step(action)
             self.log_returns(episode_id, reward, info=info)
             if done:
                 self.end_episode(episode_id, obs)
-                obs = self.env.reset()
+                obs = self.reset()
                 episode_id = self.start_episode()
     
     def reset(self):
@@ -38,62 +39,36 @@ class TestEnv(ExternalEnv):
         
 class ConstantEnv():
     def __init__(self):
+        self.episode_length = 100
+        self.loader = DataLoader(episode_length = self.episode_length)
+        self.high, self.low = self.loader.get_high_low()
+        
         self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Box(low=-1.0, high=2.0, shape=(1,), dtype=np.float32)
-        self.counter = None
-        stream_name = self.determine_stream_name()
-        # TODO: Update stream implementation if needed! https://bit.ly/3wlJfmM; https://bit.ly/3guvhZ3
-        self.stream = Stream(streamname = stream_name)
-        self.stream.set_parameters(jupyter.ignite, jupyter.fabric, instance=jupyter.instance, serializer=jupyter.serializer, state=None)
-        self.generator_set = False
-    
-    async def set_generator(self):
-        self.generator_set = True
-        self.async_gen = await self.stream.get_async_generator()
-        print("Generator created")
+        self.observation_space = spaces.Box(high = np.inf, low = -np.inf, shape = (len(self.high),))
         
-    def determine_stream_name(self):
-        stream_name = None
-
-        for cache_name in jupyter.ignite.get_cache_names():
-        #     if "generator" in cache_name and "blank" not in cache_name:
-            if "-" in cache_name and "$" not in cache_name:
-                stream_name = cache_name
-                break
-
-        if stream_name == None:
-            raise Exception("No stream initiated yet")
-        else:
-            print("Stream name: " + stream_name)
-            return stream_name
-        
-    async def reset(self):
-        if not self.generator_set:
-            await self.set_generator()
-            
-        self.counter = 0
+    async def reset(self):            
+        self.tick = 0
         self.done = 0
         
-        item = await self.async_gen.__anext__()
-        val = int(item.Priority)%2
-        val = np.array(val, dtype=float).copy()
+        self.data = await self.loader.get_episode()
+        self.episode_length = len(self.data)
         
-        print(f"Reset called, value: {val}")
+        state = self.data.iloc[self.tick] 
+        self.current_price = state['price']
+        state = state.values
+        
+        print(f"Reset called, value: {type(state)}")
             
-        return val
+        return state
     
-    async def step(self, action):
-        if not self.generator_set:
-            await self.set_generator()
-            
-        item = await self.async_gen.__anext__()
-        val = int(item.Priority)%2
-        val = np.array(val, dtype=float).copy()
-        
-        self.counter += 1
-        if self.counter == 100:
+    def step(self, action):        
+        self.tick += 1
+        if self.tick == self.episode_length-1:
             self.done = 1
+        
+        reward = action
+        next_state = self.data.iloc[self.tick].values
             
-        print(f"Step called, value: {type(val)}, {type(action)}")    
-        return val, action, self.done, {}
+        print(f"Step called, value: {type(next_state)}, {type(reward)}")    
+        return next_state, reward, self.done, {}
     
