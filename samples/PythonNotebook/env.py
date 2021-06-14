@@ -1,12 +1,15 @@
-from ray.rllib.env import ExternalEnv
-from gym import spaces
-import numpy as np
-from perper.model import Stream
-import perper.jupyter as jupyter
 import asyncio
 import json
+import numpy as np
 
-class Test_env(ExternalEnv):
+from ray.rllib.env import ExternalEnv
+from gym import spaces
+import torch
+
+from perper.model import Stream
+import perper.jupyter as jupyter
+
+class TestEnv(ExternalEnv):
     def __init__(self, env):
         ExternalEnv.__init__(self, env.action_space, env.observation_space)
         self.env = env
@@ -17,26 +20,30 @@ class Test_env(ExternalEnv):
     
     def run(self):
         episode_id = self.start_episode()
-        observation = self.env.reset()
+        obs = self.reset()
         while True:
             print("Running...")
-            action = self.get_action(episode_id, observation)
+            action = self.get_action(episode_id, obs)
             print(f"The action: {action}")
             obs, reward, done, info = self.event_loop.run_until_complete(self.env.step(action))
             self.log_returns(episode_id, reward, info=info)
             if done:
-                self.end_episode(episode_id, observation)
-                observation = self.env.reset()
+                self.end_episode(episode_id, obs)
+                obs = self.env.reset()
                 episode_id = self.start_episode()
-                
-class Constant_env():
+    
+    def reset(self):
+        obs = self.event_loop.run_until_complete(self.env.reset())
+        return obs
+        
+class ConstantEnv():
     def __init__(self):
         self.action_space = spaces.Discrete(2)
         self.observation_space = spaces.Box(low=-1.0, high=2.0, shape=(1,), dtype=np.float32)
         self.counter = None
         stream_name = self.determine_stream_name()
         # TODO: Update stream implementation if needed! https://bit.ly/3wlJfmM; https://bit.ly/3guvhZ3
-        self.stream = Stream(stream_name)
+        self.stream = Stream(streamname = stream_name)
         self.stream.set_parameters(jupyter.ignite, jupyter.fabric, instance=jupyter.instance, serializer=jupyter.serializer, state=None)
         self.generator_set = False
     
@@ -60,25 +67,33 @@ class Constant_env():
             print("Stream name: " + stream_name)
             return stream_name
         
-    def reset(self):
+    async def reset(self):
+        if not self.generator_set:
+            await self.set_generator()
+            
         self.counter = 0
         self.done = 0
-        return np.array([0]).copy()
+        
+        item = await self.async_gen.__anext__()
+        val = int(item.Priority)%2
+        val = np.array(val, dtype=float).copy()
+        
+        print(f"Reset called, value: {val}")
+            
+        return val
     
     async def step(self, action):
         if not self.generator_set:
             await self.set_generator()
             
-        try:
-            item = await self.async_gen.__anext__()
-            data = json.loads(item.Json)
-        except Exception as e:
-            raise e
-            data = None
-            
-        val = [int(data["value"])]
+        item = await self.async_gen.__anext__()
+        val = int(item.Priority)%2
+        val = np.array(val, dtype=float).copy()
+        
         self.counter += 1
         if self.counter == 100:
             self.done = 1
-        return np.array(val).copy(), action, self.done, {}
+            
+        print(f"Step called, value: {type(val)}, {type(action)}")    
+        return val, action, self.done, {}
     

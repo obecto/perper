@@ -81,7 +81,6 @@ class Context:
             None,
             flags
         )
-        # return Stream(stream_name, self.fabric, self.ignite, instance = self.instance, serializer = self.serializer, state = self.state)
         return self.stream_class(streamname=stream_name)
 
     def declare_stream_function(self, function_name):
