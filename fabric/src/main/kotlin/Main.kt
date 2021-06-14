@@ -76,7 +76,7 @@ fun main(args: Array<String>) {
         )
         it.setServiceConfiguration(
             singletonServiceConfiguration("CallService", CallService()),
-//             singletonServiceConfiguration("StreamService", StreamService()),
+            singletonServiceConfiguration("StreamService", StreamService()),
             singletonServiceConfiguration("TransportService", TransportService(grpcPort)),
         )
         it.gridLogger = Slf4jLogger()

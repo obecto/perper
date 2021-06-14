@@ -1,7 +1,5 @@
-/*package com.obecto.perper.fabric
-import com.obecto.perper.fabric.cache.StreamData
+package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.StreamDelegateType
-import com.obecto.perper.fabric.cache.StreamListener
 import com.obecto.perper.fabric.cache.notification.NotificationKey
 import com.obecto.perper.fabric.cache.notification.StreamItemNotification
 import com.obecto.perper.fabric.cache.notification.StreamTriggerNotification
@@ -10,7 +8,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
-import org.apache.ignite.IgniteCache
 import org.apache.ignite.IgniteException
 import org.apache.ignite.IgniteLogger
 import org.apache.ignite.IgniteSet
@@ -38,8 +35,7 @@ class StreamService : JobService() {
 
     lateinit var ignite: Ignite
 
-    lateinit var streamsCache: IgniteCache<String, StreamData>
-    lateinit var replayStartedSet: IgniteSet<Pair<String, StreamListener>>
+    lateinit var replayStartedSet: IgniteSet<Pair<String, BinaryObject>>
     lateinit var streamItemUpdates: Channel<Pair<String, Long>>
 
     @IgniteInstanceResource
@@ -58,7 +54,6 @@ class StreamService : JobService() {
 
     override fun init(ctx: ServiceContext) {
         streamItemUpdates = Channel(Channel.UNLIMITED)
-        streamsCache = ignite.getOrCreateCache("streams")
         replayStartedSet = ignite.set(
             "\$replays-started",
             CollectionConfiguration().also {
@@ -70,21 +65,7 @@ class StreamService : JobService() {
     }
 
     override suspend fun CoroutineScope.execute(ctx: ServiceContext) {
-        launch {
-            var streamGraphUpdates = Channel<Pair<String, StreamData>>(Channel.UNLIMITED)
-            val query = ContinuousQuery<String, StreamData>()
-            query.localListener = CacheEntryUpdatedListener { events ->
-                for (event in events) {
-                    runBlocking { streamGraphUpdates.send(Pair(event.key, event.value)) }
-                }
-            }
-            streamsCache.query(query)
-            log.debug({ "Streams listener started!" })
-            for ((stream, streamData) in streamGraphUpdates) {
-                log.debug({ "Stream object modified '$stream'" })
-                updateStream(stream, streamData)
-            }
-        }
+        launch { listenCache("streams") }
         launch {
             for ((stream, itemKey) in streamItemUpdates) {
                 log.trace({ "Invoking stream updates on '$stream'" })
@@ -93,11 +74,44 @@ class StreamService : JobService() {
         }
     }
 
-    suspend fun updateStream(stream: String, streamData: StreamData) {
+    suspend fun CoroutineScope.listenCache(cacheName: String) {
+        launch {
+            val streamsCache = ignite.getOrCreateCache<String, Any>(cacheName).withKeepBinary<String, BinaryObject>()
+            val query = ContinuousQuery<String, BinaryObject>()
+            query.localListener = CacheEntryUpdatedListener { events ->
+                for (event in events) {
+                    coroutineScope.launch {
+                        log.debug({ "Stream object modified '${event.key}'" })
+                        updateStream(event.key, event.value)
+                    }
+                }
+            }
+            streamsCache.query(query)
+            log.debug({ "Streams listener started!" })
+        }
+    }
+
+    val BinaryObject.delegateType get() = field<BinaryObject>("delegateType").deserialize<StreamDelegateType>()
+    val BinaryObject.ephemeral get() = field<Boolean>("ephemeral")
+    val BinaryObject.agent get() = field<String>("agent")
+    val BinaryObject.delegate get() = field<String>("delegate")
+    val BinaryObject.indexType get() = field<String>("indexType")
+    val BinaryObject.indexFields get() = field<Map<String, String>>("indexFields")
+    val BinaryObject.listeners get() = field<ArrayList<BinaryObject>>("listeners")
+
+    val BinaryObject.callerAgent get() = field<String>("callerAgent")
+    val BinaryObject.caller get() = field<String>("caller")
+    val BinaryObject.parameter get() = field<Int>("parameter")
+    val BinaryObject.replay get() = field<Boolean>("replay")
+    val BinaryObject.localToData get() = field<Boolean>("localToData")
+    val BinaryObject.filter get() = field<Map<String, Any>>("filter")
+
+    suspend fun updateStream(stream: String, streamData: BinaryObject) {
         when (streamData.delegateType) {
             StreamDelegateType.Action -> engageStream(stream, streamData)
             StreamDelegateType.Function -> if (streamData.listeners.size > 0) engageStream(stream, streamData)
             StreamDelegateType.External -> createCache(stream, streamData)
+            else -> Unit
         }
 
         for (listener in streamData.listeners) {
@@ -109,7 +123,7 @@ class StreamService : JobService() {
         }
     }
 
-    suspend fun engageStream(stream: String, streamData: StreamData) {
+    suspend fun engageStream(stream: String, streamData: BinaryObject) {
         if (createCache(stream, streamData)) {
             log.debug({ "Starting stream '$stream'" })
             val notificationsCache = TransportService.getNotificationCache(ignite, streamData.agent)
@@ -117,19 +131,19 @@ class StreamService : JobService() {
         }
     }
 
-    suspend fun createCache(stream: String, streamData: StreamData): Boolean {
+    suspend fun createCache(stream: String, streamData: BinaryObject): Boolean {
         if (ignite.cacheNames().contains(stream)) return false
         log.debug({ "Creating cache '$stream'" })
 
         val cacheConfiguration = CacheConfiguration<Long, Any>(stream)
 
-        if (streamData.indexType != null && streamData.indexFields != null) {
+        if (streamData.indexType != null && streamData.indexFields != null) { // && streamData.indexType != ""
             log.debug({ "Cache for '$stream' uses indexing" })
             cacheConfiguration.queryEntities = listOf(
                 QueryEntity().also {
                     it.keyType = Long::class.qualifiedName
                     it.valueType = streamData.indexType
-                    it.fields = streamData.indexFields
+                    it.fields = LinkedHashMap(streamData.indexFields)
                 }
             )
         }
@@ -155,10 +169,10 @@ class StreamService : JobService() {
     }
 
     suspend fun invokeStreamItemUpdates(stream: String, itemKey: Long) {
+        val streamsCache = ignite.getOrCreateCache<String, Any>("streams").withKeepBinary<String, BinaryObject>()
         val itemValue = lazy { ignite.cache<Long, Any>(stream).withKeepBinary<Long, BinaryObject>().get(itemKey) }
         val ephemeral = streamsCache.get(stream).ephemeral
         var ephemeralCounter = 0L
-        val notificationKey = TransportService.getCurrentTicks()
 
         suspend fun helper(targetStream: String) {
             val listeners = streamsCache.get(targetStream)?.listeners ?: return
@@ -167,15 +181,14 @@ class StreamService : JobService() {
                 if (!testFilter(listener.filter, itemValue)) continue
 
                 if (listener.parameter == forwardParameterIndex) {
-                    helper(listener.stream)
+                    helper(listener.caller)
                 } else {
                     ephemeralCounter ++
-                    val notificationsCache = TransportService.getNotificationCache(ignite, listener.agent)
-                    val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.stream)
-                    val key = NotificationKey(notificationKey, if (listener.localToData) itemKey else listener.stream)
+                    val notificationsCache = TransportService.getNotificationCache(ignite, listener.callerAgent)
+                    val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.caller)
+                    val key = NotificationKey(itemKey, if (listener.localToData) itemKey else listener.caller)
                     notificationsQueue.put(key)
-                    notificationsCache.put(key, StreamItemNotification(listener.stream, listener.parameter, stream, itemKey, ephemeral))
-                    log.trace({ "Writing notification: ${listener.stream} - ${key} (${notificationsQueue.size})" })
+                    notificationsCache.put(key, StreamItemNotification(listener.caller, listener.parameter, stream, itemKey, ephemeral))
                 }
             }
         }
@@ -216,10 +229,10 @@ class StreamService : JobService() {
         runBlocking { streamItemUpdates.send(Pair(stream, itemKey)) }
     }
 
-    fun writeFullReplay(stream: String, ephemeral: Boolean, listener: StreamListener) {
+    fun writeFullReplay(stream: String, ephemeral: Boolean, listener: BinaryObject) {
         val cache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, Any>()
-        val notificationsCache = TransportService.getNotificationCache(ignite, listener.agent)
-        val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.stream)
+        val notificationsCache = TransportService.getNotificationCache(ignite, listener.callerAgent)
+        val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.caller)
 
         val query = ScanQuery<Long, Any>()
         query.filter = IgniteBiPredicate { _, value ->
@@ -245,10 +258,9 @@ class StreamService : JobService() {
                 }
             }
 
-            val key = NotificationKey(TransportService.getCurrentTicks(), if (listener.localToData) itemKey else listener.stream)
+            val key = NotificationKey(itemKey, if (listener.localToData) itemKey else listener.caller)
             notificationsQueue.put(key)
-            notificationsCache.put(key, StreamItemNotification(listener.stream, listener.parameter, stream, itemKey, ephemeral))
-            log.trace({"Writing notification (replay): ${listener.stream} - ${key} (${notificationsQueue.size})"})
+            notificationsCache.put(key, StreamItemNotification(listener.caller, listener.parameter, stream, itemKey, ephemeral))
         }
     }
 
@@ -265,4 +277,3 @@ class StreamService : JobService() {
         }
     }
 }
-*/

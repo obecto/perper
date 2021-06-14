@@ -97,6 +97,12 @@ namespace Perper.Protocol
                     );
 
                     await streamsCache.PutIfAbsentAsync("testStream1", streamData);
+                    streamData = await streamsCache.GetAsync("testStream1");
+
+                    if (streamData.GetField<ArrayList>("listeners").Count > 0) {
+                        var streamCache = ignite.GetCache<long, int>("testStream1");
+                        await streamCache.PutAsync((new DateTime()).Ticks, 6);
+                    }
                 }
 
                 {

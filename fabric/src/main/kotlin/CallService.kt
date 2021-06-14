@@ -37,7 +37,7 @@ class CallService : JobService() {
     }
 
     override suspend fun CoroutineScope.execute(ctx: ServiceContext) {
-        listenCache("calls")
+        launch { listenCache("calls") }
     }
 
     val BinaryObject.finished get() = field<Boolean>("finished")
