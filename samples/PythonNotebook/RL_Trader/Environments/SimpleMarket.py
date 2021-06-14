@@ -34,11 +34,28 @@ class SimpleMarket(MarketEnv):
         return state
     
     async def reset(self,):
+        # from this env's reset
         self.zero_line = 0
-        print("Reset SimpleMarket")
-        state = await super().reset()
-        print("Reset SimpleMarket before return")
-        return state
+        
+        #from MarketEnv
+        self.current_money = self.starting_money
+        self.current_stocks = self.starting_stocks
+        self.tick = 0
+        
+        self.data = await self.loader.get_episode()
+        self.episode_length = len(self.data)
+        
+        state = self.data.iloc[self.tick] 
+        self.current_price = state['price']
+        self.potential_initial_stock = self.starting_money/self.current_price + self.starting_stocks
+        state = state.values
+        
+        # Change state to be env specific
+        state = self.modify_state(state)
+        print("Reset BaseMarket")
+        return state.copy()
+    
+
     
     def test(self, ):
         self.zero_line = 0

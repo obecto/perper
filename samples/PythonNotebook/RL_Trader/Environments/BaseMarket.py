@@ -40,7 +40,6 @@ class TestEnv(ExternalEnv):
     def reset(self):
         print(f"Reset External env wrapper")
         obs = self.event_loop.run_until_complete(self.env.reset())
-        self.env.reset()
         return obs
                 
 class DataLoader():
@@ -53,8 +52,8 @@ class DataLoader():
         self.column_names = None
         self.generator_got = False
         
-        self.high = load('RL_Trader/Data/ray_data/' + 'high.npy')
-        self.low = load('RL_Trader/Data/ray_data/' + 'low.npy')
+        self.high = load('Data/ray_data/' + 'high.npy')
+        self.low = load('Data/ray_data/' + 'low.npy')
         
     def get_stream_name(self):
         stream_name = None
