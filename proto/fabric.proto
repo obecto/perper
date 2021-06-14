@@ -12,11 +12,11 @@ service Fabric {
 }
 
 message NotificationFilter {
-    required string agentDelegate = 1;
+    required string agent = 1;
 }
 
 message CallNotificationFilter {
-    required string agentDelegate = 1;
+    required string agent = 1;
     required string callName = 2;
 }
 

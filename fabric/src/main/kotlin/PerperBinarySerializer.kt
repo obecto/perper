@@ -1,4 +1,4 @@
-package com.obecto.perper.fabric
+/*package com.obecto.perper.fabric
 import org.apache.commons.lang3.reflect.TypeUtils
 import org.apache.ignite.binary.BinaryReader
 import org.apache.ignite.binary.BinarySerializer
@@ -246,3 +246,4 @@ class PerperBinarySerializer : BinarySerializer {
         }
     }
 }
+*/

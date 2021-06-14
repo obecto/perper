@@ -1,7 +1,7 @@
 import com.google.protobuf.gradle.*
 import java.net.URI
 
-val igniteVersion = "2.8.1"
+val igniteVersion = "2.10.0"
 val grpcVersion = "1.31.1"
 val grpcKotlinVersion = "0.2.0"
 val protobufVersion = "3.13.0"
