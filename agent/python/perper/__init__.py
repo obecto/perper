@@ -125,6 +125,8 @@ with ignite.connect('127.0.0.1', 10800):
     ))
     result = numbers.get('xyz')
     print(result)
+    result = numbers.get('abc')
+    print(result)
     calls = ignite.get_cache('calls')
 
     result = calls.get('testCall1')
