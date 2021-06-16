@@ -31,6 +31,7 @@ fun main(args: Array<String>) {
     val parser = ArgParser("perper-fabric")
 
     val debug by parser.option(ArgType.Boolean, shortName = "d", description = "Show debug logs").default(false)
+    val trace by parser.option(ArgType.Boolean, description = "Show trace logs").default(false)
     val verbose by parser.option(ArgType.Boolean, shortName = "v", description = "Show Ignite information logs").default(false)
     val ignitePort by parser.option(ArgType.Int, "ignite-port", description = "Ignite client port").default(10800)
     val grpcPort by parser.option(ArgType.Int, "grpc-port", description = "Transport service port").default(40400)
@@ -39,7 +40,7 @@ fun main(args: Array<String>) {
     parser.parse(args)
 
     System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", if (verbose) "info" else "warn")
-    System.setProperty("org.slf4j.simpleLogger.log.com.obecto.perper", if (debug) "debug" else "info")
+    System.setProperty("org.slf4j.simpleLogger.log.com.obecto.perper", if (trace) "trace" else if (debug) "debug" else "info")
     System.setProperty("org.slf4j.simpleLogger.levelInBrackets", "true")
     System.setProperty("org.slf4j.simpleLogger.showDateTime", "true")
 

@@ -36,7 +36,7 @@ class StreamService : JobService() {
 
     lateinit var ignite: Ignite
 
-    lateinit var replayStartedSet: IgniteSet<Pair<String, BinaryObject>>
+    lateinit var replayStartedSet: IgniteSet<Pair<String, StreamListener>>
     lateinit var streamItemUpdates: Channel<Pair<String, Long>>
 
     @IgniteInstanceResource
@@ -100,13 +100,6 @@ class StreamService : JobService() {
     val BinaryObject.indexFields get() = field<Map<String, String>>("indexFields")
     val BinaryObject.listeners get() = field<ArrayList<BinaryObject>>("listeners")
 
-    val BinaryObject.callerAgent get() = field<String>("callerAgent")
-    val BinaryObject.caller get() = field<String>("caller")
-    val BinaryObject.parameter get() = field<Int>("parameter")
-    val BinaryObject.replay get() = field<Boolean>("replay")
-    val BinaryObject.localToData get() = field<Boolean>("localToData")
-    val BinaryObject.filter get() = field<Map<String, Any>>("filter")
-
     suspend fun updateStream(stream: String, streamData: BinaryObject) {
         when (streamData.delegateType) {
             StreamDelegateType.Action -> engageStream(stream, streamData)
@@ -115,7 +108,8 @@ class StreamService : JobService() {
             else -> Unit
         }
 
-        for (listener in streamData.listeners) {
+        for (listenerBin in streamData.listeners) {
+            val listener = listenerBin.deserialize<StreamListener>()
             if (listener.replay) {
                 if (replayStartedSet.add(Pair(stream, listener))) {
                     writeFullReplay(stream, streamData.ephemeral, listener)
@@ -206,7 +200,11 @@ class StreamService : JobService() {
         }
     }
 
-    fun testFilter(filter: Map<String, Any?>, item: Lazy<BinaryObject>): Boolean {
+    fun testFilter(filter: Map<String, Any?>?, item: Lazy<BinaryObject>): Boolean {
+        if (filter == null) {
+            return true
+        }
+
         for ((field, expectedValue) in filter.entries) {
             val path = field.split('.')
             var finalItem: BinaryObject? = item.value
@@ -231,7 +229,7 @@ class StreamService : JobService() {
         runBlocking { streamItemUpdates.send(Pair(stream, itemKey)) }
     }
 
-    fun writeFullReplay(stream: String, ephemeral: Boolean, listener: BinaryObject) {
+    fun writeFullReplay(stream: String, ephemeral: Boolean, listener: StreamListener) {
         val cache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, Any>()
         val notificationsCache = TransportService.getNotificationCache(ignite, listener.callerAgent)
         val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.caller)
@@ -248,7 +246,7 @@ class StreamService : JobService() {
             if (ephemeral) {
                 try {
                     val counter = ignite.atomicLong("$stream-$itemKey", 0, false)
-                    if (counter.getAndIncrement() == 0L) {
+                    if (counter == null || counter.getAndIncrement() == 0L) {
                         continue; // If it was 0, someone is going to delete the item very soon
                     }
                     if (!cache.containsKey(itemKey)) {
