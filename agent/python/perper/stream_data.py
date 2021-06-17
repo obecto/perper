@@ -5,7 +5,7 @@ from pyignite.datatypes import String, IntObject, BoolObject, MapObject, EnumObj
 
 StreamDelegateTypeId = entity_id("StreamDelegateType")
 
-def createStreamData(instance, agent, delegate, delegateType, ephemeral, parameters, parametersType, indexType=None, indexFields=None):
+def create_stream_data(instance, agent, delegate, delegateType, ephemeral, parameters, parametersType, indexType=None, indexFields=None):
     class StreamData(metaclass=GenericObjectMeta, type_name=f"StreamData_{agent}_{delegate}", schema=OrderedDict([
         ('instance', String),
         ('agent', String),
@@ -41,7 +41,7 @@ class StreamListener(metaclass=GenericObjectMeta, schema=OrderedDict([
 ])):
     pass
 
-def createStreamListener(callerAgent, caller, parameter, replay, localToData, filter={}):
+def create_stream_listener(callerAgent, caller, parameter, replay, localToData, filter={}):
     return StreamListener(
         callerAgent=callerAgent,
         caller=caller,
@@ -51,7 +51,7 @@ def createStreamListener(callerAgent, caller, parameter, replay, localToData, fi
         filter=(MapObject.HASH_MAP, filter)
     )
 
-def streamDataAddListener(streamData, streamListener):
+def stream_data_add_listener(streamData, streamListener):
     StreamData = type(streamData)
 
     new_listeners = streamData.listeners[1][:]
@@ -62,7 +62,7 @@ def streamDataAddListener(streamData, streamListener):
         **{key: getattr(streamData, key) for key in streamData._schema.keys() - {'listeners'}}
     )
 
-def streamDataRemoveListener(streamData, streamListener):
+def stream_data_remove_listener(streamData, streamListener):
     StreamData = type(streamData)
 
     new_listeners = streamData.listeners[1][:]
