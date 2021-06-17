@@ -5,7 +5,7 @@ from pyignite.datatypes import String, IntObject, BoolObject, MapObject, EnumObj
 
 StreamDelegateTypeId = entity_id("StreamDelegateType")
 
-def create_stream_data(instance, agent, delegate, delegateType, ephemeral, parameters, parametersType, indexType=None, indexFields=None):
+def create_stream_data(instance, agent, delegate, delegate_type, ephemeral, parameters, parameters_type, index_type=None, index_fields=None):
     class StreamData(metaclass=GenericObjectMeta, type_name=f"StreamData_{agent}_{delegate}", schema=OrderedDict([
         ('instance', String),
         ('agent', String),
@@ -15,7 +15,7 @@ def create_stream_data(instance, agent, delegate, delegateType, ephemeral, param
         ('indexFields', MapObject),
         ('ephemeral', BoolObject),
         ('listeners', CollectionObject),
-        ('parameters', parametersType),
+        ('parameters', parameters_type),
     ])):
         pass
 
@@ -23,9 +23,9 @@ def create_stream_data(instance, agent, delegate, delegateType, ephemeral, param
         instance=instance,
         agent=agent,
         delegate=delegate,
-        delegateType=(StreamDelegateTypeId, delegateType),
-        indexType=indexType,
-        indexFields=None if indexFields is None else (MapObject.HASH_MAP, indexFields),
+        delegateType=(StreamDelegateTypeId, delegate_type),
+        indexType=index_type,
+        indexFields=None if index_fields is None else (MapObject.HASH_MAP, index_fields),
         ephemeral=ephemeral,
         listeners=(CollectionObject.ARR_LIST, []),
         parameters=parameters
@@ -41,34 +41,34 @@ class StreamListener(metaclass=GenericObjectMeta, schema=OrderedDict([
 ])):
     pass
 
-def create_stream_listener(callerAgent, caller, parameter, replay, localToData, filter={}):
+def create_stream_listener(caller_agent, caller, parameter, replay, local_to_data, filter={}):
     return StreamListener(
-        callerAgent=callerAgent,
+        callerAgent=caller_agent,
         caller=caller,
         parameter=parameter,
         replay=replay,
-        localToData=localToData,
+        localToData=local_to_data,
         filter=(MapObject.HASH_MAP, filter)
     )
 
-def stream_data_add_listener(streamData, streamListener):
-    StreamData = type(streamData)
+def stream_data_add_listener(stream_data, stream_listener):
+    StreamData = type(stream_data)
 
-    new_listeners = streamData.listeners[1][:]
-    new_listeners.append(streamListener)
+    new_listeners = stream_data.listeners[1][:]
+    new_listeners.append(stream_listener)
 
     return StreamData(
         listeners=(CollectionObject.ARR_LIST, new_listeners),
-        **{key: getattr(streamData, key) for key in streamData._schema.keys() - {'listeners'}}
+        **{key: getattr(stream_data, key) for key in stream_data._schema.keys() - {'listeners'}}
     )
 
-def stream_data_remove_listener(streamData, streamListener):
-    StreamData = type(streamData)
+def stream_data_remove_listener(stream_data, stream_listener):
+    StreamData = type(stream_data)
 
-    new_listeners = streamData.listeners[1][:]
-    new_listeners.remove(streamListener)
+    new_listeners = stream_data.listeners[1][:]
+    new_listeners.remove(stream_listener)
 
     return StreamData(
         listeners=(CollectionObject.ARR_LIST, new_listeners),
-        **{key: getattr(streamData, key) for key in streamData._schema.keys() - {'listeners'}}
+        **{key: getattr(stream_data, key) for key in stream_data._schema.keys() - {'listeners'}}
     )
