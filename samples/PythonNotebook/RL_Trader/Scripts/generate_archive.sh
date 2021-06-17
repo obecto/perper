@@ -1,1 +1,0 @@
-rm reg_commit.tar| tar cvfz reg_commit.tar --exclude-from ignore_list.txt ../*
