@@ -2,8 +2,8 @@ from pyignite import Client, GenericObjectMeta
 from collections import OrderedDict
 from pyignite.datatypes import String, BoolObject
 
-from call import createCallData, setCallDataResult
-from stream import createStreamData, createStreamListener, streamDataAddListener, streamDataRemoveListener
+from call import create_call_data, set_call_data_result
+from stream import create_stream_data, create_stream_listener, stream_data_add_listener, stream_data_remove_listener
 
 ignite = Client()
 with ignite.connect('127.0.0.1', 10800):
@@ -28,10 +28,10 @@ with ignite.connect('127.0.0.1', 10800):
     callData = calls.get('testCall2')
     print(callData)
     if callData is not None:
-        callData = setCallDataResult(callData, (MapObject.HASH_MAP, {(1, LongObject): 2, (1, IntObject): 3}), MapObject)
+        callData = set_call_data_result(callData, (MapObject.HASH_MAP, {(1, LongObject): 2, (1, IntObject): 3}), MapObject)
         calls.put('testCall2', callData)
 
-    calls.put_if_absent('testCall3', createCallData(
+    calls.put_if_absent('testCall3', create_call_data(
         instance="testInstance",
         agent="testAgent",
         delegate="testPyBoolFunctionDelegate",
@@ -46,7 +46,7 @@ with ignite.connect('127.0.0.1', 10800):
 
     streamData = streams.get('testStream1')
     if streamData is not None:
-        streamData = streamDataAddListener(streamData, createStreamListener(
+        streamData = stream_data_add_listener(streamData, create_stream_listener(
             callerAgent="testAgent",
             caller="testStream3",
             parameter=4,
@@ -56,7 +56,7 @@ with ignite.connect('127.0.0.1', 10800):
         ))
         streams.put('testStream1', streamData)
 
-    streams.put_if_absent('testStream3', createStreamData(
+    streams.put_if_absent('testStream3', create_stream_data(
         instance="testInstance",
         agent="testAgent",
         delegate="testPyBoolStreamDelegate",
