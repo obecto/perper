@@ -2,7 +2,7 @@ from collections import OrderedDict
 from pyignite import GenericObjectMeta
 from pyignite.datatypes import String, BoolObject
 
-def create_call_data(instance, agent, delegate, callerAgent, caller, localToData, parameters, parametersType):
+def create_call_data(instance, agent, delegate, caller_agent, caller, local_to_data, parameters, parameters_type):
     class CallData(metaclass=GenericObjectMeta, type_name=f"CallData_{agent}_{delegate}", schema=OrderedDict([
         ('instance', String),
         ('agent', String),
@@ -11,8 +11,8 @@ def create_call_data(instance, agent, delegate, callerAgent, caller, localToData
         ('caller', String),
         ('finished', BoolObject),
         ('localToData', BoolObject),
-        ('parameters', parametersType),
-        #('result', resultType),
+        ('parameters', parameters_type),
+        #('result', result_type),
     ])):
         pass
 
@@ -20,17 +20,17 @@ def create_call_data(instance, agent, delegate, callerAgent, caller, localToData
         instance=instance,
         agent=agent,
         delegate=delegate,
-        callerAgent=callerAgent,
+        callerAgent=caller_agent,
         caller=caller,
         finished=False,
-        localToData=localToData,
+        localToData=local_to_data,
         parameters=parameters
     )
 
-def set_call_data_result(call_data, result, resultType):
+def set_call_data_result(call_data, result, result_type):
 
     schema = call_data.schema
-    schema['result'] = resultType
+    schema['result'] = result_type
 
     class CallData(metaclass=GenericObjectMeta, type_name=call_data._type_name, schema=schema):
         pass
