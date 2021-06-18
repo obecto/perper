@@ -4,8 +4,8 @@ from pyignite.datatypes import String, BoolObject
 
 from thin_client import PerperIgniteClient
 from call_data import create_call_data, set_call_data_result
-from stream_data import create_stream_data, create_stream_listener, stream_data_add_listener, stream_data_remove_listener
 from cache_service import CacheService
+from stream_data import *
 
 ignite = PerperIgniteClient()
 with ignite.connect('127.0.0.1', 10800):

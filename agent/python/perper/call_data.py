@@ -28,38 +28,33 @@ def create_call_data(instance, agent, delegate, caller_agent, caller, local_to_d
     )
 
 def set_call_data_result(call_data, result, result_type):
-
-    schema = call_data.schema
-    schema['result'] = result_type
-
-    class CallData(metaclass=GenericObjectMeta, type_name=call_data._type_name, schema=schema):
+    class CallData(metaclass=GenericObjectMeta, type_name=call_data._type_name, schema=OrderedDict([
+        *call_data.schema.items(),
+        ('result', result_type)
+    ])):
         pass
 
     return CallData(
         finished=True,
         result=result,
-        **{key: getattr(call_data, key) for key in schema.keys() - {'finished', 'result'}}
+        **{key: getattr(call_data, key) for key in call_data.schema.keys() - {'finished', 'result'}}
     )
 
 def set_call_data_error(call_data, error):
-
-    schema = call_data.schema
-    schema['error'] = String
-
-    class CallData(metaclass=GenericObjectMeta, type_name=call_data._type_name, schema=schema):
+    class CallData(metaclass=GenericObjectMeta, type_name=call_data._type_name, schema=OrderedDict([
+        *call_data.schema.items(),
+        ('error', String)
+    ])):
         pass
 
     return CallData(
         finished=True,
         error=error,
-        **{key: getattr(call_data, key) for key in schema.keys() - {'finished', 'error'}}
+        **{key: getattr(call_data, key) for key in call_data.schema.keys() - {'finished', 'error'}}
     )
 
 def set_call_data_finished(call_data):
-
-    schema = call_data.schema
-
-    class CallData(metaclass=GenericObjectMeta, type_name=call_data._type_name, schema=schema):
+    class CallData(metaclass=GenericObjectMeta, type_name=call_data._type_name, schema=call_data.schema):
         pass
 
-    return CallData(finished=True, **{key: getattr(call_data, key) for key in schema.keys() - {'finished', 'error'}})
+    return CallData(finished=True, **{key: getattr(call_data, key) for key in call_data.schema.keys() - {'finished', 'error'}})
