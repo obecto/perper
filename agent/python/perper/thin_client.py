@@ -12,7 +12,7 @@ class PerperIgniteClient(Client):
         while True:
             existing_value = cache.get(key)
             new_value = update_func(existing_value)
-            if (cache.replace(key, existing_value, new_value)): # TODO: Fix cache.replace usage
+            if (cache.replace_if_equals(key, existing_value, new_value)):
                 break
 
     def put_if_absent_or_raise(self, cache, key, value):

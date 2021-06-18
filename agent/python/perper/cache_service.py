@@ -1,10 +1,7 @@
 import uuid
 from datetime import datetime
 
-from stream_data import create_stream_data,
-                        create_stream_listener,
-                        stream_data_add_listener,
-                        stream_data_remove_listener
+from stream_data import create_stream_data, create_stream_listener, stream_data_add_listener, stream_data_remove_listener
 
 class CacheService:
     def __init__(self, ignite):
@@ -20,15 +17,15 @@ class CacheService:
     def generate_name(self, basename=None):
         return f"{basename}-{uuid.uuid4()}"
 
-    ## STREAM:
+    # STREAM:
 
-    def stream_create(self, stream, instance, agent, delegate, delegate_type, parameters_type, parameters, ephemeral = True):
+    def stream_create(self, stream, instance, agent, delegate, delegate_type, parameters, parameters_type, ephemeral = True):
         stream_data = create_stream_data(instance, agent, delegate, delegate_type, ephemeral, parameters, parameters_type)
         return self.ignite.put_if_absent_or_raise(self.streams_cache, stream, stream_data)
 
 
     def stream_add_listener(self, stream, caller_agent, caller, parameter, filter = None, replay = False, local_to_data = False):
-        stream_listener = create_stream_listener(caller_agent, caller, parameter, replay, filter, local_to_data)
+        stream_listener = create_stream_listener(caller_agent, caller, parameter, replay, local_to_data=local_to_data, filter=filter)
 
         self.ignite.optimistic_update(self.streams_cache, stream, lambda data: stream_data_add_listener(data, stream_listener))
         return stream_listener

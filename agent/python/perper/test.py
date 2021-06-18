@@ -72,8 +72,11 @@ with ignite.connect('127.0.0.1', 10800):
     # print(streams.get('testStream3'))
 
     cache_service = CacheService(ignite)
-    stream = cache_service.stream_create('test', 'test_instance', 'test_agent', 'test_bool_stream_delegate', 1, BoolObject, True, ephemeral = False)
+    stream = cache_service.stream_create('test', 'test_instance', 'test_agent', 'test_bool_stream_delegate', 1, True, BoolObject, ephemeral = False)
 
     key = cache_service.stream_write_item('test', 'Hello world')
     item = cache_service.stream_read_item('test', key)
     print(key, item)
+
+    listener = cache_service.stream_add_listener('test', 'caller_agent', 'caller', True)
+    print(listener)
