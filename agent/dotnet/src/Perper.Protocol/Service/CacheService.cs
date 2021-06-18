@@ -1,10 +1,7 @@
 using System;
-using System.Collections;
-using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
-using Perper.Protocol.Cache.Instance;
 
 namespace Perper.Protocol.Service
 {
@@ -12,13 +9,13 @@ namespace Perper.Protocol.Service
     {
         public CacheService(IIgniteClient ignite)
         {
-            this.ignite = ignite;
+            Ignite = ignite;
             igniteBinary = ignite.GetBinary();
             streamsCache = ignite.GetCache<string, object>("streams").WithKeepBinary<string, IBinaryObject>();
             callsCache = ignite.GetCache<string, object>("calls").WithKeepBinary<string, IBinaryObject>();
         }
 
-        private IIgniteClient ignite;
+        public IIgniteClient Ignite { get; }
         private IBinary igniteBinary;
         private ICacheClient<string, IBinaryObject> streamsCache;
         private ICacheClient<string, IBinaryObject> callsCache;

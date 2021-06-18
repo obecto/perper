@@ -1,10 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
-using System.Runtime.CompilerServices;
+using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Threading.Channels;
+using System.Threading.Tasks;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
 using Grpc.Net.Client;
@@ -104,7 +103,7 @@ namespace Perper.Protocol.Service
             }
         }
 
-        public IAsyncEnumerable<(NotificationKey, Notification)> GetNotifications(string instance, int? parameter, CancellationToken cancellationToken = default)
+        public IAsyncEnumerable<(NotificationKey, Notification)> GetNotifications(string instance, int? parameter = null, CancellationToken cancellationToken = default)
         {
             return GetChannel(instance, parameter).Reader.ReadAllAsync(cancellationToken);
         }

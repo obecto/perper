@@ -1,6 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client.Cache;
 
 namespace Perper.Protocol.Extensions
