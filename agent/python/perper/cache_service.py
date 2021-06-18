@@ -24,7 +24,7 @@ class CacheService:
         return self.ignite.put_if_absent_or_raise(self.streams_cache, stream, stream_data)
 
 
-    def stream_add_listener(self, stream, caller_agent, caller, parameter, filter = None, replay = False, local_to_data = False):
+    def stream_add_listener(self, stream, caller_agent, caller, parameter, filter = {}, replay = False, local_to_data = False):
         stream_listener = create_stream_listener(caller_agent, caller, parameter, replay, local_to_data=local_to_data, filter=filter)
 
         self.ignite.optimistic_update(self.streams_cache, stream, lambda data: stream_data_add_listener(data, stream_listener))
