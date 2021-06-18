@@ -1,23 +1,45 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
 using Grpc.Net.Client;
 using Perper.Protocol;
-using Perper.Protocol.Cache.Instance;
 using Perper.Protocol.Cache.Notifications;
 using Perper.Protocol.Cache.Standard;
 using Perper.Protocol.Service;
-using Perper.Protocol.Extensions;
 
 namespace Perper.Model
 {
     class Program
     {
+        static async Task<T> LogExceptions<T>(Task<T> tc)
+        {
+            try
+            {
+                return await tc;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+                throw;
+            }
+        }
+        static async Task LogExceptions(Task tc)
+        {
+            try
+            {
+                await tc;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+                throw;
+            }
+        }
+
         static async Task Main(string[] args)
         {
             using var ignite = Ignition.StartClient(new IgniteClientConfiguration
@@ -35,42 +57,70 @@ namespace Perper.Model
 
             var cacheService = new CacheService(ignite);
             var notificationService = new NotificationService(ignite, grpcChannel, "testAgent");
-            await perperContext.CallCreate("testCall1", "testAgent", "testInstance", "arrayListFunction", "testAgent", "testCaller", new ArrayList { "12345", "6789" });
-            var callResultReceivedTask = Task.Run(async () =>
+
+            AsyncLocals.SetConnection(cacheService, notificationService);
+
+            var tasks = new List<Task>();
+            tasks.Add(LogExceptions(Task.Run(async () =>
             {
-                var (key, notification) = await fabricService.GetCallResultNotification("testCall1");
-                Console.WriteLine(notification);
-                var result = await perperContext.CallReadTask<PerperStream>("testCall1");
-                Console.WriteLine(result);
-                await fabricService.ConsumeNotification(key);
-            });
-
-            await perperContext.CallWriteResult<PerperStream>("testCall1", new PerperStream("testStream1"));
-            await callResultReceivedTask;
-
-            await perperContext.StreamCreate("testStream1", "testAgent", "testInstance", "hashtableStream", StreamDelegateType.Function, new Hashtable { { "12345", "6789" } }, false);
-            await perperContext.StreamAddListener("testStream1", "testAgent", "testListener", -3, null, true, false);
-            await perperContext.StreamWriteItem("testStream1", 6);
-
-            Console.WriteLine("-----");
-
-            await fabricService.StartAsync();
-
-            await foreach (var (key, notification) in fabricService.GetNotifications("testListener", -3))
-            {
-                Console.WriteLine("{0} => {1}", key, notification);
-                if (notification is StreamItemNotification sn)
-                {
-                    Console.WriteLine(await perperContext.StreamReadItem<object>(sn.Cache, sn.Key));
-                    var _ = Task.Delay(1000).ContinueWith(async x =>
+                var executionTasks = new List<Task>();
+                await foreach (var (key, notification) in notificationService.GetNotifications("arrayListFunction")) if (notification is CallTriggerNotification ct)
                     {
-                        await perperContext.StreamWriteItem("testStream1", 6);
-                    });
-                }
-                await fabricService.ConsumeNotification(key);
-            }
+                        executionTasks.Add(LogExceptions(AsyncLocals.EnterContext(ct.Call, async () =>
+                        {
+                            var context = new Context();
+                            var result = await context.StreamFunctionAsync<int, Hashtable>("hashtableStream", new Hashtable { { "12345", "6789" } });
+                        //...
+                        await AsyncLocals.CacheService.CallWriteResult<PerperStream>(AsyncLocals.Instance, ((Stream)result).RawStream);
+                        })));
+                        await notificationService.ConsumeNotification(key);
+                    }
+                await Task.WhenAll(executionTasks);
+            })));
+            tasks.Add(LogExceptions(Task.Run(async () =>
+            {
+                var executionTasks = new List<Task>();
+                await foreach (var (key, notification) in notificationService.GetNotifications("hashtableStream")) if (notification is StreamTriggerNotification st)
+                    {
+                        executionTasks.Add(LogExceptions(AsyncLocals.EnterContext(st.Stream, async () =>
+                        {
+                            Console.WriteLine("Starting stream");
+                            var i = 0;
+                            while (true)
+                            {
+                                await Task.Delay(100);
+                                i++;
+                                Console.WriteLine("Producing {0}", i);
 
-            await fabricService.StopAsync();
+                                var item = i;
+                            //...
+                            await AsyncLocals.CacheService.StreamWriteItem<int>(AsyncLocals.Instance, item);
+                            }
+                        })));
+                        await notificationService.ConsumeNotification(key);
+                    }
+                await Task.WhenAll(executionTasks);
+            })));
+            tasks.Add(LogExceptions(AsyncLocals.EnterContext("testInstance", async () =>
+            {
+                var context = new Context();
+
+                var result = await context.CallFunctionAsync<PerperStream, ArrayList>("arrayListFunction", new ArrayList { "12345", "6789" });
+
+                Console.WriteLine("Received stream");
+                await Task.Delay(1000);
+
+                var stream = new Stream<int>(result);
+                Console.WriteLine("Listening stream");
+                await foreach (var item in stream)
+                {
+                    Console.WriteLine("Consuming {0}", item);
+                }
+            })));
+
+            await notificationService.StartAsync();
+            await Task.WhenAll(tasks);
+            await notificationService.StopAsync();
         }
     }
 }
