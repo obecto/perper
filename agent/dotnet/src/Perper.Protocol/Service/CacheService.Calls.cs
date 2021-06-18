@@ -1,9 +1,6 @@
 using System;
-using System.Collections;
 using System.Threading.Tasks;
 using Apache.Ignite.Core.Binary;
-using Apache.Ignite.Core.Client;
-using Apache.Ignite.Core.Client.Cache;
 using Perper.Protocol.Cache.Instance;
 using Perper.Protocol.Extensions;
 
@@ -46,13 +43,19 @@ namespace Perper.Protocol.Service
 
             var error = callData.HasField("error") ? callData.GetField<string>("error") : null;
             TResult result = default!;
-            if (callData.HasField("result")) {
+            if (callData.HasField("result"))
+            {
                 var rawResult = callData.GetField<object>("result");
-                if (rawResult is TResult tResult) {
+                if (rawResult is TResult tResult)
+                {
                     result = tResult;
-                } else if (rawResult is IBinaryObject binaryObject) {
+                }
+                else if (rawResult is IBinaryObject binaryObject)
+                {
                     result = binaryObject.Deserialize<TResult>();
-                } else {
+                }
+                else
+                {
                     throw new Exception($"Can't convert result from {rawResult?.GetType()?.ToString() ?? "Null"} to {typeof(TResult)}");
                 }
             }

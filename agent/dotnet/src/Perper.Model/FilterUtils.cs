@@ -1,0 +1,82 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq.Expressions;
+
+namespace Perper.Model
+{
+    internal static class FilterUtils
+    {
+        private static List<string>? _parseFieldName(Expression subexpression)
+        {
+            switch (subexpression)
+            {
+                case MemberExpression member:
+                    var left = _parseFieldName(member.Expression);
+                    left?.Add(member.Member.Name);
+                    return left;
+                case ParameterExpression parameter:
+                    return new List<string>(); // Assuming there is only one parameter
+                case ConstantExpression constant:
+                    return null;
+                default:
+                    throw new NotImplementedException("Support for " + subexpression.GetType() + " in IPerperStream.Filter is not implemented yet.");
+            }
+        }
+
+        private static object? _parseFieldValue(Expression subexpression)
+        {
+            switch (subexpression)
+            {
+                case ConstantExpression constant:
+                    return constant.Value;
+                default:
+                    // Ugly way to read FieldExpression-s (used by e.g. local variables)
+                    return Expression.Lambda(subexpression).Compile().DynamicInvoke();
+            }
+        }
+
+        private static void _addToFilter(Hashtable filter, Expression subexpression)
+        {
+            switch (subexpression)
+            {
+                case BinaryExpression binary:
+                    switch (binary.NodeType)
+                    {
+                        case ExpressionType.And:
+                            _addToFilter(filter, binary.Left);
+                            _addToFilter(filter, binary.Right);
+                            break;
+
+                        case ExpressionType.Equal:
+                            var fieldNameLeft = _parseFieldName(binary.Left);
+                            var fieldNameRight = _parseFieldName(binary.Right);
+                            if (fieldNameLeft != null && fieldNameRight != null)
+                                throw new NotImplementedException("Support for comparing two fields  is not implemented yet.");
+                            if (fieldNameLeft == null && fieldNameRight == null)
+                                throw new NotImplementedException("Expected a field/property on one side of the equality test.");
+                            var fieldName = string.Join(".", (fieldNameLeft != null ? fieldNameLeft : fieldNameRight)!);
+                            var fieldValue = fieldNameLeft != null ? _parseFieldValue(binary.Right) : _parseFieldValue(binary.Left);
+                            filter.Add(fieldName, fieldValue);
+                            break;
+
+                        default:
+                            throw new NotImplementedException("Support for " + binary.NodeType + " in filters is not implemented yet.");
+                    }
+                    break;
+
+                default:
+                    throw new NotImplementedException("Support for " + subexpression.GetType() + " in filters is not implemented yet.");
+            }
+        }
+
+        public static Hashtable ConvertFilter<T>(Expression<Func<T, bool>> filter)
+        {
+            var result = new Hashtable();
+
+            _addToFilter(result, filter.Body);
+
+            return result;
+        }
+    }
+}
