@@ -9,77 +9,29 @@ from cache_service import CacheService
 
 ignite = PerperIgniteClient()
 with ignite.connect('127.0.0.1', 10800):
-    # numbers = ignite.get_or_create_cache('numbers')
-    # class PerperStream(metaclass=GenericObjectMeta, schema=OrderedDict([
-    #     ('stream', String)
-    # ])):
-    #     pass
-
-    # numbers.put('abc', PerperStream(
-    #     stream='hah'
-    # ))
-    # result = numbers.get('xyz')
-    # print(result)
-    # result = numbers.get('abc')
-    # print(result)
-    # calls = ignite.get_cache('calls')
-
-    # result = calls.get('testCall1')
-    # print(result)
-
-    # callData = calls.get('testCall2')
-    # print(callData)
-    # if callData is not None:
-    #     callData = set_call_data_result(callData, (MapObject.HASH_MAP, {(1, LongObject): 2, (1, IntObject): 3}), MapObject)
-    #     calls.put('testCall2', callData)
-
-    # calls.put_if_absent('testCall3', create_call_data(
-    #     instance="testInstance",
-    #     agent="testAgent",
-    #     delegate="testPyBoolFunctionDelegate",
-    #     callerAgent="testAgent",
-    #     caller="testCaller",
-    #     localToData=False,
-    #     parameters=False,
-    #     parametersType=BoolObject
-    # ))
-
-    # streams = ignite.get_or_create_cache('streams')
-
-    # streamData = streams.get('testStream1')
-    # if streamData is not None:
-    #     streamData = stream_data_add_listener(streamData, create_stream_listener(
-    #         callerAgent="testAgent",
-    #         caller="testStream3",
-    #         parameter=4,
-    #         replay=False,
-    #         localToData=False,
-    #         filter={}
-    #     ))
-    #     streams.put('testStream1', streamData)
-
-    # streams.put_if_absent('testStream3', create_stream_data(
-    #     instance="testInstance",
-    #     agent="testAgent",
-    #     delegate="testPyBoolStreamDelegate",
-    #     delegateType=1,
-    #     ephemeral=False,
-    #     parameters=True,
-    #     parametersType=BoolObject
-    # ))
-
-    # print(streams.get('testStream1'))
-    # print(streams.get('testStream3'))
-
     cache_service = CacheService(ignite)
-    STREAM_NAME = 'test'
-    stream = cache_service.stream_create(STREAM_NAME, 'test_instance', 'test_agent', 'test_bool_stream_delegate', 1, True, BoolObject, ephemeral = False)
 
-    key = cache_service.stream_write_item(STREAM_NAME, 'Hello world')
-    item = cache_service.stream_read_item(STREAM_NAME, key)
-    print(key, item)
+    # print('Stream tests:')
+    # STREAM_NAME = 'test_stream'
+    # cache_service.stream_create(STREAM_NAME, 'test_instance', 'test_agent', 'test_bool_stream_delegate', 1, True, BoolObject, ephemeral = False)
+    # key = cache_service.stream_write_item(STREAM_NAME, 'Hello world')
+    # item = cache_service.stream_read_item(STREAM_NAME, key)
+    # print(key, item)
 
-    listener = cache_service.stream_add_listener(STREAM_NAME, 'caller_agent', 'caller', 1)
-    print(listener)
+    # listener = cache_service.stream_add_listener(STREAM_NAME, 'caller_agent', 'caller', 1)
+    # print(listener)
 
-    cache_service.stream_remove_listener(STREAM_NAME, listener)
+    # cache_service.stream_remove_listener(STREAM_NAME, listener)
+
+    print('Call tests:')
+    cache_service.call_create('test_call1', 'test_instance', 'test_agent', 'test_bool_stream_delegate', 'caller_agent', 'caller', True, BoolObject)
+    cache_service.call_create('test_call2', 'test_instance', 'test_agent', 'test_bool_stream_delegate', 'caller_agent', 'caller', True, BoolObject)
+    
+    cache_service.call_write_error('test_call1', 'Radi said it is an error!')
+    error = cache_service.call_read_error('test_call1')
+    print(error)
+
+    cache_service.call_write_result('test_call2', 'Result here!', String)
+    error, result = cache_service.call_read_error_and_result('test_call2')
+    print(error, result)
+    

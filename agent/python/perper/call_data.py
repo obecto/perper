@@ -40,3 +40,26 @@ def set_call_data_result(call_data, result, result_type):
         result=result,
         **{key: getattr(call_data, key) for key in schema.keys() - {'finished', 'result'}}
     )
+
+def set_call_data_error(call_data, error):
+
+    schema = call_data.schema
+    schema['error'] = String
+
+    class CallData(metaclass=GenericObjectMeta, type_name=call_data._type_name, schema=schema):
+        pass
+
+    return CallData(
+        finished=True,
+        error=error,
+        **{key: getattr(call_data, key) for key in schema.keys() - {'finished', 'error'}}
+    )
+
+def set_call_data_finished(call_data):
+
+    schema = call_data.schema
+
+    class CallData(metaclass=GenericObjectMeta, type_name=call_data._type_name, schema=schema):
+        pass
+
+    return CallData(finished=True, **{key: getattr(call_data, key) for key in schema.keys() - {'finished', 'error'}})
