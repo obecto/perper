@@ -12,13 +12,14 @@ from notification_service import NotificationService
 from stream_data import *
 
 import asyncio
+import threading
 
 ignite = PerperIgniteClient()
 async def test():
     with ignite.connect('127.0.0.1', 10800):
         cache_service = CacheService(ignite)
         channel = grpc.insecure_channel('127.0.0.1:40400')
-        notification_service = NotificationService(ignite, channel, 'caller_agent')
+        notification_service = NotificationService(ignite, channel, 'test_agent')
 
         # print('Stream cache tests:')
         # STREAM_NAME = 'test_stream'
@@ -34,13 +35,13 @@ async def test():
 
         # print('Call cache tests:')
         # cache_service.call_create('test_call1', 'test_instance', 'test_agent', 'test_bool_stream_delegate', 'caller_agent', 'caller', True, BoolObject)
-        cache_service.call_create('test_call2', 'test_instance', 'test_agent', 'test_bool_stream_delegate', 'caller_agent', 'caller', True, BoolObject)
+        # cache_service.call_create('test_call2', 'test_instance', 'test_agent', 'test_bool_stream_delegate', 'caller_agent', 'caller', True, BoolObject)
         
         # cache_service.call_write_error('test_call1', 'Radi said it is an error!')
         # error = cache_service.call_read_error('test_call1')
         # print(error)
 
-        cache_service.call_write_result('test_call2', 'Result here!', String)
+        # cache_service.call_write_result('test_call2', 'Result here!', String)
         # error, result = cache_service.call_read_error_and_result('test_call2')
         # print(error, result)
         
@@ -51,8 +52,26 @@ async def test():
         # notification_service.consume_notification(k)
 
         notification_service.start()
-        time.sleep(3)
-        notification_service.stop()
+        time.sleep(1)
+        cache_service.call_create('test_call3', 'test_instance', 'test_agent', 'test_bool_stream_delegate', 'caller_agent', 'caller', True, BoolObject)
+        time.sleep(1)
+        cache_service.call_create('test_call4', 'test_instance', 'test_agent', 'test_bool_stream_delegate', 'caller_agent', 'caller', True, BoolObject)
+        time.sleep(1)
+        cache_service.call_create('test_call5', 'test_instance', 'test_agent', 'test_bool_stream_delegate', 'caller_agent', 'caller', True, BoolObject)
+        time.sleep(1)
+
+        def insert_something_after_time():
+            time.sleep(5)
+            cache_service.call_create('test_call6', 'test_instance', 'test_agent', 'test_bool_stream_delegate', 'caller_agent', 'caller', True, BoolObject)
+
+            time.sleep(15)
+            notification_service.stop()
+
+        thread = threading.Thread(target=insert_something_after_time, daemon=True, args=())
+        thread.start()
+
+        async for (k, i) in notification_service.get_notifications('test_bool_stream_delegate'):
+            print(k, i)
 
 
 if __name__ == "__main__":

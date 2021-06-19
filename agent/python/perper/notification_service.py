@@ -1,5 +1,9 @@
 import time
 import threading
+import asyncio
+
+from typing import Generator
+from collections import OrderedDict
 
 import fabric_pb2, fabric_pb2_grpc
 from notifications import NotificationKeyLong, NotificationKeyString
@@ -19,6 +23,7 @@ class NotificationService:
         self._grpc_channel = grpc_channel
         self.ignite = ignite
         self.notifications_cache = self.ignite.get_or_create_cache(f'{agent}-$notifications')
+        self.channels = {}
 
         self.ignite.register_binary_type(StreamItemNotification)
         self.ignite.register_binary_type(StreamTriggerNotification)
@@ -49,6 +54,12 @@ class NotificationService:
     def stop(self):
         self.running = False
 
+    def write_channel_value(self, channel, value):
+        if channel in self.channels:
+            self.channels[channel].append(value)
+        else:
+            self.channels[channel] = [value]
+
     def run(self):
         grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
         for notification in grpc_stub.Notifications(fabric_pb2.NotificationFilter(agent = self.agent)):
@@ -56,7 +67,29 @@ class NotificationService:
             key = self.get_notification_key(notification)
             item = self.notifications_cache.get(key)
 
-            print(key, item)
+            if isinstance(item, StreamItemNotification):
+                self.write_channel_value((item.stream, item.parameter), (key, item))
+
+            if isinstance(item, StreamTriggerNotification):
+                self.write_channel_value((item.delegate,), (key, item))
+
+            if isinstance(item, CallTriggerNotification):
+                self.write_channel_value((item.delegate,), (key, item))
+
+    async def get_notifications(self, instance, parameter = None) -> Generator:
+        key = (instance,) if parameter is None else (instance, parameter)
+        if key in self.channels:
+            channel = self.channels[key]
+            counter = 0
+            while True:
+                if not self.running:
+                    return
+
+                if counter < len(channel):
+                    yield channel[counter]
+                    counter += 1
+
+            await asyncio.sleep(1)
 
     async def get_call_result_notification(self, call):
         grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
