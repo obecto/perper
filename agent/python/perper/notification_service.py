@@ -1,6 +1,14 @@
 import fabric_pb2, fabric_pb2_grpc
-from notifications.notification_key_long import NotificationKeyLong
-from notifications.notification_key_string import NotificationKeyString
+from notifications import NotificationKeyLong, NotificationKeyString
+
+from perper.cache.notifications import (
+    StreamItemNotification,
+    StreamTriggerNotification,
+    CallResultNotification,
+    CallTriggerNotification,
+    NotificationKeyLong,
+    NotificationKeyString
+)
 
 class NotificationService:
     def __init__(self, ignite, grpc_channel, agent):
