@@ -45,3 +45,6 @@ class NotificationService:
         item = self.notifications_cache.get(key)
 
         return (key, item)
+    
+    def consume_notification(self, key):
+        return self.notifications_cache.remove_key(key)

@@ -47,5 +47,7 @@ async def test():
         k, i = await notification_service.get_call_result_notification('test_call2')
         print(k, i)
 
+        notification_service.consume_notification(k)
+
 if __name__ == "__main__":
     asyncio.run(test())
