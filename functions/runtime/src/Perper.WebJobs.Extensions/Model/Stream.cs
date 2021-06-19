@@ -150,7 +150,7 @@ namespace Perper.WebJobs.Extensions.Model
                             }
                             catch
                             {
-                                _stream._logger.LogError($"Error AffinityKey({key}) Cache Not Found key: {si.Key} in {si.Cache}");
+                                _stream._logger?.LogError($"Error AffinityKey({key}) Cache Not Found key: {si.Key} in {si.Cache}");
                                 continue;
                             }
 
