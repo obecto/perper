@@ -13,15 +13,3 @@ class NotificationKeyString(
     ),
 ):
     pass
-
-class NotificationKeyLong(
-    metaclass=GenericObjectMeta,
-    type_name='NotificationKeyLong',
-    schema=OrderedDict(
-        [
-            ('affinity', LongObject),
-            ('key', LongObject),
-        ]
-    ),
-):
-    pass
