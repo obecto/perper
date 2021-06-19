@@ -318,9 +318,8 @@ namespace Perper.WebJobs.Extensions.Services
             {
                 var name = property.Name;
                 var value = property.GetValue(obj);
-                var rawValue = Serialize(value);
-                if (rawValue is DateTime dateTimeValue) writer.WriteTimestamp(name, dateTimeValue);
-                else writer.WriteObject(name, rawValue);
+                var rawValue=  Serialize(value);
+                writer.WriteObject(name, rawValue);
             }
         }
 
