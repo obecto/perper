@@ -1,3 +1,6 @@
+import time
+import threading
+
 import fabric_pb2, fabric_pb2_grpc
 from notifications import NotificationKeyLong, NotificationKeyString
 
@@ -13,8 +16,14 @@ from perper.cache.notifications import (
 class NotificationService:
     def __init__(self, ignite, grpc_channel, agent):
         self.agent = agent
-        self.notifications_cache = ignite.get_or_create_cache(f'{agent}-$notifications')
         self._grpc_channel = grpc_channel
+        self.ignite = ignite
+        self.notifications_cache = self.ignite.get_or_create_cache(f'{agent}-$notifications')
+
+        self.ignite.register_binary_type(StreamItemNotification)
+        self.ignite.register_binary_type(StreamTriggerNotification)
+        self.ignite.register_binary_type(CallResultNotification)
+        self.ignite.register_binary_type(CallTriggerNotification)
 
     def consume_notification(self, key):
         return self.notifications_cache.remove(key)
@@ -31,6 +40,23 @@ class NotificationService:
             )
 
         raise Exception('Invalid grpc notification.')
+
+    def start(self):
+        self.running = True
+        thread = threading.Thread(target=self.run, daemon=True, args=())
+        thread.start()
+    
+    def stop(self):
+        self.running = False
+
+    def run(self):
+        grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
+        for notification in grpc_stub.Notifications(fabric_pb2.NotificationFilter(agent = self.agent)):
+
+            key = self.get_notification_key(notification)
+            item = self.notifications_cache.get(key)
+
+            print(key, item)
 
     async def get_call_result_notification(self, call):
         grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)

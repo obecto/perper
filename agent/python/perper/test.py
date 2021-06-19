@@ -1,3 +1,6 @@
+import time
+import grpc
+
 from pyignite import Client, GenericObjectMeta
 from collections import OrderedDict
 from pyignite.datatypes import String, BoolObject
@@ -5,10 +8,8 @@ from pyignite.datatypes import String, BoolObject
 from thin_client import PerperIgniteClient
 from call_data import create_call_data, set_call_data_result
 from cache_service import CacheService
-from stream_data import *
-
-import grpc
 from notification_service import NotificationService
+from stream_data import *
 
 import asyncio
 
@@ -43,11 +44,16 @@ async def test():
         # error, result = cache_service.call_read_error_and_result('test_call2')
         # print(error, result)
         
-        print('Notification Service tests:')
-        k, i = await notification_service.get_call_result_notification('test_call2')
-        print(k, i)
+        # print('Notification Service tests:')
+        # k, i = await notification_service.get_call_result_notification('test_call2')
+        # print(k, i)
 
-        notification_service.consume_notification(k)
+        # notification_service.consume_notification(k)
+
+        notification_service.start()
+        time.sleep(3)
+        notification_service.stop()
+
 
 if __name__ == "__main__":
     asyncio.run(test())
