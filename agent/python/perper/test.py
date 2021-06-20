@@ -64,10 +64,10 @@ async def test():
             time.sleep(5)
             cache_service.call_create('test_call6', 'test_instance', 'test_agent', 'test_bool_stream_delegate', 'caller_agent', 'caller', True, BoolObject)
 
-            time.sleep(15)
+            time.sleep(5)
             notification_service.stop()
 
-        thread = threading.Thread(target=insert_something_after_time, daemon=True, args=())
+        thread = threading.Thread(target=insert_something_after_time, args=())
         thread.start()
 
         async for (k, i) in notification_service.get_notifications('test_bool_stream_delegate'):
