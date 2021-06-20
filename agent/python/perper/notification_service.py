@@ -1,6 +1,7 @@
 import time
-import threading
 import asyncio
+import threading
+import queue
 
 from typing import Generator
 from collections import OrderedDict
@@ -54,11 +55,14 @@ class NotificationService:
     def stop(self):
         self.running = False
 
+    def get_channel(self, channel):
+        if channel not in self.channels:
+            self.channels[channel] = queue.Queue()
+
+        return self.channels[channel]
+
     def write_channel_value(self, channel, value):
-        if channel in self.channels:
-            self.channels[channel].append(value)
-        else:
-            self.channels[channel] = [value]
+        self.get_channel(channel).put(value)
 
     def run(self):
         grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
@@ -78,18 +82,17 @@ class NotificationService:
 
     async def get_notifications(self, instance, parameter = None) -> Generator:
         key = (instance,) if parameter is None else (instance, parameter)
-        if key in self.channels:
-            channel = self.channels[key]
-            counter = 0
-            while True:
-                if not self.running:
-                    return
+        channel = self.get_channel(key)
+        while True:
+            if not self.running:
+                return
 
-                if counter < len(channel):
-                    yield channel[counter]
-                    counter += 1
-
-            await asyncio.sleep(1)
+            try:
+                item = channel.get(timeout=1)
+                yield item
+                channel.task_done()
+            except queue.Empty:
+                pass
 
     async def get_call_result_notification(self, call):
         grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
