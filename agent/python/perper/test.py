@@ -1,5 +1,4 @@
 import time
-import grpc
 
 from pyignite import Client, GenericObjectMeta
 from collections import OrderedDict
@@ -18,8 +17,7 @@ ignite = PerperIgniteClient()
 async def test():
     with ignite.connect('127.0.0.1', 10800):
         cache_service = CacheService(ignite)
-        channel = grpc.insecure_channel('127.0.0.1:40400')
-        notification_service = NotificationService(ignite, channel, 'test_agent')
+        notification_service = NotificationService(ignite, '127.0.0.1:40400', 'test_agent')
 
         # print('Stream cache tests:')
         # STREAM_NAME = 'test_stream'

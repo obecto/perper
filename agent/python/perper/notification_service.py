@@ -2,6 +2,7 @@ import time
 import asyncio
 import threading
 import queue
+import grpc
 
 from typing import Generator
 from collections import OrderedDict
@@ -19,9 +20,9 @@ from perper.cache.notifications import (
 )
 
 class NotificationService:
-    def __init__(self, ignite, grpc_channel, agent):
+    def __init__(self, ignite, address, agent):
         self.agent = agent
-        self._grpc_channel = grpc_channel
+        self._grpc_channel = grpc.insecure_channel(address)
         self.ignite = ignite
         self.notifications_cache = self.ignite.get_or_create_cache(f'{agent}-$notifications')
         self.channels = {}
