@@ -72,3 +72,17 @@ def stream_data_remove_listener(stream_data, stream_listener):
         listeners=(CollectionObject.ARR_LIST, new_listeners),
         **{key: getattr(stream_data, key) for key in stream_data._schema.keys() - {'listeners'}}
     )
+
+def stream_data_remove_listener_caller(stream_data, caller, parameter):
+    StreamData = type(stream_data)
+    listeners = stream_data.listeners[1][:]
+
+    for listener in listeners:
+        if listener.caller == caller and listener.parameter == parameter:
+            listeners.remove(listener)
+            break
+
+    return StreamData(
+        listeners=(CollectionObject.ARR_LIST, listeners),
+        **{key: getattr(stream_data, key) for key in stream_data._schema.keys() - {'listeners'}}
+    )
