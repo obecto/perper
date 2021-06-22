@@ -29,6 +29,7 @@ async def test():
         # listener = cache_service.stream_add_listener(STREAM_NAME, 'caller_agent', 'caller', 1)
         # print(listener)
 
+        # cache_service.stream_remove_listener_caller(STREAM_NAME, 'caller', 1)
         # cache_service.stream_remove_listener(STREAM_NAME, listener)
 
         # print('Call cache tests:')
