@@ -7,10 +7,10 @@ import grpc
 from typing import Generator
 from collections import OrderedDict
 
-import fabric_pb2, fabric_pb2_grpc
-from notifications import NotificationKeyLong, NotificationKeyString
+from .proto import fabric_pb2
+from .proto import fabric_pb2_grpc
 
-from perper.cache.notifications import (
+from .notifications import (
     StreamItemNotification,
     StreamTriggerNotification,
     CallResultNotification,
