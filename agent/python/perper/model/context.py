@@ -2,6 +2,7 @@ from agent import Agent
 from stream import Stream
 from async_locals import AsyncLocals
 from stream_flags import StreamFlags
+from stream_delegate_type import StreamDelegateType
 from perper.protocol.standard import PerperAgent
 from perper.protocol.standard import PerperStream
 from perper.protocol.stream_data import create_stream
@@ -17,17 +18,17 @@ class Context:
     
     def stream_function(self, delegate, parameters, flags=StreamFlags.default):
         stream = AsyncLocals.get_cache_service().generata_name(delegate)
-        create_stream(stream, delegate, 0, parameters, flags)
+        create_stream(stream, delegate, StreamDelegateType.function, parameters, flags)
         return Stream(PerperStream(stream))
     
     def stream_action(self, delegate, parameters, flags=StreamFlags.default):
         stream = AsyncLocals.get_cache_service().generata_name(delegate)
-        create_stream(stream, delegate, 1, parameters, flags)
+        create_stream(stream, delegate, StreamDelegateType.action, parameters, flags)
         return Stream(PerperStream(stream))
 
     def create_blank_stream(self, flags=StreamFlags.default):
         stream = AsyncLocals.get_cache_service().generata_name("")
-        create_stream(stream, "", 2, None, flags)
+        create_stream(stream, "", StreamDelegateType.external, None, flags)
         return Stream(PerperStream(stream))
 
     def create_stream(self, stream, delegate, delegate_type, parameters, flags):
