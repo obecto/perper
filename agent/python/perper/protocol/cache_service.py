@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
 
-from stream_data import *
-from call_data import *
-from ignite_cache_extensions import put_if_absent_or_raise, optimistic_update
+from .stream_data import *
+from .call_data import *
+from .ignite_cache_extensions import put_if_absent_or_raise, optimistic_update
 
 class CacheService:
     def __init__(self, ignite):

@@ -1,6 +1,6 @@
 import time
 
-from pyignite import Client, GenericObjectMeta
+from pyignite import GenericObjectMeta
 from collections import OrderedDict
 from pyignite.datatypes import String, BoolObject
 
