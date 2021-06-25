@@ -8,9 +8,9 @@ namespace Perper.Protocol.Service
 {
     public partial class CacheService
     {
-        public Task CallCreate<TParams>(string call, string agent, string instance, string @delegate, string callerAgent, string caller, TParams parameters, bool localToData = false)
+        public Task CallCreate(string call, string agent, string instance, string @delegate, string callerAgent, string caller, object[] parameters, bool localToData = false)
         {
-            var callData = CallData.Create<TParams>(igniteBinary, agent, instance, @delegate, callerAgent, caller, localToData, parameters).Build();
+            var callData = CallData.Create(igniteBinary, agent, instance, @delegate, callerAgent, caller, localToData, parameters).Build();
 
             return callsCache.PutIfAbsentOrThrowAsync(call, callData);
         }
@@ -61,6 +61,39 @@ namespace Perper.Protocol.Service
             }
 
             return (error, result);
+        }
+
+        public async Task<object[]> GetCallParameters(string call)
+        {
+            object[] parameters = default!;
+            var callData = await callsCache.GetAsync(call);
+
+            if (callData.HasField("parameters"))
+            {
+                var field = callData.GetField<object>("parameters");
+                if (field is IBinaryObject binaryObject)
+                {
+                    parameters = binaryObject.Deserialize<object[]>();
+                }
+                else if (field is object[] tfield)
+                {
+                    parameters = tfield;
+                }
+                else
+                {
+                    throw new Exception($"Can't convert result from {field?.GetType()?.ToString() ?? "Null"} to {typeof(object[])}");
+                }
+            }
+
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                if (parameters[i] is IBinaryObject binaryObject)
+                {
+                    parameters[i] = binaryObject.Deserialize<object>();
+                }
+            }
+
+            return parameters;
         }
     }
 }

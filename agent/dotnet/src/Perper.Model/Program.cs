@@ -69,9 +69,9 @@ namespace Perper.Model
                         executionTasks.Add(LogExceptions(AsyncLocals.EnterContext(ct.Call, async () =>
                         {
                             var context = new Context();
-                            var result = await context.StreamFunctionAsync<int, Hashtable>("hashtableStream", new Hashtable { { "12345", "6789" } });
-                        //...
-                        await AsyncLocals.CacheService.CallWriteResult<PerperStream>(AsyncLocals.Instance, ((Stream)result).RawStream);
+                            var result = await context.StreamFunctionAsync<int>("hashtableStream", new object[] { new Hashtable { { "12345", "6789" } } });
+                            //...
+                            await AsyncLocals.CacheService.CallWriteResult<PerperStream>(AsyncLocals.Instance, ((Stream)result).RawStream);
                         })));
                         await notificationService.ConsumeNotification(key);
                     }
@@ -93,8 +93,8 @@ namespace Perper.Model
                                 Console.WriteLine("Producing {0}", i);
 
                                 var item = i;
-                            //...
-                            await AsyncLocals.CacheService.StreamWriteItem<int>(AsyncLocals.Instance, item);
+                                //...
+                                await AsyncLocals.CacheService.StreamWriteItem<int>(AsyncLocals.Instance, item);
                             }
                         })));
                         await notificationService.ConsumeNotification(key);
@@ -105,7 +105,7 @@ namespace Perper.Model
             {
                 var context = new Context();
 
-                var result = await context.CallFunctionAsync<PerperStream, ArrayList>("arrayListFunction", new ArrayList { "12345", "6789" });
+                var result = await context.CallFunctionAsync<PerperStream>("arrayListFunction", new object[] { new ArrayList { "12345", "6789" } });
 
                 Console.WriteLine("Received stream");
                 await Task.Delay(1000);

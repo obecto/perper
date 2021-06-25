@@ -13,7 +13,7 @@ namespace Perper.Model
 
         public PerperAgent RawAgent { get; }
 
-        public async Task<TResult> CallFunctionAsync<TResult, TParams>(string @delegate, TParams parameters)
+        public async Task<TResult> CallFunctionAsync<TResult>(string @delegate, object[] parameters)
         {
             var call = AsyncLocals.CacheService.GenerateName(@delegate);
 
@@ -27,7 +27,7 @@ namespace Perper.Model
             return result;
         }
 
-        public async Task CallActionAsync<TParams>(string @delegate, TParams parameters)
+        public async Task CallActionAsync(string @delegate, object[] parameters)
         {
             var call = AsyncLocals.CacheService.GenerateName(@delegate);
 

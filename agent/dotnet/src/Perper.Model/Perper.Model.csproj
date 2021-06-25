@@ -7,14 +7,14 @@
         <PackageVersion>0.6.0-alpha8</PackageVersion>
         <Authors>Obecto EOOD</Authors>
         <RepositoryUrl>https://github.com/obecto/perper</RepositoryUrl>
-        <Title>Perper Protocol</Title>
-        <Description>Perper protocol layer</Description>
+        <Title>Perper Model</Title>
+        <Description>Perper model layer</Description>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/obecto/perper</PackageProjectUrl>
         <RepositoryType>Git</RepositoryType>
 <!--         <TargetFrameworks>netstandard2.0;netcoreapp3.1</TargetFrameworks> -->
-<!--         <TargetFramework>net5.0</TargetFramework> -->
-        <TargetFramework>netcoreapp3.1</TargetFramework>
+         <TargetFramework>net5.0</TargetFramework> 
+        <!--<TargetFramework>netcoreapp3.1</TargetFramework>-->
     </PropertyGroup>
 
     <PropertyGroup>

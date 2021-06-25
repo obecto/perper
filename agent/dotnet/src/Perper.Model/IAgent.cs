@@ -4,7 +4,8 @@ namespace Perper.Model
 {
     public interface IAgent
     {
-        Task<TResult> CallFunctionAsync<TResult, TParams>(string functionName, TParams parameters);
-        Task CallActionAsync<TParams>(string actionName, TParams parameters);
+        Task<TResult> CallFunctionAsync<TResult>(string functionName, object[] parameters);
+
+        Task CallActionAsync(string actionName, object[] parameters);
     }
 }
