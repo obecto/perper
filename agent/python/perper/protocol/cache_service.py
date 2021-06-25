@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
 
-from stream_data import *
-from call_data import *
-from ignite_cache_extensions import put_if_absent_or_raise, optimistic_update
+from .stream_data import *
+from .call_data import *
+from .ignite_cache_extensions import put_if_absent_or_raise, optimistic_update
 
 class CacheService:
     def __init__(self, ignite):
@@ -25,15 +25,17 @@ class CacheService:
         stream_data = create_stream_data(instance, agent, delegate, delegate_type, ephemeral, parameters, parameters_type)
         return put_if_absent_or_raise(self.streams_cache, stream, stream_data)
 
-
     def stream_add_listener(self, stream, caller_agent, caller, parameter, filter = {}, replay = False, local_to_data = False):
         stream_listener = create_stream_listener(caller_agent, caller, parameter, replay, local_to_data=local_to_data, filter=filter)
 
         optimistic_update(self.streams_cache, stream, lambda data: stream_data_add_listener(data, stream_listener))
         return stream_listener
 
-    def stream_remove_listener(self, stream, stream_listener): # TODO: Implement StreamRemoveListener(string stream, string caller, int parameter)
+    def stream_remove_listener(self, stream, stream_listener):
         return optimistic_update(self.streams_cache, stream, lambda data: stream_data_remove_listener(data, stream_listener))
+
+    def stream_remove_listener_caller(self, stream, caller, parameter):
+        return optimistic_update(self.streams_cache, stream, lambda data: stream_data_remove_listener_caller(data, caller, parameter))
 
     def stream_write_item(self, stream, item):
         items_cache = self.ignite.get_or_create_cache(stream)

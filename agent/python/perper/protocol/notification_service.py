@@ -2,14 +2,15 @@ import time
 import asyncio
 import threading
 import queue
+import grpc
 
 from typing import Generator
 from collections import OrderedDict
 
-import fabric_pb2, fabric_pb2_grpc
-from notifications import NotificationKeyLong, NotificationKeyString
+from .proto import fabric_pb2
+from .proto import fabric_pb2_grpc
 
-from perper.cache.notifications import (
+from .notifications import (
     StreamItemNotification,
     StreamTriggerNotification,
     CallResultNotification,
@@ -19,9 +20,9 @@ from perper.cache.notifications import (
 )
 
 class NotificationService:
-    def __init__(self, ignite, grpc_channel, agent):
+    def __init__(self, ignite, address, agent):
         self.agent = agent
-        self._grpc_channel = grpc_channel
+        self._grpc_channel = grpc.insecure_channel(address)
         self.ignite = ignite
         self.notifications_cache = self.ignite.get_or_create_cache(f'{agent}-$notifications')
         self.channels = {}
@@ -67,17 +68,17 @@ class NotificationService:
     def run(self):
         grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
         for notification in grpc_stub.Notifications(fabric_pb2.NotificationFilter(agent = self.agent)):
-
             key = self.get_notification_key(notification)
             item = self.notifications_cache.get(key)
+            instance_class = type(item).__name__
 
-            if isinstance(item, StreamItemNotification):
+            if instance_class == 'StreamItemNotification':
                 self.write_channel_value((item.stream, item.parameter), (key, item))
 
-            if isinstance(item, StreamTriggerNotification):
+            if instance_class == 'StreamTriggerNotification':
                 self.write_channel_value((item.delegate,), (key, item))
 
-            if isinstance(item, CallTriggerNotification):
+            if instance_class == 'CallTriggerNotification':
                 self.write_channel_value((item.delegate,), (key, item))
 
     async def get_notifications(self, instance, parameter = None) -> Generator:
