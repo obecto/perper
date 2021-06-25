@@ -110,5 +110,4 @@ class NotificationService:
         return (key, item)
     
     def consume_notification(self, key):
-        print('consuming')
         return self.notifications_cache.remove_key(key)
