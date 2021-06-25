@@ -10,7 +10,7 @@ def test():
         sc = ignite.get_cache('test_stream')
 
         while True:
-            sc.put(random.randrange(100000), 1)
+            sc.put(random.randrange(100000), random.randrange(10, 20))
             time.sleep(1)
 
 test()

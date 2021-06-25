@@ -25,8 +25,8 @@ def test():
         generator = stream.async_generator()
 
         async def listen_items():
-            async for (k, i) in generator:
-                print(k, i)
+            async for value in generator:
+                print(value)
 
         AsyncLocals.enter_context('test_instance',  lambda: asyncio.run(listen_items()))
 
