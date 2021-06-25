@@ -1,7 +1,7 @@
 import asyncio
 
 from pyignite.datatypes.primitive_objects import BoolObject
-from perper.protocol.thin_client import PerperIgniteClient
+from pyignite import Client
 
 from perper.protocol.cache_service import CacheService
 from perper.protocol.notification_service import NotificationService
@@ -9,7 +9,7 @@ from perper.protocol.standard import PerperStream
 from perper.model.stream import Stream
 from perper.model.async_locals import *
 
-ignite = PerperIgniteClient()
+ignite = Client()
 def test():
     with ignite.connect('127.0.0.1', 10800):
         cache_service = CacheService(ignite)

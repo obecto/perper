@@ -1,10 +1,10 @@
 import time
 import random
 
+from pyignite import Client
 from pyignite.datatypes.primitive_objects import BoolObject
-from perper.protocol.thin_client import PerperIgniteClient
 
-ignite = PerperIgniteClient()
+ignite = Client()
 def test():
     with ignite.connect('127.0.0.1', 10800):
         sc = ignite.get_cache('test_stream')
