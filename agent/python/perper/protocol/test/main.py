@@ -4,11 +4,11 @@ from pyignite import GenericObjectMeta
 from collections import OrderedDict
 from pyignite.datatypes import String, BoolObject
 
-from thin_client import PerperIgniteClient
-from call_data import create_call_data, set_call_data_result
-from cache_service import CacheService
-from notification_service import NotificationService
-from stream_data import *
+from perper.protocol.thin_client import PerperIgniteClient
+from perper.protocol.call_data import create_call_data, set_call_data_result
+from perper.protocol.cache_service import CacheService
+from perper.protocol.notification_service import NotificationService
+from perper.protocol.stream_data import *
 
 import asyncio
 import threading
