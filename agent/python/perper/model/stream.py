@@ -1,7 +1,7 @@
 from perper.protocol.standard import PerperStream
 from perper.protocol.cache_service_extensions import perper_stream_add_listener
-from filter_utils import FilterUtils
-from async_locals import AsyncLocals
+from .filter_utils import FilterUtils
+from .async_locals import AsyncLocals
 
 class Stream:
     def __init__(self, raw_stream):
@@ -30,3 +30,4 @@ class Stream:
 
         async for (k, i) in AsyncLocals.get_notification_service().get_notifications(AsyncLocals.get_instance(), parameter):
             yield (k, i)
+            AsyncLocals.get_notification_service().consume_notification(k)
