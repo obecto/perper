@@ -2,9 +2,9 @@ import time
 
 from pyignite import GenericObjectMeta
 from collections import OrderedDict
+from pyignite import Client
 from pyignite.datatypes import String, BoolObject
 
-from perper.protocol.thin_client import PerperIgniteClient
 from perper.protocol.call_data import create_call_data, set_call_data_result
 from perper.protocol.cache_service import CacheService
 from perper.protocol.notification_service import NotificationService
@@ -13,7 +13,7 @@ from perper.protocol.stream_data import *
 import asyncio
 import threading
 
-ignite = PerperIgniteClient()
+ignite = Client()
 async def test():
     with ignite.connect('127.0.0.1', 10800):
         cache_service = CacheService(ignite)
