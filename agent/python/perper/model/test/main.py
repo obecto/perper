@@ -22,10 +22,9 @@ def test():
         notification_service.start()
         cache_service.stream_create('test_stream', 'test_instance', 'test_agent', 'test_delegate', 2, True, BoolObject)
         stream = Stream(PerperStream('test_stream', {}, False, False))
-        generator = stream.async_generator()
 
         async def listen_items():
-            async for value in generator:
+            async for value in stream.enumerate():
                 print(value)
 
         enter_context('test_instance',  lambda: asyncio.run(listen_items()))
