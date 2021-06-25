@@ -1,5 +1,9 @@
 from perper.protocol.standard import PerperStream
-from perper.protocol.cache_service_extensions import perper_stream_add_listener, stream_read_notification
+from perper.protocol.cache_service_extensions import (
+    perper_stream_add_listener,
+    stream_read_notification,
+    perper_stream_remove_listener
+)
 from .filter_utils import FilterUtils
 from .async_locals import *
 
@@ -24,11 +28,13 @@ class Stream:
     def filter(self):
         pass
 
-    async def async_generator(self):
-        parameter = True # TODO: FIXME
-        perper_stream_add_listener(get_cache_service(), self.raw_stream, get_agent(), get_instance(), parameter)
+    async def enumerate(self):
+        parameter = 1 # TODO: FIXME
+        listener = perper_stream_add_listener(get_cache_service(), self.raw_stream, get_agent(), get_instance(), parameter)
 
         async for (k, i) in get_notification_service().get_notifications(get_instance(), parameter):
             value = stream_read_notification(get_cache_service(), i)
             yield value
             get_notification_service().consume_notification(k)
+        
+        perper_stream_remove_listener(get_cache_service(), self.raw_stream, listener)
