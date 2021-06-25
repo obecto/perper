@@ -18,8 +18,13 @@ class AsyncLocals:
 
     @staticmethod
     def get_agent():
-        return get_notification_service().agent
+        return AsyncLocals.get_notification_service().agent
 
     @staticmethod
     def get_instance():
         return instance.get()
+
+    @staticmethod
+    def enter_context(inc_instance, callback):
+        instance.set(inc_instance)
+        return callback()

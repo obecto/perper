@@ -11,7 +11,7 @@ class PerperStream(
             ("stream", String),
             ("filter", MapObject),
             ("replay", BoolObject),
-            ("localtodata", BoolObject)
+            ("localToData", BoolObject)
         ]
     ),
 ):
