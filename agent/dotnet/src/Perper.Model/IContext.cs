@@ -6,13 +6,13 @@ namespace Perper.Model
     {
         IAgent Agent { get; }
 
-        Task<(IAgent, TResult)> StartAgentAsync<TResult, TParams>(string name, TParams parameters);
+        Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, object[] parameters);
 
-        Task<IStream<TItem>> StreamFunctionAsync<TItem, TParams>(string functionName, TParams parameters, StreamFlags flags = StreamFlags.Default);
-        Task<IStream> StreamActionAsync<TParams>(string actionName, TParams parameters, StreamFlags flags = StreamFlags.Default);
+        Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object[] parameters, StreamFlags flags = StreamFlags.Default);
+        Task<IStream> StreamActionAsync(string actionName, object[] parameters, StreamFlags flags = StreamFlags.Default);
 
         IStream<TItem> DeclareStreamFunction<TItem>();
-        Task InitializeStreamFunctionAsync<TItem, TParams>(IStream<TItem> stream, string @delegate, TParams parameters, StreamFlags flags = StreamFlags.Default);
+        Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, string @delegate, object[] parameters, StreamFlags flags = StreamFlags.Default);
 
         Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Default);
     }

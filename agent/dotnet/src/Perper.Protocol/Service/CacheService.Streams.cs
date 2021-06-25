@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,9 +11,9 @@ namespace Perper.Protocol.Service
 {
     public partial class CacheService
     {
-        public Task StreamCreate<TParams>(string stream, string agent, string instance, string @delegate, StreamDelegateType delegateType, TParams parameters, bool ephemeral = true, string? indexType = null, Hashtable? indexFields = null)
+        public Task StreamCreate(string stream, string agent, string instance, string @delegate, StreamDelegateType delegateType, object[] parameters, bool ephemeral = true, string? indexType = null, Hashtable? indexFields = null)
         {
-            var streamData = StreamData.Create<TParams>(igniteBinary, agent, instance, @delegate, delegateType, ephemeral, parameters, indexType, indexFields).Build();
+            var streamData = StreamData.Create(igniteBinary, agent, instance, @delegate, delegateType, ephemeral, parameters, indexType, indexFields).Build();
 
             return streamsCache.PutIfAbsentOrThrowAsync(stream, streamData);
         }
@@ -58,6 +59,39 @@ namespace Perper.Protocol.Service
             var itemsCache = Ignite.GetCache<long, TItem>(stream); // NOTE: Will not work with forwarding
 
             return itemsCache.AsCacheQueryable().Select(pair => pair.Value);
+        }
+
+        public async Task<object[]> GetStreamParameters(string stream)
+        {
+            object[] parameters = default!;
+            var streamData = await streamsCache.GetAsync(stream);
+
+            if (streamData.HasField("parameters"))
+            {
+                var field = streamData.GetField<object>("parameters");
+                if (field is IBinaryObject binaryObject)
+                {
+                    parameters = binaryObject.Deserialize<object[]>();
+                }
+                else if (field is object[] tfield)
+                {
+                    parameters = tfield;
+                }
+                else
+                {
+                    throw new Exception($"Can't convert result from {field?.GetType()?.ToString() ?? "Null"} to {typeof(object[])}");
+                }
+            }
+
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                if (parameters[i] is IBinaryObject binaryObject)
+                {
+                    parameters[i] = binaryObject.Deserialize<object>();
+                }
+            }
+
+            return parameters;
         }
     }
 }

@@ -4,7 +4,7 @@ namespace Perper.Protocol.Cache.Instance
 {
     static class CallData
     {
-        public static IBinaryObjectBuilder Create<TParams>(
+        public static IBinaryObjectBuilder Create(
             IBinary binary,
             string agent,
             string instance,
@@ -12,7 +12,7 @@ namespace Perper.Protocol.Cache.Instance
             string callerAgent,
             string caller,
             bool localToData,
-            TParams parameters)
+            object[] parameters)
         {
             var callData = binary.GetBuilder($"CallData_{agent}_{@delegate}");
 
@@ -30,7 +30,7 @@ namespace Perper.Protocol.Cache.Instance
 
         public static IBinaryObjectBuilder SetResult<TResult>(
             IBinaryObjectBuilder callData,
-            TResult result)
+            TResult result) // object[]
         {
             callData.SetField("finished", true);
             callData.SetField("result", result);

@@ -6,14 +6,14 @@ namespace Perper.Protocol.Cache.Instance
     public static class StreamData
     {
 
-        public static IBinaryObjectBuilder Create<TParams>(
+        public static IBinaryObjectBuilder Create(
             IBinary binary,
             string agent,
             string instance,
             string @delegate,
             StreamDelegateType delegateType,
             bool ephemeral,
-            TParams parameters,
+            object[] parameters,
             string? indexType = null,
             Hashtable? indexFields = null)
         {
