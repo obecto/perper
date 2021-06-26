@@ -25,9 +25,6 @@ class Stream:
     def replay_filter(self, filter, data_local=False):
         return Stream(PerperStream(self.raw_stream.stream, FilterUtils.convert_filter(filter), True, data_local))
 
-    def filter(self):
-        pass
-
     async def enumerate(self):
         parameter = 1 # TODO: FIXME
         listener = perper_stream_add_listener(get_cache_service(), self.raw_stream, get_agent(), get_instance(), parameter)
