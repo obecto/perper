@@ -9,31 +9,31 @@ namespace Perper.Model
     {
         public IAgent Agent => new Agent(new PerperAgent(AsyncLocals.Agent, AsyncLocals.Instance));
 
-        public async Task<(IAgent, TResult)> StartAgentAsync<TResult, TParams>(string agent, TParams parameters)
+        public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string agent, object[] parameters)
         {
             var instance = new Agent(new PerperAgent(agent, AsyncLocals.CacheService.GenerateName(agent)));
-            var result = await instance.CallFunctionAsync<TResult, TParams>(agent, parameters);
+            var result = await instance.CallFunctionAsync<TResult>(agent, parameters);
             return ((IAgent)instance, result);
         }
 
-        public async Task<IStream<TItem>> StreamFunctionAsync<TItem, TParams>(string @delegate, TParams parameters, StreamFlags flags = StreamFlags.Default)
+        public async Task<IStream<TItem>> StreamFunctionAsync<TItem>(string @delegate, object[] parameters, StreamFlags flags = StreamFlags.Default)
         {
             var stream = AsyncLocals.CacheService.GenerateName(@delegate);
-            await CreateStream<TItem, TParams>(stream, @delegate, StreamDelegateType.Function, parameters, flags);
+            await CreateStream<TItem>(stream, @delegate, StreamDelegateType.Function, parameters, flags);
             return new Stream<TItem>(new PerperStream(stream));
         }
 
-        public async Task<IStream> StreamActionAsync<TParams>(string @delegate, TParams parameters, StreamFlags flags = StreamFlags.Default)
+        public async Task<IStream> StreamActionAsync(string @delegate, object[] parameters, StreamFlags flags = StreamFlags.Default)
         {
             var stream = AsyncLocals.CacheService.GenerateName(@delegate);
-            await CreateStream<object?, TParams>(stream, @delegate, StreamDelegateType.Action, parameters, flags);
+            await CreateStream<object?>(stream, @delegate, StreamDelegateType.Action, parameters, flags);
             return new Stream(new PerperStream(stream));
         }
 
         public async Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlags flags = StreamFlags.Default)
         {
             var stream = AsyncLocals.CacheService.GenerateName("");
-            await CreateStream<TItem, object?>(stream, "", StreamDelegateType.External, null, flags);
+            await CreateStream<TItem>(stream, "", StreamDelegateType.External, null, flags);
             return (new Stream<TItem>(new PerperStream(stream)), stream);
         }
 
@@ -43,12 +43,12 @@ namespace Perper.Model
             return new Stream<TItem>(new PerperStream(stream));
         }
 
-        public async Task InitializeStreamFunctionAsync<TItem, TParams>(IStream<TItem> stream, string @delegate, TParams parameters, StreamFlags flags = StreamFlags.Default)
+        public async Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, string @delegate, object[] parameters, StreamFlags flags = StreamFlags.Default)
         {
-            await CreateStream<object?, TParams>(((Stream)stream).RawStream.Stream, @delegate, StreamDelegateType.Function, parameters, flags);
+            await CreateStream<object?>(((Stream)stream).RawStream.Stream, @delegate, StreamDelegateType.Function, parameters, flags);
         }
 
-        private async Task CreateStream<TItem, TParams>(string stream, string @delegate, StreamDelegateType delegateType, TParams parameters, StreamFlags flags)
+        private async Task CreateStream<TItem>(string stream, string @delegate, StreamDelegateType delegateType, object[] parameters, StreamFlags flags)
         {
             var ephemeral = (flags & StreamFlags.Ephemeral) != 0;
 
