@@ -12,7 +12,7 @@ def get_cache_service():
 def get_notification_service():
     return connection.get()[1]
 
-def get_agent():
+def get_local_agent():
     return get_notification_service().agent
 
 def get_instance():

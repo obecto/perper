@@ -7,11 +7,10 @@ from perper.protocol.standard import PerperAgent
 from perper.protocol.standard import PerperStream
 
 def get_agent():
-    return PerperAgent(get_agent(), get_instance())
+    return PerperAgent(get_local_agent(), get_instance())
 
 async def start_agent(agent, parameters, parameters_type):
     instance = Agent(PerperAgent(agent, get_cache_service().generate_name(agent)))
-    print('waitiiing')
     result = await instance.call_function(agent, parameters, parameters_type)
     return (instance, result)
 
@@ -40,4 +39,4 @@ def create_stream(stream, delegate, delegate_type, parameters, flags):
         index_type = 'type'
         index_fields = {}
     
-    get_cache_service().stream_create(stream, get_agent(), get_instance(), delegate, delegate_type, parameters, ephemeral, index_type, index_fields)
+    get_cache_service().stream_create(stream, get_async_agent(), get_instance(), delegate, delegate_type, parameters, ephemeral, index_type, index_fields)
