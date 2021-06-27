@@ -17,7 +17,7 @@ async def test():
         notification_service = NotificationService(ignite, '127.0.0.1:40400', 'test_agent1')
         set_connection(cache_service, notification_service)
 
-        agent = await enter_context('test_instance',  lambda: start_agent('test_agent2', True, BoolObject))
+        agent = await enter_context('test_agent1', lambda: start_agent('test_agent2', True, BoolObject))
         print(agent)
         
         # notification_service.start()
