@@ -21,8 +21,8 @@ class CacheService:
 
     # STREAMS:
 
-    def stream_create(self, stream, instance, agent, delegate, delegate_type, parameters, parameters_type, ephemeral = True):
-        stream_data = create_stream_data(instance, agent, delegate, delegate_type, ephemeral, parameters, parameters_type)
+    def stream_create(self, stream, agent, instance, delegate, delegate_type, parameters, parameters_type, ephemeral = True, index_type = None, index_fields = None):
+        stream_data = create_stream_data(instance, agent, delegate, delegate_type, ephemeral, parameters, parameters_type, index_type, index_fields)
         return put_if_absent_or_raise(self.streams_cache, stream, stream_data)
 
     def stream_add_listener(self, stream, caller_agent, caller, parameter, filter = {}, replay = False, local_to_data = False):
@@ -49,7 +49,7 @@ class CacheService:
 
     # CALLS:
 
-    def call_create(self, call, instance, agent, delegate, caller_agent, caller, parameters, parameters_type, local_to_data=False,):
+    def call_create(self, call, agent, instance, delegate, caller_agent, caller, parameters, parameters_type, local_to_data=False,):
         call_data = create_call_data(instance, agent, delegate, caller_agent, caller, local_to_data, parameters, parameters_type)
         return put_if_absent_or_raise(self.calls_cache, call, call_data)
 
