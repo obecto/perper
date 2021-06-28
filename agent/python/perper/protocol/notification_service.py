@@ -76,10 +76,10 @@ class NotificationService:
                 self.write_channel_value((item.stream, item.parameter), (key, item))
 
             if instance_class == 'StreamTriggerNotification':
-                self.write_channel_value((item.delegate,), (key, item))
+                self.write_channel_value((self.agent,), (key, item))
 
             if instance_class == 'CallTriggerNotification':
-                self.write_channel_value((item.delegate,), (key, item))
+                self.write_channel_value((self.agent,), (key, item))
 
     async def get_notifications(self, instance, parameter = None) -> Generator:
         key = (instance,) if parameter is None else (instance, parameter)
