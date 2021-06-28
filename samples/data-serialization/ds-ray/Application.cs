@@ -4,6 +4,9 @@ using System.Threading;
 using System.Text.Json;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Net.Http;
+using System.Text;
+
 using ds_perper.Models;
 using ds_perper.Streams;
 using Microsoft.Azure.WebJobs;
@@ -33,6 +36,22 @@ namespace ds_perper
 
             var (testStream, testStreamName) = await context.CreateBlankStreamAsync<dynamic>();
             logger.LogInformation("Stream name: {0}", testStreamName);
+
+            // We send the stream name to the jupyter custom handler to initialize perper
+            var values = new Dictionary<string, string>
+            {
+                { "StreamName", testStreamName}
+            };
+            var content = JsonSerializer.Serialize(values);
+
+            using (HttpClient client = new HttpClient()){
+                var response = await client.PostAsync(
+                    "http://localhost:8888/Notebook",
+                    new StringContent(content, Encoding.UTF8)
+                );
+                var responseString = await response.Content.ReadAsStringAsync();
+            }
+
             int count = 5000;
 
             await context.CallActionAsync("BlankGenerator", (testStreamName, count));

@@ -37,7 +37,7 @@ class Handler(IPythonHandler):
 
         kernel_id = global_state["initial_kernel_id"]
         message = self.get_json_body()
-        message = message['Metadata']
+        # message = message['Metadata']
 
         if global_state["comm_opened"]:
             message_form = Message_placeholders().comm_message
@@ -49,7 +49,7 @@ class Handler(IPythonHandler):
             message_form["content"]["data"] = message["content"]["data"]
             # This is a Postman message
         except:
-            message_form["content"]["data"] = message["InstanceName"]
+            message_form["content"]["data"] = message["StreamName"]
             # This is a C# message
 
         yield maybe_future(self.send_to_kernel(message_form, kernel_id))
@@ -136,5 +136,6 @@ def load_jupyter_server_extension(serverapp):
     host_pattern = ".*$"
     route_pattern = url_path_join(web_app.settings["base_url"], "/PythonNotebook")
     web_app.add_handlers(host_pattern, [(route_pattern, Handler)])
+
     route_pattern = url_path_join(web_app.settings["base_url"], "/Notebook")
     web_app.add_handlers(host_pattern, [(route_pattern, Handler)])
