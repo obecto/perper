@@ -14,14 +14,14 @@ async def start_agent(agent, parameters, parameters_type):
     result = await instance.call_function(agent, parameters, parameters_type)
     return (instance, result)
 
-def stream_function(delegate, parameters, flags=StreamFlags.default):
+def stream_function(delegate, parameters, parameters_type, flags=StreamFlags.default):
     stream = get_cache_service().generate_name(delegate)
-    create_stream(stream, delegate, StreamDelegateType.function, parameters, flags)
+    create_stream(stream, delegate, 0, parameters, parameters_type, flags)
     return Stream(PerperStream(stream))
 
-def stream_action(delegate, parameters, flags=StreamFlags.default):
+def stream_action(delegate, parameters, parameters_type, flags=StreamFlags.default):
     stream = get_cache_service().generate_name(delegate)
-    create_stream(stream, delegate, StreamDelegateType.action, parameters, flags)
+    create_stream(stream, delegate, StreamDelegateType.action, parameters, parameters_type, flags)
     return Stream(PerperStream(stream))
 
 def create_blank_stream(flags=StreamFlags.default):
@@ -29,7 +29,7 @@ def create_blank_stream(flags=StreamFlags.default):
     create_stream(stream, "", StreamDelegateType.external, None, flags)
     return Stream(PerperStream(stream))
 
-def create_stream(stream, delegate, delegate_type, parameters, flags):
+def create_stream(stream, delegate, delegate_type, parameters, parameters_type, flags):
     ephemeral = (flags and StreamFlags.ephemeral) != 0
     index_type = None
     index_fields = None
@@ -39,4 +39,4 @@ def create_stream(stream, delegate, delegate_type, parameters, flags):
         index_type = 'type'
         index_fields = {}
     
-    get_cache_service().stream_create(stream, get_async_agent(), get_instance(), delegate, delegate_type, parameters, ephemeral, index_type, index_fields)
+    get_cache_service().stream_create(stream, get_local_agent(), get_instance(), delegate, delegate_type, parameters, parameters_type, ephemeral, index_type, index_fields)
