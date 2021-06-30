@@ -134,6 +134,7 @@ class TransportService(var port: Int) : Service {
                 val queuedKey: NotificationKey? = queue.peek()
 
                 if (queuedKey == null) {
+                    log.trace({ "No notifications for: ${stream} (${queue.size})" })
                     return
                 }
 
@@ -144,6 +145,7 @@ class TransportService(var port: Int) : Service {
                 } catch (e: Exception) { } // Necessitated by IGNITE-8978
 
                 if (sentQueueNotificationsMap.put(stream, queuedKey) != queuedKey) {
+                    log.trace({ "Sending notification: ${stream} - ${queuedKey} (${queue.size})" })
                     runBlocking { send(queuedKey.toNotification()) }
                 }
             }
@@ -153,7 +155,9 @@ class TransportService(var port: Int) : Service {
                     // pass, handled by callResultNotification below
                 } else if (notification is StreamItemNotification) {
                     if (confirmed) {
-                        getNotificationQueue(ignite, notification.stream).remove(key)
+                        val queue = getNotificationQueue(ignite, notification.stream)
+                        log.trace({ "Consume notification start: ${notification.stream} - ${key} (${queue.size})" })
+                        queue.remove(key)
 
                         if (notification.ephemeral) {
                             val counter = ignite.atomicLong("${notification.cache}-${notification.key}", 0, true)
@@ -162,9 +166,11 @@ class TransportService(var port: Int) : Service {
                                 counter.close()
                             }
                         }
+                        log.trace({ "Consume notification end: ${notification.stream} - ${key} (${queue.size})" })
                     }
                     updateQueue(notification.stream)
                 } else if (!confirmed) {
+                    log.trace({ "Sending notification ${request.agentDelegate}, ${notification} - ${key}" })
                     runBlocking { send(key.toNotification()) }
                 }
             }

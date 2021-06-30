@@ -158,6 +158,7 @@ class StreamService : JobService() {
         val itemValue = lazy { ignite.cache<Long, Any>(stream).withKeepBinary<Long, BinaryObject>().get(itemKey) }
         val ephemeral = streamsCache.get(stream).ephemeral
         var ephemeralCounter = 0L
+        val notificationKey = TransportService.getCurrentTicks()
 
         suspend fun helper(targetStream: String) {
             val listeners = streamsCache.get(targetStream)?.listeners ?: return
@@ -171,9 +172,10 @@ class StreamService : JobService() {
                     ephemeralCounter ++
                     val notificationsCache = TransportService.getNotificationCache(ignite, listener.agentDelegate)
                     val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.stream)
-                    val key = NotificationKey(itemKey, if (listener.localToData) itemKey else listener.stream)
+                    val key = NotificationKey(notificationKey, if (listener.localToData) itemKey else listener.stream)
                     notificationsQueue.put(key)
                     notificationsCache.put(key, StreamItemNotification(listener.stream, listener.parameter, stream, itemKey, ephemeral))
+                    log.trace({ "Writing notification: ${listener.stream} - ${key} (${notificationsQueue.size})" })
                 }
             }
         }
@@ -243,9 +245,10 @@ class StreamService : JobService() {
                 }
             }
 
-            val key = NotificationKey(itemKey, if (listener.localToData) itemKey else listener.stream)
+            val key = NotificationKey(TransportService.getCurrentTicks(), if (listener.localToData) itemKey else listener.stream)
             notificationsQueue.put(key)
             notificationsCache.put(key, StreamItemNotification(listener.stream, listener.parameter, stream, itemKey, ephemeral))
+            log.trace({"Writing notification (replay): ${listener.stream} - ${key} (${notificationsQueue.size})"})
         }
     }
 

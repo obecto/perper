@@ -146,6 +146,11 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             _perperBinarySerializer = _host.Services.GetRequiredService<PerperBinarySerializer>();
             _igniteClient = _host.Services.GetRequiredService<IIgniteClient>();
             _fabricService = _host.Services.GetRequiredService<FabricService>();
+            var lifetime = _host.Services.GetRequiredService<IHostApplicationLifetime>();
+            lifetime.ApplicationStopping.Register(async () => {
+                await Task.Delay(1000);
+                System.Diagnostics.Process.GetCurrentProcess().Kill(); //DEBUG
+            });
 
             _tasks.Add(ConsumeCompletedNotificationsAsync());
         }

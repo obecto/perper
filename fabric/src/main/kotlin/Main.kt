@@ -41,6 +41,7 @@ fun main(args: Array<String>) {
     System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", if (verbose) "info" else "warn")
     System.setProperty("org.slf4j.simpleLogger.log.com.obecto.perper", if (debug) "debug" else "info")
     System.setProperty("org.slf4j.simpleLogger.levelInBrackets", "true")
+    System.setProperty("org.slf4j.simpleLogger.showDateTime", "true")
 
     val igniteConfiguration = IgniteConfiguration().also {
         it.clientConnectorConfiguration = ClientConnectorConfiguration().also {
