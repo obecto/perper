@@ -31,7 +31,7 @@ class Stream:
 
         async for (k, i) in get_notification_service().get_notifications(get_instance(), parameter):
             value = stream_read_notification(get_cache_service(), i)
-            yield value
             get_notification_service().consume_notification(k)
+            yield value
         
         perper_stream_remove_listener(get_cache_service(), self.raw_stream, listener)
