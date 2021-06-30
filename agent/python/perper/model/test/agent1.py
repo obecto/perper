@@ -3,10 +3,10 @@ from pyignite.datatypes.primitive_objects import BoolObject
 from perper.model.context import *
 from perper.model.agent import Agent
 from perper.model.stream import Stream
-from perper.model.api_handler import initialize
+from perper.model.bootstrap import initialize
 
 async def main():
-    (agent2, result) = await enter_context('test_agent1', lambda: start_agent('test_agent2', True, BoolObject))
+    (agent2, result) = await start_agent('test_agent2', True, BoolObject)
     print(agent2)
     
     perper_agent3 = await agent2.call_function('get_next_agent', True, BoolObject)

@@ -3,7 +3,7 @@ from pyignite.datatypes.primitive_objects import BoolObject
 from pyignite.datatypes.standard import String
 from pyignite.datatypes.complex import BinaryObject
 from perper.model.context import *
-from perper.model.api_handler import initialize
+from perper.model.bootstrap import initialize
 
 async def test(params):
     return ('Started agent 2', String)
