@@ -22,10 +22,12 @@ from .notifications import (
 class NotificationService:
     def __init__(self, ignite, address, agent):
         self.agent = agent
-        self._grpc_channel = grpc.insecure_channel(address)
+        self.address = address
         self.ignite = ignite
         self.notifications_cache = self.ignite.get_or_create_cache(f'{agent}-$notifications')
         self.channels = {}
+        self.running = False
+        self.listening = False
 
         self.ignite.register_binary_type(StreamItemNotification)
         self.ignite.register_binary_type(StreamTriggerNotification)
@@ -49,12 +51,20 @@ class NotificationService:
         raise Exception('Invalid grpc notification.')
 
     def start(self):
-        self.running = True
-        thread = threading.Thread(target=self.run, daemon=True, args=())
-        thread.start()
+        self._grpc_channel = grpc.insecure_channel(self.address)
+        if not self.running:
+            self.background_thread = threading.Thread(target=self.run, daemon=True, args=())
+            self.background_thread.start()
+            self.running = True
     
     def stop(self):
-        self.running = False
+        if self.running:
+            self._grpc_channel.close()
+            self.background_thread.join()
+            self.running = False
+
+    def stop_listening(self):
+        self.listening = False
 
     def get_channel(self, channel):
         if channel not in self.channels:
@@ -82,10 +92,11 @@ class NotificationService:
                 self.write_channel_value((self.agent,), (key, item))
 
     async def get_notifications(self, instance, parameter = None) -> Generator:
+        self.listening = True
         key = (instance,) if parameter is None else (instance, parameter)
         channel = self.get_channel(key)
         while True:
-            if not self.running:
+            if not self.listening:
                 return
 
             try:
