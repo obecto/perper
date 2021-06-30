@@ -1,28 +1,16 @@
 import asyncio
-from pyignite import Client
-from pyignite.datatypes.standard import String
 from pyignite.datatypes.primitive_objects import BoolObject
-
-from perper.protocol.cache_service import CacheService
-from perper.protocol.notification_service import NotificationService
-from perper.model.async_locals import *
 from perper.model.context import *
 from perper.model.agent import Agent
 from perper.model.stream import Stream
+from perper.model.api_handler import initialize
 
-ignite = Client()
-ignite.connect('127.0.0.1', 10800)
-
-async def test():
-    cache_service = CacheService(ignite)
-    notification_service = NotificationService(ignite, '127.0.0.1:40400', 'test_agent1')
-    notification_service.start()
-    set_connection(cache_service, notification_service)
-
+async def main():
     (agent2, result) = await enter_context('test_agent1', lambda: start_agent('test_agent2', True, BoolObject))
     print(agent2)
     
     perper_agent3 = await agent2.call_function('get_next_agent', True, BoolObject)
+    print(perper_agent3)
     agent3 = Agent(perper_agent3)
     print(agent3)
     
@@ -32,4 +20,4 @@ async def test():
         if v == 9:
             return
 
-asyncio.create_task(test())
+asyncio.create_task(initialize('test_agent1', {'test_agent1': main}, True))
