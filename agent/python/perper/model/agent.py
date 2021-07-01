@@ -1,5 +1,9 @@
 from .async_locals import *
+from perper.protocol.standard import PerperAgent
 from perper.protocol.cache_service_extensions import call_read_result, call_check_result
+
+def get_agent():
+    return Agent(PerperAgent(get_local_agent(), get_instance()))
 
 class Agent:
     def __init__(self, raw_agent):
@@ -22,3 +26,11 @@ class Agent:
         (k, n) = await get_notification_service().get_call_result_notification(call)
         get_notification_service().consume_notification(k)
         call_check_result(get_cache_service(), call)
+
+async def call_function(delegate, parameters, parameters_type):
+    result = await get_agent().call_function(delegate, parameters, parameters_type)
+    return result
+
+async def call_action(delegate, parameters, parameters_type):
+    result = await get_agent().call_action(delegate, parameters, parameters_type)
+    return result
