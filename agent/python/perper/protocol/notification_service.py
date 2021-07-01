@@ -50,17 +50,17 @@ class NotificationService:
 
         raise Exception('Invalid grpc notification.')
 
-    def start(self):
-        self._grpc_channel = grpc.insecure_channel(self.address)
+    async def start(self):
+        self.loop = asyncio.get_running_loop()
+        self._grpc_channel = grpc.aio.insecure_channel(self.address)
         if not self.running:
-            self.background_thread = threading.Thread(target=self.run, daemon=True, args=())
-            self.background_thread.start()
+            self.background_task = asyncio.create_task(self.run())
             self.running = True
     
-    def stop(self):
+    async def stop(self):
         if self.running:
             self._grpc_channel.close()
-            self.background_thread.join()
+            await self.background_task
             self.running = False
 
     def stop_listening(self):
@@ -68,16 +68,16 @@ class NotificationService:
 
     def get_channel(self, channel):
         if channel not in self.channels:
-            self.channels[channel] = queue.Queue()
+            self.channels[channel] = asyncio.Queue()
 
         return self.channels[channel]
 
     def write_channel_value(self, channel, value):
-        self.get_channel(channel).put(value)
+        asyncio.run_coroutine_threadsafe(self.get_channel(channel).put(value), self.loop)
 
-    def run(self):
+    async def run(self):
         grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
-        for notification in grpc_stub.Notifications(fabric_pb2.NotificationFilter(agent = self.agent)):
+        async for notification in grpc_stub.Notifications(fabric_pb2.NotificationFilter(agent = self.agent)):
             key = self.get_notification_key(notification)
             item = self.notifications_cache.get(key)
             instance_class = type(item).__name__
@@ -99,16 +99,13 @@ class NotificationService:
             if not self.listening:
                 return
 
-            try:
-                item = channel.get(timeout=1)
-                yield item
-                channel.task_done()
-            except queue.Empty:
-                pass
+            item = await channel.get()
+            yield item
+            channel.task_done()
 
     async def get_call_result_notification(self, call):
         grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
-        notification = grpc_stub.CallResultNotification(
+        notification = await grpc_stub.CallResultNotification(
             fabric_pb2.CallNotificationFilter(
                 agent = self.agent,
                 call = call
