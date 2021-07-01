@@ -1,7 +1,3 @@
-using System.Threading.Tasks;
-using Perper.Model;
-using Perper.Protocol.Cache.Standard;
-
 namespace SimpleAgent.Calls
 {
     //public class Init

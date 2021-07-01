@@ -6,10 +6,10 @@ namespace SimpleAgent.Streams
     {
         public static async IAsyncEnumerable<string[]> RunAsync(IAsyncEnumerable<string> generator, int batchSize)
         {
-            int count = 0;
-            string[] messagesBatch = new string[batchSize];
+            var count = 0;
+            var messagesBatch = new string[batchSize];
 
-            await foreach (string message in generator)
+            await foreach (var message in generator)
             {
                 if (count == batchSize)
                 {
@@ -17,7 +17,7 @@ namespace SimpleAgent.Streams
                     count = 0;
                 }
 
-                string updatedMessage = message + "_processed";
+                var updatedMessage = message + "_processed";
                 messagesBatch[count] = updatedMessage;
 
                 count++;

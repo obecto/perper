@@ -2,8 +2,10 @@ using System;
 using System.Collections;
 using System.Linq;
 using System.Threading.Tasks;
+
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Linq;
+
 using Perper.Protocol.Cache.Instance;
 using Perper.Protocol.Extensions;
 
@@ -22,7 +24,7 @@ namespace Perper.Protocol.Service
         {
             var streamListener = igniteBinary.ToBinary<IBinaryObject>(new StreamListener(callerAgent, caller, parameter, replay, localToData, filter));
 
-            await streamsCache.OptimisticUpdateAsync(stream, value => StreamData.AddListener(value.ToBuilder(), streamListener).Build());
+            await streamsCache.OptimisticUpdateAsync(stream, value => StreamData.AddListener(value.ToBuilder(), streamListener).Build()).ConfigureAwait(false);
 
             return streamListener;
         }
@@ -40,9 +42,9 @@ namespace Perper.Protocol.Service
         public async Task<long> StreamWriteItem<TItem>(string stream, TItem item)
         {
             var itemsCache = Ignite.GetCache<long, TItem>(stream);
-            var key = GetCurrentTicks();
+            var key = CurrentTicks;
 
-            await itemsCache.PutIfAbsentOrThrowAsync(key, item);
+            await itemsCache.PutIfAbsentOrThrowAsync(key, item).ConfigureAwait(false);
 
             return key;
         }
@@ -64,7 +66,7 @@ namespace Perper.Protocol.Service
         public async Task<object[]> GetStreamParameters(string stream)
         {
             object[] parameters = default!;
-            var streamData = await streamsCache.GetAsync(stream);
+            var streamData = await streamsCache.GetAsync(stream).ConfigureAwait(false);
 
             if (streamData.HasField("parameters"))
             {
@@ -79,11 +81,11 @@ namespace Perper.Protocol.Service
                 }
                 else
                 {
-                    throw new Exception($"Can't convert result from {field?.GetType()?.ToString() ?? "Null"} to {typeof(object[])}");
+                    throw new ArgumentException($"Can't convert result from {field?.GetType()?.ToString() ?? "Null"} to {typeof(object[])}");
                 }
             }
 
-            for (int i = 0; i < parameters.Length; i++)
+            for (var i = 0 ; i < parameters.Length ; i++)
             {
                 if (parameters[i] is IBinaryObject binaryObject)
                 {

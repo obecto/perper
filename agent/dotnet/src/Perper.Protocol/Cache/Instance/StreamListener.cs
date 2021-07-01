@@ -1,18 +1,9 @@
 using System.Collections;
 
-#pragma warning disable 8618, 0649
 namespace Perper.Protocol.Cache.Instance
 {
     public class StreamListener
     {
-        // NOTE: While ignite is case-insensitive with fields, it still duplicates the schema entries, hence the whole public/private dance; unfortunatelly it does mean duplicating fields four times
-        private string callerAgent;
-        private string caller;
-        private int parameter;
-        private Hashtable? filter;
-        private bool replay;
-        private bool localToData;
-
         public StreamListener(
             string callerAgent,
             string caller,
@@ -21,19 +12,24 @@ namespace Perper.Protocol.Cache.Instance
             bool localToData,
             Hashtable? filter = null)
         {
-            this.callerAgent = callerAgent;
-            this.caller = caller;
-            this.parameter = parameter;
-            this.filter = filter;
-            this.replay = replay;
-            this.localToData = localToData;
+            CallerAgent = callerAgent;
+            Caller = caller;
+            Parameter = parameter;
+            Filter = filter;
+            Replay = replay;
+            LocalToData = localToData;
         }
 
-        public string CallerAgent => callerAgent;
-        public string Caller => caller;
-        public int Parameter => parameter;
-        public Hashtable? Filter => filter;
-        public bool Replay => replay;
-        public bool LocalToData => localToData;
+        public string CallerAgent { get; }
+
+        public string Caller { get; }
+
+        public int Parameter { get; }
+
+        public Hashtable? Filter { get; }
+
+        public bool Replay { get; }
+
+        public bool LocalToData { get; }
     }
 }

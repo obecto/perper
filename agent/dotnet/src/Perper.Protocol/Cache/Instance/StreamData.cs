@@ -1,4 +1,5 @@
 using System.Collections;
+
 using Apache.Ignite.Core.Binary;
 
 namespace Perper.Protocol.Cache.Instance
@@ -60,7 +61,7 @@ namespace Perper.Protocol.Cache.Instance
             int parameter)
         {
             var listeners = streamData.GetField<ArrayList>("listeners");
-            for (var i = 0; i < listeners.Count; i++)
+            for (var i = 0 ; i < listeners.Count ; i++)
             {
                 var listener = (IBinaryObject)listeners[i]!;
                 if (listener.GetField<string>("caller") == caller && listener.GetField<int>("parameter") == parameter)

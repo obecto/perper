@@ -3,18 +3,11 @@ namespace Perper.Protocol.Cache.Notifications
 {
     public class StreamItemNotification : Notification
     {
-        // NOTE: While ignite is case-insensitive with fields, it still duplicates the schema entries, hence the whole public/private dance
-        private string stream;
-        private int parameter;
-        private string cache;
-        private long key;
-        private bool ephemeral;
-
-        public string Stream => stream;
-        public int Parameter => parameter;
-        public string Cache => cache;
-        public long Key => key;
-        public bool Ephemeral => ephemeral;
+        public string Stream { get; }
+        public int Parameter { get; }
+        public string Cache { get; }
+        public long Key { get; }
+        public bool Ephemeral { get; }
 
         public override string ToString()
         {

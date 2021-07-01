@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
+
 using Apache.Ignite.Core.Binary;
+
 using Perper.Protocol.Cache.Notifications;
 using Perper.Protocol.Cache.Standard;
 using Perper.Protocol.Service;
@@ -33,12 +35,12 @@ namespace Perper.Protocol.Extensions
         {
             try
             {
-                var result = await task;
-                await cacheService.CallWriteResult<TResult>(call, result);
+                var result = await task.ConfigureAwait(false);
+                await cacheService.CallWriteResult(call, result).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
-                await cacheService.CallWriteException(call, exception);
+                await cacheService.CallWriteException(call, exception).ConfigureAwait(false);
             }
         }
 
@@ -46,12 +48,12 @@ namespace Perper.Protocol.Extensions
         {
             try
             {
-                await task;
-                await cacheService.CallWriteFinished(call);
+                await task.ConfigureAwait(false);
+                await cacheService.CallWriteFinished(call).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
-                await cacheService.CallWriteException(call, exception);
+                await cacheService.CallWriteException(call, exception).ConfigureAwait(false);
             }
         }
 
@@ -62,11 +64,11 @@ namespace Perper.Protocol.Extensions
 
         public static async Task<TResult> CallReadResult<TResult>(this CacheService cacheService, string call)
         {
-            var (error, result) = await cacheService.CallReadErrorAndResult<TResult>(call);
+            var (error, result) = await cacheService.CallReadErrorAndResult<TResult>(call).ConfigureAwait(false);
 
             if (error != null)
             {
-                throw new Exception($"Call failed with error: {error}");
+                throw new InvalidOperationException($"Call failed with error: {error}");
             }
 
             return result;
@@ -74,11 +76,11 @@ namespace Perper.Protocol.Extensions
 
         public static async Task CallReadResult(this CacheService cacheService, string call)
         {
-            var error = await cacheService.CallReadError(call);
+            var error = await cacheService.CallReadError(call).ConfigureAwait(false);
 
             if (error != null)
             {
-                throw new Exception($"Call failed with error: {error}");
+                throw new InvalidOperationException($"Call failed with error: {error}");
             }
         }
     }

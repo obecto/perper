@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
+
 using Apache.Ignite.Core.Binary;
+
 using Perper.Protocol.Cache.Instance;
 using Perper.Protocol.Extensions;
 
@@ -17,7 +19,7 @@ namespace Perper.Protocol.Service
 
         public Task CallWriteResult<TResult>(string call, TResult result)
         {
-            return callsCache.OptimisticUpdateAsync(call, value => CallData.SetResult<TResult>(value.ToBuilder(), result).Build());
+            return callsCache.OptimisticUpdateAsync(call, value => CallData.SetResult(value.ToBuilder(), result).Build());
         }
 
         public Task CallWriteError(string call, string error)
@@ -32,14 +34,14 @@ namespace Perper.Protocol.Service
 
         public async Task<string?> CallReadError(string call)
         {
-            var callData = await callsCache.GetAsync(call);
+            var callData = await callsCache.GetAsync(call).ConfigureAwait(false);
 
             return callData.HasField("error") ? callData.GetField<string>("error") : null;
         }
 
         public async Task<(string?, TResult)> CallReadErrorAndResult<TResult>(string call) // NOTE: should return (string?, TResult?)
         {
-            var callData = await callsCache.GetAsync(call);
+            var callData = await callsCache.GetAsync(call).ConfigureAwait(false);
 
             var error = callData.HasField("error") ? callData.GetField<string>("error") : null;
             TResult result = default!;
@@ -56,7 +58,7 @@ namespace Perper.Protocol.Service
                 }
                 else
                 {
-                    throw new Exception($"Can't convert result from {rawResult?.GetType()?.ToString() ?? "Null"} to {typeof(TResult)}");
+                    throw new ArgumentException($"Can't convert result from {rawResult?.GetType()?.ToString() ?? "Null"} to {typeof(TResult)}");
                 }
             }
 
@@ -66,7 +68,7 @@ namespace Perper.Protocol.Service
         public async Task<object[]> GetCallParameters(string call)
         {
             object[] parameters = default!;
-            var callData = await callsCache.GetAsync(call);
+            var callData = await callsCache.GetAsync(call).ConfigureAwait(false);
 
             if (callData.HasField("parameters"))
             {
@@ -81,11 +83,11 @@ namespace Perper.Protocol.Service
                 }
                 else
                 {
-                    throw new Exception($"Can't convert result from {field?.GetType()?.ToString() ?? "Null"} to {typeof(object[])}");
+                    throw new ArgumentException($"Can't convert result from {field?.GetType()?.ToString() ?? "Null"} to {typeof(object[])}");
                 }
             }
 
-            for (int i = 0; i < parameters.Length; i++)
+            for (var i = 0 ; i < parameters.Length ; i++)
             {
                 if (parameters[i] is IBinaryObject binaryObject)
                 {

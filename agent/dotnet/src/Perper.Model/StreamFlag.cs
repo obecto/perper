@@ -3,7 +3,7 @@ using System;
 namespace Perper.Model
 {
     [Flags]
-    public enum StreamFlags
+    public enum StreamFlag
     {
         Ephemeral = 1,
 

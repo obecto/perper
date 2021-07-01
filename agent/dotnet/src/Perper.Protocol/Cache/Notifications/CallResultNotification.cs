@@ -3,12 +3,8 @@ namespace Perper.Protocol.Cache.Notifications
 {
     public class CallResultNotification : Notification
     {
-        // NOTE: While ignite is case-insensitive with fields, it still duplicates the schema entries, hence the whole public/private dance
-        private string call;
-        private string caller;
-
-        public string Call => call;
-        public string Caller => caller;
+        public string Call { get; }
+        public string Caller { get; }
 
         public override string ToString()
         {

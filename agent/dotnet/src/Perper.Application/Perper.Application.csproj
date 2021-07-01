@@ -12,9 +12,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/obecto/perper</PackageProjectUrl>
 		<RepositoryType>Git</RepositoryType>
-		<!--         <TargetFrameworks>netstandard2.0;netcoreapp3.1</TargetFrameworks> -->
 		<TargetFramework>net5.0</TargetFramework>
-		<!--<TargetFramework>netcoreapp3.1</TargetFramework>-->
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -27,4 +25,10 @@
 	  <ProjectReference Include="..\Perper.Model\Perper.Model.csproj" />
 	  <ProjectReference Include="..\Perper.Protocol\Perper.Protocol.csproj" />
 	</ItemGroup>
+
+	<PropertyGroup>
+		<AnalysisMode>AllEnabledByDefault</AnalysisMode>
+		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+		<CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+	</PropertyGroup>
 </Project>

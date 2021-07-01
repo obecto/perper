@@ -7,17 +7,16 @@ namespace Perper.Protocol.Cache.Notifications
         // NOTE: While ignite is case-insensitive with fields in general, AffinityKeyMapped isn't
         // NOTE: Order of the fields is important!
         [AffinityKeyMapped]
-        private long affinity;
-        private long key;
+        private readonly long affinity;
 
         public NotificationKeyLong(long affinity, long key)
         {
             this.affinity = affinity;
-            this.key = key;
+            Key = key;
         }
 
         public long Affinity => affinity;
-        public long Key => key;
+        public long Key { get; }
 
         public override string ToString()
         {
