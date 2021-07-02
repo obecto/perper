@@ -8,7 +8,7 @@ namespace SimpleAgent.Streams
     {
         public async Task RunAsync(IAsyncEnumerable<string[]> input)
         {
-            await foreach (string[] messagesBatch in input)
+            await foreach (var messagesBatch in input)
             {
                 Console.WriteLine($"Received batch of {messagesBatch.Length} messages.\n{string.Join(", ", messagesBatch)}");
             }

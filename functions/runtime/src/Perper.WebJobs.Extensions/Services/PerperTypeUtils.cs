@@ -64,6 +64,16 @@ namespace Perper.WebJobs.Extensions.Services
 #if !NETSTANDARD2_0
             return typeof(ITuple).IsAssignableFrom(type);
 #else
+            if (type == typeof(Tuple))
+            {
+                return true;
+            }
+
+            if (!type.IsGenericType)
+            {
+                return false;
+            }
+
             var definition = type.GetGenericTypeDefinition();
             return (definition == typeof(Tuple<>)
                 || definition == typeof(Tuple<,>)

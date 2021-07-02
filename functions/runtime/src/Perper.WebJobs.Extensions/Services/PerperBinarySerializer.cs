@@ -318,36 +318,8 @@ namespace Perper.WebJobs.Extensions.Services
             {
                 var name = property.Name;
                 var value = property.GetValue(obj);
-                var rawValue = Serialize(value);
-                if (rawValue is bool boolValue) writer.WriteBoolean(name, boolValue);
-                else if (rawValue is char charValue) writer.WriteChar(name, charValue);
-                else if (rawValue is byte byteValue) writer.WriteByte(name, byteValue);
-                else if (rawValue is short shortValue) writer.WriteShort(name, shortValue);
-                else if (rawValue is int intValue) writer.WriteInt(name, intValue);
-                else if (rawValue is long longValue) writer.WriteLong(name, longValue);
-                else if (rawValue is float floatValue) writer.WriteFloat(name, floatValue);
-                else if (rawValue is double doubleValue) writer.WriteDouble(name, doubleValue);
-                else if (rawValue is decimal decimalValue) writer.WriteDecimal(name, decimalValue);
-                else if (rawValue is DateTime dateTimeValue) writer.WriteTimestamp(name, dateTimeValue);
-                else if (rawValue is Guid guidValue) writer.WriteGuid(name, guidValue);
-                else if (rawValue is string stringValue) writer.WriteString(name, stringValue);
-                else if (rawValue is bool[] boolArrayValue) writer.WriteBooleanArray(name, boolArrayValue);
-                else if (rawValue is char[] charArrayValue) writer.WriteCharArray(name, charArrayValue);
-                else if (rawValue is byte[] byteArrayValue) writer.WriteByteArray(name, byteArrayValue);
-                else if (rawValue is short[] shortArrayValue) writer.WriteShortArray(name, shortArrayValue);
-                else if (rawValue is int[] intArrayValue) writer.WriteIntArray(name, intArrayValue);
-                else if (rawValue is long[] longArrayValue) writer.WriteLongArray(name, longArrayValue);
-                else if (rawValue is float[] floatArrayValue) writer.WriteFloatArray(name, floatArrayValue);
-                else if (rawValue is double[] doubleArrayValue) writer.WriteDoubleArray(name, doubleArrayValue);
-                else if (rawValue is decimal?[] decimalArrayValue) writer.WriteDecimalArray(name, decimalArrayValue);
-                else if (rawValue is DateTime?[] dateTimeArrayValue) writer.WriteTimestampArray(name, dateTimeArrayValue);
-                else if (rawValue is Guid?[] guidArrayValue) writer.WriteGuidArray(name, guidArrayValue);
-                else if (rawValue is string[] stringArrayValue) writer.WriteStringArray(name, stringArrayValue);
-                // else if (rawValue is object?[] objectArrayValue) writer.WriteArray(name, objectArrayValue); // Causes error with Parameters
-                else if (rawValue is Hashtable hashtableValue) writer.WriteDictionary(name, hashtableValue);
-                else if (rawValue is ArrayList arrayListValue) writer.WriteCollection(name, arrayListValue);
-                else if (rawValue?.GetType()?.IsEnum ?? false) writer.WriteEnum(name, rawValue);
-                else writer.WriteObject(name, rawValue);
+                var rawValue=  Serialize(value);
+                writer.WriteObject(name, rawValue);
             }
         }
 

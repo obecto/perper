@@ -9,10 +9,10 @@ namespace Perper.Application
     {
         private struct EmptyStruct { }
 
-        private TaskCompletionSource<EmptyStruct> _completionSource = new TaskCompletionSource<EmptyStruct>();
-        private ConcurrentDictionary<Task, EmptyStruct> _tasks = new ConcurrentDictionary<Task, EmptyStruct>();
-        private long _count = 0;
-        private bool _mayComplete = false;
+        private readonly TaskCompletionSource<EmptyStruct> _completionSource = new TaskCompletionSource<EmptyStruct>();
+        private readonly ConcurrentDictionary<Task, EmptyStruct> _tasks = new ConcurrentDictionary<Task, EmptyStruct>();
+        private long _count;
+        private bool _mayComplete;
 
         public Task GetTask()
         {
@@ -40,7 +40,7 @@ namespace Perper.Application
 
         public void Remove(Task task)
         {
-            if (_tasks.TryRemove(task, out var _value))
+            if (_tasks.TryRemove(task, out _))
             {
                 if (task.IsFaulted)
                 {

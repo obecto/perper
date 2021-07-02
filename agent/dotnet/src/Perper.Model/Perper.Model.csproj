@@ -27,4 +27,10 @@
         <ProjectReference Include="..\Perper.Protocol\Perper.Protocol.csproj" />
     </ItemGroup>
 
+	<PropertyGroup>
+		<AnalysisMode>AllEnabledByDefault</AnalysisMode>
+		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+		<CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+	</PropertyGroup>
+
 </Project>

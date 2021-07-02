@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using Perper.Model;
 
 namespace SimpleAgent.Calls
@@ -13,7 +14,7 @@ namespace SimpleAgent.Calls
             var randomNumbers = new List<int>();
             var random = new Random();
 
-            for (int i = 0; i < 5; i++)
+            for (var i = 0 ; i < 5 ; i++)
             {
                 randomNumbers.Add(random.Next(min, max));
             }
@@ -26,14 +27,11 @@ namespace SimpleAgent.Calls
     {
         private readonly IContext context;
 
-        public AddStrings(IContext context)
-        {
-            this.context = context;
-        }
+        public AddStrings(IContext context) => this.context = context;
 
         public async Task RunAsync(List<string> list)
         {
-            await this.context.CallActionAsync("DoSomething", new object[] { list.FirstOrDefault() });
+            await context.CallActionAsync("DoSomething", new object[] { list.FirstOrDefault() }).ConfigureAwait(false);
         }
     }
 
@@ -49,7 +47,7 @@ namespace SimpleAgent.Calls
     {
         public async Task RunAsync(string message)
         {
-            await Task.Delay(1000);
+            await Task.Delay(1000).ConfigureAwait(false);
             Console.WriteLine("DoSomethingAsync called: " + message);
         }
     }

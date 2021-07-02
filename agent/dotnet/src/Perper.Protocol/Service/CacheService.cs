@@ -1,4 +1,5 @@
 using System;
+
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
@@ -16,11 +17,11 @@ namespace Perper.Protocol.Service
         }
 
         public IIgniteClient Ignite { get; }
-        private IBinary igniteBinary;
-        private ICacheClient<string, IBinaryObject> streamsCache;
-        private ICacheClient<string, IBinaryObject> callsCache;
+        private readonly IBinary igniteBinary;
+        private readonly ICacheClient<string, IBinaryObject> streamsCache;
+        private readonly ICacheClient<string, IBinaryObject> callsCache;
 
-        public long GetCurrentTicks() => DateTime.UtcNow.Ticks - DateTime.UnixEpoch.Ticks;
+        public static long CurrentTicks => DateTime.UtcNow.Ticks - DateTime.UnixEpoch.Ticks;
 
         public string GenerateName(string? baseName = null) => $"{baseName}-{Guid.NewGuid()}";
     }

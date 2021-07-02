@@ -3,4 +3,4 @@
 //     services.AddSingleton<IMyService>();
 // });
 
-await Perper.Application.Initializer.RunAsync("simple-agent", new System.Threading.CancellationToken());
+await Perper.Application.PerperStartup.RunAsync("simple-agent", new System.Threading.CancellationToken()).ConfigureAwait(false);

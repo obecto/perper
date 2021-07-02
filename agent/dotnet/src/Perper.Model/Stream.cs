@@ -5,6 +5,7 @@ using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Perper.Protocol.Cache.Notifications;
 using Perper.Protocol.Cache.Standard;
 using Perper.Protocol.Extensions;
@@ -14,10 +15,7 @@ namespace Perper.Model
 {
     public class Stream : IStream
     {
-        public Stream(PerperStream rawStream)
-        {
-            RawStream = rawStream;
-        }
+        public Stream(PerperStream rawStream) => RawStream = rawStream;
 
         public PerperStream RawStream { get; }
     }
@@ -51,12 +49,12 @@ namespace Perper.Model
             return AsyncLocals.CacheService.StreamGetQueryable<T>(RawStream.Stream);
         }
 
-        public async IAsyncEnumerable<TResult> Query<TResult>(Func<IQueryable<T>, IQueryable<TResult>> queryFunc) // TODO: Convert to extension method on IQueryable
+        public async IAsyncEnumerable<TResult> Query<TResult>(Func<IQueryable<T>, IQueryable<TResult>> query) // TODO: Convert to extension method on IQueryable
         {
-            var queryable = queryFunc(Query());
+            var queryable = query(Query());
 
             using var enumerator = queryable.GetEnumerator();
-            while (await Task.Run(enumerator.MoveNext)) // Blocking, should run in background
+            while (await Task.Run(enumerator.MoveNext).ConfigureAwait(false)) // Blocking, should run in background
             {
                 yield return enumerator.Current;
             }
@@ -69,15 +67,19 @@ namespace Perper.Model
 
         private async IAsyncEnumerable<T> Impl([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            int parameter = 42; // FIXME
-            var listener = await AsyncLocals.CacheService.StreamAddListener(RawStream, AsyncLocals.Agent, AsyncLocals.Instance, parameter);
+            var random = new Random();
+            var parameter = random.Next(1, 1000000);
+            //int parameter = 42; // FIXME
+            var listener = await AsyncLocals.CacheService.StreamAddListener(RawStream, AsyncLocals.Agent, AsyncLocals.Instance, parameter).ConfigureAwait(false);
             try
             {
                 await foreach (var (key, notification) in AsyncLocals.NotificationService.GetNotifications(AsyncLocals.Instance, parameter, cancellationToken))
                 {
                     if (notification is StreamItemNotification si)
                     {
-                        var value = await AsyncLocals.CacheService.StreamReadItem<T>(si);
+                        T? value;
+
+                        value = await AsyncLocals.CacheService.StreamReadItem<T>(si).ConfigureAwait(false);
 
                         // await ((State)_stream._state).LoadStateEntries();
 
@@ -89,7 +91,7 @@ namespace Perper.Model
                         {
                             // await ((State)_stream._state).StoreStateEntries();
 
-                            await AsyncLocals.NotificationService.ConsumeNotification(key);
+                            await AsyncLocals.NotificationService.ConsumeNotification(key).ConfigureAwait(false);
                         }
                     }
                 }
@@ -98,7 +100,7 @@ namespace Perper.Model
             {
                 if (parameter < 0)
                 {
-                    await AsyncLocals.CacheService.StreamRemoveListener(RawStream, listener);
+                    await AsyncLocals.CacheService.StreamRemoveListener(RawStream, listener).ConfigureAwait(false);
                 }
             }
         }

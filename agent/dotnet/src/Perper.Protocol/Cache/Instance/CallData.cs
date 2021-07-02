@@ -2,7 +2,7 @@ using Apache.Ignite.Core.Binary;
 
 namespace Perper.Protocol.Cache.Instance
 {
-    static class CallData
+    internal static class CallData
     {
         public static IBinaryObjectBuilder Create(
             IBinary binary,

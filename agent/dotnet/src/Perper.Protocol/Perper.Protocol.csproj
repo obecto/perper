@@ -42,4 +42,10 @@
     <ItemGroup>
         <Protobuf Include="..\..\..\..\proto\fabric.proto" />
     </ItemGroup>
+
+	<PropertyGroup>
+		<AnalysisMode>AllEnabledByDefault</AnalysisMode>
+		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+		<CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+	</PropertyGroup>
 </Project>

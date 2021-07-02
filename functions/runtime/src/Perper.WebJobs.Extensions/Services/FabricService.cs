@@ -19,10 +19,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Perper.WebJobs.Extensions.Cache.Notifications;
-using Perper.WebJobs.Extensions.Protobuf;
 using Perper.WebJobs.Extensions.Cache;
 using Notification = Perper.WebJobs.Extensions.Cache.Notifications.Notification;
-using NotificationProto = Perper.WebJobs.Extensions.Protobuf.Notification;
+using NotificationProto = Perper.Protocol.Protobuf.Notification;
+using Perper.Protocol.Protobuf;
 
 namespace Perper.WebJobs.Extensions.Services
 {
@@ -51,11 +51,10 @@ namespace Perper.WebJobs.Extensions.Services
 
             _notificationsCache = _ignite.GetCache<NotificationKey, Notification>($"{AgentDelegate}-$notifications");
 
-            var address = $"http://{config.Value.FabricHost}:{config.Value.FabricGrpcPort}";
-
 #if NETSTANDARD2_0
-            _grpcChannel = new GrpcChannel(address, ChannelCredentials.Insecure);
+            _grpcChannel = new GrpcChannel(config.Value.FabricHost, config.Value.FabricGrpcPort, ChannelCredentials.Insecure);
 #else
+            var address = $"http://{config.Value.FabricHost}:{config.Value.FabricGrpcPort}";
             _grpcChannel = GrpcChannel.ForAddress(address);
 #endif
         }
@@ -142,7 +141,7 @@ namespace Perper.WebJobs.Extensions.Services
             _ = StartInitialAgent();
 
             var client = new Fabric.FabricClient(_grpcChannel);
-            using var notifications = client.Notifications(new NotificationFilter { AgentDelegate = AgentDelegate }, null, null, cancellationToken);
+            using var notifications = client.Notifications(new NotificationFilter { Agent = AgentDelegate }, null, null, cancellationToken);
             var stream = notifications.ResponseStream;
             while (await stream.MoveNext(cancellationToken))
             {
@@ -199,8 +198,8 @@ namespace Perper.WebJobs.Extensions.Services
             var client = new Fabric.FabricClient(_grpcChannel);
             var notification = await client.CallResultNotificationAsync(new CallNotificationFilter
             {
-                AgentDelegate = AgentDelegate,
-                CallName = call
+                Agent = AgentDelegate,
+                Call = call
             });
             var key = GetNotificationKey(notification);
 

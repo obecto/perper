@@ -1,25 +1,28 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Channels;
-using System.Threading.Tasks;
-using Apache.Ignite.Core;
-using Apache.Ignite.Core.Binary;
-using Apache.Ignite.Core.Client;
-using EmbedIO;
-using EmbedIO.Actions;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Perper.WebJobs.Extensions.Model;
-using Perper.WebJobs.Extensions.Services;
-using Swan;
-
 namespace Perper.WebJobs.Extensions.CustomHandler
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Reflection;
+    using System.Threading;
+    using System.Threading.Channels;
+    using System.Threading.Tasks;
+    using Apache.Ignite.Core;
+    using Apache.Ignite.Core.Binary;
+    using Apache.Ignite.Core.Cache.Affinity;
+    using Apache.Ignite.Core.Client;
+    using EmbedIO;
+    using Microsoft.Extensions.Configuration;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Hosting;
+    using Microsoft.Extensions.Options;
+    using Newtonsoft.Json.Linq;
+    using Perper.WebJobs.Extensions.Cache;
+    using Perper.WebJobs.Extensions.Cache.Notifications;
+    using Perper.WebJobs.Extensions.Model;
+    using Perper.WebJobs.Extensions.Services;
+    using Swan;
+
     public class PerperContext : IContext, IState
     {
         private static readonly Lazy<PerperContext> LazyInstance = new Lazy<PerperContext>(() => new PerperContext());
@@ -27,11 +30,38 @@ namespace Perper.WebJobs.Extensions.CustomHandler
         public static PerperContext Instance => LazyInstance.Value;
 
         private readonly IHost _host;
-        private readonly Dictionary<string, Channel<(JObject, Guid)>> _callParametersChannels;
-        private readonly Dictionary<Guid, Channel<JObject>> _callResultChannels;
+        private readonly IIgniteClient _igniteClient;
+        private readonly FabricService _fabricService;
+        private readonly PerperBinarySerializer _perperBinarySerializer;
+
+        /// <summary>
+        /// Contains all running tasks for the instance. e.g. listeners, notification consumer task
+        /// </summary>
+        private readonly List<Task> _tasks;
+
+        /// <summary>
+        /// Contains notification tokens ready to be consumed
+        /// </summary>
+        private readonly Channel<string> _notificationsChannel;
+
+        /// <summary>
+        /// Contains notification details per token
+        /// </summary>
+        private readonly Dictionary<string, (NotificationKey, Notification)> _notificationTokens;
+
+        /// <summary>
+        /// Contains parameters channel per delegate
+        /// </summary>
+        private readonly Dictionary<string, Channel<(JObject, string)>> _delegateParametersChannels;
 
         private PerperContext()
         {
+            AgentDelegate = Environment.GetEnvironmentVariable("PERPER_AGENT_NAME");
+            if (string.IsNullOrEmpty(AgentDelegate))
+            {
+                throw new ArgumentNullException(nameof(AgentDelegate));
+            }
+
             _host = Host.CreateDefaultBuilder().ConfigureServices((_, services) =>
             {
                 services.AddScoped(typeof(PerperInstanceData), typeof(PerperInstanceData));
@@ -64,9 +94,22 @@ namespace Perper.WebJobs.Extensions.CustomHandler
                     var nameMapper = ActivatorUtilities.CreateInstance<PerperNameMapper>(services);
                     nameMapper.InitializeFromAppDomain();
 
+                    static string? getAffinityKeyFieldName(Type type)
+                    {
+                        foreach (var prop in type.GetProperties())
+                        {
+                            if (prop.GetCustomAttribute<AffinityKeyMappedAttribute>() != null)
+                            {
+                                return prop.Name.ToLower();
+                            }
+                        }
+
+                        return null;
+                    }
+
                     var ignite = Ignition.StartClient(new IgniteClientConfiguration
                     {
-                        Endpoints = new List<string> { config.FabricHost },
+                        Endpoints = new List<string> { config.FabricHost + ":" + config.FabricIgnitePort.ToString() },
                         BinaryConfiguration = new BinaryConfiguration()
                         {
                             NameMapper = nameMapper,
@@ -74,10 +117,15 @@ namespace Perper.WebJobs.Extensions.CustomHandler
                             TypeConfigurations = (
                                 from type in nameMapper.WellKnownTypes.Keys
                                 where !type.IsGenericTypeDefinition
-                                select new BinaryTypeConfiguration(type) { Serializer = serializer }
+                                select new BinaryTypeConfiguration(type)
+                                {
+                                    Serializer = serializer,
+                                    AffinityKeyFieldName = getAffinityKeyFieldName(type)
+                                }
                             ).ToList()
                         }
                     });
+
 
                     serializer.SetBinary(ignite.GetBinary());
 
@@ -90,46 +138,89 @@ namespace Perper.WebJobs.Extensions.CustomHandler
                 });
             }).Start();
 
-            _callParametersChannels = new Dictionary<string, Channel<(JObject, Guid)>>();
-            _callResultChannels = new Dictionary<Guid, Channel<JObject>>();
+            _delegateParametersChannels = new Dictionary<string, Channel<(JObject, string)>>();
+            _notificationsChannel = Channel.CreateUnbounded<string>();
+            _notificationTokens = new Dictionary<string, (NotificationKey, Notification)>();
+            _tasks = new List<Task>();
 
-            var url = $"http://localhost:{Environment.GetEnvironmentVariable("FUNCTIONS_CUSTOMHANDLER_PORT")}/";
-            using var server = new WebServer(o => o.WithUrlPrefix(url).WithMode(HttpListenerMode.EmbedIO))
-                .WithModule(new ActionModule("/", HttpVerbs.Any, Handler));
-            server.RunAsync();
+            _perperBinarySerializer = _host.Services.GetRequiredService<PerperBinarySerializer>();
+            _igniteClient = _host.Services.GetRequiredService<IIgniteClient>();
+            _fabricService = _host.Services.GetRequiredService<FabricService>();
+            var lifetime = _host.Services.GetRequiredService<IHostApplicationLifetime>();
+            lifetime.ApplicationStopping.Register(async () => {
+                await Task.Delay(1000);
+                System.Diagnostics.Process.GetCurrentProcess().Kill(); //DEBUG
+            });
+
+            _tasks.Add(ConsumeCompletedNotificationsAsync());
         }
 
-        public Task<TResult> GetParametersAsync<TResult>()
+        public string AgentDelegate { get; }
+
+        public async Task<TResult> GetParametersAsync<TResult>(CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var listenTask = ListenAsync(AgentDelegate);
+            _tasks.Add(listenTask);
+
+            var (parameters, token) = await GetParameters<TResult>(AgentDelegate, cancellationToken);
+            await _notificationsChannel.Writer.WriteAsync(token);
+
+            return parameters;
         }
 
-        public Task SetResultAsync(object result)
+        public async Task<(TResult, string)> GetCallParametersAsync<TResult>(string delegateName, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var listenTask = ListenAsync(delegateName);
+            _tasks.Add(listenTask);
+
+            var (parameters, token) = await GetParameters<TResult>(delegateName, cancellationToken);
+            return (parameters, token);
         }
 
-        public async Task<(TResult, Guid)> GetCallParametersAsync<TResult>(string delegateName) where TResult : JObject
+        public async Task SetActionCompletedAsync(string token)
         {
-            var channel = _callParametersChannels.GetOrAdd(delegateName,
-                _ => Channel.CreateUnbounded<(JObject, Guid)>())!;
-            var (parameters, callId) = await channel.Reader.ReadAsync();
-            return ((TResult)parameters, callId);
+            var callsCache = _igniteClient.GetCache<string, CallData>("calls");
+
+            var callData = await callsCache.GetAsync(token);
+            callData.Finished = true;
+
+            await callsCache.ReplaceAsync(token, callData);
+
+            await _notificationsChannel.Writer.WriteAsync(token);
         }
 
-        public async Task SetCallResultAsync(Guid callId, object result)
+        public async Task SetCallResultAsync(string token, object result)
         {
-            await _callResultChannels[callId].Writer.WriteAsync((JObject)result);
+            var callsCache = _igniteClient.GetCache<string, CallData>("calls");
+
+            var callData = await callsCache.GetAsync(token);
+            callData.Result = result;
+            callData.Finished = true;
+
+            await callsCache.ReplaceAsync(token, callData);
+
+            await _notificationsChannel.Writer.WriteAsync(token);
         }
 
-        public Task<(TResult, Guid)> GetStreamParametersAsync<TResult>(string delegateName)
+        public async Task<(TResult, string)> GetStreamParametersAsync<TResult>(string delegateName, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var listenTask = ListenAsync(delegateName);
+            _tasks.Add(listenTask);
+
+            return await GetParameters<TResult>(delegateName, cancellationToken);
         }
 
-        public Task AddStreamOutputAsync(Guid streamId, object output)
+        public async Task AddStreamOutputAsync(string streamName, object output)
         {
-            throw new NotImplementedException();
+            var key = DateTime.UtcNow.Ticks - 62135596800000;
+
+            var cache = _igniteClient.GetCache<long, object>(streamName).WithKeepBinary<long, object>();
+            var result = await cache.PutIfAbsentAsync(key, _perperBinarySerializer.SerializeRoot(output));
+
+            if (!result)
+            {
+                throw new Exception($"Duplicate stream item key! {key}");
+            }
         }
 
         public IAgent Agent { get => _host.Services.GetService<IContext>()!.Agent; }
@@ -181,14 +272,97 @@ namespace Perper.WebJobs.Extensions.CustomHandler
             return _host.Services.GetService<IState>()!.Entry(key, defaultValueFactory);
         }
 
-        private async Task Handler(IHttpContext context)
+        private async Task ConsumeCompletedNotificationsAsync(CancellationToken cancellationToken = default)
         {
-            var invocationId = Guid.Parse(context.Request.Headers["X-Azure-Functions-Invocationid"]);
-            dynamic payload = JsonConvert.DeserializeObject(await context.GetRequestBodyAsStringAsync())!;
-            if (payload.Metadata.triggerAttribute == "PerperTrigger")
+            while (!cancellationToken.IsCancellationRequested)
             {
+                var token = await _notificationsChannel.Reader.ReadAsync();
+                var (key, notification) = _notificationTokens[token];
 
+                var trigger = JObject.FromObject(notification);
+                if (trigger.ContainsKey("Call"))
+                {
+                    await CompleteCallNotification(trigger);
+                }
+
+                await _fabricService.ConsumeNotification(key);
+
+                _notificationTokens.Remove(token);
             }
+        }
+
+        private async Task CompleteCallNotification(JObject trigger)
+        {
+            var call = (string)trigger["Call"]!;
+            var callsCache = _igniteClient.GetCache<string, CallData>("calls");
+            var callDataResult = await callsCache.TryGetAsync(call);
+
+            if (!callDataResult.Success)
+            {
+                return;
+            }
+
+            var callData = callDataResult.Value;
+
+            callData.Finished = true;
+            callData.Error = null;
+
+            await callsCache.ReplaceAsync(call, callData);
+        }
+
+        private async Task ListenAsync(string delegateName, CancellationToken cancellationToken = default)
+        {
+            var taskCollection = new TaskCollection();
+
+            await foreach (var (key, notification) in _fabricService.GetNotifications(delegateName).WithCancellation(cancellationToken))
+            {
+                taskCollection.Add(() => HandleNotificationAsync(delegateName, key, notification));
+            }
+
+            await taskCollection.GetTask();
+        }
+
+        private async Task HandleNotificationAsync(string delegateName, NotificationKey key, Notification notification)
+        {
+            if (notification is null)
+            {
+                throw new ArgumentNullException(nameof(notification));
+            }
+
+            var jObject = JObject.FromObject(notification);
+            var channel = GetOrAddCallParametersChannel(delegateName);
+
+            var token = (string)jObject["Stream"]! ?? (string)jObject["Call"]!;
+
+            await channel.Writer.WriteAsync((jObject, token));
+
+            if (notification is StreamTriggerNotification)
+            {
+                await _fabricService.ConsumeNotification(key);
+            }
+            else
+            {
+                _notificationTokens.Add(token, (key, notification));
+            }
+        }
+
+        private async Task<(TResult, string)> GetParameters<TResult>(string delegateName, CancellationToken cancellationToken = default)
+        {
+            Channel<(JObject, string)> channel = this.GetOrAddCallParametersChannel(delegateName);
+            var (jObject, streamName) = await channel.Reader.ReadAsync(cancellationToken);
+
+            var perperInstanceData = _host.Services.GetRequiredService<PerperInstanceData>();
+            await perperInstanceData.SetTriggerValue(jObject);
+
+            var parameters = perperInstanceData.GetParameters(typeof(TResult));
+
+            return ((TResult)parameters, streamName);
+        }
+
+        private Channel<(JObject, string)> GetOrAddCallParametersChannel(string name)
+        {
+            return _delegateParametersChannels.GetOrAdd(name,
+                _ => Channel.CreateUnbounded<(JObject, string)>())!;
         }
     }
 }

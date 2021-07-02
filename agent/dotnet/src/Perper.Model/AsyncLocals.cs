@@ -1,14 +1,15 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Perper.Protocol.Service;
 
 namespace Perper.Model
 {
     public static class AsyncLocals
     {
-        private static AsyncLocal<(CacheService, NotificationService)> _connection = new AsyncLocal<(CacheService, NotificationService)>();
-        private static AsyncLocal<string> _instance = new AsyncLocal<string>();
+        private static readonly AsyncLocal<(CacheService, NotificationService)> _connection = new();
+        private static readonly AsyncLocal<string> _instance = new();
 
         public static CacheService CacheService => _connection.Value.Item1;
         public static NotificationService NotificationService => _connection.Value.Item2;

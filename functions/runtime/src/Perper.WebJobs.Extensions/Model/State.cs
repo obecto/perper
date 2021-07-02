@@ -25,23 +25,37 @@ namespace Perper.WebJobs.Extensions.Model
             _serializer = serializer;
         }
 
+        private static readonly Dictionary<string, object> state = new Dictionary<string, object>();
+
         public async Task<T> GetValue<T>(string key, Func<T> defaultValueFactory)
         {
-            var cache = _ignite.GetOrCreateCache<string, object>(Agent).WithKeepBinary<string, object>();
-            var result = await cache.TryGetAsync(key);
-            if (!result.Success)
+            if (state.ContainsKey(key))
             {
-                var defaultValue = defaultValueFactory();
-                await cache.PutAsync(key, _serializer.SerializeRoot(defaultValue));
-                return defaultValue;
+                return (T)_serializer.DeserializeRoot(state[key], typeof(T))!;
             }
-            return (T)_serializer.DeserializeRoot(result.Value, typeof(T))!;
+
+            var defaultValue = defaultValueFactory();
+            state[key] = _serializer.SerializeRoot(defaultValue);
+            return defaultValue;
+
+            // var cache = _ignite.GetOrCreateCache<string, object>(Agent).WithKeepBinary<string, object>();
+            // var result = await cache.TryGetAsync(key);
+            // if (!result.Success)
+            // {
+            //     var defaultValue = defaultValueFactory();
+            //     await cache.PutAsync(key, _serializer.SerializeRoot(defaultValue));
+            //     return defaultValue;
+            // }
+            // return (T)_serializer.DeserializeRoot(result.Value, typeof(T))!;
         }
 
         public Task SetValue<T>(string key, T value)
         {
-            var cache = _ignite.GetOrCreateCache<string, object>(Agent).WithKeepBinary<string, object>();
-            return cache.PutAsync(key, _serializer.SerializeRoot(value));
+            state[key] = _serializer.SerializeRoot(value);
+            return Task.CompletedTask;
+
+            // var cache = _ignite.GetOrCreateCache<string, object>(Agent).WithKeepBinary<string, object>();
+            // return cache.PutAsync(key, _serializer.SerializeRoot(value));
         }
 
         public async Task<IStateEntry<T>> Entry<T>(string key, Func<T> defaultValueFactory)
