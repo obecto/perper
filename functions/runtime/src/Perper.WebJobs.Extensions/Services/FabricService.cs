@@ -21,7 +21,8 @@ using Microsoft.Extensions.Options;
 using Perper.WebJobs.Extensions.Cache.Notifications;
 using Perper.WebJobs.Extensions.Cache;
 using Notification = Perper.WebJobs.Extensions.Cache.Notifications.Notification;
-using NotificationProto = Perper.WebJobs.Extensions.Protobuf.Notification;
+using NotificationProto = Perper.Protocol.Protobuf.Notification;
+using Perper.Protocol.Protobuf;
 
 namespace Perper.WebJobs.Extensions.Services
 {
@@ -140,7 +141,7 @@ namespace Perper.WebJobs.Extensions.Services
             _ = StartInitialAgent();
 
             var client = new Fabric.FabricClient(_grpcChannel);
-            using var notifications = client.Notifications(new NotificationFilter { AgentDelegate = AgentDelegate }, null, null, cancellationToken);
+            using var notifications = client.Notifications(new NotificationFilter { Agent = AgentDelegate }, null, null, cancellationToken);
             var stream = notifications.ResponseStream;
             while (await stream.MoveNext(cancellationToken))
             {
@@ -197,8 +198,8 @@ namespace Perper.WebJobs.Extensions.Services
             var client = new Fabric.FabricClient(_grpcChannel);
             var notification = await client.CallResultNotificationAsync(new CallNotificationFilter
             {
-                AgentDelegate = AgentDelegate,
-                CallName = call
+                Agent = AgentDelegate,
+                Call = call
             });
             var key = GetNotificationKey(notification);
 
