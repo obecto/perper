@@ -6,7 +6,8 @@ namespace Perper.Model
     {
         IAgent Agent { get; }
 
-        Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, object[] parameters);
+        Task<IAgent> StartAgentAsync(string name, params object[] parameters);
+        Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, params object[] parameters);
 
         Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object[] parameters, StreamFlag flags = StreamFlag.Default);
         Task<IStream> StreamActionAsync(string actionName, object[] parameters, StreamFlag flags = StreamFlag.Default);

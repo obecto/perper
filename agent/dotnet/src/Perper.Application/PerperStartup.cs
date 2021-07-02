@@ -38,12 +38,50 @@ namespace Perper.Application
             ListenCallNotifications(callTypes);
             ListenStreamNotifications(streamTypes);
 
+            AcknowledgeStartupCalls(callTypes);
+
             await notificationService.StartAsync().ConfigureAwait(false);
             await InvokeInitMethodIfExists(initCallType).ConfigureAwait(false);
 
             await taskCollection.GetTask().ConfigureAwait(false);
             WaitHandle.WaitAny(new[] { cancellationToken.WaitHandle });
             await notificationService.StopAsync().ConfigureAwait(false);
+        }
+
+        private static void AcknowledgeStartupCalls(List<Type>? callTypes)
+        {
+            var startupFunctionExists = callTypes.Any(t => t.Name == Context.StartupFunctionName);
+            if (startupFunctionExists)
+            {
+                return;
+            }
+
+            taskCollection.Add(async () =>
+                {
+                    await foreach (var (key, notification) in notificationService.GetNotifications(Context.StartupFunctionName))
+                    {
+                        if (notification is CallTriggerNotification callTriggerNotification)
+                        {
+                            await AsyncLocals.EnterContext(callTriggerNotification.Call, async () =>
+                            {
+                                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Instance).ConfigureAwait(false);
+                                await notificationService.ConsumeNotification(key).ConfigureAwait(false);
+                            }).ConfigureAwait(false);
+                        }
+                    }
+                });
+
+            //taskCollection.Add(AsyncLocals.EnterContext(Context.StartupFunctionName, async () =>
+            //    {
+            //        await foreach (var (key, notification) in notificationService.GetNotifications(Context.StartupFunctionName))
+            //        {
+            //            if (notification is CallTriggerNotification callTriggerNotification)
+            //            {
+            //                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Instance).ConfigureAwait(false);
+            //                await notificationService.ConsumeNotification(key).ConfigureAwait(false);
+            //            }
+            //        }
+            //    }));
         }
 
         private static void InitializeServices(string agent)

@@ -8,12 +8,21 @@ namespace Perper.Model
 {
     public class Context : IContext
     {
+        public static string StartupFunctionName { get; } = "Startup";
+
         public IAgent Agent => new Agent(new PerperAgent(AsyncLocals.Agent, AsyncLocals.Instance));
 
-        public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, object[] parameters)
+        public async Task<IAgent> StartAgentAsync(string name, params object[] parameters)
         {
             var instance = new Agent(new PerperAgent(name, AsyncLocals.CacheService.GenerateName(name)));
-            var result = await instance.CallFunctionAsync<TResult>(name, parameters).ConfigureAwait(false);
+            await instance.CallActionAsync(StartupFunctionName, parameters).ConfigureAwait(false);
+            return instance;
+        }
+
+        public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, params object[] parameters)
+        {
+            var instance = new Agent(new PerperAgent(name, AsyncLocals.CacheService.GenerateName(name)));
+            var result = await instance.CallFunctionAsync<TResult>(StartupFunctionName, parameters).ConfigureAwait(false);
             return (instance, result);
         }
 
