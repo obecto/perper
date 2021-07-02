@@ -1,10 +1,11 @@
 using System;
+using System.Threading.Tasks;
 
 namespace SimpleAgent.Calls
 {
-    public class GetRandomNumber
+    public class GetRandomNumberAsync
     {
-        public int RunAsync(int min, int max)
+        public async Task<int> RunAsync(int min, int max)
         {
             var random = new Random();
             var number = random.Next(min, max);

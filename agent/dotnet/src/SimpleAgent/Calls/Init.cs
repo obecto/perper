@@ -1,47 +1,35 @@
+using System;
+using System.Threading.Tasks;
+
+using Perper.Model;
+
 namespace SimpleAgent.Calls
 {
-    //public class Init
-    //{
-    //    private readonly IContext context;
+    public class Init
+    {
+        private readonly IContext context;
 
-    //    public Init(IContext context)
-    //    {
-    //        this.context = context;
-    //    }
+        public Init(IContext context) => this.context = context;
 
-    //    public async Task RunAsync()
-    //    {
-    //        var randomNumber = await context.CallFunctionAsync<int, (int, int)>("GetRandomNumber", (1, 100));
-    //        var anotherRandomNumber = await context.CallFunctionAsync<int, (int, int)>("AnotherRandomNumber", (1, 100));
+        public async Task RunAsync()
+        {
+            // Streams:
+            const int batchCount = 10;
+            const int messageCount = 28;
 
-    //        await context.CallActionAsync<string>("DoSomething", "123");
-    //        await context.CallActionAsync<string>("DoSomethingAsync", "456");
+            var generator = await context.StreamFunctionAsync<string>("Generator", new object[] { messageCount }).ConfigureAwait(false);
+            var processor = await context.StreamFunctionAsync<string[]>("Processor", new object[] { generator, batchCount }).ConfigureAwait(false);
+            var _ = await context.StreamActionAsync("Consumer", new object[] { processor }).ConfigureAwait(false);
 
-    //        var randomNumbersStream = await context.CallFunctionAsync<Stream<int>, (int, int)>("GetRandomNumbers", (1, 100));
-    //        await foreach (var randomNumber1 in randomNumbersStream)
-    //        {
-    //            System.Console.WriteLine(randomNumber1);
-    //        }
-    //    }
-    //}
+            // Calls:
+            var randomNumber = await context.CallFunctionAsync<int>("GetRandomNumber", new object[] { 1, 100 }).ConfigureAwait(false);
+            Console.WriteLine($"Random number: {randomNumber}");
 
-    // Call Init function if exists on StartAgent (by convention)
-    //public class Init
-    //{
-    //    private readonly IContext context;
+            var anotherRandomNumber = await context.CallFunctionAsync<int>("GetRandomNumberAsync", new object[] { 1, 100 }).ConfigureAwait(false);
+            Console.WriteLine($"Random number: {anotherRandomNumber}");
 
-    //    public Init(IContext context)
-    //    {
-    //        this.context = context;
-    //    }
-
-    //    public async Task RunAsync(int messageCount, int batchCount)
-    //    {
-    //        IStream<string> generator = await context.StreamFunctionAsync<string, int>("Generator", messageCount);
-
-    //        IStream<string[]> processor = await context.StreamFunctionAsync<string[], (IStream<string>, int)>("Processor", (generator, batchCount));
-
-    //        IStream consumer = await context.StreamActionAsync("Consumer", processor);
-    //    }
-    //}
+            await context.CallActionAsync("DoSomething", new object[] { "123" }).ConfigureAwait(false);
+            await context.CallActionAsync("DoSomethingAsync", new object[] { "456" }).ConfigureAwait(false);
+        }
+    }
 }
