@@ -170,7 +170,7 @@ class TransportService(var port: Int) : Service {
                     }
                     updateQueue(notification.stream)
                 } else if (!confirmed) {
-                    log.trace({ "Sending notification ${request.agentDelegate}, ${notification} - ${key}" })
+                    log.trace({ "Sending notification ${request.agent}, ${notification} - ${key}" })
                     runBlocking { send(key.toNotification()) }
                 }
             }
