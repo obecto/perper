@@ -8,6 +8,7 @@ from .ignite_cache_extensions import put_if_absent_or_raise, optimistic_update
 class CacheService:
     def __init__(self, ignite):
         self.ignite = ignite
+        self.item_caches = {}
         self.streams_cache = ignite.get_or_create_cache('streams')
         self.calls_cache = ignite.get_or_create_cache('calls')
 
@@ -38,14 +39,16 @@ class CacheService:
         return optimistic_update(self.streams_cache, stream, lambda data: stream_data_remove_listener_caller(data, caller, parameter))
 
     def stream_write_item(self, stream, item):
-        items_cache = self.ignite.get_or_create_cache(stream)
+        items_cache = self.ignite.get_cache(stream)
         key = self.get_current_ticks()
         put_if_absent_or_raise(items_cache, key, item)
         return key
 
     def stream_read_item(self, cache, key):
-        items_cache = self.ignite.get_or_create_cache(cache)
-        return items_cache.get(key)
+        if cache not in self.item_caches:
+            self.item_caches[cache] = self.ignite.get_cache(cache)
+
+        return self.item_caches[cache].get(key)
 
     # CALLS:
 
