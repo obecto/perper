@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Threading.Tasks;
+using Apache.Ignite.Core.Cache.Configuration;
 
 using Perper.Protocol.Cache.Instance;
 using Perper.Protocol.Cache.Standard;
@@ -66,13 +67,17 @@ namespace Perper.Model
             Hashtable? indexFields = null;
             if ((flags & StreamFlag.Query) != 0)
             {
-                var binaryType = AsyncLocals.CacheService.Ignite.GetBinary().GetBinaryType(typeof(TItem)); // TODO AsyncLocals.Ignite...
-                indexType = binaryType.TypeName;
+                var queryEntity = new QueryEntity(typeof(TItem));
+                indexType = (queryEntity.ValueTypeName == typeof(TItem).FullName) ? typeof(TItem).Name : queryEntity.ValueTypeName; // Workaround bug with QueryEntity
                 indexFields = new Hashtable();
-                foreach (var field in binaryType.Fields)
+                if (queryEntity.Fields != null)
                 {
-                    indexFields[field] = binaryType.GetFieldTypeName(field);
+                    foreach (var field in queryEntity.Fields)
+                    {
+                        indexFields[field.Name] = field.FieldTypeName;
+                    }
                 }
+                // Else: Log warning that there are no indexed fields
             }
 
             await AsyncLocals.CacheService.StreamCreate(
