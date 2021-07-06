@@ -12,6 +12,7 @@ import io.grpc.Server
 import io.grpc.ServerBuilder
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flow
@@ -123,7 +124,7 @@ class TransportService(var port: Int) : Service {
         @kotlinx.coroutines.ExperimentalCoroutinesApi
         override fun notifications(request: NotificationFilter) = channelFlow<NotificationProto> {
             val notificationCache = getNotificationCache(ignite, request.agent)
-            val notificationAffinity = ignite.affinity<NotificationKey>(request.agent)
+            val notificationAffinity = ignite.affinity<NotificationKey>(notificationCache.name)
             val localNode = ignite.cluster().localNode()
             val finishChannel = Channel<Throwable>(Channel.CONFLATED)
 
@@ -175,6 +176,7 @@ class TransportService(var port: Int) : Service {
                 }
             }
 
+            /* // remoteConfirmationQuery disabled since it leads to race conditions in local-only scenarious. To be investigated later. (DEV: note .close() line below)
             val remoteConfirmationQuery = ContinuousQuery<NotificationKey, Notification>()
             remoteConfirmationQuery.localListener = CacheEntryUpdatedListener { events ->
                 try {
@@ -193,7 +195,7 @@ class TransportService(var port: Int) : Service {
                 CacheEntryEventFilter { event -> event.eventType == EventType.REMOVED && (event.value ?: event.oldValue) is StreamItemNotification }
             }
 
-            val remoteQueryCursor = notificationCache.query(remoteConfirmationQuery)
+            val remoteQueryCursor = notificationCache.query(remoteConfirmationQuery)*/
 
             val query = ContinuousQuery<NotificationKey, Notification>()
             query.localListener = CacheEntryUpdatedListener { events ->
@@ -227,12 +229,12 @@ class TransportService(var port: Int) : Service {
                 e.printStackTrace()
                 throw e
             } finally {
-                remoteQueryCursor.close()
+                //remoteQueryCursor.close()
                 queryCursor.close()
 
                 log.debug({ "Notifications listener finished for '${request.agent}'!" })
             }
-        }
+        }.buffer(Channel.UNLIMITED)
 
         override suspend fun callResultNotification(request: CallNotificationFilter): NotificationProto {
             val call = request.call
