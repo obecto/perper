@@ -185,6 +185,7 @@ class StreamService : JobService() {
                     val key = NotificationKey(itemKey, if (listener.localToData) itemKey else listener.caller)
                     notificationsQueue.put(key)
                     notificationsCache.put(key, StreamItemNotification(listener.caller, listener.parameter, stream, itemKey, ephemeral))
+                    log.trace({ "Writing notification ${listener.callerAgent} $key" })
                 }
             }
         }
