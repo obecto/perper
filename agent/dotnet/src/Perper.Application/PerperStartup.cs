@@ -1,23 +1,23 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+
+using Apache.Ignite.Core;
+using Apache.Ignite.Core.Binary;
+using Apache.Ignite.Core.Client;
+
+using Grpc.Net.Client;
+
+using Perper.Model;
+using Perper.Protocol;
+using Perper.Protocol.Cache.Notifications;
+using Perper.Protocol.Service;
+
 namespace Perper.Application
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Reflection;
-    using System.Threading;
-    using System.Threading.Tasks;
-
-    using Apache.Ignite.Core;
-    using Apache.Ignite.Core.Binary;
-    using Apache.Ignite.Core.Client;
-
-    using Grpc.Net.Client;
-
-    using Perper.Model;
-    using Perper.Protocol;
-    using Perper.Protocol.Cache.Notifications;
-    using Perper.Protocol.Service;
-
     public static class PerperStartup
     {
         private static CacheService cacheService;
