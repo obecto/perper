@@ -22,7 +22,7 @@ async def initialize(agent, functions, root=False):
     set_connection(cache_service, notification_service)
 
     task1 = asyncio.create_task(listen_triggers(ignite, functions))
-    task2 = asyncio.create_task(enter_context('', lambda: start_agent(agent, None, BoolObject)))
+    task2 = asyncio.create_task(enter_context('', lambda: start_agent(agent, None)))
 
     if root:
         await task1

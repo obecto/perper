@@ -6,9 +6,9 @@ from .stream_delegate_type import StreamDelegateType
 from perper.protocol.standard import PerperAgent
 from perper.protocol.standard import PerperStream
 
-async def start_agent(agent, parameters, parameters_type):
+async def start_agent(agent, parameters):
     instance = Agent(PerperAgent(agent, get_cache_service().generate_name(agent)))
-    result = await instance.call_function(agent, parameters, parameters_type)
+    result = await instance.call_function(agent, parameters)
     return (instance, result)
 
 def stream_function(delegate, parameters, parameters_type, flags=StreamFlags.default):

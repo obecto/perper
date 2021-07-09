@@ -1,4 +1,4 @@
-from random import random
+import random
 import sys
 from perper.protocol.standard import PerperStream
 from perper.protocol.cache_service_extensions import (
@@ -28,7 +28,7 @@ class Stream:
         return Stream(PerperStream(self.raw_stream.stream, FilterUtils.convert_filter(filter), True, data_local))
 
     async def enumerate(self):
-        parameter = random.randrange(0, sys.maxsize) # TODO: FIXME
+        parameter = random.randrange(0, 10000) # TODO: FIXME
         listener = perper_stream_add_listener(get_cache_service(), self.raw_stream, get_local_agent(), get_instance(), parameter)
 
         async for (k, i) in get_notification_service().get_notifications(get_instance(), parameter):

@@ -54,8 +54,8 @@ class CacheService:
 
     # CALLS:
 
-    def call_create(self, call, agent, instance, delegate, caller_agent, caller, parameters, parameters_type, local_to_data=False,):
-        call_data = create_call_data(instance, agent, delegate, caller_agent, caller, local_to_data, parameters, parameters_type)
+    def call_create(self, call, agent, instance, delegate, caller_agent, caller, parameters, local_to_data=False,):
+        call_data = create_call_data(instance, agent, delegate, caller_agent, caller, local_to_data, parameters)
         return put_if_absent_or_raise(self.calls_cache, call, call_data)
 
     def call_write_result(self, call, result, result_type):
