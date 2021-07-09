@@ -22,7 +22,7 @@ async def initialize(agent, functions, root=False):
     set_connection(cache_service, notification_service)
 
     task1 = asyncio.create_task(listen_triggers(ignite, functions))
-    task2 = asyncio.create_task(enter_context('', lambda: start_agent(agent, None, BoolObject)))
+    task2 = asyncio.create_task(enter_context('', lambda: start_agent(agent, [])))
 
     if root:
         await task1
@@ -31,7 +31,7 @@ async def initialize(agent, functions, root=False):
         await task1
 
 async def execute_call(functions, call_data, n):
-    (result, result_type) = await enter_context(call_data.instance, lambda: asyncio.create_task(functions[n.delegate](call_data.parameters)))
+    (result, result_type) = await enter_context(call_data.instance, lambda: asyncio.create_task(functions[n.delegate](*call_data.parameters[1])))
     get_cache_service().call_write_result(n.call, result, result_type)
 
 async def listen_triggers(ignite, functions):
@@ -45,7 +45,7 @@ async def listen_triggers(ignite, functions):
             stream_cache = ignite.get_cache(n.stream)
 
             if n.delegate in functions:
-                generator = functions[n.delegate](stream_data.parameters)
+                generator = functions[n.delegate](*stream_data.parameters[1])
                 async for data in generator:
                     stream_cache.put(random.randrange(1, sys.maxsize), data)
 

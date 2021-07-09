@@ -13,11 +13,11 @@ async def generate(count):
 async def process_data(num):
     return (num + 1, IntObject)
 
-async def main(*args):
-    stream = stream_function('generate', 5, IntObject)
+async def main():
+    stream = stream_function('generate', [5])
     
     async for value in stream.enumerate():
-        processed_value = await call_function('process_data', value, IntObject)
+        processed_value = await call_function('process_data', [value])
         print(processed_value)
         if processed_value == 10:
             return ('Done', String)

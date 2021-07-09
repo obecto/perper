@@ -1,11 +1,11 @@
 from collections import OrderedDict
 from pyignite import GenericObjectMeta
+from pyignite.datatypes.complex import ObjectArrayObject
 from pyignite.utils import entity_id
 from pyignite.datatypes import String, IntObject, BoolObject, MapObject, EnumObject, CollectionObject
 
 StreamDelegateTypeId = entity_id("StreamDelegateType")
-
-def create_stream_data(instance, agent, delegate, delegate_type, ephemeral, parameters, parameters_type, index_type=None, index_fields=None):
+def create_stream_data(instance, agent, delegate, delegate_type, ephemeral, parameters, index_type=None, index_fields=None):
     class StreamData(metaclass=GenericObjectMeta, type_name=f"StreamData_{agent}_{delegate}", schema=OrderedDict([
         ('instance', String),
         ('agent', String),
@@ -15,7 +15,7 @@ def create_stream_data(instance, agent, delegate, delegate_type, ephemeral, para
         ('indexFields', MapObject),
         ('ephemeral', BoolObject),
         ('listeners', CollectionObject),
-        ('parameters', parameters_type),
+        ('parameters', ObjectArrayObject),
     ])):
         pass
 
@@ -28,7 +28,7 @@ def create_stream_data(instance, agent, delegate, delegate_type, ephemeral, para
         indexFields=None if index_fields is None else (MapObject.HASH_MAP, index_fields),
         ephemeral=ephemeral,
         listeners=(CollectionObject.ARR_LIST, []),
-        parameters=parameters
+        parameters=(ObjectArrayObject.OBJECT,parameters)
     )
 
 class StreamListener(metaclass=GenericObjectMeta, schema=OrderedDict([

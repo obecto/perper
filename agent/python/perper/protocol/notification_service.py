@@ -37,7 +37,7 @@ class NotificationService:
     def consume_notification(self, key):
         return self.notifications_cache.remove(key)
 
-    def get_notification_key(self, notification: fabric_pb2.Notification): # TODO: Implement properly
+    def get_notification_key(self, notification: fabric_pb2.Notification):
         if notification.stringAffinity not in (None, ''):
             return NotificationKeyString(
                 key=notification.notificationKey, affinity=notification.stringAffinity
