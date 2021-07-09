@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,6 +27,7 @@ namespace Perper.Application
 
         public static async Task RunAsync(string agent, CancellationToken cancellationToken)
         {
+            await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
             InitializeServices(agent);
 
             var (streamTypes, callTypes) = DiscoverStreamAndCallTypes();
@@ -86,9 +86,15 @@ namespace Perper.Application
 
         private static void InitializeServices(string agent)
         {
+            var apacheIgniteEndpoint = Environment.GetEnvironmentVariable("APACHE_IGNITE_ENDPOINT") ?? "127.0.0.1:10800";
+            var fabricGrpcAddress = Environment.GetEnvironmentVariable("PERPER_FABRIC_ENDPOINT") ?? "http://127.0.0.1:40400";
+
+            Console.WriteLine($"APACHE_IGNITE_ENDPOINT: {apacheIgniteEndpoint}");
+            Console.WriteLine($"PERPER_FABRIC_ENDPOINT: {fabricGrpcAddress}");
+
             var ignite = Ignition.StartClient(new IgniteClientConfiguration
             {
-                Endpoints = new List<string> { "127.0.0.1:10800" },
+                Endpoints = new List<string> { apacheIgniteEndpoint },
                 BinaryConfiguration = new BinaryConfiguration
                 {
                     NameMapper = PerperBinaryConfigurations.NameMapper,
@@ -97,7 +103,7 @@ namespace Perper.Application
 
             });
             AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
-            var grpcChannel = GrpcChannel.ForAddress("http://127.0.0.1:40400");
+            var grpcChannel = GrpcChannel.ForAddress(fabricGrpcAddress);
 
             taskCollection = new TaskCollection();
             cacheService = new CacheService(ignite);
