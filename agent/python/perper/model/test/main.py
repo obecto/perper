@@ -6,14 +6,14 @@ from perper.model.agent import *
 from perper.model.bootstrap import initialize
 
 async def generate(count):
-    for x in range(count[1][0]):
+    for x in range(count):
         await asyncio.sleep(1)
         yield x
 
 async def process_data(num):
-    return (num[1][0] + 1, IntObject)
+    return (num + 1, IntObject)
 
-async def main(args):
+async def main():
     stream = stream_function('generate', [5])
     
     async for value in stream.enumerate():
