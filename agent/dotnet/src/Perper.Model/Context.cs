@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Threading.Tasks;
+
 using Apache.Ignite.Core.Cache.Configuration;
 
 using Perper.Protocol.Cache.Instance;
@@ -31,6 +32,14 @@ namespace Perper.Model
         {
             var stream = AsyncLocals.CacheService.GenerateName(functionName);
             await CreateStream<TItem>(stream, functionName, StreamDelegateType.Function, parameters, flags).ConfigureAwait(false);
+            return new Stream<TItem>(new PerperStream(stream));
+        }
+
+        public async Task<IStream<TItem>> StreamActionAsync<TItem>(string actionName, object[] parameters, StreamFlag flags = StreamFlag.Default)
+        {
+            // FIXME: Move Function/Action distinction to StreamFlag
+            var stream = AsyncLocals.CacheService.GenerateName(actionName);
+            await CreateStream<TItem>(stream, actionName, StreamDelegateType.Action, parameters, flags).ConfigureAwait(false);
             return new Stream<TItem>(new PerperStream(stream));
         }
 
