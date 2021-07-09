@@ -11,13 +11,13 @@ from perper.model.context import *
 
 async def initialize(agent, functions, root=False):
     ignite = Client()
-    ignite_address = os.getenv('PERPER_IGNITE_ADDRESS', '127.0.0.1')
-    ignite_port = int(os.getenv('PERPER_IGNITE_PORT', '10800'))
+    (ignite_address, ignite_port) = os.getenv('APACHE_IGNITE_ENDPOINT', '127.0.0.1:10800').split(':')
+    ignite_port = int(ignite_port)
     ignite.connect(ignite_address, ignite_port)
 
     cache_service = CacheService(ignite)
-    grpc_address = os.getenv('PERPER_GRPC_ADDRESS', '127.0.0.1:40400')
-    notification_service = NotificationService(ignite, grpc_address, agent)
+    grpc_endpoint = os.getenv('PERPER_FABRIC_ENDPOINT', '127.0.0.1:40400')
+    notification_service = NotificationService(ignite, grpc_endpoint, agent)
     await notification_service.start()
     set_connection(cache_service, notification_service)
 
