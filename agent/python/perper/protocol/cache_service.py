@@ -22,8 +22,8 @@ class CacheService:
 
     # STREAMS:
 
-    def stream_create(self, stream, agent, instance, delegate, delegate_type, parameters, parameters_type, ephemeral = True, index_type = None, index_fields = None):
-        stream_data = create_stream_data(instance, agent, delegate, delegate_type, ephemeral, parameters, parameters_type, index_type, index_fields)
+    def stream_create(self, stream, agent, instance, delegate, delegate_type, parameters, ephemeral = True, index_type = None, index_fields = None):
+        stream_data = create_stream_data(instance, agent, delegate, delegate_type, ephemeral, parameters, index_type, index_fields)
         return put_if_absent_or_raise(self.streams_cache, stream, stream_data)
 
     def stream_add_listener(self, stream, caller_agent, caller, parameter, filter = {}, replay = False, local_to_data = False):

@@ -9,7 +9,7 @@ async def test(params):
     return ('Started agent 3', String)
 
 async def get_stream(params):
-    stream = stream_function('generate', True, BoolObject)
+    stream = stream_function('generate', True)
     return (stream.raw_stream, BinaryObject)
 
 async def generate(params):
