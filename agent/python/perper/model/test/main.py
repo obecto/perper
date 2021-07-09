@@ -22,4 +22,4 @@ async def main():
         if processed_value == 10:
             return ('Done', String)
 
-asyncio.run(initialize('test_agent1', {'test_agent1': main, 'generate': generate, 'process_data': process_data}, True))
+asyncio.run(initialize('test_agent1', {'Startup': main, 'generate': generate, 'process_data': process_data}, True))
