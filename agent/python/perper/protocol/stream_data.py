@@ -48,7 +48,7 @@ def create_stream_listener(caller_agent, caller, parameter, replay, local_to_dat
         parameter=parameter,
         replay=replay,
         localToData=local_to_data,
-        filter=(MapObject.HASH_MAP, filter)
+        filter=(MapObject.HASH_MAP, filter) if filter != None else None
     )
 
 def stream_data_add_listener(stream_data, stream_listener):
