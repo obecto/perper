@@ -16,16 +16,16 @@ class Stream:
     # Stream<T>
 
     def data_local(self):
-        return Stream(PerperStream(self.raw_stream.stream, self.raw_stream.filter, self.raw_stream.replay, True))
+        return Stream(PerperStream(self.raw_stream.Stream, self.raw_stream.Filter, self.raw_stream.Replay, True))
 
     def filter(self, filter, data_local = False):
-        return Stream(PerperStream(self.raw_stream.stream, FilterUtils.convert_filter(filter), self.raw_stream.replay, data_local))
+        return Stream(PerperStream(self.raw_stream.Stream, FilterUtils.convert_filter(filter), self.raw_stream.Replay, data_local))
 
     def replay(self, data_local=False):
-        return Stream(PerperStream(self.raw_stream.stream, self.raw_stream.filter, True, data_local))
+        return Stream(PerperStream(self.raw_stream.Stream, self.raw_stream.Filter, True, data_local))
 
     def replay_filter(self, filter, data_local=False):
-        return Stream(PerperStream(self.raw_stream.stream, FilterUtils.convert_filter(filter), True, data_local))
+        return Stream(PerperStream(self.raw_stream.Stream, FilterUtils.convert_filter(filter), True, data_local))
 
     async def enumerate(self):
         parameter = random.randrange(0, 10000) # TODO: FIXME
