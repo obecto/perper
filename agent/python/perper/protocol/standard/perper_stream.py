@@ -8,10 +8,10 @@ class PerperStream(
     type_name="PerperStream",
     schema=OrderedDict(
         [
-            ("stream", String),
-            ("filter", MapObject),
-            ("replay", BoolObject),
-            ("localToData", BoolObject)
+            ("Stream", String),
+            ("Filter", MapObject),
+            ("Replay", BoolObject),
+            ("LocalToData", BoolObject)
         ]
     ),
 ):
