@@ -31,8 +31,12 @@ async def initialize(agent, functions, root=False):
         await task1
 
 async def execute_call(functions, call_data, n):
-    (result, result_type) = await enter_context(call_data.instance, lambda: asyncio.create_task(functions[n.delegate](*call_data.parameters[1])))
-    get_cache_service().call_write_result(n.call, result, result_type)
+    return_value = await enter_context(call_data.instance, lambda: asyncio.create_task(functions[n.delegate](*call_data.parameters[1])))
+    if return_value == None:
+        get_cache_service().call_write_finished(n.call)
+    else:
+        (result, result_type) = return_value
+        get_cache_service().call_write_result(n.call, result, result_type)
 
 async def listen_triggers(ignite, functions):
     async for (k, n) in get_notification_service().get_notifications(get_local_agent()):

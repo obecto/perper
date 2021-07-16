@@ -226,9 +226,9 @@ namespace Perper.Application
                 var callInstance = InstanciateType(callType);
 
                 var callArguments = await AsyncLocals.CacheService.GetCallParameters(AsyncLocals.Instance).ConfigureAwait(false);
-                var (hasReturnType, invokeResult, _) = await InvokeMethodAsync(callType, callInstance, callArguments).ConfigureAwait(false);
+                var (returnType, invokeResult) = await InvokeMethodAsync(callType, callInstance, callArguments).ConfigureAwait(false);
 
-                await WriteCallResultAsync(key, hasReturnType, invokeResult).ConfigureAwait(false);
+                await WriteCallResultAsync(key, returnType, invokeResult).ConfigureAwait(false);
             });
         }
 
@@ -239,9 +239,9 @@ namespace Perper.Application
                 var streamInstance = InstanciateType(streamType);
 
                 var streamArguments = await AsyncLocals.CacheService.GetStreamParameters(AsyncLocals.Instance).ConfigureAwait(false);
-                var (hasReturnType, invokeResult, asyncEnumerableType) = await InvokeMethodAsync(streamType, streamInstance, streamArguments).ConfigureAwait(false);
+                var (returnType, invokeResult) = await InvokeMethodAsync(streamType, streamInstance, streamArguments).ConfigureAwait(false);
 
-                await WriteStreamResultAsync(key, hasReturnType, invokeResult, asyncEnumerableType).ConfigureAwait(false);
+                await WriteStreamResultAsync(key, returnType, invokeResult).ConfigureAwait(false);
             });
         }
 
@@ -268,7 +268,7 @@ namespace Perper.Application
             return Activator.CreateInstance(callType, constructorArguments);
         }
 
-        private static async Task<(bool, object, Type?)> InvokeMethodAsync(Type type, object instance, object[] arguments)
+        private static async Task<(Type?, object)> InvokeMethodAsync(Type type, object instance, object[] arguments)
         {
             var methodInfo = type.GetMethod(runAsyncMethodName);
             var parameters = methodInfo.GetParameters();
@@ -276,14 +276,14 @@ namespace Perper.Application
 
             var isAwaitable = methodInfo.ReturnType.GetMethod(nameof(Task.GetAwaiter)) != null;
             object invokeResult = null;
-            var hasReturnType = false;
+            Type? returnType = null;
 
             // Pass CancellationToken
             if (isAwaitable)
             {
                 if (methodInfo.ReturnType.IsGenericType)
                 {
-                    hasReturnType = true;
+                    returnType = methodInfo.ReturnType.GetGenericArguments()[0];
                     invokeResult = (object)await (dynamic)methodInfo.Invoke(instance, arguments);
                 }
                 else
@@ -299,33 +299,21 @@ namespace Perper.Application
                 }
                 else
                 {
-                    hasReturnType = true;
+                    returnType = methodInfo.ReturnType;
                     invokeResult = methodInfo.Invoke(instance, arguments);
                 }
             }
 
-            Type? asyncEnumerableType = null;
-
-            try
-            {
-                var isAsyncEnumerable = methodInfo.ReturnType.GetGenericTypeDefinition().Equals(typeof(IAsyncEnumerable<>));
-                if (isAsyncEnumerable)
-                {
-                    asyncEnumerableType = methodInfo.ReturnType.GetGenericArguments()[0];
-                }
-            }
-            catch (InvalidOperationException)
-            {
-            }
-
-            return (hasReturnType, invokeResult, asyncEnumerableType);
+            return (returnType, invokeResult);
         }
 
-        private static async Task WriteCallResultAsync(NotificationKey key, bool hasReturnType, object? invokeResult)
+        private static async Task WriteCallResultAsync(NotificationKey key, Type? returnType, object? invokeResult)
         {
-            if (hasReturnType)
+            if (returnType != null)
             {
-                await AsyncLocals.CacheService.CallWriteResult(AsyncLocals.Instance, invokeResult).ConfigureAwait(false);
+                var callWriteResultMethod = typeof(CacheService).GetMethod(nameof(CacheService.CallWriteResult))!
+                    .MakeGenericMethod(returnType);
+                await ((Task)callWriteResultMethod.Invoke(AsyncLocals.CacheService, new object[] { AsyncLocals.Instance, invokeResult })).ConfigureAwait(false);
             }
             else
             {
@@ -335,10 +323,23 @@ namespace Perper.Application
             await notificationService.ConsumeNotification(key).ConfigureAwait(false);
         }
 
-        private static async Task WriteStreamResultAsync(NotificationKey key, bool hasReturnType, object? invokeResult, Type? asyncEnumerableType)
+        private static async Task WriteStreamResultAsync(NotificationKey key, Type? returnType, object? invokeResult)
         {
-            if (hasReturnType)
+            if (returnType != null)
             {
+                Type? asyncEnumerableType = null;
+                try
+                {
+                    var isAsyncEnumerable = returnType.GetGenericTypeDefinition().Equals(typeof(IAsyncEnumerable<>));
+                    if (isAsyncEnumerable)
+                    {
+                        asyncEnumerableType = returnType.GetGenericArguments()[0];
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                }
+
                 if (asyncEnumerableType != null)
                 {
                     var processMethod = typeof(PerperStartup).GetMethod(nameof(ProcessAsyncEnumerable), BindingFlags.NonPublic | BindingFlags.Static)!
@@ -346,16 +347,9 @@ namespace Perper.Application
 
                     await ((Task)processMethod.Invoke(null, new object[] { invokeResult })!).ConfigureAwait(false);
                 }
-                else
-                {
-                    await AsyncLocals.CacheService.CallWriteResult(AsyncLocals.Instance, invokeResult).ConfigureAwait(false);
-                }
             }
-            else
-            {
-                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Instance).ConfigureAwait(false);
-                await notificationService.ConsumeNotification(key).ConfigureAwait(false);
-            }
+
+            await notificationService.ConsumeNotification(key).ConfigureAwait(false);
         }
 
         public static Type? GetGenericInterface(Type type, Type genericInterface)
