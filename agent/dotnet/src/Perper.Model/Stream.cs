@@ -79,7 +79,15 @@ namespace Perper.Model
                     {
                         T? value;
 
-                        value = await AsyncLocals.CacheService.StreamReadItem<T>(si).ConfigureAwait(false);
+                        try
+                        {
+                            value = await AsyncLocals.CacheService.StreamReadItem<T>(si).ConfigureAwait(false);
+                        }
+                        catch (KeyNotFoundException)
+                        {
+                            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
+                            value = await AsyncLocals.CacheService.StreamReadItem<T>(si).ConfigureAwait(false);
+                        }
 
                         // await ((State)_stream._state).LoadStateEntries();
 
