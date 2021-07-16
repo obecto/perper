@@ -85,8 +85,15 @@ namespace Perper.Model
                         }
                         catch (KeyNotFoundException)
                         {
-                            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
-                            value = await AsyncLocals.CacheService.StreamReadItem<T>(si).ConfigureAwait(false);
+                            try
+                            {
+                                await Task.Delay(200, cancellationToken).ConfigureAwait(false);
+                                value = await AsyncLocals.CacheService.StreamReadItem<T>(si).ConfigureAwait(false);
+                            }
+                            catch (KeyNotFoundException)
+                            {
+                                continue;
+                            }
                         }
 
                         // await ((State)_stream._state).LoadStateEntries();
