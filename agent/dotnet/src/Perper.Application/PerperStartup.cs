@@ -63,9 +63,10 @@ namespace Perper.Application
                     {
                         if (notification is CallTriggerNotification callTriggerNotification)
                         {
-                            await AsyncLocals.EnterContext(callTriggerNotification.Call, async () =>
+                            var instance = await AsyncLocals.CacheService.GetCallInstance(callTriggerNotification.Call).ConfigureAwait(false);
+                            await AsyncLocals.EnterContext(instance, callTriggerNotification.Call, async () =>
                             {
-                                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Instance).ConfigureAwait(false);
+                                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
                                 await notificationService.ConsumeNotification(key).ConfigureAwait(false);
                             }).ConfigureAwait(false);
                         }
@@ -78,7 +79,7 @@ namespace Perper.Application
             //        {
             //            if (notification is CallTriggerNotification callTriggerNotification)
             //            {
-            //                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Instance).ConfigureAwait(false);
+            //                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
             //                await notificationService.ConsumeNotification(key).ConfigureAwait(false);
             //            }
             //        }
@@ -117,7 +118,7 @@ namespace Perper.Application
         {
             if (initCallType != null)
             {
-                await InvokeInitMethod(initCallType, "test-instance").ConfigureAwait(false);
+                await InvokeInitMethod(initCallType).ConfigureAwait(false);
             }
         }
 
@@ -156,9 +157,9 @@ namespace Perper.Application
             return (streamTypes, callTypes);
         }
 
-        private static Task InvokeInitMethod(Type initType, string instanceName)
+        private static Task InvokeInitMethod(Type initType)
         {
-            return AsyncLocals.EnterContext(instanceName, async () =>
+            return AsyncLocals.EnterContext($"{AsyncLocals.Agent}-init", $"{initType.Name}-init", async () =>
             {
                 var initCallInstance = InstanciateType(initType);
 
@@ -219,30 +220,32 @@ namespace Perper.Application
             }
         }
 
-        private static Task ExecuteCall(Type? callType, NotificationKey key, CallTriggerNotification notification)
+        private static async Task ExecuteCall(Type? callType, NotificationKey key, CallTriggerNotification notification)
         {
-            return AsyncLocals.EnterContext(notification.Call, async () =>
+            var instance = await AsyncLocals.CacheService.GetCallInstance(notification.Call).ConfigureAwait(false);
+            await AsyncLocals.EnterContext(instance, notification.Call, async () =>
             {
                 var callInstance = InstanciateType(callType);
 
-                var callArguments = await AsyncLocals.CacheService.GetCallParameters(AsyncLocals.Instance).ConfigureAwait(false);
+                var callArguments = await AsyncLocals.CacheService.GetCallParameters(AsyncLocals.Execution).ConfigureAwait(false);
                 var (returnType, invokeResult) = await InvokeMethodAsync(callType, callInstance, callArguments).ConfigureAwait(false);
 
                 await WriteCallResultAsync(key, returnType, invokeResult).ConfigureAwait(false);
-            });
+            }).ConfigureAwait(false);
         }
 
-        private static Task ExecuteStream(Type? streamType, NotificationKey key, StreamTriggerNotification notification)
+        private static async Task ExecuteStream(Type? streamType, NotificationKey key, StreamTriggerNotification notification)
         {
-            return AsyncLocals.EnterContext(notification.Stream, async () =>
+            var instance = await AsyncLocals.CacheService.GetStreamInstance(notification.Stream).ConfigureAwait(false);
+            await AsyncLocals.EnterContext(instance, notification.Stream, async () =>
             {
                 var streamInstance = InstanciateType(streamType);
 
-                var streamArguments = await AsyncLocals.CacheService.GetStreamParameters(AsyncLocals.Instance).ConfigureAwait(false);
+                var streamArguments = await AsyncLocals.CacheService.GetStreamParameters(AsyncLocals.Execution).ConfigureAwait(false);
                 var (returnType, invokeResult) = await InvokeMethodAsync(streamType, streamInstance, streamArguments).ConfigureAwait(false);
 
                 await WriteStreamResultAsync(key, returnType, invokeResult).ConfigureAwait(false);
-            });
+            }).ConfigureAwait(false);
         }
 
         private static object InstanciateType(Type callType)
@@ -313,11 +316,11 @@ namespace Perper.Application
             {
                 var callWriteResultMethod = typeof(CacheService).GetMethod(nameof(CacheService.CallWriteResult))!
                     .MakeGenericMethod(returnType);
-                await ((Task)callWriteResultMethod.Invoke(AsyncLocals.CacheService, new object[] { AsyncLocals.Instance, invokeResult })).ConfigureAwait(false);
+                await ((Task)callWriteResultMethod.Invoke(AsyncLocals.CacheService, new object[] { AsyncLocals.Execution, invokeResult })).ConfigureAwait(false);
             }
             else
             {
-                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Instance).ConfigureAwait(false);
+                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
             }
 
             await notificationService.ConsumeNotification(key).ConfigureAwait(false);
@@ -375,7 +378,7 @@ namespace Perper.Application
             // TODO: CancellationToken
             await foreach (var value in values)
             {
-                await AsyncLocals.CacheService.StreamWriteItem(AsyncLocals.Instance, value).ConfigureAwait(false);
+                await AsyncLocals.CacheService.StreamWriteItem(AsyncLocals.Execution, value).ConfigureAwait(false);
             }
         }
     }

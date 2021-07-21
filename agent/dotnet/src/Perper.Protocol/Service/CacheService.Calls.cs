@@ -97,5 +97,12 @@ namespace Perper.Protocol.Service
 
             return parameters;
         }
+
+        public async Task<string> GetCallInstance(string call)
+        {
+            var callData = await callsCache.GetAsync(call).ConfigureAwait(false);
+
+            return callData.GetField<string>("instance");
+        }
     }
 }
