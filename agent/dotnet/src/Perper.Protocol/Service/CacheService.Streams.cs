@@ -95,5 +95,12 @@ namespace Perper.Protocol.Service
 
             return parameters;
         }
+
+        public async Task<string> GetStreamInstance(string stream)
+        {
+            var streamData = await streamsCache.GetAsync(stream).ConfigureAwait(false);
+
+            return streamData.GetField<string>("instance");
+        }
     }
 }

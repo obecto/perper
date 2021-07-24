@@ -78,7 +78,7 @@ class CallService : JobService() {
                 }
 
                 coroutineScope.launch {
-                    log.trace({"$notifiedAgent - $notificationKey - $notification"})
+                    log.trace({ "$notifiedAgent - $notificationKey - $notification" })
                     val notificationsCache = TransportService.getNotificationCache(ignite, notifiedAgent)
                     notificationsCache.put(notificationKey, notification)
                 }

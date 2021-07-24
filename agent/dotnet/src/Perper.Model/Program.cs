@@ -60,12 +60,12 @@ namespace Perper.Model
                     {
                         if (notification is CallTriggerNotification ct)
                         {
-                            executionTasks.Add(LogExceptions(AsyncLocals.EnterContext(ct.Call, async () =>
+                            executionTasks.Add(LogExceptions(AsyncLocals.EnterContext(await AsyncLocals.CacheService.GetCallInstance(ct.Call).ConfigureAwait(false), ct.Call, async () =>
                             {
                                 var context = new Context();
                                 var result = await context.StreamFunctionAsync<int>("hashtableStream", new object[] { new Hashtable { { "12345", "6789" } } }).ConfigureAwait(false);
                             //...
-                            await AsyncLocals.CacheService.CallWriteResult(AsyncLocals.Instance, ((Stream)result).RawStream).ConfigureAwait(false);
+                            await AsyncLocals.CacheService.CallWriteResult(AsyncLocals.Execution, ((Stream)result).RawStream).ConfigureAwait(false);
                             })));
                             await notificationService.ConsumeNotification(key).ConfigureAwait(false);
                         }
@@ -80,7 +80,7 @@ namespace Perper.Model
                     {
                         if (notification is StreamTriggerNotification st)
                         {
-                            executionTasks.Add(LogExceptions(AsyncLocals.EnterContext(st.Stream, async () =>
+                            executionTasks.Add(LogExceptions(AsyncLocals.EnterContext(await AsyncLocals.CacheService.GetStreamInstance(st.Stream).ConfigureAwait(false), st.Stream, async () =>
                             {
                                 Console.WriteLine("Starting stream");
                                 var i = 0;
@@ -92,7 +92,7 @@ namespace Perper.Model
 
                                     var item = i;
                                 //...
-                                await AsyncLocals.CacheService.StreamWriteItem(AsyncLocals.Instance, item).ConfigureAwait(false);
+                                await AsyncLocals.CacheService.StreamWriteItem(AsyncLocals.Execution, item).ConfigureAwait(false);
                                 }
                             })));
                             await notificationService.ConsumeNotification(key).ConfigureAwait(false);
@@ -101,7 +101,7 @@ namespace Perper.Model
 
                     await Task.WhenAll(executionTasks).ConfigureAwait(false);
                 })),
-                LogExceptions(AsyncLocals.EnterContext("testInstance", async () =>
+                LogExceptions(AsyncLocals.EnterContext("testInstance", "testExecution", async () =>
                 {
                     var context = new Context();
 
