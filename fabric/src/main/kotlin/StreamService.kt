@@ -9,15 +9,14 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
+import org.apache.ignite.IgniteCache
 import org.apache.ignite.IgniteException
 import org.apache.ignite.IgniteLogger
-import org.apache.ignite.IgniteSet
 import org.apache.ignite.binary.BinaryObject
 import org.apache.ignite.cache.QueryEntity
 import org.apache.ignite.cache.query.ContinuousQuery
 import org.apache.ignite.cache.query.ScanQuery
 import org.apache.ignite.configuration.CacheConfiguration
-import org.apache.ignite.configuration.CollectionConfiguration
 import org.apache.ignite.lang.IgniteBiPredicate
 import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
@@ -36,7 +35,7 @@ class StreamService : JobService() {
 
     lateinit var ignite: Ignite
 
-    lateinit var replayStartedSet: IgniteSet<Pair<String, StreamListener>>
+    lateinit var replayFinishedCache: IgniteCache<Pair<String, StreamListener>, Long>
     lateinit var streamItemUpdates: Channel<Pair<String, Long>>
 
     @IgniteInstanceResource
@@ -55,12 +54,7 @@ class StreamService : JobService() {
 
     override fun init(ctx: ServiceContext) {
         streamItemUpdates = Channel(Channel.UNLIMITED)
-        replayStartedSet = ignite.set(
-            "\$replays-started",
-            CollectionConfiguration().also {
-                it.backups = 1
-            }
-        )
+        replayFinishedCache = ignite.getOrCreateCache("replays-finished")
 
         super.init(ctx)
     }
@@ -75,21 +69,19 @@ class StreamService : JobService() {
         }
     }
 
-    suspend fun CoroutineScope.listenCache(cacheName: String) {
-        launch {
-            val streamsCache = ignite.getOrCreateCache<String, Any>(cacheName).withKeepBinary<String, BinaryObject>()
-            val query = ContinuousQuery<String, BinaryObject>()
-            query.localListener = CacheEntryUpdatedListener { events ->
-                for (event in events) {
-                    coroutineScope.launch {
-                        log.debug({ "Stream object modified '${event.key}'" })
-                        updateStream(event.key, event.value)
-                    }
+    suspend fun listenCache(cacheName: String) {
+        val streamsCache = ignite.getOrCreateCache<String, Any>(cacheName).withKeepBinary<String, BinaryObject>()
+        val query = ContinuousQuery<String, BinaryObject>()
+        query.localListener = CacheEntryUpdatedListener { events ->
+            for (event in events) {
+                coroutineScope.launch {
+                    log.debug({ "Stream object modified '${event.key}'" })
+                    updateStream(event.key, event.value)
                 }
             }
-            streamsCache.query(query)
-            log.debug({ "Streams listener started!" })
         }
+        streamsCache.query(query)
+        log.debug({ "Streams listener started!" })
     }
 
     val BinaryObject.delegateType get() = field<BinaryObject>("delegateType").deserialize<StreamDelegateType>()
@@ -111,8 +103,8 @@ class StreamService : JobService() {
         for (listenerBin in streamData.listeners) {
             val listener = listenerBin.deserialize<StreamListener>()
             if (listener.replay) {
-                if (replayStartedSet.add(Pair(stream, listener))) {
-                    writeFullReplay(stream, streamData.ephemeral, listener)
+                if (replayFinishedCache.getAndPutIfAbsent(Pair(stream, listener), Long.MAX_VALUE) == null) {
+                    coroutineScope.launch { writeFullReplay(stream, streamData.ephemeral, listener) }
                 }
             }
         }
@@ -179,13 +171,16 @@ class StreamService : JobService() {
                 if (listener.parameter == forwardParameterIndex) {
                     helper(listener.caller)
                 } else {
+                    if (listener.replay && itemKey <= replayFinishedCache.get(Pair(stream, listener)) ?: Long.MAX_VALUE) {
+                        continue
+                    }
                     ephemeralCounter ++
                     val notificationsCache = TransportService.getNotificationCache(ignite, listener.callerAgent)
                     val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.caller)
-                    val key = NotificationKey(itemKey, if (listener.localToData) itemKey else listener.caller)
+                    val key = NotificationKey(TransportService.getCurrentTicks(), if (listener.localToData) itemKey else listener.caller)
                     notificationsQueue.put(key)
                     notificationsCache.put(key, StreamItemNotification(listener.caller, listener.parameter, stream, itemKey, ephemeral))
-                    log.trace({ "Writing notification ${listener.callerAgent} $key" })
+                    log.trace({ "Writing notification ${listener.callerAgent} $key $itemKey" })
                 }
             }
         }
@@ -226,7 +221,7 @@ class StreamService : JobService() {
     }
 
     fun updateStreamItem(stream: String, itemKey: Long) {
-        log.trace({ "Queueing stream update on '$stream'" })
+        log.trace({ "Queueing stream update on '$stream' $itemKey" })
         runBlocking { streamItemUpdates.send(Pair(stream, itemKey)) }
     }
 
@@ -235,34 +230,47 @@ class StreamService : JobService() {
         val notificationsCache = TransportService.getNotificationCache(ignite, listener.callerAgent)
         val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.caller)
 
-        val query = ScanQuery<Long, Any>()
-        query.filter = IgniteBiPredicate { _, value ->
-            testFilter(listener.filter, lazy { value as BinaryObject })
-        }
+        var reached = 0L
 
-        var itemKeys = cache.query(query).map({ item -> item.key }).toMutableList()
-        itemKeys.sort()
-
-        for (itemKey in itemKeys) {
-            if (ephemeral) {
-                try {
-                    val counter = ignite.atomicLong("$stream-$itemKey", 0, false)
-                    if (counter == null || counter.getAndIncrement() == 0L) {
-                        continue; // If it was 0, someone is going to delete the item very soon
-                    }
-                    if (!cache.containsKey(itemKey)) {
-                        continue; // In case we somehow raced and the key is gone anyway
-                    }
-                    // Can still race if we enter writeFullReplace twice for the same stream?
-                } catch (e: IgniteException) {
-                    continue
-                }
+        while (true) {
+            val query = ScanQuery<Long, Any>()
+            query.filter = IgniteBiPredicate { key, value ->
+                key > reached && testFilter(listener.filter, lazy { value as BinaryObject })
             }
 
-            val key = NotificationKey(itemKey, if (listener.localToData) itemKey else listener.caller)
-            notificationsQueue.put(key)
-            notificationsCache.put(key, StreamItemNotification(listener.caller, listener.parameter, stream, itemKey, ephemeral))
+            var itemKeys = cache.query(query).map({ item -> item.key }).toMutableList()
+            itemKeys.sort()
+
+            if (itemKeys.size == 0) {
+                break // NOTE: it is still possible to miss a few items between here and replayFinishedCache.put
+            }
+
+            reached = itemKeys[itemKeys.size - 1]
+
+            for (itemKey in itemKeys) {
+                if (ephemeral) {
+                    try {
+                        val counter = ignite.atomicLong("$stream-$itemKey", 0, false)
+                        if (counter == null || counter.getAndIncrement() == 0L) {
+                            continue; // If it was 0, someone is going to delete the item very soon
+                        }
+                        if (!cache.containsKey(itemKey)) {
+                            continue; // In case we somehow raced and the key is gone anyway
+                        }
+                        // Can still race if we enter writeFullReplace twice for the same stream?
+                    } catch (e: IgniteException) {
+                        continue
+                    }
+                }
+
+                val key = NotificationKey(TransportService.getCurrentTicks(), if (listener.localToData) itemKey else listener.caller)
+                notificationsQueue.put(key)
+                notificationsCache.put(key, StreamItemNotification(listener.caller, listener.parameter, stream, itemKey, ephemeral))
+                log.trace({ "Writing replay notification ${listener.callerAgent} $key $itemKey" })
+            }
         }
+
+        replayFinishedCache.put(Pair(stream, listener), reached)
     }
 
     class StreamUpdatesRemoteFilter(val streamName: String) : CacheEntryEventFilter<Long, Any> {
