@@ -9,6 +9,7 @@ using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
 
 using Grpc.Net.Client;
+using Grpc.Core;
 
 using Perper.Protocol.Cache.Notifications;
 using Perper.Protocol.Protobuf;
@@ -18,7 +19,7 @@ using NotificationProto = Perper.Protocol.Protobuf.Notification;
 
 namespace Perper.Protocol.Service
 {
-    public partial class NotificationService
+    public partial class NotificationService : IDisposable
     {
         public NotificationService(
             IIgniteClient ignite,
@@ -36,8 +37,10 @@ namespace Perper.Protocol.Service
 
         private readonly ConcurrentDictionary<(string, int?), Channel<(NotificationKey, Notification)>> channels =
             new ConcurrentDictionary<(string, int?), Channel<(NotificationKey, Notification)>>();
+
         private Task? runningTask;
         private CancellationTokenSource? runningTaskCancellation;
+        private AsyncServerStreamingCall<NotificationProto>? notificationsStream;
 
         private Channel<(NotificationKey, Notification)> GetChannel(string instance, int? parameter = null)
         {
@@ -60,33 +63,32 @@ namespace Perper.Protocol.Service
         }
 
         // TODO: Pass CancellationToken argument
-        public Task StartAsync()
+        public async Task StartAsync()
         {
             runningTaskCancellation = new CancellationTokenSource();
-            runningTask = RunAsync(runningTaskCancellation.Token);
-            return Task.CompletedTask;
-        }
 
-        // TODO: Pass CancellationToken argument
-        public Task StopAsync()
-        {
-            runningTaskCancellation.Cancel();
-            return runningTask;
+            notificationsStream = client.Notifications(new NotificationFilter { Agent = Agent }, null, null, runningTaskCancellation.Token);
+            await notificationsStream.ResponseHeadersAsync.ConfigureAwait(false);
+
+            runningTask = RunAsync(runningTaskCancellation.Token);
         }
 
         private async Task RunAsync(CancellationToken cancellationToken = default)
         {
-            using var notifications = client.Notifications(new NotificationFilter { Agent = Agent }, null, null, cancellationToken);
-
-            while (await notifications.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+            while (await notificationsStream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
             {
-                var key = GetNotificationKey(notifications.ResponseStream.Current);
+                var key = GetNotificationKey(notificationsStream.ResponseStream.Current);
                 var notificationResult = await notificationsCache.TryGetAsync(key).ConfigureAwait(false);
 
                 if (!notificationResult.Success)
                 {
-                    Console.WriteLine($"FabricService failed to read notification: {key}");
-                    continue;
+                    await Task.Delay(200, cancellationToken).ConfigureAwait(false);
+                    notificationResult = await notificationsCache.TryGetAsync(key).ConfigureAwait(false);
+                    if (!notificationResult.Success)
+                    {
+                        Console.WriteLine($"FabricService failed to read notification: {key}");
+                        continue;
+                    }
                 }
 
                 var notification = notificationResult.Value;
@@ -106,6 +108,30 @@ namespace Perper.Protocol.Service
                         // pass
                         break;
                 }
+            }
+        }
+
+        // TODO: Pass CancellationToken argument
+        public async Task StopAsync()
+        {
+            runningTaskCancellation.Cancel();
+            await runningTask.ConfigureAwait(false);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                notificationsStream?.Dispose();
+                notificationsStream = null;
+                runningTaskCancellation?.Dispose();
+                runningTaskCancellation = null;
             }
         }
 

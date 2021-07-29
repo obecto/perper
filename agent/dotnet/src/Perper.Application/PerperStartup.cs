@@ -11,10 +11,13 @@ using Apache.Ignite.Core.Client;
 
 using Grpc.Net.Client;
 
+using Polly;
+
 using Perper.Model;
 using Perper.Protocol;
 using Perper.Protocol.Cache.Notifications;
 using Perper.Protocol.Service;
+using Context = Perper.Model.Context;
 
 namespace Perper.Application
 {
@@ -28,8 +31,8 @@ namespace Perper.Application
 
         public static async Task RunAsync(string agent, CancellationToken cancellationToken)
         {
-            await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
-            InitializeServices(agent);
+            await InitializeServices(agent).ConfigureAwait(false);
+            AsyncLocals.SetConnection(cacheService, notificationService);
 
             var (streamTypes, callTypes) = DiscoverStreamAndCallTypes();
             var initCallType = callTypes.FirstOrDefault(c => c.Name == initCallName);
@@ -41,7 +44,6 @@ namespace Perper.Application
 
             AcknowledgeStartupCalls(callTypes);
 
-            await notificationService.StartAsync().ConfigureAwait(false);
             await InvokeInitMethodIfExists(initCallType).ConfigureAwait(false);
 
             await taskCollection.GetTask().ConfigureAwait(false);
@@ -86,15 +88,19 @@ namespace Perper.Application
             //    }));
         }
 
-        private static void InitializeServices(string agent)
+        private static async Task InitializeServices(string agent)
         {
+            taskCollection = new TaskCollection();
+
             var apacheIgniteEndpoint = Environment.GetEnvironmentVariable("APACHE_IGNITE_ENDPOINT") ?? "127.0.0.1:10800";
             var fabricGrpcAddress = Environment.GetEnvironmentVariable("PERPER_FABRIC_ENDPOINT") ?? "http://127.0.0.1:40400";
 
             Console.WriteLine($"APACHE_IGNITE_ENDPOINT: {apacheIgniteEndpoint}");
             Console.WriteLine($"PERPER_FABRIC_ENDPOINT: {fabricGrpcAddress}");
 
-            var ignite = Ignition.StartClient(new IgniteClientConfiguration
+            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
+            var igniteConfiguration = new IgniteClientConfiguration
             {
                 Endpoints = new List<string> { apacheIgniteEndpoint },
                 BinaryConfiguration = new BinaryConfiguration
@@ -102,16 +108,26 @@ namespace Perper.Application
                     NameMapper = PerperBinaryConfigurations.NameMapper,
                     TypeConfigurations = PerperBinaryConfigurations.TypeConfigurations
                 }
+            };
 
-            });
-            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
-            var grpcChannel = GrpcChannel.ForAddress(fabricGrpcAddress);
+            var ignite = await Policy
+                .HandleInner<System.Net.Sockets.SocketException>()
+                .WaitAndRetryAsync(10,
+                    attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt - 2)),
+                    (exception, timespan) => Console.WriteLine("Failed to connect to Ignite, retrying in {0}s", timespan.TotalSeconds))
+                .ExecuteAsync(() => Task.Run(() => Ignition.StartClient(igniteConfiguration))).ConfigureAwait(false);
 
-            taskCollection = new TaskCollection();
             cacheService = new CacheService(ignite);
+
+            var grpcChannel = GrpcChannel.ForAddress(fabricGrpcAddress);
             notificationService = new NotificationService(ignite, grpcChannel, agent);
 
-            AsyncLocals.SetConnection(cacheService, notificationService);
+            await Policy
+                .Handle<Grpc.Core.RpcException>(ex => ex.Status.DebugException is System.Net.Http.HttpRequestException)
+                .WaitAndRetryAsync(10,
+                    attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt - 2)),
+                    (exception, timespan) => Console.WriteLine("Failed to connect to GRPC, retrying in {0}s", timespan.TotalSeconds))
+                .ExecuteAsync(notificationService.StartAsync).ConfigureAwait(false);
         }
 
         private static async Task InvokeInitMethodIfExists(Type? initCallType)

@@ -26,6 +26,10 @@
 	  <ProjectReference Include="..\Perper.Protocol\Perper.Protocol.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <PackageReference Include="Polly" Version="7.2.2" />
+	</ItemGroup>
+
 	<PropertyGroup>
 		<AnalysisMode>AllEnabledByDefault</AnalysisMode>
 		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
