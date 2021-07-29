@@ -11,94 +11,91 @@ using Apache.Ignite.Core.Client;
 
 using Grpc.Net.Client;
 
-using Polly;
-
 using Perper.Model;
 using Perper.Protocol;
 using Perper.Protocol.Cache.Notifications;
 using Perper.Protocol.Service;
+
+using Polly;
+
 using Context = Perper.Model.Context;
 
 namespace Perper.Application
 {
     public static class PerperStartup
     {
-        private static CacheService cacheService;
-        private static NotificationService notificationService;
-        private static TaskCollection taskCollection;
-        private const string runAsyncMethodName = "RunAsync";
-        private const string initCallName = "Init";
+        public const string RunAsyncMethodName = "RunAsync";
+        public const string StreamsNamespaceName = "Streams";
+        public const string CallsNamespaceName = "Calls";
+        public const string InitCallName = "Init";
+
+        #region RunAsync
 
         public static async Task RunAsync(string agent, CancellationToken cancellationToken)
         {
-            await InitializeServices(agent).ConfigureAwait(false);
+            await RunAsync(agent, DiscoverStreamAndCallTypes(), cancellationToken).ConfigureAwait(false);
+        }
+
+        public static async Task RunAsync(string agent, (List<Type> streamTypes, List<Type> callTypes) types, CancellationToken cancellationToken)
+        {
+            await EnterServicesContext(agent, () => ListenNotificationsForTypes(types, cancellationToken)).ConfigureAwait(false);
+        }
+
+        #endregion RunAsync
+        #region DiscoverStreamAndCallTypes
+
+        public static (List<Type> streamTypes, List<Type> callTypes) DiscoverStreamAndCallTypes()
+        {
+            return DiscoverStreamAndCallTypes(Assembly.GetEntryAssembly()!);
+        }
+
+        public static (List<Type> streamTypes, List<Type> callTypes) DiscoverStreamAndCallTypes(Assembly assembly)
+        {
+            return DiscoverStreamAndCallTypes(assembly, assembly.GetName().Name!);
+        }
+
+        public static (List<Type> streamTypes, List<Type> callTypes) DiscoverStreamAndCallTypes(Assembly assembly, string rootNamespace)
+        {
+            var streamsNamespace = $"{rootNamespace}.{StreamsNamespaceName}";
+            var callsNamespace = $"{rootNamespace}.{CallsNamespaceName}";
+
+            var types = assembly
+                .GetTypes()
+                .Where(t => t.IsClass && t.MemberType == MemberTypes.TypeInfo && !string.IsNullOrEmpty(t.Namespace) && t.GetMethod(RunAsyncMethodName) != null);
+
+            var streamTypes = types
+                 .Where(x => x.Namespace!.Contains(streamsNamespace, StringComparison.InvariantCultureIgnoreCase))
+                 .ToList();
+
+            var callTypes = types
+                 .Where(x => x.Namespace!.Contains(callsNamespace, StringComparison.InvariantCultureIgnoreCase))
+                 .ToList();
+
+            return (streamTypes, callTypes);
+        }
+
+        #endregion DiscoverStreamAndCallTypes
+        #region Services
+
+        public static async Task EnterServicesContext(string agent, Func<Task> context)
+        {
+            var (cacheService, notificationService) = await InitializeServices(agent).ConfigureAwait(false);
+
             AsyncLocals.SetConnection(cacheService, notificationService);
 
-            var (streamTypes, callTypes) = DiscoverStreamAndCallTypes();
-            var initCallType = callTypes.FirstOrDefault(c => c.Name == initCallName);
+            await context().ConfigureAwait(false);
 
-            RemoveInitCallFromTypes(callTypes, initCallType);
-
-            ListenCallNotifications(callTypes);
-            ListenStreamNotifications(streamTypes);
-
-            AcknowledgeStartupCalls(callTypes);
-
-            await InvokeInitMethodIfExists(initCallType).ConfigureAwait(false);
-
-            await taskCollection.GetTask().ConfigureAwait(false);
-            WaitHandle.WaitAny(new[] { cancellationToken.WaitHandle });
             await notificationService.StopAsync().ConfigureAwait(false);
+            notificationService.Dispose();
         }
 
-        private static void AcknowledgeStartupCalls(List<Type>? callTypes)
+        public static async Task<(CacheService, NotificationService)> InitializeServices(string agent)
         {
-            var startupFunctionExists = callTypes.Any(t => t.Name == Context.StartupFunctionName);
-            if (startupFunctionExists)
-            {
-                return;
-            }
-
-            taskCollection.Add(async () =>
-                {
-                    await foreach (var (key, notification) in notificationService.GetNotifications(Context.StartupFunctionName))
-                    {
-                        if (notification is CallTriggerNotification callTriggerNotification)
-                        {
-                            var instance = await AsyncLocals.CacheService.GetCallInstance(callTriggerNotification.Call).ConfigureAwait(false);
-                            await AsyncLocals.EnterContext(instance, callTriggerNotification.Call, async () =>
-                            {
-                                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
-                                await notificationService.ConsumeNotification(key).ConfigureAwait(false);
-                            }).ConfigureAwait(false);
-                        }
-                    }
-                });
-
-            //taskCollection.Add(AsyncLocals.EnterContext(Context.StartupFunctionName, async () =>
-            //    {
-            //        await foreach (var (key, notification) in notificationService.GetNotifications(Context.StartupFunctionName))
-            //        {
-            //            if (notification is CallTriggerNotification callTriggerNotification)
-            //            {
-            //                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
-            //                await notificationService.ConsumeNotification(key).ConfigureAwait(false);
-            //            }
-            //        }
-            //    }));
-        }
-
-        private static async Task InitializeServices(string agent)
-        {
-            taskCollection = new TaskCollection();
-
             var apacheIgniteEndpoint = Environment.GetEnvironmentVariable("APACHE_IGNITE_ENDPOINT") ?? "127.0.0.1:10800";
             var fabricGrpcAddress = Environment.GetEnvironmentVariable("PERPER_FABRIC_ENDPOINT") ?? "http://127.0.0.1:40400";
 
             Console.WriteLine($"APACHE_IGNITE_ENDPOINT: {apacheIgniteEndpoint}");
             Console.WriteLine($"PERPER_FABRIC_ENDPOINT: {fabricGrpcAddress}");
-
-            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
             var igniteConfiguration = new IgniteClientConfiguration
             {
@@ -110,6 +107,9 @@ namespace Perper.Application
                 }
             };
 
+            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+            var grpcChannel = GrpcChannel.ForAddress(fabricGrpcAddress);
+
             var ignite = await Policy
                 .HandleInner<System.Net.Sockets.SocketException>()
                 .WaitAndRetryAsync(10,
@@ -117,10 +117,8 @@ namespace Perper.Application
                     (exception, timespan) => Console.WriteLine("Failed to connect to Ignite, retrying in {0}s", timespan.TotalSeconds))
                 .ExecuteAsync(() => Task.Run(() => Ignition.StartClient(igniteConfiguration))).ConfigureAwait(false);
 
-            cacheService = new CacheService(ignite);
-
-            var grpcChannel = GrpcChannel.ForAddress(fabricGrpcAddress);
-            notificationService = new NotificationService(ignite, grpcChannel, agent);
+            var cacheService = new CacheService(ignite);
+            var notificationService = new NotificationService(ignite, grpcChannel, agent);
 
             await Policy
                 .Handle<Grpc.Core.RpcException>(ex => ex.Status.DebugException is System.Net.Http.HttpRequestException)
@@ -128,87 +126,79 @@ namespace Perper.Application
                     attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt - 2)),
                     (exception, timespan) => Console.WriteLine("Failed to connect to GRPC, retrying in {0}s", timespan.TotalSeconds))
                 .ExecuteAsync(notificationService.StartAsync).ConfigureAwait(false);
+
+            return (cacheService, notificationService);
         }
 
-        private static async Task InvokeInitMethodIfExists(Type? initCallType)
+        #endregion Services
+        #region ListenNotifications
+
+        private static Task ListenNotificationsForTypes((List<Type> streamTypes, List<Type> callTypes) types, CancellationToken cancellationToken)
         {
-            if (initCallType != null)
+            var (streamTypes, callTypes) = types;
+
+            var taskCollection = new TaskCollection();
+
+            InvokeAndRemoveInitCall(taskCollection, ref callTypes);
+
+            ListenCallNotifications(taskCollection, callTypes, cancellationToken);
+            ListenStreamNotifications(taskCollection, streamTypes, cancellationToken);
+            AcknowledgeStartupCalls(taskCollection, callTypes, cancellationToken);
+
+            return taskCollection.GetTask();
+        }
+
+        private static void InvokeAndRemoveInitCall(TaskCollection taskCollection, ref List<Type> callTypes)
+        {
+            var initType = callTypes.FirstOrDefault(x => x.Name == InitCallName);
+            if (initType == null)
             {
-                await InvokeInitMethod(initCallType).ConfigureAwait(false);
+                return;
             }
-        }
 
-        private static void RemoveInitCallFromTypes(List<Type>? callTypes, Type? initCallType)
-        {
-            if (initCallType != null)
-            {
-                callTypes.Remove(initCallType);
-            }
-        }
+            callTypes.Remove(initType);
 
-        /// <summary>
-        /// Get all stream and call types in "Assembly.Streams" and "Assembly.Calls" namespaces
-        /// </summary>
-        /// <returns>(streamTypes, callTypes)</returns>
-        private static (List<Type>, List<Type>) DiscoverStreamAndCallTypes()
-        {
-            var assembly = Assembly.GetEntryAssembly();
-
-            var assemblyName = assembly.GetName().Name;
-            var streamsNamespace = $"{assemblyName}.Streams";
-            var callsNamespace = $"{assemblyName}.Calls";
-
-            var types = assembly
-                .GetTypes()
-                .Where(t => t.IsClass && t.MemberType == MemberTypes.TypeInfo && !string.IsNullOrEmpty(t.Namespace));
-
-            var streamTypes = types
-                 .Where(x => x.Namespace.Contains(streamsNamespace, StringComparison.InvariantCultureIgnoreCase))
-                 .ToList();
-
-            var callTypes = types
-                 .Where(x => x.Namespace.Contains(callsNamespace, StringComparison.InvariantCultureIgnoreCase))
-                 .ToList();
-
-            return (streamTypes, callTypes);
-        }
-
-        private static Task InvokeInitMethod(Type initType)
-        {
-            return AsyncLocals.EnterContext($"{AsyncLocals.Agent}-init", $"{initType.Name}-init", async () =>
+            taskCollection.Add(AsyncLocals.EnterContext($"{AsyncLocals.Agent}-init", $"{initType.Name}-init", async () =>
             {
                 var initCallInstance = InstanciateType(initType);
+                var initArguments = Array.Empty<object>();
 
-                var methodInfo = initType.GetMethod(runAsyncMethodName);
-                var parameters = methodInfo.GetParameters();
-
-                // TODO: Pass start arguments
-                var arguments = Array.Empty<object>();
-
-                // if parameters.Count != arguments.Count -> exception
-
-                var isAwaitable = methodInfo.ReturnType.GetMethod(nameof(Task.GetAwaiter)) != null;
-
-                // Pass CancellationToken
-                if (isAwaitable)
-                {
-                    //await (Task)methodInfo.Invoke(initCallInstance, arguments);
-                    taskCollection.Add((Task)methodInfo.Invoke(initCallInstance, arguments));
-                }
-                else if (methodInfo.ReturnType == typeof(void))
-                {
-                    methodInfo.Invoke(initCallInstance, arguments);
-                }
-            });
+                var (returnType, invokeResult) = await InvokeMethodAsync(initType, initCallInstance, initArguments).ConfigureAwait(false);
+            }));
         }
 
-        private static void ListenCallNotifications(List<Type>? callTypes)
+        private static void AcknowledgeStartupCalls(TaskCollection taskCollection, List<Type> callTypes, CancellationToken cancellationToken)
+        {
+            var startupFunctionExists = callTypes.Any(t => t.Name == Context.StartupFunctionName);
+            if (startupFunctionExists)
+            {
+                return;
+            }
+
+            taskCollection.Add(async () =>
+                {
+                    await foreach (var (key, notification) in AsyncLocals.NotificationService.GetNotifications(Context.StartupFunctionName).WithCancellation(cancellationToken))
+                    {
+                        if (notification is CallTriggerNotification callTriggerNotification)
+                        {
+                            var instance = await AsyncLocals.CacheService.GetCallInstance(callTriggerNotification.Call).ConfigureAwait(false);
+                            await AsyncLocals.EnterContext(instance, callTriggerNotification.Call, async () =>
+                            {
+                                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
+                                await AsyncLocals.NotificationService.ConsumeNotification(key).ConfigureAwait(false);
+                            }).ConfigureAwait(false);
+                        }
+                    }
+                });
+        }
+
+        public static void ListenCallNotifications(TaskCollection taskCollection, List<Type> callTypes, CancellationToken cancellationToken)
         {
             foreach (var callType in callTypes)
             {
                 taskCollection.Add(async () =>
                 {
-                    await foreach (var (key, notification) in notificationService.GetNotifications(callType.Name))
+                    await foreach (var (key, notification) in AsyncLocals.NotificationService.GetNotifications(callType.Name).WithCancellation(cancellationToken))
                     {
                         if (notification is CallTriggerNotification callTriggerNotification)
                         {
@@ -219,13 +209,13 @@ namespace Perper.Application
             }
         }
 
-        private static void ListenStreamNotifications(List<Type>? streamTypes)
+        public static void ListenStreamNotifications(TaskCollection taskCollection, List<Type> streamTypes, CancellationToken cancellationToken)
         {
             foreach (var streamType in streamTypes)
             {
                 taskCollection.Add(async () =>
                 {
-                    await foreach (var (key, notification) in notificationService.GetNotifications(streamType.Name))
+                    await foreach (var (key, notification) in AsyncLocals.NotificationService.GetNotifications(streamType.Name).WithCancellation(cancellationToken))
                     {
                         if (notification is StreamTriggerNotification streamTriggerNotification)
                         {
@@ -236,7 +226,10 @@ namespace Perper.Application
             }
         }
 
-        private static async Task ExecuteCall(Type? callType, NotificationKey key, CallTriggerNotification notification)
+        #endregion ListenNotifications
+        #region Execute
+
+        private static async Task ExecuteCall(Type callType, NotificationKey key, CallTriggerNotification notification)
         {
             var instance = await AsyncLocals.CacheService.GetCallInstance(notification.Call).ConfigureAwait(false);
             await AsyncLocals.EnterContext(instance, notification.Call, async () =>
@@ -250,7 +243,7 @@ namespace Perper.Application
             }).ConfigureAwait(false);
         }
 
-        private static async Task ExecuteStream(Type? streamType, NotificationKey key, StreamTriggerNotification notification)
+        private static async Task ExecuteStream(Type streamType, NotificationKey key, StreamTriggerNotification notification)
         {
             var instance = await AsyncLocals.CacheService.GetStreamInstance(notification.Stream).ConfigureAwait(false);
             await AsyncLocals.EnterContext(instance, notification.Stream, async () =>
@@ -284,42 +277,34 @@ namespace Perper.Application
                 }
             }
 
-            return Activator.CreateInstance(callType, constructorArguments);
+            return Activator.CreateInstance(callType, constructorArguments)!;
         }
 
-        private static async Task<(Type?, object)> InvokeMethodAsync(Type type, object instance, object[] arguments)
+        private static async Task<(Type?, object?)> InvokeMethodAsync(Type type, object instance, object[] arguments)
         {
-            var methodInfo = type.GetMethod(runAsyncMethodName);
+            var methodInfo = type.GetMethod(RunAsyncMethodName)!;
             var parameters = methodInfo.GetParameters();
             // if parameters.Count != arguments.Count -> exception
 
             var isAwaitable = methodInfo.ReturnType.GetMethod(nameof(Task.GetAwaiter)) != null;
-            object invokeResult = null;
+            object? invokeResult = null;
             Type? returnType = null;
 
             // Pass CancellationToken
             if (isAwaitable)
             {
+                invokeResult = await (dynamic)methodInfo.Invoke(instance, arguments)!;
                 if (methodInfo.ReturnType.IsGenericType)
                 {
                     returnType = methodInfo.ReturnType.GetGenericArguments()[0];
-                    invokeResult = (object)await (dynamic)methodInfo.Invoke(instance, arguments);
-                }
-                else
-                {
-                    await ((Task)methodInfo.Invoke(instance, arguments)).ConfigureAwait(false);
                 }
             }
             else
             {
-                if (methodInfo.ReturnType == typeof(void))
-                {
-                    methodInfo.Invoke(instance, arguments);
-                }
-                else
+                invokeResult = methodInfo.Invoke(instance, arguments);
+                if (methodInfo.ReturnType != typeof(void))
                 {
                     returnType = methodInfo.ReturnType;
-                    invokeResult = methodInfo.Invoke(instance, arguments);
                 }
             }
 
@@ -332,14 +317,14 @@ namespace Perper.Application
             {
                 var callWriteResultMethod = typeof(CacheService).GetMethod(nameof(CacheService.CallWriteResult))!
                     .MakeGenericMethod(returnType);
-                await ((Task)callWriteResultMethod.Invoke(AsyncLocals.CacheService, new object[] { AsyncLocals.Execution, invokeResult })).ConfigureAwait(false);
+                await ((Task)callWriteResultMethod.Invoke(AsyncLocals.CacheService, new object?[] { AsyncLocals.Execution, invokeResult })!).ConfigureAwait(false);
             }
             else
             {
                 await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
             }
 
-            await notificationService.ConsumeNotification(key).ConfigureAwait(false);
+            await AsyncLocals.NotificationService.ConsumeNotification(key).ConfigureAwait(false);
         }
 
         private static async Task WriteStreamResultAsync(NotificationKey key, Type? returnType, object? invokeResult)
@@ -364,14 +349,14 @@ namespace Perper.Application
                     var processMethod = typeof(PerperStartup).GetMethod(nameof(ProcessAsyncEnumerable), BindingFlags.NonPublic | BindingFlags.Static)!
                         .MakeGenericMethod(asyncEnumerableType);
 
-                    await ((Task)processMethod.Invoke(null, new object[] { invokeResult })!).ConfigureAwait(false);
+                    await ((Task)processMethod.Invoke(null, new object?[] { invokeResult })!).ConfigureAwait(false);
                 }
             }
 
-            await notificationService.ConsumeNotification(key).ConfigureAwait(false);
+            await AsyncLocals.NotificationService.ConsumeNotification(key).ConfigureAwait(false);
         }
 
-        public static Type? GetGenericInterface(Type type, Type genericInterface)
+        private static Type? GetGenericInterface(Type type, Type genericInterface)
         {
             if (type.IsGenericType && type.GetGenericTypeDefinition() == genericInterface)
             {
@@ -397,5 +382,6 @@ namespace Perper.Application
                 await AsyncLocals.CacheService.StreamWriteItem(AsyncLocals.Execution, value).ConfigureAwait(false);
             }
         }
+        #endregion Execute
     }
 }
