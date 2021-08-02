@@ -293,11 +293,16 @@ namespace Perper.Application
             // Pass CancellationToken
             if (isAwaitable)
             {
-                invokeResult = await (dynamic)methodInfo.Invoke(instance, arguments)!;
                 if (methodInfo.ReturnType.IsGenericType)
                 {
                     returnType = methodInfo.ReturnType.GetGenericArguments()[0];
+                    invokeResult = await (dynamic)methodInfo.Invoke(instance, arguments)!;
                 }
+                else
+                {
+                    await (dynamic)methodInfo.Invoke(instance, arguments)!;
+                }
+
             }
             else
             {
