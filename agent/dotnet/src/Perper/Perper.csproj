@@ -8,7 +8,7 @@
 		<Authors>Obecto EOOD</Authors>
 		<RepositoryUrl>https://github.com/obecto/perper</RepositoryUrl>
 		<Title>Perper for .NET</Title>
-		<Description>Create Perper Agent using .NET</Description>
+		<Description>Create Perper application using .NET</Description>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/obecto/perper</PackageProjectUrl>
 		<RepositoryType>Git</RepositoryType>
