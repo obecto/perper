@@ -35,8 +35,7 @@ namespace Perper.Protocol.Service
         private readonly ICacheClient<NotificationKey, Notification> notificationsCache;
         private readonly Fabric.FabricClient client;
 
-        private readonly ConcurrentDictionary<(string, int?), Channel<(NotificationKey, Notification)>> channels =
-            new ConcurrentDictionary<(string, int?), Channel<(NotificationKey, Notification)>>();
+        private readonly ConcurrentDictionary<(string, int?), Channel<(NotificationKey, Notification)>> channels = new();
 
         private Task? runningTask;
         private CancellationTokenSource? runningTaskCancellation;
@@ -104,7 +103,7 @@ namespace Perper.Protocol.Service
                     case CallTriggerNotification ct:
                         await GetChannel(ct.Delegate).Writer.WriteAsync((key, notification), cancellationToken).ConfigureAwait(false);
                         break;
-                    case CallResultNotification _:
+                    case CallResultNotification:
                         // pass
                         break;
                 }

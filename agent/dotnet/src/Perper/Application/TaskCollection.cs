@@ -9,8 +9,8 @@ namespace Perper.Application
     {
         private struct EmptyStruct { }
 
-        private readonly TaskCompletionSource<EmptyStruct> _completionSource = new TaskCompletionSource<EmptyStruct>();
-        private readonly ConcurrentDictionary<Task, EmptyStruct> _tasks = new ConcurrentDictionary<Task, EmptyStruct>();
+        private readonly TaskCompletionSource<EmptyStruct> _completionSource = new();
+        private readonly ConcurrentDictionary<Task, EmptyStruct> _tasks = new();
         private long _count;
         private bool _mayComplete;
 
