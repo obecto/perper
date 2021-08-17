@@ -1,5 +1,6 @@
 import random
 import sys
+import asyncio
 from perper.protocol.standard import PerperStream
 from perper.protocol.cache_service_extensions import (
     perper_stream_add_listener,
@@ -12,7 +13,7 @@ from .async_locals import *
 class Stream:
     def __init__(self, raw_stream):
         self.raw_stream = raw_stream
-    
+
     # Stream<T>
 
     def data_local(self):
@@ -38,3 +39,24 @@ class Stream:
                 yield value
         finally:
             perper_stream_remove_listener(get_cache_service(), self.raw_stream, listener)
+
+    async def query(self, type_name, sql_condition, sql_parameters):
+        iterator = iter(self.query_sync(type_name, sql_condition, sql_parameters))
+        loop = asyncio.get_running_loop() # via https://stackoverflow.com/a/61774972
+        DONE = object()
+        while True:
+            obj = await loop.run_in_executor(None, next, iterator, DONE)
+            if obj is DONE:
+                break
+            yield obj
+
+    def query_sync(self, type_name, sql_condition, sql_parameters):
+        def helper(cursor):
+            with cursor:
+                try:
+                    while True:
+                        yield next(cursor)[0]
+                except StopIteration:
+                    pass
+        sql = f'SELECT _VAL FROM \"{self.raw_stream.Stream}\".{type_name.upper()} {sql_condition}'
+        return helper(get_cache_service().stream_query_sql(sql, sql_parameters))

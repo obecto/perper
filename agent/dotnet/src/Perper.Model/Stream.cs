@@ -62,6 +62,16 @@ namespace Perper.Model
             }
         }
 
+        public IAsyncEnumerable<T> Query(string typeName, string sqlCondition, object[] sqlParameters)
+        {
+            return AsyncLocals.CacheService.StreamQuerySql<T>(RawStream.Stream, $"select _VAL from {typeName.ToUpper()} {sqlCondition}", sqlParameters, KeepBinary);
+        }
+
+        public IAsyncEnumerable<T> Query(string sqlCondition, object[] sqlParameters)
+        {
+            return Query(typeof(T).Name, sqlCondition, sqlParameters);
+        }
+
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
             return Impl(cancellationToken).GetAsyncEnumerator(cancellationToken);

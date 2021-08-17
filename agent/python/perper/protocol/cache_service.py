@@ -52,6 +52,9 @@ class CacheService:
 
         return self.item_caches[cache].get(key)
 
+    def stream_query_sql(self, sql, sql_parameters):
+        return self.ignite.sql(sql, page_size=1024, query_args=sql_parameters)
+
     # CALLS:
 
     def call_create(self, call, agent, instance, delegate, caller_agent, caller, parameters, local_to_data=False,):

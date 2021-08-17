@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Apache.Ignite.Core.Binary;
+using Apache.Ignite.Core.Cache.Query;
 using Apache.Ignite.Linq;
 
 using Perper.Protocol.Cache.Instance;
@@ -74,6 +75,24 @@ namespace Perper.Protocol.Service
             }
 
             return itemsCache.AsCacheQueryable().Select(pair => pair.Value);
+        }
+
+        public async IAsyncEnumerable<TItem> StreamQuerySql<TItem>(string stream, string sql, object[] sqlParameters, bool keepBinary = false)
+        {
+            var itemsCache = Ignite.GetCache<long, TItem>(stream); // NOTE: Will not work with forwarding
+            if (keepBinary)
+            {
+                itemsCache = itemsCache.WithKeepBinary<long, TItem>();
+            }
+
+            var query = new SqlFieldsQuery(sql, false, sqlParameters);
+
+            using var cursor = itemsCache.Query(query);
+            using var enumerator = cursor.GetEnumerator();
+            while (await Task.Run(enumerator.MoveNext).ConfigureAwait(false)) // Blocking, should run in background
+            {
+                yield return (TItem)enumerator.Current[0];
+            }
         }
 
         public async Task<object[]> GetStreamParameters(string stream)
