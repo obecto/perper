@@ -56,10 +56,10 @@ class NotificationService:
         if not self.running:
             self.background_task = asyncio.create_task(self.run())
             self.running = True
-    
+
     async def stop(self):
         if self.running:
-            self._grpc_channel.close()
+            await self._grpc_channel.close()
             await self.background_task
             self.running = False
 
@@ -116,6 +116,6 @@ class NotificationService:
         item = self.notifications_cache.get(key)
 
         return (key, item)
-    
+
     def consume_notification(self, key):
         return self.notifications_cache.remove_key(key)

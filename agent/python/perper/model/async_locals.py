@@ -5,7 +5,7 @@ instance = ContextVar('instance')
 
 def set_connection(cache_service, notification_service):
     connection.set((cache_service, notification_service))
-    
+
 def get_cache_service():
     return connection.get()[0]
 
@@ -21,3 +21,6 @@ def get_instance():
 def enter_context(inc_instance, callback):
     instance.set(inc_instance)
     return callback()
+
+def set_context(inc_instance):
+    instance.set(inc_instance)
