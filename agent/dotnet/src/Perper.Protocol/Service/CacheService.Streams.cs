@@ -1,5 +1,5 @@
-using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -39,9 +39,14 @@ namespace Perper.Protocol.Service
             return streamsCache.OptimisticUpdateAsync(stream, value => StreamData.RemoveListener(value.ToBuilder(), caller, parameter).Build());
         }
 
-        public async Task<long> StreamWriteItem<TItem>(string stream, TItem item)
+        public async Task<long> StreamWriteItem<TItem>(string stream, TItem item, bool keepBinary = false)
         {
             var itemsCache = Ignite.GetCache<long, TItem>(stream);
+            if (keepBinary)
+            {
+                itemsCache = itemsCache.WithKeepBinary<long, TItem>();
+            }
+
             var key = CurrentTicks;
 
             await itemsCache.PutIfAbsentOrThrowAsync(key, item).ConfigureAwait(false);
@@ -49,16 +54,24 @@ namespace Perper.Protocol.Service
             return key;
         }
 
-        public Task<TItem> StreamReadItem<TItem>(string cache, long key)
+        public Task<TItem> StreamReadItem<TItem>(string cache, long key, bool keepBinary = false)
         {
             var itemsCache = Ignite.GetCache<long, TItem>(cache);
+            if (keepBinary)
+            {
+                itemsCache = itemsCache.WithKeepBinary<long, TItem>();
+            }
 
             return itemsCache.GetAsync(key);
         }
 
-        public IQueryable<TItem> StreamGetQueryable<TItem>(string stream)
+        public IQueryable<TItem> StreamGetQueryable<TItem>(string stream, bool keepBinary = false)
         {
             var itemsCache = Ignite.GetCache<long, TItem>(stream); // NOTE: Will not work with forwarding
+            if (keepBinary)
+            {
+                itemsCache = itemsCache.WithKeepBinary<long, TItem>();
+            }
 
             return itemsCache.AsCacheQueryable().Select(pair => pair.Value);
         }
@@ -70,19 +83,7 @@ namespace Perper.Protocol.Service
 
             if (streamData.HasField("parameters"))
             {
-                var field = streamData.GetField<object>("parameters");
-                if (field is IBinaryObject binaryObject)
-                {
-                    parameters = binaryObject.Deserialize<object[]>();
-                }
-                else if (field is object[] tfield)
-                {
-                    parameters = tfield;
-                }
-                else
-                {
-                    throw new ArgumentException($"Can't convert result from {field?.GetType()?.ToString() ?? "Null"} to {typeof(object[])}");
-                }
+                parameters = streamData.GetField<object[]>("parameters");
             }
 
             for (var i = 0 ; i < parameters.Length ; i++)

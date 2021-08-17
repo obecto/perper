@@ -22,31 +22,33 @@ namespace Perper.Model
 
     public class Stream<T> : Stream, IStream<T>
     {
-        public Stream(PerperStream rawStream) : base(rawStream) { }
+        public bool KeepBinary { get; }
+
+        public Stream(PerperStream rawStream, bool keepBinary = false) : base(rawStream) => KeepBinary = keepBinary;
 
         public IAsyncEnumerable<T> DataLocal()
         {
-            return new Stream<T>(new PerperStream(RawStream.Stream, RawStream.Filter, RawStream.Replay, true));
+            return new Stream<T>(new PerperStream(RawStream.Stream, RawStream.Filter, RawStream.Replay, true), KeepBinary);
         }
 
         public IAsyncEnumerable<T> Filter(Expression<Func<T, bool>> filter, bool dataLocal = false)
         {
-            return new Stream<T>(new PerperStream(RawStream.Stream, FilterUtils.ConvertFilter(filter), RawStream.Replay, dataLocal));
+            return new Stream<T>(new PerperStream(RawStream.Stream, FilterUtils.ConvertFilter(filter), RawStream.Replay, dataLocal), KeepBinary);
         }
 
         public IAsyncEnumerable<T> Replay(bool dataLocal = false)
         {
-            return new Stream<T>(new PerperStream(RawStream.Stream, RawStream.Filter, true, dataLocal));
+            return new Stream<T>(new PerperStream(RawStream.Stream, RawStream.Filter, true, dataLocal), KeepBinary);
         }
 
         public IAsyncEnumerable<T> Replay(Expression<Func<T, bool>> filter, bool dataLocal = false)
         {
-            return new Stream<T>(new PerperStream(RawStream.Stream, FilterUtils.ConvertFilter(filter), true, dataLocal));
+            return new Stream<T>(new PerperStream(RawStream.Stream, FilterUtils.ConvertFilter(filter), true, dataLocal), KeepBinary);
         }
 
         public IQueryable<T> Query()
         {
-            return AsyncLocals.CacheService.StreamGetQueryable<T>(RawStream.Stream);
+            return AsyncLocals.CacheService.StreamGetQueryable<T>(RawStream.Stream, KeepBinary);
         }
 
         public async IAsyncEnumerable<TResult> Query<TResult>(Func<IQueryable<T>, IQueryable<TResult>> query) // TODO: Convert to extension method on IQueryable
@@ -81,14 +83,14 @@ namespace Perper.Model
 
                         try
                         {
-                            value = await AsyncLocals.CacheService.StreamReadItem<T>(si).ConfigureAwait(false);
+                            value = await AsyncLocals.CacheService.StreamReadItem<T>(si, KeepBinary).ConfigureAwait(false);
                         }
                         catch (KeyNotFoundException)
                         {
                             try
                             {
                                 await Task.Delay(200, cancellationToken).ConfigureAwait(false);
-                                value = await AsyncLocals.CacheService.StreamReadItem<T>(si).ConfigureAwait(false);
+                                value = await AsyncLocals.CacheService.StreamReadItem<T>(si, KeepBinary).ConfigureAwait(false);
                             }
                             catch (KeyNotFoundException)
                             {

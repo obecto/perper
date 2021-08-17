@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Threading.Tasks;
 
@@ -28,32 +29,32 @@ namespace Perper.Model
             return (instance, result);
         }
 
-        public async Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object[] parameters, StreamFlag flags = StreamFlag.Default)
+        public async Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object[] parameters, StreamFlag flags = StreamFlag.Default, QueryEntity queryEntity = null)
         {
             var stream = AsyncLocals.CacheService.GenerateName(functionName);
-            await CreateStream<TItem>(stream, functionName, StreamDelegateType.Function, parameters, flags).ConfigureAwait(false);
+            await CreateStream(stream, functionName, StreamDelegateType.Function, parameters, () => queryEntity ?? GetQueryEntity<TItem>(), flags).ConfigureAwait(false);
             return new Stream<TItem>(new PerperStream(stream));
         }
 
-        public async Task<IStream<TItem>> StreamActionAsync<TItem>(string actionName, object[] parameters, StreamFlag flags = StreamFlag.Default)
+        public async Task<IStream<TItem>> StreamActionAsync<TItem>(string actionName, object[] parameters, StreamFlag flags = StreamFlag.Default, QueryEntity queryEntity = null)
         {
             // FIXME: Move Function/Action distinction to StreamFlag
             var stream = AsyncLocals.CacheService.GenerateName(actionName);
-            await CreateStream<TItem>(stream, actionName, StreamDelegateType.Action, parameters, flags).ConfigureAwait(false);
+            await CreateStream(stream, actionName, StreamDelegateType.Action, parameters, () => queryEntity ?? GetQueryEntity<TItem>(), flags).ConfigureAwait(false);
             return new Stream<TItem>(new PerperStream(stream));
         }
 
-        public async Task<IStream> StreamActionAsync(string actionName, object[] parameters, StreamFlag flags = StreamFlag.Default)
+        public async Task<IStream> StreamActionAsync(string actionName, object[] parameters, StreamFlag flags = StreamFlag.Default, QueryEntity queryEntity = null)
         {
             var stream = AsyncLocals.CacheService.GenerateName(actionName);
-            await CreateStream<object?>(stream, actionName, StreamDelegateType.Action, parameters, flags).ConfigureAwait(false);
+            await CreateStream(stream, actionName, StreamDelegateType.Action, parameters, () => queryEntity ?? GetQueryEntity<object?>(), flags).ConfigureAwait(false);
             return new Stream(new PerperStream(stream));
         }
 
-        public async Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlag flags = StreamFlag.Default)
+        public async Task<(IStream<TItem>, string)> CreateBlankStreamAsync<TItem>(StreamFlag flags = StreamFlag.Default, QueryEntity queryEntity = null)
         {
             var stream = AsyncLocals.CacheService.GenerateName("");
-            await CreateStream<TItem>(stream, "", StreamDelegateType.External, null, flags).ConfigureAwait(false);
+            await CreateStream(stream, "", StreamDelegateType.External, null, () => queryEntity ?? GetQueryEntity<TItem>(), flags).ConfigureAwait(false);
             return (new Stream<TItem>(new PerperStream(stream)), stream);
         }
 
@@ -63,12 +64,17 @@ namespace Perper.Model
             return new Stream<TItem>(new PerperStream(stream));
         }
 
-        public async Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, string functionName, object[] parameters, StreamFlag flags = StreamFlag.Default)
+        public async Task InitializeStreamFunctionAsync<TItem>(IStream<TItem> stream, string functionName, object[] parameters, StreamFlag flags = StreamFlag.Default, QueryEntity queryEntity = null)
         {
-            await CreateStream<object?>(((Stream)stream).RawStream.Stream, functionName, StreamDelegateType.Function, parameters, flags).ConfigureAwait(false);
+            await CreateStream(((Stream)stream).RawStream.Stream, functionName, StreamDelegateType.Function, parameters, () => queryEntity ?? GetQueryEntity<TItem>(), flags).ConfigureAwait(false);
         }
 
-        private async Task CreateStream<TItem>(string stream, string @delegate, StreamDelegateType delegateType, object[] parameters, StreamFlag flags)
+        private QueryEntity GetQueryEntity<T>()
+        {
+            return new QueryEntity(typeof(T));
+        }
+
+        private async Task CreateStream(string stream, string @delegate, StreamDelegateType delegateType, object[] parameters, Func<QueryEntity> getQueryEntity, StreamFlag flags)
         {
             var ephemeral = (flags & StreamFlag.Ephemeral) != 0;
 
@@ -76,8 +82,12 @@ namespace Perper.Model
             Hashtable? indexFields = null;
             if ((flags & StreamFlag.Query) != 0)
             {
-                var queryEntity = new QueryEntity(typeof(TItem));
-                indexType = (queryEntity.ValueTypeName == typeof(TItem).FullName) ? typeof(TItem).Name : queryEntity.ValueTypeName; // Workaround bug with QueryEntity
+                var queryEntity = getQueryEntity();
+                indexType = queryEntity.ValueTypeName;
+                if (!(indexType is null))
+                {
+                    indexType = indexType[(indexType.LastIndexOf(".") + 1)..]; // Workaround bug with QueryEntity
+                }
                 indexFields = new Hashtable();
                 if (queryEntity.Fields != null)
                 {

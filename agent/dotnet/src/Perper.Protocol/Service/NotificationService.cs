@@ -8,8 +8,8 @@ using System.Threading.Tasks;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
 
-using Grpc.Net.Client;
 using Grpc.Core;
+using Grpc.Net.Client;
 
 using Perper.Protocol.Cache.Notifications;
 using Perper.Protocol.Protobuf;

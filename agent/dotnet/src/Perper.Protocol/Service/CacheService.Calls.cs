@@ -48,18 +48,12 @@ namespace Perper.Protocol.Service
             if (callData.HasField("result"))
             {
                 var rawResult = callData.GetField<object>("result");
-                if (rawResult is TResult tResult)
+                result = rawResult switch
                 {
-                    result = tResult;
-                }
-                else if (rawResult is IBinaryObject binaryObject)
-                {
-                    result = binaryObject.Deserialize<TResult>();
-                }
-                else
-                {
-                    throw new ArgumentException($"Can't convert result from {rawResult?.GetType()?.ToString() ?? "Null"} to {typeof(TResult)}");
-                }
+                    TResult tResult => tResult,
+                    IBinaryObject binaryObject => binaryObject.Deserialize<TResult>(),
+                    _ => throw new ArgumentException($"Can't convert result from {rawResult?.GetType()?.ToString() ?? "Null"} to {typeof(TResult)}")
+                };
             }
 
             return (error, result);
@@ -72,19 +66,7 @@ namespace Perper.Protocol.Service
 
             if (callData.HasField("parameters"))
             {
-                var field = callData.GetField<object>("parameters");
-                if (field is IBinaryObject binaryObject)
-                {
-                    parameters = binaryObject.Deserialize<object[]>();
-                }
-                else if (field is object[] tfield)
-                {
-                    parameters = tfield;
-                }
-                else
-                {
-                    throw new ArgumentException($"Can't convert result from {field?.GetType()?.ToString() ?? "Null"} to {typeof(object[])}");
-                }
+                parameters = callData.GetField<object[]>("parameters");
             }
 
             for (var i = 0 ; i < parameters.Length ; i++)

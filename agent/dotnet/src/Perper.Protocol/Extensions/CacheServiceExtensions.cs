@@ -26,9 +26,9 @@ namespace Perper.Protocol.Extensions
             return cacheService.StreamRemoveListener(stream.Stream, caller, parameter);
         }
 
-        public static Task<TItem> StreamReadItem<TItem>(this CacheService cacheService, StreamItemNotification notification)
+        public static Task<TItem> StreamReadItem<TItem>(this CacheService cacheService, StreamItemNotification notification, bool keepBinary = false)
         {
-            return cacheService.StreamReadItem<TItem>(notification.Cache, notification.Key);
+            return cacheService.StreamReadItem<TItem>(notification.Cache, notification.Key, keepBinary);
         }
 
         public static async Task CallWriteTask<TResult>(this CacheService cacheService, string call, Task<TResult> task)
