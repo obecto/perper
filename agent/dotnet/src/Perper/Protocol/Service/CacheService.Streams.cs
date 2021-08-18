@@ -1,9 +1,10 @@
-using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
 using Apache.Ignite.Core.Binary;
+using Apache.Ignite.Core.Cache.Query;
 using Apache.Ignite.Linq;
 
 using Perper.Protocol.Cache.Instance;
@@ -39,9 +40,14 @@ namespace Perper.Protocol.Service
             return streamsCache.OptimisticUpdateAsync(stream, value => StreamData.RemoveListener(value.ToBuilder(), caller, parameter).Build());
         }
 
-        public async Task<long> StreamWriteItem<TItem>(string stream, TItem item)
+        public async Task<long> StreamWriteItem<TItem>(string stream, TItem item, bool keepBinary = false)
         {
             var itemsCache = Ignite.GetCache<long, TItem>(stream);
+            if (keepBinary)
+            {
+                itemsCache = itemsCache.WithKeepBinary<long, TItem>();
+            }
+
             var key = CurrentTicks;
 
             await itemsCache.PutIfAbsentOrThrowAsync(key, item).ConfigureAwait(false);
@@ -49,18 +55,44 @@ namespace Perper.Protocol.Service
             return key;
         }
 
-        public Task<TItem> StreamReadItem<TItem>(string cache, long key)
+        public Task<TItem> StreamReadItem<TItem>(string cache, long key, bool keepBinary = false)
         {
             var itemsCache = Ignite.GetCache<long, TItem>(cache);
+            if (keepBinary)
+            {
+                itemsCache = itemsCache.WithKeepBinary<long, TItem>();
+            }
 
             return itemsCache.GetAsync(key);
         }
 
-        public IQueryable<TItem> StreamGetQueryable<TItem>(string stream)
+        public IQueryable<TItem> StreamGetQueryable<TItem>(string stream, bool keepBinary = false)
         {
             var itemsCache = Ignite.GetCache<long, TItem>(stream); // NOTE: Will not work with forwarding
+            if (keepBinary)
+            {
+                itemsCache = itemsCache.WithKeepBinary<long, TItem>();
+            }
 
             return itemsCache.AsCacheQueryable().Select(pair => pair.Value);
+        }
+
+        public async IAsyncEnumerable<TItem> StreamQuerySql<TItem>(string stream, string sql, object[] sqlParameters, bool keepBinary = false)
+        {
+            var itemsCache = Ignite.GetCache<long, TItem>(stream); // NOTE: Will not work with forwarding
+            if (keepBinary)
+            {
+                itemsCache = itemsCache.WithKeepBinary<long, TItem>();
+            }
+
+            var query = new SqlFieldsQuery(sql, false, sqlParameters);
+
+            using var cursor = itemsCache.Query(query);
+            using var enumerator = cursor.GetEnumerator();
+            while (await Task.Run(enumerator.MoveNext).ConfigureAwait(false)) // Blocking, should run in background
+            {
+                yield return (TItem)enumerator.Current[0];
+            }
         }
 
         public async Task<object[]> GetStreamParameters(string stream)
@@ -70,19 +102,7 @@ namespace Perper.Protocol.Service
 
             if (streamData.HasField("parameters"))
             {
-                var field = streamData.GetField<object>("parameters");
-                if (field is IBinaryObject binaryObject)
-                {
-                    parameters = binaryObject.Deserialize<object[]>();
-                }
-                else if (field is object[] tfield)
-                {
-                    parameters = tfield;
-                }
-                else
-                {
-                    throw new ArgumentException($"Can't convert result from {field?.GetType()?.ToString() ?? "Null"} to {typeof(object[])}");
-                }
+                parameters = streamData.GetField<object[]>("parameters");
             }
 
             for (var i = 0 ; i < parameters.Length ; i++)

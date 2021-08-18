@@ -103,7 +103,8 @@ namespace Perper.Application
                 BinaryConfiguration = new BinaryConfiguration
                 {
                     NameMapper = PerperBinaryConfigurations.NameMapper,
-                    TypeConfigurations = PerperBinaryConfigurations.TypeConfigurations
+                    TypeConfigurations = PerperBinaryConfigurations.TypeConfigurations,
+                    ForceTimestamp = true,
                 }
             };
 
