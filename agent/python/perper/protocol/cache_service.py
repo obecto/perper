@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from .stream_data import *
 from .call_data import *
@@ -13,8 +13,8 @@ class CacheService:
         self.calls_cache = ignite.get_or_create_cache('calls')
 
     def get_current_ticks(self):
-        dt = datetime.utcnow()
-        t = (dt - datetime(1, 1, 1)).total_seconds() * 10000000
+        dt = datetime.now(timezone.utc)
+        t = (dt - datetime(1970, 1, 1, tzinfo=timezone.utc)) // timedelta(microseconds=1) * 10
         return t
 
     @classmethod
