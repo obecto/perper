@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -283,9 +284,37 @@ namespace Perper.Application
 
         private static async Task<(Type?, object?)> InvokeMethodAsync(Type type, object instance, object[] arguments)
         {
+            // System.Console.WriteLine($"Invoking {type}.{RunAsyncMethodName}`${arguments.Length}(${string.Join(", ", arguments.Select(x=>x.ToString()))})");
             var methodInfo = type.GetMethod(RunAsyncMethodName)!;
             var parameters = methodInfo.GetParameters();
-            // if parameters.Count != arguments.Count -> exception
+
+            var castArguments = new object[parameters.Length];
+            for (var i = 0; i < parameters.Length; i++)
+            {
+                object castArgument;
+                if (i < arguments.Length)
+                {
+                    var arg = arguments[i];
+
+                    if (arg is ArrayList arrayList && parameters[i].ParameterType == typeof(object[]))
+                    {
+                        castArgument = arrayList.Cast<object>().ToArray();
+                    }
+                    else
+                    {
+                        castArgument = Convert.ChangeType(arg, parameters[i].ParameterType);
+                    }
+                }
+                else
+                {
+                    if (!parameters[i].HasDefaultValue)
+                    {
+                        throw new ArgumentException($"Not enough arguments passed to {type}.{RunAsyncMethodName}; expected at least {i+1}, got {arguments.Length}");
+                    }
+                    castArgument = parameters[i].DefaultValue;
+                }
+                castArguments[i] = castArgument;
+            }
 
             var isAwaitable = methodInfo.ReturnType.GetMethod(nameof(Task.GetAwaiter)) != null;
             object? invokeResult = null;
@@ -297,17 +326,17 @@ namespace Perper.Application
                 if (methodInfo.ReturnType.IsGenericType)
                 {
                     returnType = methodInfo.ReturnType.GetGenericArguments()[0];
-                    invokeResult = await (dynamic)methodInfo.Invoke(instance, arguments)!;
+                    invokeResult = await (dynamic)methodInfo.Invoke(instance, castArguments)!;
                 }
                 else
                 {
-                    await (dynamic)methodInfo.Invoke(instance, arguments)!;
+                    await (dynamic)methodInfo.Invoke(instance, castArguments)!;
                 }
 
             }
             else
             {
-                invokeResult = methodInfo.Invoke(instance, arguments);
+                invokeResult = methodInfo.Invoke(instance, castArguments);
                 if (methodInfo.ReturnType != typeof(void))
                 {
                     returnType = methodInfo.ReturnType;
