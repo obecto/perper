@@ -2,6 +2,7 @@ import os
 import sys
 import asyncio
 import random
+import traceback
 from pyignite import Client
 from pyignite.datatypes.primitive_objects import BoolObject
 from perper.model.async_locals import *
@@ -50,6 +51,9 @@ def initialize_notebook(functions = {}, agent = None):
     return task_collection
 
 async def listen_triggers(task_collection, functions):
+    async def process_stream(generator, stream):
+        async for data in generator:
+            get_cache_service().stream_write_item(stream, data)
     async def process_notification(k, n):
         get_notification_service().consume_notification(k)
 
@@ -59,24 +63,31 @@ async def listen_triggers(task_collection, functions):
             parameters = get_cache_service().stream_get_parameters(n.stream)
 
             if n.delegate in functions:
-                generator = await enter_context(instance, lambda: asyncio.create_task(functions[n.delegate](*parameters[1])))
-                async for data in generator:
-                    get_cache_service().stream_write_item(n.stream, data)
+                try:
+                    generator = await enter_context(instance, lambda: asyncio.create_task(process_stream(functions[n.delegate](*parameters), n.stream)))
+                except Exception as ex:
+                    print("Error while invoking", n.delegate, ":")
+                    traceback.print_exception(type(ex), ex, ex.__traceback__)
 
         if incoming_type == 'CallTriggerNotification':
             instance = get_cache_service().call_get_instance(n.call)
             parameters = get_cache_service().call_get_parameters(n.call)
 
             if n.delegate in functions:
-                return_value = await enter_context(instance, lambda: asyncio.create_task(functions[n.delegate](*parameters)))
-                if return_value == None:
-                    get_cache_service().call_write_finished(n.call)
-                else:
-                    (result, result_type) = return_value
-                    get_cache_service().call_write_result(n.call, result, result_type)
+                try:
+                    return_value = await enter_context(instance, lambda: asyncio.create_task(functions[n.delegate](*parameters)))
+                    if return_value == None:
+                        get_cache_service().call_write_finished(n.call)
+                    else:
+                        (result, result_type) = return_value
+                        get_cache_service().call_write_result(n.call, result, result_type)
+                except Exception as ex:
+                    print("Error while invoking", n.delegate, ":")
+                    traceback.print_exception(type(ex), ex, ex.__traceback__)
 
     async for (k, n) in get_notification_service().get_notifications(get_local_agent()):
         task_collection.add(process_notification(k, n))
 
         get_notification_service().consume_notification(k)
+
 
