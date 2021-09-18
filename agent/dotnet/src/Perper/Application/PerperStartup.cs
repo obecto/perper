@@ -283,21 +283,16 @@ namespace Perper.Application
             var parameters = methodInfo.GetParameters();
 
             var castArguments = new object[parameters.Length];
-            for (var i = 0; i < parameters.Length; i++)
+            for (var i = 0 ; i < parameters.Length ; i++)
             {
                 object castArgument;
                 if (i < arguments.Length)
                 {
                     var arg = arguments[i];
 
-                    if (arg is ArrayList arrayList && parameters[i].ParameterType == typeof(object[]))
-                    {
-                        castArgument = arrayList.Cast<object>().ToArray();
-                    }
-                    else
-                    {
-                        castArgument = Convert.ChangeType(arg, parameters[i].ParameterType);
-                    }
+                    castArgument = arg is ArrayList arrayList && parameters[i].ParameterType == typeof(object[])
+                        ? arrayList.Cast<object>().ToArray()
+                        : Convert.ChangeType(arg, parameters[i].ParameterType);
                 }
                 else
                 {
