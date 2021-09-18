@@ -8,8 +8,8 @@ class PerperAgent(
     type_name="PerperAgent",
     schema=OrderedDict(
         [
-            ("Agent", String),
-            ("Instance", String)
+            ("agent", String),
+            ("instance", String)
         ]
     ),
 ):
