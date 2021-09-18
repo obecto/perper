@@ -9,9 +9,11 @@ from perper.protocol.standard import PerperStream
 startup_function_name = 'Startup'
 
 async def start_agent(agent, parameters):
-    instance = Agent(PerperAgent(agent, get_cache_service().generate_name(agent)))
-    result = await instance.call_function(startup_function_name, parameters)
-    return (instance, result)
+    instance = get_cache_service().generate_name(agent)
+    get_cache_service().instance_create(instance, agent)
+    model = Agent(PerperAgent(agent, instance))
+    result = await model.call_function(startup_function_name, parameters)
+    return (model, result)
 
 def stream_function(delegate, parameters, flags=StreamFlags.default):
     stream = get_cache_service().generate_name(delegate)
@@ -37,5 +39,5 @@ def create_stream(stream, delegate, delegate_type, parameters, flags):
     if ((flags and StreamFlags.query) != 0):
         index_type = 'type'
         index_fields = {}
-    
+
     get_cache_service().stream_create(stream, get_local_agent(), get_instance(), delegate, delegate_type, parameters, ephemeral, index_type, index_fields)

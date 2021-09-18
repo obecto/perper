@@ -1041,7 +1041,7 @@ csharp_style_var_when_type_is_apparent = true:error
 
 # Prefer method-like constructs to have a block body
 csharp_style_expression_bodied_methods = true:error
-csharp_style_expression_bodied_constructors = true:error
+csharp_style_expression_bodied_constructors = when_on_single_line:error
 csharp_style_expression_bodied_operators = true:error
 
 # New line preferences

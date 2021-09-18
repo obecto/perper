@@ -43,6 +43,7 @@ class CallService : JobService() {
     val BinaryObject.finished get() = field<Boolean>("finished")
     val BinaryObject.localToData get() = field<Boolean>("localToData")
     val BinaryObject.agent get() = field<String>("agent")
+    val BinaryObject.instance get() = field<String>("instance")
     val BinaryObject.delegate get() = field<String>("delegate")
     val BinaryObject.callerAgent get() = field<String>("callerAgent")
     val BinaryObject.caller get() = field<String>("caller")
@@ -74,7 +75,7 @@ class CallService : JobService() {
                 } else {
                     notifiedAgent = callData.agent
                     notificationKey = NotificationKey(TransportService.getCurrentTicks(), call)
-                    notification = CallTriggerNotification(call, callData.delegate)
+                    notification = CallTriggerNotification(call, callData.instance, callData.delegate)
                 }
 
                 coroutineScope.launch {

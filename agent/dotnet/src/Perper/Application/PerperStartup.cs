@@ -78,9 +78,9 @@ namespace Perper.Application
         #endregion DiscoverStreamAndCallTypes
         #region Services
 
-        public static async Task EnterServicesContext(string agent, Func<Task> context)
+        public static async Task EnterServicesContext(string agent, Func<Task> context, bool useInstance = false)
         {
-            var (cacheService, notificationService) = await InitializeServices(agent).ConfigureAwait(false);
+            var (cacheService, notificationService) = await InitializeServices(agent, useInstance).ConfigureAwait(false);
 
             AsyncLocals.SetConnection(cacheService, notificationService);
 
@@ -90,13 +90,19 @@ namespace Perper.Application
             notificationService.Dispose();
         }
 
-        public static async Task<(CacheService, NotificationService)> InitializeServices(string agent)
+        public static async Task<(CacheService, NotificationService)> InitializeServices(string agent, bool useInstance = false)
         {
             var apacheIgniteEndpoint = Environment.GetEnvironmentVariable("APACHE_IGNITE_ENDPOINT") ?? "127.0.0.1:10800";
             var fabricGrpcAddress = Environment.GetEnvironmentVariable("PERPER_FABRIC_ENDPOINT") ?? "http://127.0.0.1:40400";
+            string? instance = null;
 
             Console.WriteLine($"APACHE_IGNITE_ENDPOINT: {apacheIgniteEndpoint}");
             Console.WriteLine($"PERPER_FABRIC_ENDPOINT: {fabricGrpcAddress}");
+            if (useInstance)
+            {
+                instance = Environment.GetEnvironmentVariable("X_PERPER_INSTANCE") ?? "";
+                Console.WriteLine($"X_PERPER_INSTANCE: {instance}");
+            }
 
             var igniteConfiguration = new IgniteClientConfiguration
             {
@@ -120,7 +126,7 @@ namespace Perper.Application
                 .ExecuteAsync(() => Task.Run(() => Ignition.StartClient(igniteConfiguration))).ConfigureAwait(false);
 
             var cacheService = new CacheService(ignite);
-            var notificationService = new NotificationService(ignite, grpcChannel, agent);
+            var notificationService = new NotificationService(ignite, grpcChannel, agent, instance);
 
             await Policy
                 .Handle<Grpc.Core.RpcException>(ex => ex.Status.DebugException is System.Net.Http.HttpRequestException)
@@ -179,17 +185,13 @@ namespace Perper.Application
 
             taskCollection.Add(async () =>
                 {
-                    await foreach (var (key, notification) in AsyncLocals.NotificationService.GetNotifications(Context.StartupFunctionName).WithCancellation(cancellationToken))
+                    await foreach (var (key, notification) in AsyncLocals.NotificationService.GetCallTriggerNotifications(Context.StartupFunctionName).ReadAllAsync(cancellationToken))
                     {
-                        if (notification is CallTriggerNotification callTriggerNotification)
+                        await AsyncLocals.EnterContext(notification.Instance, notification.Call, async () =>
                         {
-                            var instance = await AsyncLocals.CacheService.GetCallInstance(callTriggerNotification.Call).ConfigureAwait(false);
-                            await AsyncLocals.EnterContext(instance, callTriggerNotification.Call, async () =>
-                            {
-                                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
-                                await AsyncLocals.NotificationService.ConsumeNotification(key).ConfigureAwait(false);
-                            }).ConfigureAwait(false);
-                        }
+                            await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
+                            await AsyncLocals.NotificationService.ConsumeNotification(key).ConfigureAwait(false);
+                        }).ConfigureAwait(false);
                     }
                 });
         }
@@ -200,12 +202,9 @@ namespace Perper.Application
             {
                 taskCollection.Add(async () =>
                 {
-                    await foreach (var (key, notification) in AsyncLocals.NotificationService.GetNotifications(callType.Name).WithCancellation(cancellationToken))
+                    await foreach (var (key, notification) in AsyncLocals.NotificationService.GetCallTriggerNotifications(callType.Name).ReadAllAsync(cancellationToken))
                     {
-                        if (notification is CallTriggerNotification callTriggerNotification)
-                        {
-                            taskCollection.Add(ExecuteCall(callType, key, callTriggerNotification));
-                        }
+                        taskCollection.Add(ExecuteCall(callType, key, notification));
                     }
                 });
             }
@@ -217,12 +216,9 @@ namespace Perper.Application
             {
                 taskCollection.Add(async () =>
                 {
-                    await foreach (var (key, notification) in AsyncLocals.NotificationService.GetNotifications(streamType.Name).WithCancellation(cancellationToken))
+                    await foreach (var (key, notification) in AsyncLocals.NotificationService.GetStreamTriggerNotifications(streamType.Name).ReadAllAsync(cancellationToken))
                     {
-                        if (notification is StreamTriggerNotification streamTriggerNotification)
-                        {
-                            taskCollection.Add(ExecuteStream(streamType, key, streamTriggerNotification));
-                        }
+                        taskCollection.Add(ExecuteStream(streamType, key, notification));
                     }
                 });
             }
@@ -233,8 +229,7 @@ namespace Perper.Application
 
         private static async Task ExecuteCall(Type callType, NotificationKey key, CallTriggerNotification notification)
         {
-            var instance = await AsyncLocals.CacheService.GetCallInstance(notification.Call).ConfigureAwait(false);
-            await AsyncLocals.EnterContext(instance, notification.Call, async () =>
+            await AsyncLocals.EnterContext(notification.Instance, notification.Call, async () =>
             {
                 var callInstance = InstanciateType(callType);
 
@@ -247,8 +242,7 @@ namespace Perper.Application
 
         private static async Task ExecuteStream(Type streamType, NotificationKey key, StreamTriggerNotification notification)
         {
-            var instance = await AsyncLocals.CacheService.GetStreamInstance(notification.Stream).ConfigureAwait(false);
-            await AsyncLocals.EnterContext(instance, notification.Stream, async () =>
+            await AsyncLocals.EnterContext(notification.Instance, notification.Stream, async () =>
             {
                 var streamInstance = InstanciateType(streamType);
 
@@ -309,7 +303,7 @@ namespace Perper.Application
                 {
                     if (!parameters[i].HasDefaultValue)
                     {
-                        throw new ArgumentException($"Not enough arguments passed to {type}.{RunAsyncMethodName}; expected at least {i+1}, got {arguments.Length}");
+                        throw new ArgumentException($"Not enough arguments passed to {type}.{RunAsyncMethodName}; expected at least {i + 1}, got {arguments.Length}");
                     }
                     castArgument = parameters[i].DefaultValue;
                 }

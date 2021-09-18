@@ -34,5 +34,10 @@ namespace Perper.Model
 
             await AsyncLocals.CacheService.CallReadResult(call).ConfigureAwait(false);
         }
+
+        public async Task Destroy()
+        {
+            await AsyncLocals.CacheService.InstanceDestroy(RawAgent.Instance).ConfigureAwait(false);
+        }
     }
 }

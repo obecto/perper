@@ -1,10 +1,13 @@
 package com.obecto.perper.fabric
+import com.obecto.perper.fabric.cache.AgentType
 import com.obecto.perper.fabric.cache.notification.CallResultNotification
+import com.obecto.perper.fabric.cache.notification.CallTriggerNotification
 import com.obecto.perper.fabric.cache.notification.Notification
 import com.obecto.perper.fabric.cache.notification.NotificationKey
 import com.obecto.perper.fabric.cache.notification.NotificationKeyLong
 import com.obecto.perper.fabric.cache.notification.NotificationKeyString
 import com.obecto.perper.fabric.cache.notification.StreamItemNotification
+import com.obecto.perper.fabric.cache.notification.StreamTriggerNotification
 import com.obecto.perper.protobuf.CallNotificationFilter
 import com.obecto.perper.protobuf.FabricGrpcKt
 import com.obecto.perper.protobuf.NotificationFilter
@@ -122,8 +125,15 @@ class TransportService(var port: Int) : Service {
             }
         }.build()
 
-        @kotlinx.coroutines.ExperimentalCoroutinesApi
+        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
         override fun notifications(request: NotificationFilter) = channelFlow<NotificationProto> {
+            val instance = if (request.instance != "") request.instance else null
+            if (instance != null) {
+                InstanceService.setInstanceRunning(ignite, instance, true)
+                InstanceService.setAgentType(ignite, request.agent, AgentType.CONTAINERS)
+            } else {
+                InstanceService.setAgentType(ignite, request.agent, AgentType.FUNCTIONS)
+            }
             val notificationCache = getNotificationCache(ignite, request.agent)
             val notificationAffinity = ignite.affinity<NotificationKey>(notificationCache.name)
             val localNode = ignite.cluster().localNode()
@@ -171,8 +181,10 @@ class TransportService(var port: Int) : Service {
                     }
                     updateQueue(notification.stream)
                 } else if (!confirmed) {
-                    log.trace({ "Sending notification ${request.agent}, $notification - $key" })
-                    runBlocking { send(key.toNotification()) }
+                    if ((notification is CallTriggerNotification && notification.instance == instance) || (notification is StreamTriggerNotification && notification.instance == instance)) {
+                        log.trace({ "Sending notification ${request.agent}, $notification - $key" })
+                        runBlocking { send(key.toNotification()) }
+                    }
                 }
             }
 
@@ -238,7 +250,7 @@ class TransportService(var port: Int) : Service {
                 }
             }
 
-            log.debug({ "Notifications listener started for '${request.agent}'!" })
+            log.debug({ "Notifications listener started for '${request.agent}' - '${request.instance}'!" })
 
             invokeOnClose({ localJob.cancel(); remoteJob.cancel() })
 
@@ -252,7 +264,10 @@ class TransportService(var port: Int) : Service {
                 e.printStackTrace()
                 throw e
             } finally {
-                log.debug({ "Notifications listener finished for '${request.agent}'!" })
+                log.debug({ "Notifications listener finished for '${request.agent}' - '${request.instance}'!" })
+                if (instance != null) {
+                    InstanceService.setInstanceRunning(ignite, instance, false)
+                }
             }
         }.buffer(Channel.UNLIMITED)
 
@@ -311,7 +326,7 @@ class TransportService(var port: Int) : Service {
             }.build()
         }
 
-        @kotlinx.coroutines.FlowPreview
+        @OptIn(kotlinx.coroutines.FlowPreview::class)
         override fun streamIsActive(request: ScaledObjectRef) = flow<Boolean> {
             val notificationCache = getNotificationCache(ignite, request.delegate).withKeepBinary<BinaryObject, BinaryObject>()
 

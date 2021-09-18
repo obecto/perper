@@ -15,18 +15,22 @@ namespace Perper.Model
 
         public IAgent Agent => new Agent(new PerperAgent(AsyncLocals.Agent, AsyncLocals.Instance));
 
-        public async Task<IAgent> StartAgentAsync(string name, params object[] parameters)
+        public async Task<IAgent> StartAgentAsync(string agent, params object[] parameters)
         {
-            var instance = new Agent(new PerperAgent(name, AsyncLocals.CacheService.GenerateName(name)));
-            await instance.CallActionAsync(StartupFunctionName, parameters).ConfigureAwait(false);
-            return instance;
+            var instance = AsyncLocals.CacheService.GenerateName(agent);
+            await AsyncLocals.CacheService.InstanceCreate(instance, agent).ConfigureAwait(false);
+            var model = new Agent(new PerperAgent(agent, instance));
+            await model.CallActionAsync(StartupFunctionName, parameters).ConfigureAwait(false);
+            return model;
         }
 
-        public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string name, params object[] parameters)
+        public async Task<(IAgent, TResult)> StartAgentAsync<TResult>(string agent, params object[] parameters)
         {
-            var instance = new Agent(new PerperAgent(name, AsyncLocals.CacheService.GenerateName(name)));
-            var result = await instance.CallFunctionAsync<TResult>(StartupFunctionName, parameters).ConfigureAwait(false);
-            return (instance, result);
+            var instance = AsyncLocals.CacheService.GenerateName(agent);
+            await AsyncLocals.CacheService.InstanceCreate(instance, agent).ConfigureAwait(false);
+            var model = new Agent(new PerperAgent(agent, instance));
+            var result = await model.CallFunctionAsync<TResult>(StartupFunctionName, parameters).ConfigureAwait(false);
+            return (model, result);
         }
 
         public async Task<IStream<TItem>> StreamFunctionAsync<TItem>(string functionName, object[] parameters, StreamFlag flags = StreamFlag.Default, QueryEntity queryEntity = null)

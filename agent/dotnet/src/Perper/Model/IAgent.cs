@@ -7,5 +7,7 @@ namespace Perper.Model
         Task<TResult> CallFunctionAsync<TResult>(string functionName, object[] parameters);
 
         Task CallActionAsync(string actionName, object[] parameters);
+
+        Task Destroy();
     }
 }

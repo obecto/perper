@@ -6,7 +6,6 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Perper.Protocol.Cache.Notifications;
 using Perper.Protocol.Cache.Standard;
 using Perper.Protocol.Extensions;
 
@@ -85,22 +84,22 @@ namespace Perper.Model
             var listener = await AsyncLocals.CacheService.StreamAddListener(RawStream, AsyncLocals.Agent, AsyncLocals.Execution, parameter).ConfigureAwait(false);
             try
             {
-                await foreach (var (key, notification) in AsyncLocals.NotificationService.GetNotifications(AsyncLocals.Execution, parameter, cancellationToken))
+                await foreach (var (key, notification) in AsyncLocals.NotificationService.GetStreamItemNotifications(AsyncLocals.Execution, parameter).ReadAllAsync(cancellationToken))
                 {
-                    if (notification is StreamItemNotification si)
+                    try
                     {
                         T? value;
 
                         try
                         {
-                            value = await AsyncLocals.CacheService.StreamReadItem<T>(si, KeepBinary).ConfigureAwait(false);
+                            value = await AsyncLocals.CacheService.StreamReadItem<T>(notification, KeepBinary).ConfigureAwait(false);
                         }
                         catch (KeyNotFoundException)
                         {
                             try
                             {
                                 await Task.Delay(200, cancellationToken).ConfigureAwait(false);
-                                value = await AsyncLocals.CacheService.StreamReadItem<T>(si, KeepBinary).ConfigureAwait(false);
+                                value = await AsyncLocals.CacheService.StreamReadItem<T>(notification, KeepBinary).ConfigureAwait(false);
                             }
                             catch (KeyNotFoundException)
                             {
@@ -110,16 +109,13 @@ namespace Perper.Model
 
                         // await ((State)_stream._state).LoadStateEntries();
 
-                        try
-                        {
-                            yield return value;
-                        }
-                        finally
-                        {
-                            // await ((State)_stream._state).StoreStateEntries();
+                        yield return value;
+                    }
+                    finally
+                    {
+                        // await ((State)_stream._state).StoreStateEntries();
 
-                            await AsyncLocals.NotificationService.ConsumeNotification(key).ConfigureAwait(false);
-                        }
+                        await AsyncLocals.NotificationService.ConsumeNotification(key).ConfigureAwait(false);
                     }
                 }
             }

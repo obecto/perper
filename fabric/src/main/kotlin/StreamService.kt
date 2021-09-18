@@ -87,6 +87,7 @@ class StreamService : JobService() {
     val BinaryObject.delegateType get() = field<BinaryObject>("delegateType").deserialize<StreamDelegateType>()
     val BinaryObject.ephemeral get() = field<Boolean>("ephemeral")
     val BinaryObject.agent get() = field<String>("agent")
+    val BinaryObject.instance get() = field<String>("instance")
     val BinaryObject.delegate get() = field<String>("delegate")
     val BinaryObject.indexType get() = field<String>("indexType")
     val BinaryObject.indexFields get() = field<Map<String, String>>("indexFields")
@@ -114,7 +115,7 @@ class StreamService : JobService() {
         if (createCache(stream, streamData)) {
             log.debug({ "Starting stream '$stream'" })
             val notificationsCache = TransportService.getNotificationCache(ignite, streamData.agent)
-            notificationsCache.put(NotificationKey(TransportService.getCurrentTicks(), stream), StreamTriggerNotification(stream, streamData.delegate))
+            notificationsCache.put(NotificationKey(TransportService.getCurrentTicks(), stream), StreamTriggerNotification(stream, streamData.instance, streamData.delegate))
         }
     }
 

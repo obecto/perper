@@ -9,6 +9,7 @@ class CallTriggerNotification(
     schema=OrderedDict(
         [
             ('call', String),
+            ('instance', String),
             ('delegate', String),
         ]
     ),

@@ -16,10 +16,10 @@ _sym_db = _symbol_database.Default()
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='fabric.proto',
   package='perper',
-  syntax='proto2',
+  syntax='proto3',
   serialized_options=b'\n\032com.obecto.perper.protobufP\001\252\002\030Perper.Protocol.Protobuf',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0c\x66\x61\x62ric.proto\x12\x06perper\"#\n\x12NotificationFilter\x12\r\n\x05\x61gent\x18\x01 \x02(\t\"5\n\x16\x43\x61llNotificationFilter\x12\r\n\x05\x61gent\x18\x01 \x02(\t\x12\x0c\n\x04\x63\x61ll\x18\x02 \x02(\t\"d\n\x0cNotification\x12\x17\n\x0fnotificationKey\x18\x01 \x02(\x03\x12\x18\n\x0estringAffinity\x18\x02 \x01(\tH\x00\x12\x15\n\x0bintAffinity\x18\x03 \x01(\x03H\x00\x42\n\n\x08\x61\x66\x66inity2\xa1\x01\n\x06\x46\x61\x62ric\x12\x45\n\rNotifications\x12\x1a.perper.NotificationFilter\x1a\x14.perper.Notification\"\x00\x30\x01\x12P\n\x16\x43\x61llResultNotification\x12\x1e.perper.CallNotificationFilter\x1a\x14.perper.Notification\"\x00\x42\x39\n\x1a\x63om.obecto.perper.protobufP\x01\xaa\x02\x18Perper.Protocol.Protobuf'
+  serialized_pb=b'\n\x0c\x66\x61\x62ric.proto\x12\x06perper\"5\n\x12NotificationFilter\x12\r\n\x05\x61gent\x18\x01 \x01(\t\x12\x10\n\x08instance\x18\x02 \x01(\t\"5\n\x16\x43\x61llNotificationFilter\x12\r\n\x05\x61gent\x18\x01 \x01(\t\x12\x0c\n\x04\x63\x61ll\x18\x02 \x01(\t\"d\n\x0cNotification\x12\x17\n\x0fnotificationKey\x18\x01 \x01(\x03\x12\x18\n\x0estringAffinity\x18\x02 \x01(\tH\x00\x12\x15\n\x0bintAffinity\x18\x03 \x01(\x03H\x00\x42\n\n\x08\x61\x66\x66inity2\xa1\x01\n\x06\x46\x61\x62ric\x12\x45\n\rNotifications\x12\x1a.perper.NotificationFilter\x1a\x14.perper.Notification\"\x00\x30\x01\x12P\n\x16\x43\x61llResultNotification\x12\x1e.perper.CallNotificationFilter\x1a\x14.perper.Notification\"\x00\x42\x39\n\x1a\x63om.obecto.perper.protobufP\x01\xaa\x02\x18Perper.Protocol.Protobufb\x06proto3'
 )
 
 
@@ -35,7 +35,14 @@ _NOTIFICATIONFILTER = _descriptor.Descriptor(
   fields=[
     _descriptor.FieldDescriptor(
       name='agent', full_name='perper.NotificationFilter.agent', index=0,
-      number=1, type=9, cpp_type=9, label=2,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='instance', full_name='perper.NotificationFilter.instance', index=1,
+      number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -48,12 +55,12 @@ _NOTIFICATIONFILTER = _descriptor.Descriptor(
   ],
   serialized_options=None,
   is_extendable=False,
-  syntax='proto2',
+  syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
   serialized_start=24,
-  serialized_end=59,
+  serialized_end=77,
 )
 
 
@@ -67,14 +74,14 @@ _CALLNOTIFICATIONFILTER = _descriptor.Descriptor(
   fields=[
     _descriptor.FieldDescriptor(
       name='agent', full_name='perper.CallNotificationFilter.agent', index=0,
-      number=1, type=9, cpp_type=9, label=2,
+      number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
       name='call', full_name='perper.CallNotificationFilter.call', index=1,
-      number=2, type=9, cpp_type=9, label=2,
+      number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -87,12 +94,12 @@ _CALLNOTIFICATIONFILTER = _descriptor.Descriptor(
   ],
   serialized_options=None,
   is_extendable=False,
-  syntax='proto2',
+  syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=61,
-  serialized_end=114,
+  serialized_start=79,
+  serialized_end=132,
 )
 
 
@@ -106,7 +113,7 @@ _NOTIFICATION = _descriptor.Descriptor(
   fields=[
     _descriptor.FieldDescriptor(
       name='notificationKey', full_name='perper.Notification.notificationKey', index=0,
-      number=1, type=3, cpp_type=2, label=2,
+      number=1, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -133,7 +140,7 @@ _NOTIFICATION = _descriptor.Descriptor(
   ],
   serialized_options=None,
   is_extendable=False,
-  syntax='proto2',
+  syntax='proto3',
   extension_ranges=[],
   oneofs=[
     _descriptor.OneofDescriptor(
@@ -142,8 +149,8 @@ _NOTIFICATION = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=116,
-  serialized_end=216,
+  serialized_start=134,
+  serialized_end=234,
 )
 
 _NOTIFICATION.oneofs_by_name['affinity'].fields.append(
@@ -188,8 +195,8 @@ _FABRIC = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=219,
-  serialized_end=380,
+  serialized_start=237,
+  serialized_end=398,
   methods=[
   _descriptor.MethodDescriptor(
     name='Notifications',

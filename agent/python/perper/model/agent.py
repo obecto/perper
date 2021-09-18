@@ -11,7 +11,7 @@ class Agent:
 
     async def call_function(self, delegate, parameters):
         call = get_cache_service().generate_name(delegate)
-        
+
         get_cache_service().call_create(call, self.raw_agent.Agent, self.raw_agent.Instance, delegate, get_local_agent(), get_instance(), parameters)
 
         (k, n) = await get_notification_service().get_call_result_notification(call)
@@ -26,6 +26,9 @@ class Agent:
         (k, n) = await get_notification_service().get_call_result_notification(call)
         get_notification_service().consume_notification(k)
         call_check_result(get_cache_service(), call)
+
+    def destroy(self):
+        get_cache_service().instance_destroy(self.raw_agent.Instance)
 
 async def call_function(delegate, parameters):
     result = await get_agent().call_function(delegate, parameters)

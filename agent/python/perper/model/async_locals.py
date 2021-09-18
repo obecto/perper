@@ -16,11 +16,14 @@ def get_local_agent():
     return get_notification_service().agent
 
 def get_instance():
-    return instance.get()
+    return instance.get()[0]
 
-def enter_context(inc_instance, callback):
-    instance.set(inc_instance)
+def get_execution():
+    return instance.get()[1]
+
+def enter_context(_instance, execution, callback):
+    instance.set((_instance, execution))
     return callback()
 
-def set_context(inc_instance):
-    instance.set(inc_instance)
+def set_context(_instance, execution):
+    instance.set((_instance, execution))

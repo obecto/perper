@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from .instance_data import *
 from .stream_data import *
 from .call_data import *
 from .ignite_cache_extensions import put_if_absent_or_raise, optimistic_update
@@ -11,6 +12,7 @@ class CacheService:
         self.item_caches = {}
         self.streams_cache = ignite.get_or_create_cache('streams')
         self.calls_cache = ignite.get_or_create_cache('calls')
+        self.instances_cache = ignite.get_or_create_cache('instances')
 
     def get_current_ticks(self):
         dt = datetime.now(timezone.utc)
@@ -21,6 +23,15 @@ class CacheService:
     def generate_name(cls, basename=None):
         return f"{basename}-{uuid.uuid4()}"
 
+    # INSTANCES:
+
+    def instance_create(self, instance, agent):
+        instance_data = create_instance_data(agent)
+        return put_if_absent_or_raise(self.instances_cache, instance, instance_data)
+
+    def instance_destroy(self, instance):
+        return self.instances_cache.remove_key(instance)
+
     # STREAMS:
 
     def stream_create(self, stream, agent, instance, delegate, delegate_type, parameters, ephemeral = True, index_type = None, index_fields = None):
@@ -29,9 +40,6 @@ class CacheService:
 
     def stream_get_parameters(self, stream):
         return self.streams_cache.get(stream).parameters[1]
-
-    def stream_get_instance(self, stream):
-        return self.streams_cache.get(stream).instance
 
     def stream_add_listener(self, stream, caller_agent, caller, parameter, filter = {}, replay = False, local_to_data = False):
         stream_listener = create_stream_listener(caller_agent, caller, parameter, replay, local_to_data=local_to_data, filter=filter)
@@ -70,9 +78,6 @@ class CacheService:
 
     def call_get_parameters(self, call):
         return self.calls_cache.get(call).parameters[1]
-
-    def call_get_instance(self, call):
-        return self.calls_cache.get(call).instance
 
     def call_write_result(self, call, result, result_type):
         return optimistic_update(self.calls_cache, call, lambda data: set_call_data_result(data, result, result_type))

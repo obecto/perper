@@ -20,8 +20,12 @@ from .notifications import (
 )
 
 class NotificationService:
-    def __init__(self, ignite, address, agent):
+    CALL = object()
+    STREAM = object()
+
+    def __init__(self, ignite, address, agent, instance=None):
         self.agent = agent
+        self.instance = instance
         self.address = address
         self.ignite = ignite
         self.notifications_cache = self.ignite.get_or_create_cache(f'{agent}-$notifications')
@@ -63,9 +67,6 @@ class NotificationService:
             await self.background_task
             self.running = False
 
-    def stop_listening(self):
-        self.listening = False
-
     def get_channel(self, channel):
         if channel not in self.channels:
             self.channels[channel] = asyncio.Queue()
@@ -77,7 +78,7 @@ class NotificationService:
 
     async def run(self):
         grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
-        async for notification in grpc_stub.Notifications(fabric_pb2.NotificationFilter(agent = self.agent)):
+        async for notification in grpc_stub.Notifications(fabric_pb2.NotificationFilter(agent = self.agent, instance = (self.instance or ""))):
             key = self.get_notification_key(notification)
             item = self.notifications_cache.get(key)
             instance_class = type(item).__name__
@@ -86,22 +87,23 @@ class NotificationService:
                 self.write_channel_value((item.stream, item.parameter), (key, item))
 
             if instance_class == 'StreamTriggerNotification':
-                self.write_channel_value((self.agent,), (key, item))
+                self.write_channel_value((NotificationService.STREAM, item.delegate), (key, item))
 
             if instance_class == 'CallTriggerNotification':
-                self.write_channel_value((self.agent,), (key, item))
+                self.write_channel_value((NotificationService.CALL, item.delegate), (key, item))
 
-    async def get_notifications(self, instance, parameter = None) -> Generator:
-        self.listening = True
-        key = (instance,) if parameter is None else (instance, parameter)
-        channel = self.get_channel(key)
+    async def get_notifications(self, instance, parameter) -> Generator:
+        channel = self.get_channel((instance, parameter))
         while True:
-            if not self.listening:
-                return
-
             item = await channel.get()
             yield item
             channel.task_done()
+
+    async def get_notification(self, instance, parameter) -> Generator:
+        channel = self.get_channel((instance, parameter))
+        item = await channel.get()
+        channel.task_done()
+        return item
 
     async def get_call_result_notification(self, call):
         grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)

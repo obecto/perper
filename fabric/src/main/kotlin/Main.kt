@@ -36,6 +36,7 @@ fun main(args: Array<String>) {
     val ignitePort by parser.option(ArgType.Int, "ignite-port", description = "Ignite client port").default(10800)
     val grpcPort by parser.option(ArgType.Int, "grpc-port", description = "Transport service port").default(40400)
     val noDiscovery by parser.option(ArgType.Boolean, "no-discovery", description = "Disable discovery").default(false)
+    val composeFile by parser.option(ArgType.String, "compose-file", shortName = "f", description = "Path to docker-compose.yml used for instancing agents").default("docker-compose.yml")
 
     parser.parse(args)
 
@@ -59,6 +60,7 @@ fun main(args: Array<String>) {
 //                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamData>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamDelegateType>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamListener>(),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.AgentType>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.CallResultNotification>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.CallTriggerNotification>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.Notification>(),
@@ -76,6 +78,7 @@ fun main(args: Array<String>) {
             CacheKeyConfiguration(com.obecto.perper.fabric.cache.notification.NotificationKeyString::class.java)
         )
         it.setServiceConfiguration(
+            singletonServiceConfiguration("InstanceService", InstanceService(composeFile)),
             singletonServiceConfiguration("CallService", CallService()),
             singletonServiceConfiguration("StreamService", StreamService()),
             singletonServiceConfiguration("TransportService", TransportService(grpcPort)),

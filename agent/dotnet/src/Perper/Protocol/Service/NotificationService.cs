@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -24,28 +23,27 @@ namespace Perper.Protocol.Service
         public NotificationService(
             IIgniteClient ignite,
             GrpcChannel grpcChannel,
-            string agent)
+            string agent,
+            string? instance)
         {
             Agent = agent;
+            Instance = instance;
             notificationsCache = ignite.GetCache<NotificationKey, Notification>($"{Agent}-$notifications");
             client = new Fabric.FabricClient(grpcChannel);
         }
 
         public string Agent { get; }
+        public string? Instance { get; }
         private readonly ICacheClient<NotificationKey, Notification> notificationsCache;
         private readonly Fabric.FabricClient client;
 
-        private readonly ConcurrentDictionary<(string, int?), Channel<(NotificationKey, Notification)>> channels = new();
+        private readonly ConcurrentDictionary<string, Channel<(NotificationKey, CallTriggerNotification)>> callTriggerChannels = new();
+        private readonly ConcurrentDictionary<string, Channel<(NotificationKey, StreamTriggerNotification)>> streamTriggerChannels = new();
+        private readonly ConcurrentDictionary<(string, int?), Channel<(NotificationKey, StreamItemNotification)>> streamItemChannels = new();
 
         private Task? runningTask;
         private CancellationTokenSource? runningTaskCancellation;
         private AsyncServerStreamingCall<NotificationProto>? notificationsStream;
-
-        private Channel<(NotificationKey, Notification)> GetChannel(string instance, int? parameter = null)
-        {
-            return channels.GetOrAdd((instance, parameter), _ =>
-                Channel.CreateUnbounded<(NotificationKey, Notification)>());
-        }
 
         private static NotificationKey GetNotificationKey(NotificationProto notification)
         {
@@ -66,7 +64,7 @@ namespace Perper.Protocol.Service
         {
             runningTaskCancellation = new CancellationTokenSource();
 
-            notificationsStream = client.Notifications(new NotificationFilter { Agent = Agent }, null, null, runningTaskCancellation.Token);
+            notificationsStream = client.Notifications(new NotificationFilter { Agent = Agent, Instance = Instance ?? "" }, null, null, runningTaskCancellation.Token);
             await notificationsStream.ResponseHeadersAsync.ConfigureAwait(false);
 
             runningTask = RunAsync(runningTaskCancellation.Token);
@@ -95,16 +93,16 @@ namespace Perper.Protocol.Service
                 switch (notification)
                 {
                     case StreamItemNotification si:
-                        await GetChannel(si.Stream, si.Parameter).Writer.WriteAsync((key, notification), cancellationToken).ConfigureAwait(false);
+                        var channelSi = streamItemChannels.GetOrAdd((si.Stream, si.Parameter), _ => Channel.CreateUnbounded<(NotificationKey, StreamItemNotification)>());
+                        await channelSi.Writer.WriteAsync((key, si), cancellationToken).ConfigureAwait(false);
                         break;
                     case StreamTriggerNotification st:
-                        await GetChannel(st.Delegate).Writer.WriteAsync((key, notification), cancellationToken).ConfigureAwait(false);
+                        var channelSt = streamTriggerChannels.GetOrAdd(st.Delegate, _ => Channel.CreateUnbounded<(NotificationKey, StreamTriggerNotification)>());
+                        await channelSt.Writer.WriteAsync((key, st), cancellationToken).ConfigureAwait(false);
                         break;
                     case CallTriggerNotification ct:
-                        await GetChannel(ct.Delegate).Writer.WriteAsync((key, notification), cancellationToken).ConfigureAwait(false);
-                        break;
-                    case CallResultNotification:
-                        // pass
+                        var channelCt = callTriggerChannels.GetOrAdd(ct.Delegate, _ => Channel.CreateUnbounded<(NotificationKey, CallTriggerNotification)>());
+                        await channelCt.Writer.WriteAsync((key, ct), cancellationToken).ConfigureAwait(false);
                         break;
                 }
             }
@@ -134,9 +132,19 @@ namespace Perper.Protocol.Service
             }
         }
 
-        public IAsyncEnumerable<(NotificationKey, Notification)> GetNotifications(string instance, int? parameter = null, CancellationToken cancellationToken = default)
+        public ChannelReader<(NotificationKey, CallTriggerNotification)> GetCallTriggerNotifications(string @delegate)
         {
-            return GetChannel(instance, parameter).Reader.ReadAllAsync(cancellationToken);
+            return callTriggerChannels.GetOrAdd(@delegate, _ => Channel.CreateUnbounded<(NotificationKey, CallTriggerNotification)>()).Reader;
+        }
+
+        public ChannelReader<(NotificationKey, StreamTriggerNotification)> GetStreamTriggerNotifications(string @delegate)
+        {
+            return streamTriggerChannels.GetOrAdd(@delegate, _ => Channel.CreateUnbounded<(NotificationKey, StreamTriggerNotification)>()).Reader;
+        }
+
+        public ChannelReader<(NotificationKey, StreamItemNotification)> GetStreamItemNotifications(string stream, int parameter)
+        {
+            return streamItemChannels.GetOrAdd((stream, parameter), _ => Channel.CreateUnbounded<(NotificationKey, StreamItemNotification)>()).Reader;
         }
 
         public async Task<(NotificationKey, CallResultNotification)> GetCallResultNotification(string call, CancellationToken cancellationToken = default)
