@@ -181,7 +181,7 @@ class TransportService(var port: Int) : Service {
                     }
                     updateQueue(notification.stream)
                 } else if (!confirmed) {
-                    if ((notification is CallTriggerNotification && notification.instance == instance) || (notification is StreamTriggerNotification && notification.instance == instance)) {
+                    if (instance == null || (notification is CallTriggerNotification && notification.instance == instance) || (notification is StreamTriggerNotification && notification.instance == instance)) {
                         log.trace({ "Sending notification ${request.agent}, $notification - $key" })
                         runBlocking { send(key.toNotification()) }
                     }
