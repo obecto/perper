@@ -8,8 +8,8 @@ namespace Perper.Protocol.Cache.Notifications
     {
         private readonly string stream;
         private readonly int parameter;
-        private readonly string cache ;
-        private readonly long key ;
+        private readonly string cache;
+        private readonly long key;
         private readonly bool ephemeral;
 
         public string Stream => stream;

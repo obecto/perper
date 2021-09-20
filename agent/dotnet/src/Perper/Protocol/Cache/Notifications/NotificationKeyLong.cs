@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+
 using Apache.Ignite.Core.Cache.Affinity;
 
 namespace Perper.Protocol.Cache.Notifications
