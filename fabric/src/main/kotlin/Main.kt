@@ -10,6 +10,7 @@ import org.apache.ignite.binary.BinaryTypeConfiguration
 import org.apache.ignite.cache.CacheKeyConfiguration
 import org.apache.ignite.configuration.BinaryConfiguration
 import org.apache.ignite.configuration.ClientConnectorConfiguration
+import org.apache.ignite.configuration.DataStorageConfiguration
 import org.apache.ignite.configuration.IgniteConfiguration
 import org.apache.ignite.logger.slf4j.Slf4jLogger
 import org.apache.ignite.services.Service
@@ -37,6 +38,7 @@ fun main(args: Array<String>) {
     val grpcPort by parser.option(ArgType.Int, "grpc-port", description = "Transport service port").default(40400)
     val noDiscovery by parser.option(ArgType.Boolean, "no-discovery", description = "Disable discovery").default(false)
     val composeFile by parser.option(ArgType.String, "compose-file", shortName = "f", description = "Path to docker-compose.yml used for instancing agents").default("docker-compose.yml")
+    val maxDataRegionSizeMb by parser.option(ArgType.Int, "max-data-region-size", description = "Max Ignite data region size (in MB)").default(-1)
 
     parser.parse(args)
 
@@ -83,6 +85,11 @@ fun main(args: Array<String>) {
             singletonServiceConfiguration("StreamService", StreamService()),
             singletonServiceConfiguration("TransportService", TransportService(grpcPort)),
         )
+        it.dataStorageConfiguration = DataStorageConfiguration().also {
+            if (maxDataRegionSizeMb > 0) {
+                it.defaultDataRegionConfiguration.maxSize = maxDataRegionSizeMb.toLong() * 1024 * 1024;
+            }
+        }
         it.gridLogger = Slf4jLogger()
     }
 
