@@ -64,9 +64,8 @@ def initialize_notebook(agent = None):
 
 async def listen_call_triggers(delegate, task_collection, function):
     async def process_notification(k, n):
-        parameters = get_cache_service().call_get_parameters(n.call)
-
         try:
+            parameters = get_cache_service().call_get_parameters(n.call)
             return_value = await enter_context(n.instance, n.call, lambda: asyncio.create_task(function(*parameters)))
             if return_value == None:
                 get_cache_service().call_write_finished(n.call)
@@ -82,15 +81,14 @@ async def listen_call_triggers(delegate, task_collection, function):
 
         get_notification_service().consume_notification(k)
 
-async def listen_stream_triggers(delegate, task_collection, functions):
+async def listen_stream_triggers(delegate, task_collection, function):
     async def process_stream(generator, stream):
         async for data in generator:
             get_cache_service().stream_write_item(stream, data)
 
     async def process_notification(k, n):
-        parameters = get_cache_service().stream_get_parameters(n.stream)
-
         try:
+            parameters = get_cache_service().stream_get_parameters(n.stream)
             generator = await enter_context(n.instance, n.stream, lambda: asyncio.create_task(process_stream(function(*parameters), n.stream)))
         except Exception as ex:
             print("Error while invoking", delegate, ":")

@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import Flag
 
 
-class StreamFlags(Enum):
+class StreamFlags(Flag):
     ephemeral = 1
     default = ephemeral
     query = 2

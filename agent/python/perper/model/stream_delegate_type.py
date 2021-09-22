@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import IntEnum
 
 
-class StreamDelegateType(Enum):
+class StreamDelegateType(IntEnum):
     function = 0
     action = 1
     external = 2
