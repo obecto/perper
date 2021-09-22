@@ -21,6 +21,7 @@ from .notifications import (
 
 class NotificationService:
     CALL = object()
+    CALL_RESULT = object()
     STREAM = object()
 
     def __init__(self, ignite, address, agent, instance=None):
@@ -92,6 +93,9 @@ class NotificationService:
             if instance_class == 'CallTriggerNotification':
                 self.write_channel_value((NotificationService.CALL, item.delegate), (key, item))
 
+            if instance_class == 'CallResultNotification':
+                self.write_channel_value((NotificationService.CALL_RESULT, item.call), (key, item))
+
     async def get_notifications(self, instance, parameter) -> Generator:
         channel = self.get_channel((instance, parameter))
         while True:
@@ -99,25 +103,26 @@ class NotificationService:
             yield item
             channel.task_done()
 
-    async def get_notification(self, instance, parameter) -> Generator:
+    async def get_notification(self, instance, parameter):
         channel = self.get_channel((instance, parameter))
         item = await channel.get()
         channel.task_done()
         return item
 
     async def get_call_result_notification(self, call):
-        grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
-        notification = await grpc_stub.CallResultNotification(
-            fabric_pb2.CallNotificationFilter(
-                agent = self.agent,
-                call = call
-            )
-        )
+        return await self.get_notification(NotificationService.CALL_RESULT, call)  # HACK: Workaround race condition in CallResultNotification
+        #grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
+        #notification = await grpc_stub.CallResultNotification(
+            #fabric_pb2.CallNotificationFilter(
+                #agent = self.agent,
+                #call = call
+            #)
+        #)
 
-        key = self.get_notification_key(notification)
-        item = self.notifications_cache.get(key)
+        #key = self.get_notification_key(notification)
+        #item = self.notifications_cache.get(key)
 
-        return (key, item)
+        #return (key, item)
 
     def consume_notification(self, key):
         return self.notifications_cache.remove_key(key)

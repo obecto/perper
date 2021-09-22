@@ -162,9 +162,7 @@ class TransportService(var port: Int) : Service {
             }
 
             fun processNotification(key: NotificationKey, notification: Notification, confirmed: Boolean) {
-                if (notification is CallResultNotification) {
-                    // pass, handled by callResultNotification below
-                } else if (notification is StreamItemNotification) {
+                if (notification is StreamItemNotification) {
                     if (confirmed) {
                         val queue = getNotificationQueue(ignite, notification.stream)
                         log.trace({ "Consume notification start: ${notification.stream} - $key (${queue.size})" })
@@ -181,7 +179,7 @@ class TransportService(var port: Int) : Service {
                     }
                     updateQueue(notification.stream)
                 } else if (!confirmed) {
-                    if (instance == null || (notification is CallTriggerNotification && notification.instance == instance) || (notification is StreamTriggerNotification && notification.instance == instance)) {
+                    if (instance == null || (notification is CallTriggerNotification && notification.instance == instance) || (notification is StreamTriggerNotification && notification.instance == instance) || (notification is CallResultNotification && notification.caller == instance)) {
                         log.trace({ "Sending notification ${request.agent}, $notification - $key" })
                         runBlocking { send(key.toNotification()) }
                     }

@@ -38,6 +38,7 @@ namespace Perper.Protocol.Service
         private readonly Fabric.FabricClient client;
 
         private readonly ConcurrentDictionary<string, Channel<(NotificationKey, CallTriggerNotification)>> callTriggerChannels = new();
+        private readonly ConcurrentDictionary<string, TaskCompletionSource<(NotificationKey, CallResultNotification)>> callResultChannels = new();
         private readonly ConcurrentDictionary<string, Channel<(NotificationKey, StreamTriggerNotification)>> streamTriggerChannels = new();
         private readonly ConcurrentDictionary<(string, int?), Channel<(NotificationKey, StreamItemNotification)>> streamItemChannels = new();
 
@@ -104,6 +105,13 @@ namespace Perper.Protocol.Service
                         var channelCt = callTriggerChannels.GetOrAdd(ct.Delegate, _ => Channel.CreateUnbounded<(NotificationKey, CallTriggerNotification)>());
                         await channelCt.Writer.WriteAsync((key, ct), cancellationToken).ConfigureAwait(false);
                         break;
+                    case CallResultNotification cr:
+                        var taskCompletionSourceCr = callResultChannels.GetOrAdd(cr.Call, _ => new TaskCompletionSource<(NotificationKey, CallResultNotification)>());
+                        if (!taskCompletionSourceCr.TrySetResult((key, cr)))
+                        {
+                            Console.WriteLine($"FabricService multiple completions: {cr.Call}");
+                        }
+                        break;
                 }
             }
         }
@@ -147,9 +155,11 @@ namespace Perper.Protocol.Service
             return streamItemChannels.GetOrAdd((stream, parameter), _ => Channel.CreateUnbounded<(NotificationKey, StreamItemNotification)>()).Reader;
         }
 
-        public async Task<(NotificationKey, CallResultNotification)> GetCallResultNotification(string call, CancellationToken cancellationToken = default)
+        public async Task<(NotificationKey, CallResultNotification)> GetCallResultNotification(string call)
         {
-            var notification = await client.CallResultNotificationAsync(new CallNotificationFilter
+            // HACK: Workaround race condition in CallResultNotification
+            return await callResultChannels.GetOrAdd(call, _ => new TaskCompletionSource<(NotificationKey, CallResultNotification)>()).Task.ConfigureAwait(false);
+            /*var notification = await client.CallResultNotificationAsync(new CallNotificationFilter
             {
                 Agent = Agent,
                 Call = call
@@ -157,7 +167,7 @@ namespace Perper.Protocol.Service
             var key = GetNotificationKey(notification);
 
             var fullNotification = await notificationsCache.GetAsync(key).ConfigureAwait(false);
-            return (key, (CallResultNotification)fullNotification);
+            return (key, (CallResultNotification)fullNotification);*/
         }
 
         public Task ConsumeNotification(NotificationKey key)
