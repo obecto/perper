@@ -243,7 +243,7 @@ namespace Perper.Application
                 catch (Exception e)
                 {
                     Console.WriteLine($"Exception while invoking call {notification.Call} ({callType}): {e}");
-                    await WriteCallResultAsync(key, null, null).ConfigureAwait(false);
+                    await WriteCallResultAsync(key, null, e).ConfigureAwait(false);
                 }
             }).ConfigureAwait(false);
         }
@@ -264,7 +264,7 @@ namespace Perper.Application
                 catch (Exception e)
                 {
                     Console.WriteLine($"Exception while executing stream {notification.Stream} ({streamType}): {e}");
-                    await WriteStreamResultAsync(key, null, null).ConfigureAwait(false);
+                    await WriteStreamResultAsync(key, null, e).ConfigureAwait(false);
                 }
             }).ConfigureAwait(false);
         }
@@ -361,7 +361,14 @@ namespace Perper.Application
             }
             else
             {
-                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
+                if (invokeResult is Exception e)
+                {
+                    await AsyncLocals.CacheService.CallWriteError(AsyncLocals.Execution, e.Message).ConfigureAwait(false);
+                }
+                else
+                {
+                    await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
+                }
             }
 
             await AsyncLocals.NotificationService.ConsumeNotification(key).ConfigureAwait(false);
