@@ -141,7 +141,7 @@ namespace Perper.Application
         #endregion Services
         #region ListenNotifications
 
-        private static Task ListenNotificationsForTypes((List<Type> streamTypes, List<Type> callTypes) types, CancellationToken cancellationToken)
+        public static Task ListenNotificationsForTypes((List<Type> streamTypes, List<Type> callTypes) types, CancellationToken cancellationToken)
         {
             var (streamTypes, callTypes) = types;
 
