@@ -231,12 +231,20 @@ namespace Perper.Application
         {
             await AsyncLocals.EnterContext(notification.Instance, notification.Call, async () =>
             {
-                var callInstance = InstanciateType(callType);
+                try
+                {
+                    var callInstance = InstanciateType(callType);
 
-                var callArguments = await AsyncLocals.CacheService.GetCallParameters(AsyncLocals.Execution).ConfigureAwait(false);
-                var (returnType, invokeResult) = await InvokeMethodAsync(callType, callInstance, callArguments).ConfigureAwait(false);
+                    var callArguments = await AsyncLocals.CacheService.GetCallParameters(AsyncLocals.Execution).ConfigureAwait(false);
+                    var (returnType, invokeResult) = await InvokeMethodAsync(callType, callInstance, callArguments).ConfigureAwait(false);
 
-                await WriteCallResultAsync(key, returnType, invokeResult).ConfigureAwait(false);
+                    await WriteCallResultAsync(key, returnType, invokeResult).ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Exception while invoking call {notification.Call} ({callType}): {e}");
+                    await WriteCallResultAsync(key, null, null).ConfigureAwait(false);
+                }
             }).ConfigureAwait(false);
         }
 
@@ -244,12 +252,20 @@ namespace Perper.Application
         {
             await AsyncLocals.EnterContext(notification.Instance, notification.Stream, async () =>
             {
-                var streamInstance = InstanciateType(streamType);
+                try
+                {
+                    var streamInstance = InstanciateType(streamType);
 
-                var streamArguments = await AsyncLocals.CacheService.GetStreamParameters(AsyncLocals.Execution).ConfigureAwait(false);
-                var (returnType, invokeResult) = await InvokeMethodAsync(streamType, streamInstance, streamArguments).ConfigureAwait(false);
+                    var streamArguments = await AsyncLocals.CacheService.GetStreamParameters(AsyncLocals.Execution).ConfigureAwait(false);
+                    var (returnType, invokeResult) = await InvokeMethodAsync(streamType, streamInstance, streamArguments).ConfigureAwait(false);
 
-                await WriteStreamResultAsync(key, returnType, invokeResult).ConfigureAwait(false);
+                    await WriteStreamResultAsync(key, returnType, invokeResult).ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Exception while executing stream {notification.Stream} ({streamType}): {e}");
+                    await WriteStreamResultAsync(key, null, null).ConfigureAwait(false);
+                }
             }).ConfigureAwait(false);
         }
 
