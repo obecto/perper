@@ -21,9 +21,9 @@ namespace Perper.Protocol.Service
             return streamsCache.PutIfAbsentOrThrowAsync(stream, streamData);
         }
 
-        public async Task<IBinaryObject> StreamAddListener(string stream, string callerAgent, string caller, int parameter, Hashtable? filter = null, bool replay = false, bool localToData = false)
+        public async Task<IBinaryObject> StreamAddListener(string stream, string callerAgent, string callerInstance, string caller, int parameter, Hashtable? filter = null, bool replay = false, bool localToData = false)
         {
-            var streamListener = igniteBinary.ToBinary<IBinaryObject>(new StreamListener(callerAgent, caller, parameter, replay, localToData, filter));
+            var streamListener = igniteBinary.ToBinary<IBinaryObject>(new StreamListener(callerAgent, callerInstance, caller, parameter, replay, localToData, filter));
 
             await streamsCache.OptimisticUpdateAsync(stream, value => StreamData.AddListener(value.ToBuilder(), streamListener).Build()).ConfigureAwait(false);
 

@@ -41,8 +41,8 @@ class CacheService:
     def stream_get_parameters(self, stream):
         return self.streams_cache.get(stream).parameters[1]
 
-    def stream_add_listener(self, stream, caller_agent, caller, parameter, filter = {}, replay = False, local_to_data = False):
-        stream_listener = create_stream_listener(caller_agent, caller, parameter, replay, local_to_data=local_to_data, filter=filter)
+    def stream_add_listener(self, stream, caller_agent, caller_instance, caller, parameter, filter = {}, replay = False, local_to_data = False):
+        stream_listener = create_stream_listener(caller_agent, caller_instance, caller, parameter, replay, local_to_data=local_to_data, filter=filter)
 
         optimistic_update(self.streams_cache, stream, lambda data: stream_data_add_listener(data, stream_listener))
         return stream_listener

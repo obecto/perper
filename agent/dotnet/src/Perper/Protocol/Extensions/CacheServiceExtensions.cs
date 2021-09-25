@@ -11,9 +11,9 @@ namespace Perper.Protocol.Extensions
 {
     public static class CacheServiceExtensions
     {
-        public static Task<IBinaryObject> StreamAddListener(this CacheService cacheService, PerperStream stream, string callerAgent, string caller, int parameter)
+        public static Task<IBinaryObject> StreamAddListener(this CacheService cacheService, PerperStream stream, string callerAgent, string callerInstance, string caller, int parameter)
         {
-            return cacheService.StreamAddListener(stream.Stream, callerAgent, caller, parameter, stream.Filter, stream.Replay, stream.LocalToData);
+            return cacheService.StreamAddListener(stream.Stream, callerAgent, callerInstance, caller, parameter, stream.Filter, stream.Replay, stream.LocalToData);
         }
 
         public static Task StreamRemoveListener(this CacheService cacheService, PerperStream stream, IBinaryObject listener)

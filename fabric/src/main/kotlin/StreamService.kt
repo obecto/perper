@@ -180,7 +180,7 @@ class StreamService : JobService() {
                     val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.caller)
                     val key = NotificationKey(TransportService.getCurrentTicks(), if (listener.localToData) itemKey else listener.caller)
                     notificationsQueue.put(key)
-                    notificationsCache.put(key, StreamItemNotification(listener.caller, listener.parameter, stream, itemKey, ephemeral))
+                    notificationsCache.put(key, StreamItemNotification(listener.callerInstance, listener.caller, listener.parameter, stream, itemKey, ephemeral))
                     log.trace({ "Writing notification ${listener.callerAgent} $key $itemKey" })
                 }
             }
@@ -266,7 +266,7 @@ class StreamService : JobService() {
 
                 val key = NotificationKey(TransportService.getCurrentTicks(), if (listener.localToData) itemKey else listener.caller)
                 notificationsQueue.put(key)
-                notificationsCache.put(key, StreamItemNotification(listener.caller, listener.parameter, stream, itemKey, ephemeral))
+                notificationsCache.put(key, StreamItemNotification(listener.callerInstance, listener.caller, listener.parameter, stream, itemKey, ephemeral))
                 log.trace({ "Writing replay notification ${listener.callerAgent} $key $itemKey" })
             }
         }

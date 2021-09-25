@@ -81,7 +81,7 @@ namespace Perper.Model
             var random = new Random();
             var parameter = random.Next(1, 1000000);
             //int parameter = 42; // FIXME
-            var listener = await AsyncLocals.CacheService.StreamAddListener(RawStream, AsyncLocals.Agent, AsyncLocals.Execution, parameter).ConfigureAwait(false);
+            var listener = await AsyncLocals.CacheService.StreamAddListener(RawStream, AsyncLocals.Agent, AsyncLocals.Instance, AsyncLocals.Execution, parameter).ConfigureAwait(false);
             try
             {
                 await foreach (var (key, notification) in AsyncLocals.NotificationService.GetStreamItemNotifications(AsyncLocals.Execution, parameter).ReadAllAsync(cancellationToken))

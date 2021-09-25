@@ -6,6 +6,7 @@ namespace Perper.Protocol.Cache.Instance
     {
         public StreamListener(
             string callerAgent,
+            string callerInstance,
             string caller,
             int parameter,
             bool replay,
@@ -13,6 +14,7 @@ namespace Perper.Protocol.Cache.Instance
             Hashtable? filter = null)
         {
             CallerAgent = callerAgent;
+            CallerInstance = callerInstance;
             Caller = caller;
             Parameter = parameter;
             Filter = filter;
@@ -21,6 +23,8 @@ namespace Perper.Protocol.Cache.Instance
         }
 
         public string CallerAgent { get; }
+
+        public string CallerInstance { get; }
 
         public string Caller { get; }
 

@@ -30,10 +30,10 @@ class Stream:
 
     async def enumerate(self):
         parameter = random.randrange(0, 10000) # TODO: FIXME
-        listener = perper_stream_add_listener(get_cache_service(), self.raw_stream, get_local_agent(), get_instance(), parameter)
+        listener = perper_stream_add_listener(get_cache_service(), self.raw_stream, get_local_agent(), get_instance(), get_execution(), parameter)
 
         try:
-            async for (k, i) in get_notification_service().get_notifications(get_instance(), parameter):
+            async for (k, i) in get_notification_service().get_notifications(get_execution(), parameter):
                 value = stream_read_notification(get_cache_service(), i)
                 get_notification_service().consume_notification(k)
                 yield value

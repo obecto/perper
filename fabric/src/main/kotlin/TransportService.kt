@@ -156,31 +156,33 @@ class TransportService(var port: Int) : Service {
                 } catch (e: Exception) { } // Necessitated by IGNITE-8978
 
                 if (sentQueueNotificationsMap.put(stream, queuedKey) != queuedKey) {
-                    log.trace({ "Sending notification: $stream - $queuedKey (${queue.size})" })
+                    log.trace({ "Sending notification: $instance $stream - $queuedKey (${queue.size})" })
                     runBlocking { send(queuedKey.toNotification()) }
                 }
             }
 
             fun processNotification(key: NotificationKey, notification: Notification, confirmed: Boolean) {
                 if (notification is StreamItemNotification) {
-                    if (confirmed) {
-                        val queue = getNotificationQueue(ignite, notification.stream)
-                        log.trace({ "Consume notification start: ${notification.stream} - $key (${queue.size})" })
-                        queue.remove(key)
+                    if (instance == null || notification.instance == instance) {
+                        if (confirmed) {
+                            val queue = getNotificationQueue(ignite, notification.stream)
+                            log.trace({ "Consume notification start: ${notification.stream} - $key (${queue.size})" })
+                            queue.remove(key)
 
-                        if (notification.ephemeral) {
-                            val counter = ignite.atomicLong("${notification.cache}-${notification.key}", 0, true)
-                            if (counter.decrementAndGet() == 0L) {
-                                ignite.cache<Long, BinaryObject>(notification.cache).withKeepBinary<Long, BinaryObject>().remove(notification.key)
-                                counter.close()
+                            if (notification.ephemeral) {
+                                val counter = ignite.atomicLong("${notification.cache}-${notification.key}", 0, true)
+                                if (counter.decrementAndGet() == 0L) {
+                                    ignite.cache<Long, BinaryObject>(notification.cache).withKeepBinary<Long, BinaryObject>().remove(notification.key)
+                                    counter.close()
+                                }
                             }
+                            log.trace({ "Consume notification end: ${notification.stream} - $key (${queue.size})" })
                         }
-                        log.trace({ "Consume notification end: ${notification.stream} - $key (${queue.size})" })
+                        updateQueue(notification.stream)
                     }
-                    updateQueue(notification.stream)
                 } else if (!confirmed) {
                     if (instance == null || (notification is CallTriggerNotification && notification.instance == instance) || (notification is StreamTriggerNotification && notification.instance == instance) || (notification is CallResultNotification && notification.caller == instance)) {
-                        log.trace({ "Sending notification ${request.agent}, $notification - $key" })
+                        log.trace({ "Sending notification $instance ${request.agent}, $notification - $key" })
                         runBlocking { send(key.toNotification()) }
                     }
                 }
@@ -192,7 +194,14 @@ class TransportService(var port: Int) : Service {
                 // warn: Might lead to race conditions in local-only scenarious if updateQueue gets called from multiple threads.
                 val remoteConfirmationQuery = ContinuousQuery<NotificationKey, Notification>()
                 remoteConfirmationQuery.remoteFilterFactory = Factory<CacheEntryEventFilter<NotificationKey, Notification>> {
-                    CacheEntryEventFilter { event -> event.eventType == EventType.REMOVED && (event.value ?: event.oldValue) is StreamItemNotification }
+                    CacheEntryEventFilter { event ->
+                        if (event.eventType == EventType.REMOVED) {
+                            var notification = (event.value ?: event.oldValue)
+                            notification is StreamItemNotification && (instance == null || notification.instance == instance)
+                        } else {
+                            false
+                        }
+                    }
                 }
                 remoteConfirmationQuery.localListener = CacheEntryUpdatedListener { events ->
                     try {

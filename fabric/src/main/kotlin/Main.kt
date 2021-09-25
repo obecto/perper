@@ -87,7 +87,7 @@ fun main(args: Array<String>) {
         )
         it.dataStorageConfiguration = DataStorageConfiguration().also {
             if (maxDataRegionSizeMb > 0) {
-                it.defaultDataRegionConfiguration.maxSize = maxDataRegionSizeMb.toLong() * 1024 * 1024;
+                it.defaultDataRegionConfiguration.maxSize = maxDataRegionSizeMb.toLong() * 1024 * 1024
             }
         }
         it.gridLogger = Slf4jLogger()

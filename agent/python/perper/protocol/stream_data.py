@@ -33,6 +33,7 @@ def create_stream_data(instance, agent, delegate, delegate_type, ephemeral, para
 
 class StreamListener(metaclass=GenericObjectMeta, schema=OrderedDict([
     ('callerAgent', String),
+    ('callerInstance', String),
     ('caller', String),
     ('parameter', IntObject),
     ('filter', MapObject),
@@ -41,9 +42,10 @@ class StreamListener(metaclass=GenericObjectMeta, schema=OrderedDict([
 ])):
     pass
 
-def create_stream_listener(caller_agent, caller, parameter, replay, local_to_data, filter={}):
+def create_stream_listener(caller_agent, caller_instance, caller, parameter, replay, local_to_data, filter={}):
     return StreamListener(
         callerAgent=caller_agent,
+        callerInstance=caller_instance,
         caller=caller,
         parameter=parameter,
         replay=replay,
