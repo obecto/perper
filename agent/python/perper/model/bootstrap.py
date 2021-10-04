@@ -27,8 +27,8 @@ def initialize_connection(agent, use_instance=False):
 
     return asyncio.create_task(notification_service.start())
 
-async def initialize(agent, calls = {}, streams = {}):
-    await initialize_connection(agent)
+async def initialize(agent, calls = {}, streams = {}, use_instance=False):
+    await initialize_connection(agent, use_instance)
 
     task_collection = TaskCollection()
 
