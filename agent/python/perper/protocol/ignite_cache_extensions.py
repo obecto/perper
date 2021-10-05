@@ -14,4 +14,4 @@ def optimistic_update(cache, key, update_func):
 def put_if_absent_or_raise(cache, key, value):
     result = cache.put_if_absent(key, value)
     if result is None:
-        raise Exception('Duplicate cache item key! (key is {key})')
+        raise KeyError('Duplicate cache item key! (key is {key})')
