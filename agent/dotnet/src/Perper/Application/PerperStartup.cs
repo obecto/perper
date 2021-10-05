@@ -287,6 +287,10 @@ namespace Perper.Application
                 {
                     constructorArguments[i] = new Context();
                 }
+                else if (parameterInfo.ParameterType == typeof(IState))
+                {
+                    constructorArguments[i] = new State();
+                }
             }
 
             return Activator.CreateInstance(callType, constructorArguments)!;

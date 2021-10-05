@@ -32,6 +32,21 @@ class CacheService:
     def instance_destroy(self, instance):
         return self.instances_cache.remove_key(instance)
 
+    # STATE:
+
+    def state_set(self, instance, key, value, value_hint=None):
+        if instance not in self.item_caches:
+            self.item_caches[instance] = self.ignite.get_or_create_cache(instance)
+        self.item_caches[instance].put(key, value, value_hint=value_hint)
+
+    def state_get(self, instance, key, default=None):
+        if instance not in self.item_caches:
+            self.item_caches[instance] = self.ignite.get_or_create_cache(instance)
+        result = self.item_caches[instance].get(key)
+        if result is None:
+            return default
+        return result
+
     # STREAMS:
 
     def stream_create(self, stream, agent, instance, delegate, delegate_type, parameters, ephemeral = True, index_type = None, index_fields = None):
