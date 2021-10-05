@@ -59,9 +59,9 @@ class TransportService(var port: Int) : Service {
             return ignite.getOrCreateCache<NotificationKey, Notification>("$agent-\$notifications")
         }
 
-        fun getNotificationQueue(ignite: Ignite, streamName: String): IgniteQueue<NotificationKey> {
+        fun getNotificationQueue(ignite: Ignite, streamName: String, streamParameter: Int): IgniteQueue<NotificationKey> {
             return ignite.queue(
-                "$streamName-\$notifications", 0,
+                "$streamName-\$notifications-$streamParameter", 0,
                 CollectionConfiguration().also {
                     it.backups = 1 // Workaround IGNITE-7789
                 }
@@ -140,8 +140,8 @@ class TransportService(var port: Int) : Service {
 
             val sentQueueNotificationsMap = ConcurrentHashMap<String, NotificationKey>()
 
-            fun updateQueue(stream: String) {
-                val queue = getNotificationQueue(ignite, stream)
+            fun updateQueue(stream: String, parameter: Int) {
+                val queue = getNotificationQueue(ignite, stream, parameter)
                 val queuedKey: NotificationKey? = queue.peek()
 
                 if (queuedKey == null) {
@@ -165,7 +165,7 @@ class TransportService(var port: Int) : Service {
                 if (notification is StreamItemNotification) {
                     if (instance == null || notification.instance == instance) {
                         if (confirmed) {
-                            val queue = getNotificationQueue(ignite, notification.stream)
+                            val queue = getNotificationQueue(ignite, notification.stream, notification.parameter)
                             log.trace({ "Consume notification start: ${notification.stream} - $key (${queue.size})" })
                             queue.remove(key)
 
@@ -178,7 +178,7 @@ class TransportService(var port: Int) : Service {
                             }
                             log.trace({ "Consume notification end: ${notification.stream} - $key (${queue.size})" })
                         }
-                        updateQueue(notification.stream)
+                        updateQueue(notification.stream, notification.parameter)
                     }
                 } else if (!confirmed) {
                     if (instance == null || (notification is CallTriggerNotification && notification.instance == instance) || (notification is StreamTriggerNotification && notification.instance == instance) || (notification is CallResultNotification && notification.caller == instance)) {
@@ -189,7 +189,7 @@ class TransportService(var port: Int) : Service {
             }
 
             val remoteJob = launch {
-                val remoteQueryChannel = Channel<String>(Channel.UNLIMITED)
+                val remoteQueryChannel = Channel<Pair<String, Int>>(Channel.UNLIMITED)
 
                 // warn: Might lead to race conditions in local-only scenarious if updateQueue gets called from multiple threads.
                 val remoteConfirmationQuery = ContinuousQuery<NotificationKey, Notification>()
@@ -207,8 +207,8 @@ class TransportService(var port: Int) : Service {
                     try {
                         for (event in events) {
                             if (event.eventType == EventType.REMOVED) {
-                                val value = event.value ?: event.oldValue
-                                runBlocking { remoteQueryChannel.send((value as StreamItemNotification).stream) }
+                                val value = (event.value ?: event.oldValue) as StreamItemNotification
+                                runBlocking { remoteQueryChannel.send(Pair(value.stream, value.parameter)) }
                             }
                         }
                     } catch (e: Exception) {
@@ -219,8 +219,8 @@ class TransportService(var port: Int) : Service {
                 val remoteQueryCursor = notificationCache.query(remoteConfirmationQuery)
 
                 try {
-                    for (stream in remoteQueryChannel) {
-                        updateQueue(stream)
+                    for ((stream, parameter) in remoteQueryChannel) {
+                        updateQueue(stream, parameter)
                     }
                 } finally {
                     remoteQueryCursor.close()

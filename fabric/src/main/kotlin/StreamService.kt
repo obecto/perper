@@ -177,7 +177,7 @@ class StreamService : JobService() {
                     }
                     ephemeralCounter ++
                     val notificationsCache = TransportService.getNotificationCache(ignite, listener.callerAgent)
-                    val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.caller)
+                    val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.caller, listener.parameter)
                     val key = NotificationKey(TransportService.getCurrentTicks(), if (listener.localToData) itemKey else listener.caller)
                     notificationsQueue.put(key)
                     notificationsCache.put(key, StreamItemNotification(listener.callerInstance, listener.caller, listener.parameter, stream, itemKey, ephemeral))
@@ -229,7 +229,7 @@ class StreamService : JobService() {
     fun writeFullReplay(stream: String, ephemeral: Boolean, listener: StreamListener) {
         val cache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, Any>()
         val notificationsCache = TransportService.getNotificationCache(ignite, listener.callerAgent)
-        val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.caller)
+        val notificationsQueue = TransportService.getNotificationQueue(ignite, listener.caller, listener.parameter)
 
         var reached = 0L
 
