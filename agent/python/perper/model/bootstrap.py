@@ -75,11 +75,11 @@ async def listen_call_triggers(delegate, task_collection, function):
         except Exception as ex:
             print("Error while invoking", delegate, ":")
             traceback.print_exception(type(ex), ex, ex.__traceback__)
+            get_cache_service().call_write_error(n.call, str(ex))
+        get_notification_service().consume_notification(k)
 
     async for (k, n) in get_notification_service().get_notifications(NotificationService.CALL, delegate):
         task_collection.add(process_notification(k, n))
-
-        get_notification_service().consume_notification(k)
 
 async def listen_stream_triggers(delegate, task_collection, function):
     async def process_stream(generator, stream):
@@ -93,9 +93,8 @@ async def listen_stream_triggers(delegate, task_collection, function):
         except Exception as ex:
             print("Error while invoking", delegate, ":")
             traceback.print_exception(type(ex), ex, ex.__traceback__)
+        get_notification_service().consume_notification(k)
 
 
     async for (k, n) in get_notification_service().get_notifications(NotificationService.STREAM, delegate):
         task_collection.add(process_notification(k, n))
-
-        get_notification_service().consume_notification(k)
