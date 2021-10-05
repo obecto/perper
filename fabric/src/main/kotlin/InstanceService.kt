@@ -73,7 +73,7 @@ class InstanceService(val composeFile: String = "docker-compose.yml") : JobServi
             query.localListener = CacheEntryUpdatedListener { events ->
                 for (event in events) {
                     coroutineScope.launch {
-                        log.debug({ "Agent object modified '${event.key}' ${event.value != null}" }) // TODO: What if Agent Type changes?
+                        log.debug({ "Agent object modified '${event.key}' ${event.value != null}" }) // TODO: What if an instance's agent changes?
                         updateAgent(event.key, if (event.eventType != EventType.REMOVED) event.value else null)
                     }
                 }
@@ -103,7 +103,7 @@ class InstanceService(val composeFile: String = "docker-compose.yml") : JobServi
 
     suspend fun updateAgent(instance: String, instanceData: BinaryObject?) {
         if (instanceData == null) {
-            stopIstance(instance)
+            stopInstance(instance)
         } else {
             val agent = instanceData.agent
             val tc = agentTypesCache.getAndPutIfAbsent(agent, AgentType.STARTING)
@@ -145,7 +145,7 @@ class InstanceService(val composeFile: String = "docker-compose.yml") : JobServi
         log.info({ "Started instance '$instance' of '$agent' as '${output.trim()}'" })
     }
 
-    suspend fun stopIstance(instance: String) {
+    suspend fun stopInstance(instance: String) {
         log.debug({ "Stopping instance $instance" })
         val dockerSearch = ProcessBuilder(
             "docker", "ps", "-q",
