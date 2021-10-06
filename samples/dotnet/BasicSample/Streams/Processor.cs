@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace SimpleAgent.Streams
+namespace BasicSample.Streams
 {
     public class Processor
     {
@@ -13,7 +13,7 @@ namespace SimpleAgent.Streams
             {
                 if (count == batchSize)
                 {
-                    yield return (string[])messagesBatch.Clone();
+                    yield return messagesBatch;
                     count = 0;
                 }
 

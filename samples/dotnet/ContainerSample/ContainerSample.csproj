@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\agent\dotnet\src\Perper\Perper.csproj" />
+    <ProjectReference Include="..\..\..\agent\dotnet\src\Perper\Perper.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

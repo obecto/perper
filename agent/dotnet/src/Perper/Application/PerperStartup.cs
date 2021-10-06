@@ -310,9 +310,11 @@ namespace Perper.Application
                 {
                     var arg = arguments[i];
 
-                    castArgument = arg is ArrayList arrayList && parameters[i].ParameterType == typeof(object[])
-                        ? arrayList.Cast<object>().ToArray()
-                        : Convert.ChangeType(arg, parameters[i].ParameterType);
+                    castArgument = arg != null && parameters[i].ParameterType.IsAssignableFrom(arg.GetType())
+                        ? arg
+                        : arg is ArrayList arrayList && parameters[i].ParameterType == typeof(object[])
+                            ? arrayList.Cast<object>().ToArray()
+                            : Convert.ChangeType(arg, parameters[i].ParameterType);
                 }
                 else
                 {

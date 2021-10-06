@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace SimpleAgent.Streams
+namespace BasicSample.Streams
 {
     public class Consumer
     {

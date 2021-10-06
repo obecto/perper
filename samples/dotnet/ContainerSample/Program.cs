@@ -4,7 +4,7 @@ using Perper.Application;
 using Perper.Model;
 using Perper.Protocol.Cache.Notifications;
 
-var agent = "simple-container-agent";
+var agent = "container-sample";
 
 await PerperStartup.EnterServicesContext(agent, async () =>
 {

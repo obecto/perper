@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace SimpleAgent.Calls
+namespace BasicSample.Calls
 {
     public class GetRandomNumberAsync
     {

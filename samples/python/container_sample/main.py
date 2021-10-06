@@ -10,7 +10,7 @@ from perper.model.bootstrap import initialize_connection
 
 
 async def main():
-    await initialize_connection("simple-container-agent", True)
+    await initialize_connection("container-sample", True)
     (k, n) = await get_notification_service().get_notification(get_notification_service().CALL, "Startup")
     get_cache_service().call_write_finished(n.call)
     get_notification_service().consume_notification(k)

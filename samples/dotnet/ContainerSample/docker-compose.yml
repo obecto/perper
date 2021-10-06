@@ -1,0 +1,11 @@
+version: "3.9"
+
+services:
+    container-sample:
+        volumes:
+            - ../../../:/perper/:ro
+
+        image: mcr.microsoft.com/dotnet/sdk:5.0
+        command: dotnet run --no-build --project /perper/samples/dotnet/ContainerSample/
+
+        network_mode: host

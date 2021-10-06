@@ -7,13 +7,13 @@ from perper.model.bootstrap import initialize
 
 
 async def main():
-    print("Starting simple-container-agent #1")
-    (agent1, _) = await start_agent("simple-container-agent", [])
-    print("Started simple-container-agent #1")
+    print("Starting container-sample #1")
+    (agent1, _) = await start_agent("container-sample", [])
+    print("Started container-sample #1")
 
-    print("Starting simple-container-agent #2")
-    (agent2, _) = await start_agent("simple-container-agent", [])
-    print("Started simple-container-agent #2")
+    print("Starting container-sample #2")
+    (agent2, _) = await start_agent("container-sample", [])
+    print("Started container-sample #2")
 
     id1 = await agent1.call_function("Test", [1])
     id2 = await agent2.call_function("Test", [1])
@@ -22,11 +22,11 @@ async def main():
         if ((i ^ (i << 2)) & 8) == 0:
             r1 = await agent1.call_function("Test", [1])
             if r1 != id1:
-                print("!!!", r1, id1, r1 == id2)
+                raise Exception(f"Expected to receive {id1} from agent 1, got {r1}")
         else:
             r2 = await agent2.call_function("Test", [1])
             if r2 != id2:
-                print("!!!", r2, id2, r2 == id1)
+                raise Exception(f"Expected to receive {id2} from agent 2, got {r2}")
 
     print("Test passed!")
 
@@ -36,4 +36,4 @@ async def main():
     print("Both agents destroyed!")
 
 
-asyncio.run(initialize("simple-agent", {"Init": main}))
+asyncio.run(initialize("container-usage-sample", {"Init": main}))

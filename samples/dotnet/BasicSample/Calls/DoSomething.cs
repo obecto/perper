@@ -1,6 +1,6 @@
 using System;
 
-namespace SimpleAgent.Calls
+namespace BasicSample.Calls
 {
     public class DoSomething
     {
