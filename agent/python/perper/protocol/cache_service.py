@@ -110,6 +110,9 @@ class CacheService:
         else:
             return None
 
+    def call_remove(self, call):
+        self.calls_cache.remove_key(call)
+
     def call_read_error_and_result(self, call):
         call_data = self.calls_cache.get(call)
         error = call_data.error if hasattr(call_data, 'error') else None

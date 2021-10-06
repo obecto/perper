@@ -39,6 +39,11 @@ namespace Perper.Protocol.Service
             return callData.HasField("error") ? callData.GetField<string>("error") : null;
         }
 
+        public Task CallRemove(string call)
+        {
+            return callsCache.RemoveAsync(call);
+        }
+
         public async Task<(string?, TResult)> CallReadErrorAndResult<TResult>(string call) // NOTE: should return (string?, TResult?)
         {
             var callData = await callsCache.GetAsync(call).ConfigureAwait(false);
