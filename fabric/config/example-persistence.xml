@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd">
+    <import resource="base.xml"/>
+
+    <bean class="org.springframework.beans.factory.config.PropertyOverrideConfigurer">
+        <property name="properties"><value>
+            InstanceService.composeFile=../agent/dotnet/src/SimpleContainerAgent/docker-compose.yml
+        </value></property>
+    </bean>
+
+    <bean parent="PerperDefaultConfig">
+        <property name="workDirectory" value="/tmp/ignite-work"/>
+
+        <property name="dataStorageConfiguration"><bean class="org.apache.ignite.configuration.DataStorageConfiguration">
+            <property name="defaultDataRegionConfiguration"><bean class="org.apache.ignite.configuration.DataRegionConfiguration">
+                <property name="persistenceEnabled" value="true"/>
+            </bean></property>
+        </bean></property>
+    </bean>
+</beans>

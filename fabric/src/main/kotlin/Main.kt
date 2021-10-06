@@ -5,28 +5,7 @@ import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import org.apache.ignite.Ignition
-import org.apache.ignite.binary.BinaryBasicNameMapper
-import org.apache.ignite.binary.BinaryTypeConfiguration
-import org.apache.ignite.cache.CacheKeyConfiguration
-import org.apache.ignite.configuration.BinaryConfiguration
-import org.apache.ignite.configuration.ClientConnectorConfiguration
-import org.apache.ignite.configuration.DataStorageConfiguration
-import org.apache.ignite.configuration.IgniteConfiguration
-import org.apache.ignite.logger.slf4j.Slf4jLogger
-import org.apache.ignite.services.Service
-import org.apache.ignite.services.ServiceConfiguration
-import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi
-import org.apache.ignite.spi.discovery.tcp.ipfinder.multicast.TcpDiscoveryMulticastIpFinder
-
-private inline fun <reified T : Any> BinaryTypeConfiguration() =
-    BinaryTypeConfiguration(T::class.qualifiedName).setEnum(T::class.java.isEnum())
-
-private fun singletonServiceConfiguration(name: String, instance: Service) = ServiceConfiguration().also {
-    it.name = name
-    it.service = instance
-    it.maxPerNodeCount = 1
-    it.totalCount = 0
-}
+import org.apache.ignite.cluster.ClusterState
 
 fun main(args: Array<String>) {
     val parser = ArgParser("perper-fabric")
@@ -34,11 +13,8 @@ fun main(args: Array<String>) {
     val debug by parser.option(ArgType.Boolean, shortName = "d", description = "Show debug logs").default(false)
     val trace by parser.option(ArgType.Boolean, description = "Show trace logs").default(false)
     val verbose by parser.option(ArgType.Boolean, shortName = "v", description = "Show Ignite information logs").default(false)
-    val ignitePort by parser.option(ArgType.Int, "ignite-port", description = "Ignite client port").default(10800)
-    val grpcPort by parser.option(ArgType.Int, "grpc-port", description = "Transport service port").default(40400)
-    val noDiscovery by parser.option(ArgType.Boolean, "no-discovery", description = "Disable discovery").default(false)
-    val composeFile by parser.option(ArgType.String, "compose-file", shortName = "f", description = "Path to docker-compose.yml used for instancing agents").default("docker-compose.yml")
-    val maxDataRegionSizeMb by parser.option(ArgType.Int, "max-data-region-size", description = "Max Ignite data region size (in MB)").default(-1)
+    val activate by parser.option(ArgType.Boolean, description = "Set cluster state to active on startup").default(true)
+    val configXml by parser.argument(ArgType.String, description = "Path to Spring configuration XML")
 
     parser.parse(args)
 
@@ -47,51 +23,8 @@ fun main(args: Array<String>) {
     System.setProperty("org.slf4j.simpleLogger.levelInBrackets", "true")
     System.setProperty("org.slf4j.simpleLogger.showDateTime", "true")
 
-    val igniteConfiguration = IgniteConfiguration().also {
-        it.clientConnectorConfiguration = ClientConnectorConfiguration().also {
-            it.port = ignitePort
-        }
-        if (noDiscovery) {
-            it.discoverySpi = TcpDiscoverySpi().also {
-                it.ipFinder = TcpDiscoveryMulticastIpFinder().setMulticastPort(ignitePort)
-            }
-        }
-        it.binaryConfiguration = BinaryConfiguration().also {
-            it.typeConfigurations = listOf(
-//                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.CallData>(),
-//                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamData>(),
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamDelegateType>(),
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamListener>(),
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.AgentType>(),
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.CallResultNotification>(),
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.CallTriggerNotification>(),
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.Notification>(),
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.NotificationKey>(),
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.NotificationKeyLong>(),
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.NotificationKeyString>(),
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.StreamItemNotification>(),
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.StreamTriggerNotification>(),
-            )
-//             it.serializer = PerperBinarySerializer()
-            it.nameMapper = BinaryBasicNameMapper(true)
-        }
-        it.setCacheKeyConfiguration(
-            CacheKeyConfiguration(com.obecto.perper.fabric.cache.notification.NotificationKeyLong::class.java),
-            CacheKeyConfiguration(com.obecto.perper.fabric.cache.notification.NotificationKeyString::class.java)
-        )
-        it.setServiceConfiguration(
-            singletonServiceConfiguration("InstanceService", InstanceService(composeFile)),
-            singletonServiceConfiguration("CallService", CallService()),
-            singletonServiceConfiguration("StreamService", StreamService()),
-            singletonServiceConfiguration("TransportService", TransportService(grpcPort)),
-        )
-        it.dataStorageConfiguration = DataStorageConfiguration().also {
-            if (maxDataRegionSizeMb > 0) {
-                it.defaultDataRegionConfiguration.maxSize = maxDataRegionSizeMb.toLong() * 1024 * 1024
-            }
-        }
-        it.gridLogger = Slf4jLogger()
+    val ignite = Ignition.start(configXml)
+    if (activate) {
+        ignite.cluster().state(ClusterState.ACTIVE)
     }
-
-    Ignition.start(igniteConfiguration)
 }
