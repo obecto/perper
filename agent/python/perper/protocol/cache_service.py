@@ -10,9 +10,11 @@ class CacheService:
     def __init__(self, ignite):
         self.ignite = ignite
         self.item_caches = {}
-        self.streams_cache = ignite.get_or_create_cache('streams')
-        self.calls_cache = ignite.get_or_create_cache('calls')
-        self.instances_cache = ignite.get_or_create_cache('instances')
+
+    def start(self):
+        self.streams_cache = self.ignite.get_or_create_cache('streams')
+        self.calls_cache = self.ignite.get_or_create_cache('calls')
+        self.instances_cache = self.ignite.get_or_create_cache('instances')
 
     def get_current_ticks(self):
         dt = datetime.now(timezone.utc)

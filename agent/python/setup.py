@@ -64,7 +64,7 @@ setup(
     author='Obecto EOOD',
     url='https://github.com/obecto/perper',
     setup_requires=['grpcio-tools>=1.33.2'],
-    install_requires=['pyignite>=0.3.4', 'grpcio>=1.33.2', 'protobuf>=3.17.3'],
+    install_requires=['pyignite>=0.3.4', 'grpcio>=1.33.2', 'protobuf>=3.17.3', 'backoff>=1.11.1'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Programming Language :: Python',

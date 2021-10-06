@@ -29,15 +29,9 @@ class NotificationService:
         self.instance = instance
         self.address = address
         self.ignite = ignite
-        self.notifications_cache = self.ignite.get_or_create_cache(f'{agent}-$notifications')
         self.channels = {}
         self.running = False
         self.listening = False
-
-        self.ignite.register_binary_type(StreamItemNotification)
-        self.ignite.register_binary_type(StreamTriggerNotification)
-        self.ignite.register_binary_type(CallResultNotification)
-        self.ignite.register_binary_type(CallTriggerNotification)
 
     def consume_notification(self, key):
         return self.notifications_cache.remove(key)
@@ -58,15 +52,22 @@ class NotificationService:
     async def start(self):
         self.loop = asyncio.get_running_loop()
         self._grpc_channel = grpc.aio.insecure_channel(self.address)
-        if not self.running:
-            self.background_task = asyncio.create_task(self.run())
-            self.running = True
+
+        grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
+        notifications = grpc_stub.Notifications(fabric_pb2.NotificationFilter(agent = self.agent, instance = (self.instance or "")))
+        await notifications.wait_for_connection()
+
+        self.notifications_cache = self.ignite.get_or_create_cache(f'{self.agent}-$notifications')
+        self.ignite.register_binary_type(StreamItemNotification)
+        self.ignite.register_binary_type(StreamTriggerNotification)
+        self.ignite.register_binary_type(CallResultNotification)
+        self.ignite.register_binary_type(CallTriggerNotification)
+
+        self.background_task = asyncio.create_task(self.run(notifications))
 
     async def stop(self):
-        if self.running:
-            await self._grpc_channel.close()
-            await self.background_task
-            self.running = False
+        await self._grpc_channel.close()
+        await self.background_task
 
     def get_channel(self, channel):
         if channel not in self.channels:
@@ -77,9 +78,8 @@ class NotificationService:
     def write_channel_value(self, channel, value):
         asyncio.run_coroutine_threadsafe(self.get_channel(channel).put(value), self.loop)
 
-    async def run(self):
-        grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
-        async for notification in grpc_stub.Notifications(fabric_pb2.NotificationFilter(agent = self.agent, instance = (self.instance or ""))):
+    async def run(self, notifications):
+        async for notification in notifications:
             key = self.get_notification_key(notification)
             item = self.notifications_cache.get(key)
             instance_class = type(item).__name__

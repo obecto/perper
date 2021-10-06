@@ -4,9 +4,12 @@ import asyncio
 import random
 import traceback
 import functools
+import backoff
 from collections.abc import AsyncIterable, Awaitable
 from pyignite import Client
 from pyignite.datatypes.primitive_objects import BoolObject
+from pyignite.exceptions import ReconnectError
+from grpc import RpcError
 from perper.model.async_locals import *
 from perper.model.task_collection import TaskCollection
 from perper.protocol.cache_service import CacheService
@@ -15,19 +18,37 @@ from perper.model.context import *
 
 def initialize_connection(agent, use_instance=False):
     instance = os.getenv('X_PERPER_INSTANCE') if use_instance else None
+    (ignite_address, ignite_port) = os.getenv('APACHE_IGNITE_ENDPOINT', '127.0.0.1:10800').split(':')
+    grpc_endpoint = os.getenv('PERPER_FABRIC_ENDPOINT', '127.0.0.1:40400')
+    print(f"APACHE_IGNITE_ENDPOINT: {ignite_address}:{ignite_port}")
+    print(f"PERPER_FABRIC_ENDPOINT: {grpc_endpoint}")
+    if use_instance:
+        print(f"X_PERPER_INSTANCE: {instance}")
+
 
     ignite = Client()
-    (ignite_address, ignite_port) = os.getenv('APACHE_IGNITE_ENDPOINT', '127.0.0.1:10800').split(':')
     ignite_port = int(ignite_port)
-    ignite.connect(ignite_address, ignite_port)
 
     cache_service = CacheService(ignite)
-    grpc_endpoint = os.getenv('PERPER_FABRIC_ENDPOINT', '127.0.0.1:40400')
     notification_service = NotificationService(ignite, grpc_endpoint, agent, instance)
+
 
     set_connection(cache_service, notification_service) # It is important that this call occurs in a sync context
 
-    return asyncio.create_task(notification_service.start())
+    @backoff.on_exception(backoff.expo, ReconnectError, on_backoff=(lambda x: print(f"Failed to connect to Ignite, retrying in {x['wait']:0.1f}s")))
+    def connect_ignite():
+        ignite.connect(ignite_address, ignite_port)
+        cache_service.start()
+
+    @backoff.on_exception(backoff.expo, RpcError, on_backoff=(lambda x: print(f"Failed to connect to GRPC, retrying in {x['wait']:0.1f}s")))
+    async def connect_grpc():
+        await notification_service.start()
+
+    async def connect_helper():
+        connect_ignite()
+        await connect_grpc()
+
+    return asyncio.create_task(connect_helper())
 
 async def initialize(agent, calls = {}, streams = {}, use_instance=False):
     await initialize_connection(agent, use_instance)
