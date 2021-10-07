@@ -18,7 +18,7 @@ async def main():
     r = uuid.uuid4()
 
     async for (k, n) in get_notification_service().get_notifications(get_notification_service().CALL, "Test"):
-        get_cache_service().call_write_result(n.call, r, UUIDObject)
+        get_cache_service().call_write_result(n.call, [r])
         get_notification_service().consume_notification(k)
 
 

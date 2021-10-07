@@ -42,7 +42,11 @@ def get_random_number(a, b):
 
 
 async def get_random_number_async(a, b):
-    return (random.randint(a, b), IntObject)
+    return random.randint(a, b)
+
+
+def get_two_random_numbers(a, b):
+    return (random.randint(a, b), random.randint(a, b))
 
 
 async def main(*args):
@@ -53,11 +57,14 @@ async def main(*args):
     processor = stream_function("Processor", [generator.raw_stream, batch_count])
     _ = stream_action("Consumer", [processor.raw_stream])
 
-    randomNumber = await call_function("GetRandomNumber", [1, 100])
-    print(f"Random number: {randomNumber}")
+    randomNumber1 = await call_function("GetRandomNumber", [1, 100])
+    print(f"Random number: {randomNumber1}")
 
-    anotherRandomNumber = await call_function("GetRandomNumberAsync", [1, 100])
-    print(f"Random number: {anotherRandomNumber}")
+    randomNumber2 = await call_function("GetRandomNumberAsync", [1, 100])
+    print(f"Random number: {randomNumber2}")
+
+    randomNumber3, randomNumber4 = await call_function("GetTwoRandomNumbers", [1, 100])
+    print(f"Random numbers: {randomNumber3} + {randomNumber4}")
 
     await call_action("DoSomething", ["123"])
     await call_action("DoSomethingAsync", ["456"])
@@ -71,6 +78,7 @@ asyncio.run(
             "DoSomething": do_something,
             "DoSomethingAsync": do_something_async,
             "GetRandomNumber": get_random_number,
+            "GetTwoRandomNumbers": get_two_random_numbers,
             "GetRandomNumberAsync": get_random_number_async,
         },
         {"Generator": generator, "Processor": processor, "Consumer": consumer},

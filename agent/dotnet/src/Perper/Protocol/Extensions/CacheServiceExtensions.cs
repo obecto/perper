@@ -31,7 +31,7 @@ namespace Perper.Protocol.Extensions
             return cacheService.StreamReadItem<TItem>(notification.Cache, notification.Key, keepBinary);
         }
 
-        public static async Task CallWriteTask<TResult>(this CacheService cacheService, string call, Task<TResult> task)
+        public static async Task CallWriteTask(this CacheService cacheService, string call, Task<object[]> task)
         {
             try
             {
@@ -44,27 +44,14 @@ namespace Perper.Protocol.Extensions
             }
         }
 
-        public static async Task CallWriteTask(this CacheService cacheService, string call, Task task)
-        {
-            try
-            {
-                await task.ConfigureAwait(false);
-                await cacheService.CallWriteFinished(call).ConfigureAwait(false);
-            }
-            catch (Exception exception)
-            {
-                await cacheService.CallWriteException(call, exception).ConfigureAwait(false);
-            }
-        }
-
         public static Task CallWriteException(this CacheService cacheService, string call, Exception exception)
         {
             return cacheService.CallWriteError(call, exception.Message);
         }
 
-        public static async Task<TResult> CallReadResult<TResult>(this CacheService cacheService, string call)
+        public static async Task<object[]> CallReadResult(this CacheService cacheService, string call)
         {
-            var (error, result) = await cacheService.CallReadErrorAndResult<TResult>(call).ConfigureAwait(false);
+            var (error, result) = await cacheService.CallReadErrorAndResult(call).ConfigureAwait(false);
 
             if (error != null)
             {
@@ -72,16 +59,6 @@ namespace Perper.Protocol.Extensions
             }
 
             return result;
-        }
-
-        public static async Task CallReadResult(this CacheService cacheService, string call)
-        {
-            var error = await cacheService.CallReadError(call).ConfigureAwait(false);
-
-            if (error != null)
-            {
-                throw new InvalidOperationException($"Call failed with error: {error}");
-            }
         }
     }
 }

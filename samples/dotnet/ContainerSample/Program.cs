@@ -23,7 +23,7 @@ await PerperStartup.EnterServicesContext(agent, async () =>
     {
         if (notification is CallTriggerNotification ct)
         {
-            await AsyncLocals.CacheService.CallWriteResult(ct.Call, id).ConfigureAwait(false);
+            await AsyncLocals.CacheService.CallWriteResult(ct.Call, new object[] { id }).ConfigureAwait(false);
             await AsyncLocals.NotificationService.ConsumeNotification(notification2Key).ConfigureAwait(false);
         }
     }

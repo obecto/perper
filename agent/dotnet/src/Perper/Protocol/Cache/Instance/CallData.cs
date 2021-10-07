@@ -28,9 +28,9 @@ namespace Perper.Protocol.Cache.Instance
             return callData;
         }
 
-        public static IBinaryObjectBuilder SetResult<TResult>(
+        public static IBinaryObjectBuilder SetResult(
             IBinaryObjectBuilder callData,
-            TResult result) // object[]
+            object[] result)
         {
             callData.SetField("finished", true);
             callData.SetField("result", result);

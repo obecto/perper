@@ -7,7 +7,7 @@ import functools
 import backoff
 from collections.abc import AsyncIterable, Awaitable
 from pyignite import Client
-from pyignite.datatypes.primitive_objects import BoolObject
+from pyignite.utils import is_hinted
 from pyignite.exceptions import ReconnectError
 from grpc import RpcError
 from perper.model.async_locals import *
@@ -112,9 +112,10 @@ async def process_call(function):
 
     if result is None:
         get_cache_service().call_write_finished(call)
+    if isinstance(result, tuple) and not is_hinted(result):
+        get_cache_service().call_write_result(call, list(result))
     else:
-        (result, result_type) = result
-        get_cache_service().call_write_result(call, result, result_type)
+        get_cache_service().call_write_result(call, [result])
 
 async def process_stream(function):
     stream = get_execution()

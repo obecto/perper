@@ -13,7 +13,7 @@ def create_call_data(instance, agent, delegate, caller_agent, caller, local_to_d
         ('finished', BoolObject),
         ('localToData', BoolObject),
         ('parameters', ObjectArrayObject),
-        #('result', result_type),
+        #('result', ObjectArrayObject),
     ])):
         pass
 
@@ -28,16 +28,16 @@ def create_call_data(instance, agent, delegate, caller_agent, caller, local_to_d
         parameters=(ObjectArrayObject.OBJECT, parameters)
     )
 
-def set_call_data_result(call_data, result, result_type):
+def set_call_data_result(call_data, result):
     class CallData(metaclass=GenericObjectMeta, type_name=call_data._type_name, schema=OrderedDict([
         *call_data.schema.items(),
-        ('result', result_type)
+        ('result', ObjectArrayObject)
     ])):
         pass
 
     return CallData(
         finished=True,
-        result=result,
+        result=(ObjectArrayObject.OBJECT, result),
         **{key: getattr(call_data, key) for key in call_data.schema.keys() - {'finished', 'result'}}
     )
 

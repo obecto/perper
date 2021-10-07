@@ -96,8 +96,8 @@ class CacheService:
     def call_get_parameters(self, call):
         return self.calls_cache.get(call).parameters[1]
 
-    def call_write_result(self, call, result, result_type):
-        return optimistic_update(self.calls_cache, call, lambda data: set_call_data_result(data, result, result_type))
+    def call_write_result(self, call, result):
+        return optimistic_update(self.calls_cache, call, lambda data: set_call_data_result(data, result))
 
     def call_write_error(self, call, error):
         return optimistic_update(self.calls_cache, call, lambda data: set_call_data_error(data, error))
@@ -121,6 +121,6 @@ class CacheService:
         result = None
 
         if hasattr(call_data, 'result'):
-            result = call_data.result
+            result = call_data.result[1]
 
         return (error, result)

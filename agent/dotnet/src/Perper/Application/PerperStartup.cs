@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -361,9 +362,21 @@ namespace Perper.Application
         {
             if (returnType != null)
             {
-                var callWriteResultMethod = typeof(CacheService).GetMethod(nameof(CacheService.CallWriteResult))!
-                    .MakeGenericMethod(returnType);
-                await ((Task)callWriteResultMethod.Invoke(AsyncLocals.CacheService, new object?[] { AsyncLocals.Execution, invokeResult })!).ConfigureAwait(false);
+                object[] results;
+                if (typeof(ITuple).IsAssignableFrom(returnType) && invokeResult is ITuple tuple)
+                {
+                    results = new object[tuple.Length];
+                    for (var i = 0 ; i < results.Length ; i++)
+                    {
+                        results[i] = tuple[i];
+                    }
+                }
+                else
+                {
+                    results = typeof(object[]) == returnType ? (object[])invokeResult : (new object[] { invokeResult });
+                }
+
+                await AsyncLocals.CacheService.CallWriteResult(AsyncLocals.Execution, results).ConfigureAwait(false);
             }
             else
             {

@@ -20,7 +20,13 @@ class Agent:
         result = call_read_result(get_cache_service(), call)
         get_cache_service().call_remove(call)
         get_notification_service().consume_notification(k)
-        return result
+
+        if result is None:
+            return None
+        elif len(result) == 1:
+            return result[0]
+        else:
+            return tuple(result)
 
     async def call_action(self, delegate, parameters):
         call = get_cache_service().generate_name(delegate)
