@@ -1,55 +1,61 @@
-using Apache.Ignite.Core.Binary;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Perper.Protocol.Cache.Instance
 {
-    internal static class CallData
+    [SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
+    [SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "This is a DTO class")]
+    public class CallData
     {
-        public static IBinaryObjectBuilder Create(
-            IBinary binary,
+        private readonly string agent;
+        private readonly string instance;
+        private readonly string @delegate;
+        private readonly object[] parameters;
+
+        private readonly string callerAgent;
+        private readonly string caller;
+        private readonly bool localToData;
+
+        private bool finished;
+        private object[]? result;
+        private string? error;
+
+        public CallData(
             string agent,
             string instance,
             string @delegate,
+            object[] parameters,
             string callerAgent,
             string caller,
             bool localToData,
-            object[] parameters)
+            bool finished = false,
+            object[] result = null,
+            string? error = null)
         {
-            var callData = binary.GetBuilder($"CallData_{agent}_{@delegate}");
+            this.agent = agent;
+            this.instance = instance;
+            this.@delegate = @delegate;
+            this.parameters = parameters;
 
-            callData.SetField("agent", agent);
-            callData.SetField("instance", instance);
-            callData.SetField("delegate", @delegate);
-            callData.SetField("callerAgent", callerAgent);
-            callData.SetField("caller", caller);
-            callData.SetField("finished", false);
-            callData.SetField("localToData", localToData);
-            callData.SetField("parameters", parameters);
+            this.callerAgent = callerAgent;
+            this.caller = caller;
+            this.localToData = localToData;
 
-            return callData;
+            this.finished = finished;
+            this.result = result;
+            this.error = error;
         }
 
-        public static IBinaryObjectBuilder SetResult(
-            IBinaryObjectBuilder callData,
-            object[] result)
-        {
-            callData.SetField("finished", true);
-            callData.SetField("result", result);
-            return callData;
-        }
+        public string Agent => agent;
+        public string Instance => instance;
+        public string Delegate => @delegate;
+        public object[] Parameters => parameters;
 
-        public static IBinaryObjectBuilder SetFinished(IBinaryObjectBuilder callData)
-        {
-            callData.SetField("finished", true);
-            return callData;
-        }
+        public string CallerAgent => callerAgent;
+        public string Caller => caller;
+        public bool LocalToData => localToData;
 
-        public static IBinaryObjectBuilder SetError(
-            IBinaryObjectBuilder callData,
-            string error)
-        {
-            callData.SetField("finished", true);
-            callData.SetField("error", error);
-            return callData;
-        }
+        public bool Finished { get => finished; set => finished = value; }
+        public object[]? Result { get => result; set => result = value; }
+        public string? Error { get => error; set => error = value; }
     }
 }

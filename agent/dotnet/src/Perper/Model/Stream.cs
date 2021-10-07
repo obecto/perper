@@ -79,9 +79,8 @@ namespace Perper.Model
         private async IAsyncEnumerable<T> Impl([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var random = new Random();
-            var parameter = random.Next(1, 1000000);
-            //int parameter = 42; // FIXME
-            var listener = await AsyncLocals.CacheService.StreamAddListener(RawStream, AsyncLocals.Agent, AsyncLocals.Instance, AsyncLocals.Execution, parameter).ConfigureAwait(false);
+            var parameter = random.Next(1, 1000000); // FIXME
+            await AsyncLocals.CacheService.StreamAddListener(RawStream, AsyncLocals.Agent, AsyncLocals.Instance, AsyncLocals.Execution, parameter).ConfigureAwait(false);
             try
             {
                 await foreach (var (key, notification) in AsyncLocals.NotificationService.GetStreamItemNotifications(AsyncLocals.Execution, parameter).ReadAllAsync(cancellationToken))
@@ -121,10 +120,7 @@ namespace Perper.Model
             }
             finally
             {
-                if (parameter < 0)
-                {
-                    await AsyncLocals.CacheService.StreamRemoveListener(RawStream, listener).ConfigureAwait(false);
-                }
+                await AsyncLocals.CacheService.StreamRemoveListener(RawStream, AsyncLocals.Execution, parameter).ConfigureAwait(false);
             }
         }
     }

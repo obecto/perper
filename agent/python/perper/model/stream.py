@@ -30,7 +30,7 @@ class Stream:
 
     async def enumerate(self):
         parameter = random.randrange(0, 10000) # TODO: FIXME
-        listener = perper_stream_add_listener(get_cache_service(), self.raw_stream, get_local_agent(), get_instance(), get_execution(), parameter)
+        perper_stream_add_listener(get_cache_service(), self.raw_stream, get_local_agent(), get_instance(), get_execution(), parameter)
 
         try:
             async for (k, i) in get_notification_service().get_notifications(get_execution(), parameter):
@@ -38,7 +38,7 @@ class Stream:
                 get_notification_service().consume_notification(k)
                 yield value
         finally:
-            perper_stream_remove_listener(get_cache_service(), self.raw_stream, listener)
+            perper_stream_remove_listener(get_cache_service(), self.raw_stream, get_execution(), parameter)
 
     async def query(self, type_name, sql_condition, sql_parameters):
         iterator = iter(self.query_sync(type_name, sql_condition, sql_parameters))

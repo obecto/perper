@@ -7,8 +7,8 @@
 
     <bean class="org.springframework.beans.factory.config.PropertyOverrideConfigurer">
         <property name="properties"><value>
-<!--             InstanceService.composeFile=../samples/dotnet/ContainerSample/docker-compose.yml -->
-            InstanceService.composeFile=../samples/python/container_sample/docker-compose.yml
+            InstanceService.composeFile=../samples/dotnet/ContainerSample/docker-compose.yml
+<!--             InstanceService.composeFile=../samples/python/container_sample/docker-compose.yml -->
         </value></property>
     </bean>
 

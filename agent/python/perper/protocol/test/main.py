@@ -29,13 +29,12 @@ async def test():
         # listener = cache_service.stream_add_listener(STREAM_NAME, 'caller_agent', 'caller', 1)
         # print(listener)
 
-        # cache_service.stream_remove_listener_caller(STREAM_NAME, 'caller', 1)
-        # cache_service.stream_remove_listener(STREAM_NAME, listener)
+        # cache_service.stream_remove_listener(STREAM_NAME, 'caller', 1)
 
         # print('Call cache tests:')
         # cache_service.call_create('test_call1', 'test_instance', 'test_agent', 'test_bool_stream_delegate', 'caller_agent', 'caller', True, BoolObject)
         # cache_service.call_create('test_call2', 'test_instance', 'test_agent', 'test_bool_stream_delegate', 'caller_agent', 'caller', True, BoolObject)
-        
+
         # cache_service.call_write_error('test_call1', 'Radi said it is an error!')
         # error = cache_service.call_read_error('test_call1')
         # print(error)
@@ -43,7 +42,7 @@ async def test():
         # cache_service.call_write_result('test_call2', 'Result here!', String)
         # error, result = cache_service.call_read_error_and_result('test_call2')
         # print(error, result)
-        
+
         # print('Notification Service tests:')
         # k, i = await notification_service.get_call_result_notification('test_call2')
         # print(k, i)

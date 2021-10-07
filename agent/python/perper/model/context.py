@@ -2,7 +2,7 @@ from .agent import Agent
 from .stream import Stream
 from .async_locals import *
 from .stream_flags import StreamFlags
-from .stream_delegate_type import StreamDelegateType
+from perper.protocol import StreamDelegateType
 from perper.protocol.standard import PerperAgent
 from perper.protocol.standard import PerperStream
 
@@ -39,4 +39,4 @@ def create_stream(stream, delegate, delegate_type, parameters, flags, index):
         index_type = index[0]
         index_fields = index[1]
 
-    get_cache_service().stream_create(stream, get_local_agent(), get_instance(), delegate, int(delegate_type), parameters, ephemeral, index_type, index_fields)
+    get_cache_service().stream_create(stream, get_local_agent(), get_instance(), delegate, delegate_type, parameters, ephemeral, index_type, index_fields)

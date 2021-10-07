@@ -14,15 +14,15 @@ namespace Perper.Protocol.Service
         {
             Ignite = ignite;
             igniteBinary = ignite.GetBinary();
-            streamsCache = ignite.GetCache<string, object>("streams").WithKeepBinary<string, IBinaryObject>();
-            callsCache = ignite.GetCache<string, object>("calls").WithKeepBinary<string, IBinaryObject>();
+            streamsCache = ignite.GetCache<string, StreamData>("streams");
+            callsCache = ignite.GetCache<string, CallData>("calls");
             instancesCache = ignite.GetCache<string, InstanceData>("instances");
         }
 
         public IIgniteClient Ignite { get; }
         private readonly IBinary igniteBinary;
-        private readonly ICacheClient<string, IBinaryObject> streamsCache;
-        private readonly ICacheClient<string, IBinaryObject> callsCache;
+        private readonly ICacheClient<string, StreamData> streamsCache;
+        private readonly ICacheClient<string, CallData> callsCache;
         private readonly ICacheClient<string, InstanceData> instancesCache;
 
         public static long CurrentTicks => DateTime.UtcNow.Ticks - DateTime.UnixEpoch.Ticks;

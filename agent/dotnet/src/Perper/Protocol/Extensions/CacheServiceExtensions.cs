@@ -1,8 +1,6 @@
 using System;
 using System.Threading.Tasks;
 
-using Apache.Ignite.Core.Binary;
-
 using Perper.Protocol.Cache.Notifications;
 using Perper.Protocol.Cache.Standard;
 using Perper.Protocol.Service;
@@ -11,14 +9,9 @@ namespace Perper.Protocol.Extensions
 {
     public static class CacheServiceExtensions
     {
-        public static Task<IBinaryObject> StreamAddListener(this CacheService cacheService, PerperStream stream, string callerAgent, string callerInstance, string caller, int parameter)
+        public static Task StreamAddListener(this CacheService cacheService, PerperStream stream, string callerAgent, string callerInstance, string caller, int parameter)
         {
             return cacheService.StreamAddListener(stream.Stream, callerAgent, callerInstance, caller, parameter, stream.Filter, stream.Replay, stream.LocalToData);
-        }
-
-        public static Task StreamRemoveListener(this CacheService cacheService, PerperStream stream, IBinaryObject listener)
-        {
-            return cacheService.StreamRemoveListener(stream.Stream, listener);
         }
 
         public static Task StreamRemoveListener(this CacheService cacheService, PerperStream stream, string caller, int parameter)

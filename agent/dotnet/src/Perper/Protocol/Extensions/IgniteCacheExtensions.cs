@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
+using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client.Cache;
 
 namespace Perper.Protocol.Extensions
@@ -18,6 +19,22 @@ namespace Perper.Protocol.Extensions
                     break;
                 }
             }
+        }
+
+        public static async Task OptimisticUpdateAsync<TK, TV>(this ICacheClient<TK, TV> cache, TK key, IBinary binary, Action<TV> updateAction)
+            where TV : class
+        {
+            cache.WithKeepBinary<object, IBinaryObject>().OptimisticUpdateAsync(key, (binaryObject) =>
+            {
+                var value = binaryObject.Deserialize<TV>();
+                updateAction(value);
+                return binary.ToBinary<IBinaryObject>(value);
+            });
+        }
+
+        public static ICacheClient<TK, TV> WithKeepBinary<TK, TV>(this ICacheClient<TK, TV> cache, bool keepBinary)
+        {
+            return keepBinary ? cache.WithKeepBinary<TK, TV>() : cache;
         }
 
         public static async Task PutIfAbsentOrThrowAsync<TK, TV>(this ICacheClient<TK, TV> cache, TK key, TV value)

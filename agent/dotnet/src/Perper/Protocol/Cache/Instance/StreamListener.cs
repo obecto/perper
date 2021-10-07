@@ -1,9 +1,20 @@
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Perper.Protocol.Cache.Instance
 {
+    [SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
     public class StreamListener
     {
+        private readonly string callerAgent;
+        private readonly string callerInstance;
+        private readonly string caller;
+        private readonly int parameter;
+
+        private readonly bool replay;
+        private readonly bool localToData;
+        private readonly Hashtable? filter;
+
         public StreamListener(
             string callerAgent,
             string callerInstance,
@@ -13,27 +24,22 @@ namespace Perper.Protocol.Cache.Instance
             bool localToData,
             Hashtable? filter = null)
         {
-            CallerAgent = callerAgent;
-            CallerInstance = callerInstance;
-            Caller = caller;
-            Parameter = parameter;
-            Filter = filter;
-            Replay = replay;
-            LocalToData = localToData;
+            this.callerAgent = callerAgent;
+            this.callerInstance = callerInstance;
+            this.caller = caller;
+            this.parameter = parameter;
+            this.replay = replay;
+            this.localToData = localToData;
+            this.filter = filter;
         }
 
-        public string CallerAgent { get; }
+        public string CallerAgent => callerAgent;
+        public string CallerInstance => callerInstance;
+        public string Caller => caller;
+        public int Parameter => parameter;
 
-        public string CallerInstance { get; }
-
-        public string Caller { get; }
-
-        public int Parameter { get; }
-
-        public Hashtable? Filter { get; }
-
-        public bool Replay { get; }
-
-        public bool LocalToData { get; }
+        public bool Replay => replay;
+        public bool LocalToData => localToData;
+        public Hashtable? Filter => filter;
     }
 }

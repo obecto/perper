@@ -1,78 +1,58 @@
 using System.Collections;
-
-using Apache.Ignite.Core.Binary;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Perper.Protocol.Cache.Instance
 {
-    public static class StreamData
+    [SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
+    [SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "This is a DTO class")]
+    public class StreamData
     {
+        private readonly string agent;
+        private readonly string instance;
+        private readonly string @delegate;
+        private readonly StreamDelegateType delegateType;
+        private readonly object[] parameters;
 
-        public static IBinaryObjectBuilder Create(
-            IBinary binary,
+        private readonly bool ephemeral;
+        private readonly string? indexType;
+        private readonly Hashtable? indexFields;
+
+        private ArrayList listeners;
+
+        public StreamData(
             string agent,
             string instance,
             string @delegate,
             StreamDelegateType delegateType,
-            bool ephemeral,
             object[] parameters,
+            bool ephemeral,
             string? indexType = null,
-            Hashtable? indexFields = null)
+            Hashtable? indexFields = null,
+            ArrayList? listeners = null)
         {
-            var streamData = binary.GetBuilder($"StreamData_{agent}_{@delegate}");
+            this.agent = agent;
+            this.instance = instance;
+            this.@delegate = @delegate;
+            this.delegateType = delegateType;
+            this.parameters = parameters;
 
-            streamData.SetField("agent", agent);
-            streamData.SetField("instance", instance);
-            streamData.SetField("delegate", @delegate);
-            streamData.SetField("delegateType", delegateType);
-            streamData.SetField("ephemeral", ephemeral);
-            streamData.SetField("listeners", new ArrayList());
-            streamData.SetField("indexFields", indexFields);
-            streamData.SetField("indexType", indexType);
-            streamData.SetField("parameters", parameters);
+            this.ephemeral = ephemeral;
+            this.indexType = indexType;
+            this.indexFields = indexFields;
 
-            return streamData;
+            this.listeners = listeners ?? new ArrayList();
         }
 
-        public static IBinaryObjectBuilder AddListener(
-            IBinaryObjectBuilder streamData,
-            IBinaryObject listener)
-        {
-            var listeners = streamData.GetField<ArrayList>("listeners");
-            listeners.Add(listener.ToBuilder());
-            streamData.SetField("listeners", listeners);
+        public string Agent => agent;
+        public string Instance => instance;
+        public string Delegate => @delegate;
+        public StreamDelegateType DelegateType => delegateType;
+        public object[] Parameters => parameters;
 
-            return streamData;
-        }
+        public bool Ephemeral => ephemeral;
+        public string? IndexType => indexType;
+        public Hashtable? IndexFields => indexFields;
 
-        public static IBinaryObjectBuilder RemoveListener(
-            IBinaryObjectBuilder streamData,
-            IBinaryObject listener)
-        {
-            var listeners = streamData.GetField<ArrayList>("listeners");
-            listeners.Remove(listener);
-            streamData.SetField("listeners", listeners);
-
-            return streamData;
-        }
-
-        public static IBinaryObjectBuilder RemoveListener(
-            IBinaryObjectBuilder streamData,
-            string caller,
-            int parameter)
-        {
-            var listeners = streamData.GetField<ArrayList>("listeners");
-            for (var i = 0 ; i < listeners.Count ; i++)
-            {
-                var listener = (IBinaryObject)listeners[i]!;
-                if (listener.GetField<string>("caller") == caller && listener.GetField<int>("parameter") == parameter)
-                {
-                    listeners.RemoveAt(i);
-                    break;
-                }
-            }
-            streamData.SetField("listeners", listeners);
-
-            return streamData;
-        }
+        public ArrayList Listeners { get => listeners; set => listeners = value; }
     }
 }

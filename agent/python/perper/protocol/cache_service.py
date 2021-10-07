@@ -1,10 +1,12 @@
 import uuid
+import attr
 from datetime import datetime, timedelta, timezone
 
 from .instance_data import *
 from .stream_data import *
 from .call_data import *
 from .ignite_cache_extensions import put_if_absent_or_raise, optimistic_update
+from pyignite.datatypes import CollectionObject, ObjectArrayObject, MapObject
 
 class CacheService:
     def __init__(self, ignite):
@@ -52,23 +54,39 @@ class CacheService:
     # STREAMS:
 
     def stream_create(self, stream, agent, instance, delegate, delegate_type, parameters, ephemeral = True, index_type = None, index_fields = None):
-        stream_data = create_stream_data(instance, agent, delegate, delegate_type, ephemeral, parameters, index_type, index_fields)
+        stream_data = StreamData(
+            instance=instance,
+            agent=agent,
+            delegate=delegate,
+            delegateType=delegate_type,
+            parameters=(ObjectArrayObject.OBJECT, parameters),
+            ephemeral=ephemeral,
+            indexType=index_type,
+            indexFields=None if index_fields is None else (MapObject.HASH_MAP, index_fields),
+            listeners=(CollectionObject.ARR_LIST, []),
+        )
         return put_if_absent_or_raise(self.streams_cache, stream, stream_data)
 
     def stream_get_parameters(self, stream):
         return self.streams_cache.get(stream).parameters[1]
 
     def stream_add_listener(self, stream, caller_agent, caller_instance, caller, parameter, filter = {}, replay = False, local_to_data = False):
-        stream_listener = create_stream_listener(caller_agent, caller_instance, caller, parameter, replay, local_to_data=local_to_data, filter=filter)
+        stream_listener = StreamListener(
+            callerAgent=caller_agent,
+            callerInstance=caller_instance,
+            caller=caller,
+            parameter=parameter,
+            replay=replay,
+            localToData=local_to_data,
+            filter=(MapObject.HASH_MAP, filter) if filter != None else None
+        )
 
-        optimistic_update(self.streams_cache, stream, lambda data: stream_data_add_listener(data, stream_listener))
-        return stream_listener
+        optimistic_update(self.streams_cache, stream, lambda data: attr.evolve(data, listeners=(data.listeners[0], data.listeners[1] + [stream_listener])))
 
-    def stream_remove_listener(self, stream, stream_listener):
-        return optimistic_update(self.streams_cache, stream, lambda data: stream_data_remove_listener(data, stream_listener))
-
-    def stream_remove_listener_caller(self, stream, caller, parameter):
-        return optimistic_update(self.streams_cache, stream, lambda data: stream_data_remove_listener_caller(data, caller, parameter))
+    def stream_remove_listener(self, stream, caller, parameter):
+        optimistic_update(self.streams_cache, stream, lambda data: attr.evolve(data,
+            listeners=(data.listeners[0], [l for l in data.listeners[1] if not (l.caller == caller and l.parameter == parameter)])
+        ))
 
     def stream_write_item(self, stream, item):
         if stream not in self.item_caches:
@@ -90,37 +108,39 @@ class CacheService:
     # CALLS:
 
     def call_create(self, call, agent, instance, delegate, caller_agent, caller, parameters, local_to_data=False):
-        call_data = create_call_data(instance, agent, delegate, caller_agent, caller, local_to_data, parameters)
+        call_data = CallData(
+            instance=instance,
+            agent=agent,
+            delegate=delegate,
+            parameters=(ObjectArrayObject.OBJECT, parameters),
+            callerAgent=caller_agent,
+            caller=caller,
+            localToData=local_to_data,
+            finished=False,
+        )
         return put_if_absent_or_raise(self.calls_cache, call, call_data)
 
     def call_get_parameters(self, call):
         return self.calls_cache.get(call).parameters[1]
 
     def call_write_result(self, call, result):
-        return optimistic_update(self.calls_cache, call, lambda data: set_call_data_result(data, result))
+        return optimistic_update(self.calls_cache, call, lambda data: attr.evolve(data, finished=True, result=(ObjectArrayObject.OBJECT, result)))
 
     def call_write_error(self, call, error):
-        return optimistic_update(self.calls_cache, call, lambda data: set_call_data_error(data, error))
+        return optimistic_update(self.calls_cache, call, lambda data: attr.evolve(data, finished=True, error=error))
 
     def call_write_finished(self, call):
-        return optimistic_update(self.calls_cache, call, set_call_data_finished)
+        return optimistic_update(self.calls_cache, call, lambda data: attr.evolve(data, finished=True))
 
     def call_read_error(self, call):
-        call_data = self.calls_cache.get(call)
-        if hasattr(call_data, 'error'):
-            return call_data.error
-        else:
-            return None
-
-    def call_remove(self, call):
-        self.calls_cache.remove_key(call)
+        return self.calls_cache.get(call).error
 
     def call_read_error_and_result(self, call):
         call_data = self.calls_cache.get(call)
-        error = call_data.error if hasattr(call_data, 'error') else None
-        result = None
-
-        if hasattr(call_data, 'result'):
-            result = call_data.result[1]
+        error = call_data.error
+        result = call_data.result[1] if call_data.result is not None else None
 
         return (error, result)
+
+    def call_remove(self, call):
+        self.calls_cache.remove_key(call)
