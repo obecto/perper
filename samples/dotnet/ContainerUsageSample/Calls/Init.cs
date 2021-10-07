@@ -1,24 +1,20 @@
 using System;
 using System.Threading.Tasks;
 
-using Perper.Model;
+using Perper.Extensions;
 
 namespace ContainerUsageSample.Calls
 {
     public class Init
     {
-        private readonly IContext context;
-
-        public Init(IContext context) => this.context = context;
-
         public async Task RunAsync()
         {
             Console.WriteLine("Starting container-sample #1");
-            var container1 = await context.StartAgentAsync("container-sample").ConfigureAwait(false);
+            var container1 = await PerperContext.StartAgentAsync("container-sample").ConfigureAwait(false);
             Console.WriteLine("Started container-sample #1");
 
             Console.WriteLine("Starting container-sample #2");
-            var container2 = await context.StartAgentAsync("container-sample").ConfigureAwait(false);
+            var container2 = await PerperContext.StartAgentAsync("container-sample").ConfigureAwait(false);
             Console.WriteLine("Started container-sample #2");
 
             var id1 = await container1.CallFunctionAsync<Guid>("Test", new object[] { 1 }).ConfigureAwait(false);
@@ -46,8 +42,8 @@ namespace ContainerUsageSample.Calls
 
             Console.WriteLine("Test passed!");
 
-            await container1.Destroy().ConfigureAwait(false);
-            await container2.Destroy().ConfigureAwait(false);
+            await container1.DestroyAsync().ConfigureAwait(false);
+            await container2.DestroyAsync().ConfigureAwait(false);
 
             Console.WriteLine("Both agents destroyed!");
         }

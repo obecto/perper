@@ -13,14 +13,11 @@ using Apache.Ignite.Core.Client;
 
 using Grpc.Net.Client;
 
-using Perper.Model;
+using Perper.Extensions;
 using Perper.Protocol;
-using Perper.Protocol.Cache.Notifications;
-using Perper.Protocol.Service;
+using Perper.Protocol.Notifications;
 
 using Polly;
-
-using Context = Perper.Model.Context;
 
 namespace Perper.Application
 {
@@ -169,16 +166,15 @@ namespace Perper.Application
 
             taskCollection.Add(AsyncLocals.EnterContext($"{AsyncLocals.Agent}-init", $"{initType.Name}-init", async () =>
             {
-                var initCallInstance = InstanciateType(initType);
                 var initArguments = Array.Empty<object>();
 
-                var (returnType, invokeResult) = await InvokeMethodAsync(initType, initCallInstance, initArguments).ConfigureAwait(false);
+                var (returnType, invokeResult) = await InvokeMethodAsync(initType, initArguments).ConfigureAwait(false);
             }));
         }
 
         private static void AcknowledgeStartupCalls(TaskCollection taskCollection, List<Type> callTypes, CancellationToken cancellationToken)
         {
-            var startupFunctionExists = callTypes.Any(t => t.Name == Context.StartupFunctionName);
+            var startupFunctionExists = callTypes.Any(t => t.Name == PerperContext.StartupFunctionName);
             if (startupFunctionExists)
             {
                 return;
@@ -186,7 +182,7 @@ namespace Perper.Application
 
             taskCollection.Add(async () =>
                 {
-                    await foreach (var (key, notification) in AsyncLocals.NotificationService.GetCallTriggerNotifications(Context.StartupFunctionName).ReadAllAsync(cancellationToken))
+                    await foreach (var (key, notification) in AsyncLocals.NotificationService.GetCallTriggerNotifications(PerperContext.StartupFunctionName).ReadAllAsync(cancellationToken))
                     {
                         await AsyncLocals.EnterContext(notification.Instance, notification.Call, async () =>
                         {
@@ -234,10 +230,8 @@ namespace Perper.Application
             {
                 try
                 {
-                    var callInstance = InstanciateType(callType);
-
                     var callArguments = await AsyncLocals.CacheService.GetCallParameters(AsyncLocals.Execution).ConfigureAwait(false);
-                    var (returnType, invokeResult) = await InvokeMethodAsync(callType, callInstance, callArguments).ConfigureAwait(false);
+                    var (returnType, invokeResult) = await InvokeMethodAsync(callType, callArguments).ConfigureAwait(false);
 
                     await WriteCallResultAsync(key, returnType, invokeResult).ConfigureAwait(false);
                 }
@@ -255,10 +249,8 @@ namespace Perper.Application
             {
                 try
                 {
-                    var streamInstance = InstanciateType(streamType);
-
                     var streamArguments = await AsyncLocals.CacheService.GetStreamParameters(AsyncLocals.Execution).ConfigureAwait(false);
-                    var (returnType, invokeResult) = await InvokeMethodAsync(streamType, streamInstance, streamArguments).ConfigureAwait(false);
+                    var (returnType, invokeResult) = await InvokeMethodAsync(streamType, streamArguments).ConfigureAwait(false);
 
                     await WriteStreamResultAsync(key, returnType, invokeResult).ConfigureAwait(false);
                 }
@@ -270,34 +262,7 @@ namespace Perper.Application
             }).ConfigureAwait(false);
         }
 
-        private static object InstanciateType(Type callType)
-        {
-            // dependency injection
-            var parametrizedConstructor = callType
-            .GetConstructors()
-            .FirstOrDefault(c => c.GetParameters().Length > 0)?
-            .GetParameters();
-
-            var constructorArguments = new object[parametrizedConstructor?.Length ?? 0];
-
-            for (var i = 0 ; i < parametrizedConstructor?.Length ; i++)
-            {
-                var parameterInfo = parametrizedConstructor[i];
-
-                if (parameterInfo.ParameterType == typeof(IContext))
-                {
-                    constructorArguments[i] = new Context();
-                }
-                else if (parameterInfo.ParameterType == typeof(IState))
-                {
-                    constructorArguments[i] = new State();
-                }
-            }
-
-            return Activator.CreateInstance(callType, constructorArguments)!;
-        }
-
-        private static async Task<(Type?, object?)> InvokeMethodAsync(Type type, object instance, object[] arguments)
+        private static async Task<(Type?, object?)> InvokeMethodAsync(Type type, object[] arguments)
         {
             // System.Console.WriteLine($"Invoking {type}.{RunAsyncMethodName}`${arguments.Length}(${string.Join(", ", arguments.Select(x=>x.ToString()))})");
             var methodInfo = type.GetMethod(RunAsyncMethodName)!;
@@ -327,6 +292,8 @@ namespace Perper.Application
                 }
                 castArguments[i] = castArgument;
             }
+
+            var instance = methodInfo.IsStatic ? null : Activator.CreateInstance(type);
 
             var isAwaitable = methodInfo.ReturnType.GetMethod(nameof(Task.GetAwaiter)) != null;
             object? invokeResult = null;

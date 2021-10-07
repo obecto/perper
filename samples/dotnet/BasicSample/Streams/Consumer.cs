@@ -1,14 +1,16 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using Perper.Extensions;
+using Perper.Model;
 
 namespace BasicSample.Streams
 {
     public class Consumer
     {
-        public async Task RunAsync(IAsyncEnumerable<string[]> input)
+        public async Task RunAsync(PerperStream input)
         {
-            await foreach (var messagesBatch in input)
+            await foreach (var messagesBatch in input.EnumerateAsync<string[]>())
             {
                 Console.WriteLine($"Received batch of {messagesBatch.Length} messages.\n{string.Join(", ", messagesBatch)}");
             }

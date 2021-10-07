@@ -4,7 +4,7 @@ namespace BasicSample.Calls
 {
     public class GetTwoRandomNumbers
     {
-        public (int, int) RunAsync(int min, int max)
+        public static (int, int) RunAsync(int min, int max)
         {
             var random = new Random();
 

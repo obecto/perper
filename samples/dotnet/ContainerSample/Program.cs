@@ -1,14 +1,14 @@
 using System;
 
 using Perper.Application;
-using Perper.Model;
-using Perper.Protocol.Cache.Notifications;
+using Perper.Extensions;
+using Perper.Protocol.Notifications;
 
 var agent = "container-sample";
 
 await PerperStartup.EnterServicesContext(agent, async () =>
 {
-    var (notificationKey, callNotification) = await AsyncLocals.NotificationService.GetCallTriggerNotifications(Context.StartupFunctionName).ReadAsync().ConfigureAwait(false);
+    var (notificationKey, callNotification) = await AsyncLocals.NotificationService.GetCallTriggerNotifications(PerperContext.StartupFunctionName).ReadAsync().ConfigureAwait(false);
 
     await AsyncLocals.EnterContext(callNotification.Instance, callNotification.Call, async () =>
     {

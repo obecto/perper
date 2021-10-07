@@ -3,9 +3,9 @@ using System.Linq;
 
 using Apache.Ignite.Core.Binary;
 
-using Perper.Protocol.Cache.Instance;
-using Perper.Protocol.Cache.Notifications;
-using Perper.Protocol.Cache.Standard;
+using Perper.Model;
+using Perper.Protocol.Instance;
+using Perper.Protocol.Notifications;
 
 namespace Perper.Protocol
 {

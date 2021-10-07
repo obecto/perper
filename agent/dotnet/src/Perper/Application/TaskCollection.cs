@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Perper.Application
 {
+    [SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "The ICollection interface is not yet implemented.")]
     public class TaskCollection
     {
         private struct EmptyStruct { }
