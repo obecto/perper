@@ -49,7 +49,11 @@ def get_two_random_numbers(a, b):
     return (random.randint(a, b), random.randint(a, b))
 
 
-async def main(*args):
+def count_params(a, *args):
+    return a + len(args)
+
+
+async def main():
     message_count = 28
     batch_count = 10
 
@@ -66,6 +70,9 @@ async def main(*args):
     randomNumber3, randomNumber4 = await call_function("GetTwoRandomNumbers", [1, 100])
     print(f"Random numbers: {randomNumber3} + {randomNumber4}")
 
+    countParams = await call_function("CountParams", [1, "a", "b", "c"])
+    print(f"Count params: {countParams}")
+
     await call_action("DoSomething", ["123"])
     await call_action("DoSomethingAsync", ["456"])
 
@@ -80,6 +87,7 @@ asyncio.run(
             "GetRandomNumber": get_random_number,
             "GetTwoRandomNumbers": get_two_random_numbers,
             "GetRandomNumberAsync": get_random_number_async,
+            "CountParams": count_params,
         },
         {"Generator": generator, "Processor": processor, "Consumer": consumer},
     )

@@ -121,6 +121,15 @@ namespace Perper.Application
             }
         }
 
+        private static object? CastArgument(object? arg, Type parameterType)
+        {
+            return arg != null && parameterType.IsAssignableFrom(arg.GetType())
+                ? arg
+                : arg is ArrayList arrayList && parameterType == typeof(object[])
+                    ? arrayList.Cast<object>().ToArray()
+                    : Convert.ChangeType(arg, parameterType);
+        }
+
         private static async Task<(Type?, object?)> InvokeMethodAsync(Type type, MethodInfo methodInfo, object[] arguments)
         {
             // System.Console.WriteLine($"Invoking {type}.{RunAsyncMethodName}`${arguments.Length}(${string.Join(", ", arguments.Select(x=>x.ToString()))})");
@@ -130,21 +139,33 @@ namespace Perper.Application
             for (var i = 0 ; i < parameters.Length ; i++)
             {
                 object castArgument;
-                if (i < arguments.Length)
+                if (i == parameters.Length - 1 && parameters[i].GetCustomAttribute<ParamArrayAttribute>() != null)
                 {
-                    var arg = arguments[i];
+                    var paramsType = parameters[i].ParameterType.GetElementType();
+                    if (i < arguments.Length)
+                    {
+                        var paramsArray = Array.CreateInstance(paramsType, arguments.Length - i);
+                        for (var j = 0 ; j < paramsArray.Length ; j++)
+                        {
+                            paramsArray.SetValue(CastArgument(arguments[i + j], paramsType), j);
+                        }
+                        castArgument = paramsArray;
+                    }
+                    else
+                    {
+                        castArgument = Array.CreateInstance(paramsType, 0);
+                    }
 
-                    castArgument = arg != null && parameters[i].ParameterType.IsAssignableFrom(arg.GetType())
-                        ? arg
-                        : arg is ArrayList arrayList && parameters[i].ParameterType == typeof(object[])
-                            ? arrayList.Cast<object>().ToArray()
-                            : Convert.ChangeType(arg, parameters[i].ParameterType);
+                }
+                else if (i < arguments.Length)
+                {
+                    castArgument = CastArgument(arguments[i], parameters[i].ParameterType);
                 }
                 else
                 {
                     if (!parameters[i].HasDefaultValue)
                     {
-                        throw new ArgumentException($"Not enough arguments passed to {type}.{RunAsyncMethodName}; expected at least {i + 1}, got {arguments.Length}");
+                        throw new ArgumentException($"Not enough arguments passed to {type}.{methodInfo}; expected at least {i + 1}, got {arguments.Length}");
                     }
                     castArgument = parameters[i].DefaultValue;
                 }

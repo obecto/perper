@@ -33,6 +33,9 @@ namespace BasicSample.Calls
             var (randomNumber3, randomNumber4) = await PerperContext.CallFunctionAsync<(int, int)>("GetTwoRandomNumbers", 1, 100).ConfigureAwait(false);
             Console.WriteLine($"Random numbers: {randomNumber3} + {randomNumber4}");
 
+            var countParams = await PerperContext.CallFunctionAsync<int>("CountParams", 1, "a", "b", "c").ConfigureAwait(false);
+            Console.WriteLine($"Params: {countParams}");
+
             await PerperContext.CallActionAsync("DoSomething", "123").ConfigureAwait(false);
             await PerperContext.CallActionAsync("DoSomethingAsync", "456").ConfigureAwait(false);
 
