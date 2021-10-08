@@ -8,15 +8,16 @@ from .call_data import *
 from .ignite_cache_extensions import put_if_absent_or_raise, optimistic_update
 from pyignite.datatypes import CollectionObject, ObjectArrayObject, MapObject
 
+
 class CacheService:
     def __init__(self, ignite):
         self.ignite = ignite
         self.item_caches = {}
 
     def start(self):
-        self.streams_cache = self.ignite.get_or_create_cache('streams')
-        self.calls_cache = self.ignite.get_or_create_cache('calls')
-        self.instances_cache = self.ignite.get_or_create_cache('instances')
+        self.streams_cache = self.ignite.get_or_create_cache("streams")
+        self.calls_cache = self.ignite.get_or_create_cache("calls")
+        self.instances_cache = self.ignite.get_or_create_cache("instances")
 
     def get_current_ticks(self):
         dt = datetime.now(timezone.utc)
@@ -53,7 +54,7 @@ class CacheService:
 
     # STREAMS:
 
-    def stream_create(self, stream, agent, instance, delegate, delegate_type, parameters, ephemeral = True, index_type = None, index_fields = None):
+    def stream_create(self, stream, agent, instance, delegate, delegate_type, parameters, ephemeral=True, index_type=None, index_fields=None):
         stream_data = StreamData(
             instance=instance,
             agent=agent,
@@ -70,7 +71,7 @@ class CacheService:
     def stream_get_parameters(self, stream):
         return self.streams_cache.get(stream).parameters[1]
 
-    def stream_add_listener(self, stream, caller_agent, caller_instance, caller, parameter, filter = {}, replay = False, local_to_data = False):
+    def stream_add_listener(self, stream, caller_agent, caller_instance, caller, parameter, filter={}, replay=False, local_to_data=False):
         stream_listener = StreamListener(
             callerAgent=caller_agent,
             callerInstance=caller_instance,
@@ -78,15 +79,19 @@ class CacheService:
             parameter=parameter,
             replay=replay,
             localToData=local_to_data,
-            filter=(MapObject.HASH_MAP, filter) if filter != None else None
+            filter=(MapObject.HASH_MAP, filter) if filter != None else None,
         )
 
         optimistic_update(self.streams_cache, stream, lambda data: attr.evolve(data, listeners=(data.listeners[0], data.listeners[1] + [stream_listener])))
 
     def stream_remove_listener(self, stream, caller, parameter):
-        optimistic_update(self.streams_cache, stream, lambda data: attr.evolve(data,
-            listeners=(data.listeners[0], [l for l in data.listeners[1] if not (l.caller == caller and l.parameter == parameter)])
-        ))
+        optimistic_update(
+            self.streams_cache,
+            stream,
+            lambda data: attr.evolve(
+                data, listeners=(data.listeners[0], [l for l in data.listeners[1] if not (l.caller == caller and l.parameter == parameter)])
+            ),
+        )
 
     def stream_write_item(self, stream, item):
         if stream not in self.item_caches:
@@ -151,7 +156,9 @@ class CacheService:
         return self.stream_remove_listener(perper_stream.stream, caller, parameter)
 
     def perper_stream_add_listener(self, perper_stream, caller_agent, caller_instance, caller, parameter):
-        return self.stream_add_listener(perper_stream.stream, caller_agent, caller_instance, caller, parameter, perper_stream.filter, perper_stream.replay, perper_stream.localToData)
+        return self.stream_add_listener(
+            perper_stream.stream, caller_agent, caller_instance, caller, parameter, perper_stream.filter, perper_stream.replay, perper_stream.localToData
+        )
 
     def stream_read_notification(self, notification):
         return self.stream_read_item(notification.cache, notification.key)
@@ -163,11 +170,11 @@ class CacheService:
         (error, result) = self.call_read_error_and_result(call)
 
         if error is not None:
-            raise Exception(f'Call failed with error: {error}')
+            raise Exception(f"Call failed with error: {error}")
 
         return result
 
     def call_check_result(self, call):
         error = self.call_read_error(call)
         if error is not None:
-            raise Exception(f'Call failed with error: {error}')
+            raise Exception(f"Call failed with error: {error}")

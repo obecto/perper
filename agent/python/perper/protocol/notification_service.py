@@ -16,8 +16,9 @@ from .notifications import (
     CallResultNotification,
     CallTriggerNotification,
     NotificationKeyLong,
-    NotificationKeyString
+    NotificationKeyString,
 )
+
 
 class NotificationService:
     CALL = object()
@@ -37,27 +38,23 @@ class NotificationService:
         return self.notifications_cache.remove(key)
 
     def get_notification_key(self, notification: fabric_pb2.Notification):
-        if notification.stringAffinity not in (None, ''):
-            return NotificationKeyString(
-                key=notification.notificationKey, affinity=notification.stringAffinity
-            )
+        if notification.stringAffinity not in (None, ""):
+            return NotificationKeyString(key=notification.notificationKey, affinity=notification.stringAffinity)
 
         if notification.intAffinity not in (None, 0):
-            return NotificationKeyLong(
-                key=notification.notificationKey, affinity=notification.intAffinity
-            )
+            return NotificationKeyLong(key=notification.notificationKey, affinity=notification.intAffinity)
 
-        raise Exception('Invalid grpc notification.')
+        raise Exception("Invalid grpc notification.")
 
     async def start(self):
         self.loop = asyncio.get_running_loop()
         self._grpc_channel = grpc.aio.insecure_channel(self.address)
 
         grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
-        notifications = grpc_stub.Notifications(fabric_pb2.NotificationFilter(agent = self.agent, instance = (self.instance or "")))
+        notifications = grpc_stub.Notifications(fabric_pb2.NotificationFilter(agent=self.agent, instance=(self.instance or "")))
         await notifications.wait_for_connection()
 
-        self.notifications_cache = self.ignite.get_or_create_cache(f'{self.agent}-$notifications')
+        self.notifications_cache = self.ignite.get_or_create_cache(f"{self.agent}-$notifications")
         self.ignite.register_binary_type(StreamItemNotification)
         self.ignite.register_binary_type(StreamTriggerNotification)
         self.ignite.register_binary_type(CallResultNotification)
@@ -84,16 +81,16 @@ class NotificationService:
             item = self.notifications_cache.get(key)
             instance_class = type(item).__name__
 
-            if instance_class == 'StreamItemNotification':
+            if instance_class == "StreamItemNotification":
                 self.write_channel_value((item.stream, item.parameter), (key, item))
 
-            if instance_class == 'StreamTriggerNotification':
+            if instance_class == "StreamTriggerNotification":
                 self.write_channel_value((NotificationService.STREAM, item.delegate), (key, item))
 
-            if instance_class == 'CallTriggerNotification':
+            if instance_class == "CallTriggerNotification":
                 self.write_channel_value((NotificationService.CALL, item.delegate), (key, item))
 
-            if instance_class == 'CallResultNotification':
+            if instance_class == "CallResultNotification":
                 self.write_channel_value((NotificationService.CALL_RESULT, item.call), (key, item))
 
     async def get_notifications(self, instance, parameter) -> Generator:
@@ -111,18 +108,18 @@ class NotificationService:
 
     async def get_call_result_notification(self, call):
         return await self.get_notification(NotificationService.CALL_RESULT, call)  # HACK: Workaround race condition in CallResultNotification
-        #grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
-        #notification = await grpc_stub.CallResultNotification(
-            #fabric_pb2.CallNotificationFilter(
-                #agent = self.agent,
-                #call = call
-            #)
-        #)
-
-        #key = self.get_notification_key(notification)
-        #item = self.notifications_cache.get(key)
-
-        #return (key, item)
+        # grpc_stub = fabric_pb2_grpc.FabricStub(self._grpc_channel)
+        # notification = await grpc_stub.CallResultNotification(
+        #     fabric_pb2.CallNotificationFilter(
+        #         agent = self.agent,
+        #         call = call
+        #     )
+        # )
+        #
+        # key = self.get_notification_key(notification)
+        # item = self.notifications_cache.get(key)
+        #
+        # return (key, item)
 
     def consume_notification(self, key):
         return self.notifications_cache.remove_key(key)

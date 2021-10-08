@@ -1,7 +1,8 @@
 import asyncio
 import functools
 
-class TaskCollection():
+
+class TaskCollection:
     def __init__(self):
         self.tasks = set()
         self.tasks_left = 0

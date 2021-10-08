@@ -5,12 +5,12 @@ from pyignite.datatypes import String
 
 class StreamTriggerNotification(
     metaclass=GenericObjectMeta,
-    type_name='StreamTriggerNotification',
+    type_name="StreamTriggerNotification",
     schema=OrderedDict(
         [
-            ('delegate', String),
-            ('instance', String),
-            ('stream', String),
+            ("delegate", String),
+            ("instance", String),
+            ("stream", String),
         ]
     ),
 ):

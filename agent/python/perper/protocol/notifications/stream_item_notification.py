@@ -5,14 +5,14 @@ from pyignite.datatypes import LongObject, IntObject, String, BoolObject
 
 class StreamItemNotification(
     metaclass=GenericObjectMeta,
-    type_name='StreamItemNotification',
+    type_name="StreamItemNotification",
     schema=OrderedDict(
         [
-            ('cache', String),
-            ('stream', String),
-            ('parameter', IntObject),
-            ('ephemeral', BoolObject),
-            ('key', LongObject),
+            ("cache", String),
+            ("stream", String),
+            ("parameter", IntObject),
+            ("ephemeral", BoolObject),
+            ("key", LongObject),
         ]
     ),
 ):
