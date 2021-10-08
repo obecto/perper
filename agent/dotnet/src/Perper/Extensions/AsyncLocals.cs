@@ -23,6 +23,11 @@ namespace Perper.Extensions
             _connection.Value = (cacheService, notificationService);
         }
 
+        public static void SetConnection((CacheService, NotificationService) connection)
+        {
+            _connection.Value = connection;
+        }
+
         public static Task EnterContext(string instance, string execution, Func<Task> action)
         {
             return Task.Run(() =>
