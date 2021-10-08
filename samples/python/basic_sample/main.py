@@ -2,10 +2,14 @@ import asyncio
 import random
 from pyignite.datatypes.primitive_objects import IntObject
 from pyignite.datatypes.standard import String
-from perper.model.context import *
-from perper.model.agent import *
-from perper.model.stream import *
-from perper.model.bootstrap import initialize
+from perper import (
+    call_action,
+    call_function,
+    create_stream_function,
+    create_stream_action,
+    initialize,
+    stream_enumerate,
+)
 
 
 async def generator(count):
@@ -16,7 +20,7 @@ async def generator(count):
 
 async def processor(generator, batch_size):
     batch = []
-    async for message in Stream(generator).enumerate():
+    async for message in stream_enumerate(generator):
         batch += [message + "_processed"]
         if len(batch) == batch_size:
             yield batch
@@ -24,7 +28,7 @@ async def processor(generator, batch_size):
 
 
 async def consumer(processor):
-    async for batch in Stream(processor).enumerate():
+    async for batch in stream_enumerate(processor):
         print(f"Received batch of {len(batch)} messages.")
         print(", ".join(batch))
 
@@ -57,9 +61,9 @@ async def main():
     message_count = 28
     batch_count = 10
 
-    generator = stream_function("Generator", [message_count])
-    processor = stream_function("Processor", [generator.raw_stream, batch_count])
-    _ = stream_action("Consumer", [processor.raw_stream])
+    generator = create_stream_function("Generator", [message_count])
+    processor = create_stream_function("Processor", [generator, batch_count])
+    _ = create_stream_action("Consumer", [processor])
 
     randomNumber1 = await call_function("GetRandomNumber", [1, 100])
     print(f"Random number: {randomNumber1}")

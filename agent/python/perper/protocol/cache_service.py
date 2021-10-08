@@ -144,3 +144,30 @@ class CacheService:
 
     def call_remove(self, call):
         self.calls_cache.remove_key(call)
+
+    # UTILS:
+
+    def perper_stream_remove_listener(self, perper_stream, caller, parameter):
+        return self.stream_remove_listener(perper_stream.stream, caller, parameter)
+
+    def perper_stream_add_listener(self, perper_stream, caller_agent, caller_instance, caller, parameter):
+        return self.stream_add_listener(perper_stream.stream, caller_agent, caller_instance, caller, parameter, perper_stream.filter, perper_stream.replay, perper_stream.localToData)
+
+    def stream_read_notification(self, notification):
+        return self.stream_read_item(notification.cache, notification.key)
+
+    def call_write_exception(self, call, exception):
+        return self.call_write_error(call, str(exception))
+
+    def call_read_result(self, call):
+        (error, result) = self.call_read_error_and_result(call)
+
+        if error is not None:
+            raise Exception(f'Call failed with error: {error}')
+
+        return result
+
+    def call_check_result(self, call):
+        error = self.call_read_error(call)
+        if error is not None:
+            raise Exception(f'Call failed with error: {error}')
