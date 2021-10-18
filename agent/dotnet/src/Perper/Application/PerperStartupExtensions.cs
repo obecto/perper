@@ -30,7 +30,7 @@ namespace Perper.Application
 
             foreach (var type in assembly.GetTypes())
             {
-                if (type.IsClass && type.MemberType == MemberTypes.TypeInfo && !string.IsNullOrEmpty(type.Namespace))
+                if (!type.IsClass || type.MemberType != MemberTypes.TypeInfo || string.IsNullOrEmpty(type.Namespace))
                 {
                     continue;
                 }
