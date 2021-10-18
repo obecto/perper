@@ -6,19 +6,31 @@ option csharp_namespace = "Perper.Protocol.Protobuf";
 
 package perper;
 
+import "google/protobuf/empty.proto";
+
 service Fabric {
+    rpc CallTriggers (NotificationFilter) returns (stream CallTrigger) {}
+    rpc CallFinished (CallFilter) returns (google.protobuf.Empty) {}
     rpc Notifications (NotificationFilter) returns (stream Notification) {}
-    rpc CallResultNotification (CallNotificationFilter) returns (Notification) {}
 }
 
 message NotificationFilter {
     string agent = 1;
     string instance = 2;
+    //string delegate = 3;
+    //string execution = 4;
 }
 
-message CallNotificationFilter {
-    string agent = 1;
-    string call = 2;
+message CallFilter {
+    string call = 4;
+}
+
+message CallTrigger {
+    //string agent = 1;
+    // Can probably remove instance and delegate (99% the agent will be reading the call data for parameters)
+    string instance = 2;
+    string delegate = 3;
+    string call = 4;
 }
 
 message Notification {

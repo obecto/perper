@@ -1,16 +1,16 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.AgentType
-import com.obecto.perper.fabric.cache.notification.CallResultNotification
-import com.obecto.perper.fabric.cache.notification.CallTriggerNotification
 import com.obecto.perper.fabric.cache.notification.Notification
 import com.obecto.perper.fabric.cache.notification.NotificationKey
 import com.obecto.perper.fabric.cache.notification.NotificationKeyLong
 import com.obecto.perper.fabric.cache.notification.NotificationKeyString
 import com.obecto.perper.fabric.cache.notification.StreamItemNotification
 import com.obecto.perper.fabric.cache.notification.StreamTriggerNotification
-import com.obecto.perper.protobuf.CallNotificationFilter
+import com.obecto.perper.fabric.cache.CallData
 import com.obecto.perper.protobuf.FabricGrpcKt
 import com.obecto.perper.protobuf.NotificationFilter
+import com.obecto.perper.protobuf.CallFilter
+import com.obecto.perper.protobuf.CallTrigger
 import io.grpc.Server
 import io.grpc.ServerBuilder
 import kotlinx.coroutines.GlobalScope
@@ -51,6 +51,7 @@ import javax.cache.event.CacheEntryEvent
 import javax.cache.event.CacheEntryEventFilter
 import javax.cache.event.CacheEntryUpdatedListener
 import javax.cache.event.EventType
+import com.google.protobuf.Empty
 import com.obecto.perper.protobuf.Notification as NotificationProto
 
 class TransportService(var port: Int = 40400) : Service {
@@ -184,7 +185,7 @@ class TransportService(var port: Int = 40400) : Service {
                         updateQueue(notification.stream, notification.parameter)
                     }
                 } else if (!confirmed) {
-                    if (instance == null || (notification is CallTriggerNotification && notification.instance == instance) || (notification is StreamTriggerNotification && notification.instance == instance) || (notification is CallResultNotification && notification.caller == instance)) {
+                    if (instance == null || (notification is StreamTriggerNotification && notification.instance == instance)) {
                         log.trace({ "Sending notification $instance ${request.agent}, $notification - $key" })
                         runBlocking { send(key.toNotification()) }
                     }
@@ -281,44 +282,120 @@ class TransportService(var port: Int = 40400) : Service {
             }
         }.buffer(Channel.UNLIMITED)
 
-        override suspend fun callResultNotification(request: CallNotificationFilter): NotificationProto {
-            val call = request.call
-            val notificationCache = getNotificationCache(ignite, request.agent)
-            lateinit var queryCursor: QueryCursor<Entry<NotificationKey, Notification>>
-            val query = ContinuousQuery<NotificationKey, Notification>()
-            val resultChannel = Channel<NotificationKey>(Channel.CONFLATED)
+        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+        override fun callTriggers(request: NotificationFilter) = channelFlow<CallTrigger> {
+            val agent = request.agent
+            val instance = if (request.instance != "") request.instance else null
+            val callsCacheName = "calls"
+            val callsCache = ignite.getOrCreateCache<String, CallData>(callsCacheName)
 
+            val queryChannel = Channel<CacheEntryEvent<out String, out CallData>>(Channel.UNLIMITED)
+            val query = ContinuousQuery<String, CallData>()
             query.localListener = CacheEntryUpdatedListener { events ->
-                for (event in events) {
-                    runBlocking { resultChannel.send(event.key) }
+                try {
+                    for (event in events) {
+                        if (event.eventType != EventType.REMOVED) {
+                            runBlocking { queryChannel.send(event) }
+                        }
+                    }
+                } catch (e: Exception) {
+                    queryChannel.close(e)
+                }
+            }
+            query.setLocal(true)
+
+            query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, CallData>> {
+                CacheEntryEventFilter { event ->
+                    if (event.eventType == EventType.REMOVED)
+                        false
+                    else if (event.isOldValueAvailable && event.value.finished == event.oldValue.finished)
+                        false
+                    else // TODO: Use a single query for all agents
+                        event.value.agent == agent && (instance == null || event.value.instance == instance) && !event.value.finished
+                }
+            }
+            query.initialQuery = ScanQuery<String, CallData>().also {
+                it.setLocal(true)
+                it.filter = IgniteBiPredicate<String, CallData> { _, value ->
+                    value.agent == agent && (instance == null || value.instance == instance) && !value.finished
                 }
             }
 
-            query.remoteFilterFactory = Factory<CacheEntryEventFilter<NotificationKey, Notification>> {
-                CacheEntryEventFilter { event -> (event.value as? CallResultNotification)?.call == call }
-            }
+            val queryCursor = callsCache.query(query)
 
-            query.initialQuery = ScanQuery<NotificationKey, Notification>().also {
-                it.filter = IgniteBiPredicate { _, notification -> notification is CallResultNotification && notification.call == call }
+            try {
+                for (entry in queryCursor) {
+                    send(CallTrigger.newBuilder().also {
+                        it.instance = entry.value.instance
+                        it.delegate = entry.value.delegate
+                        it.call = entry.key
+                    }.build())
+                }
+                for (entry in queryChannel) {
+                    send(CallTrigger.newBuilder().also {
+                        it.instance = entry.value.instance
+                        it.delegate = entry.value.delegate
+                        it.call = entry.key
+                    }.build())
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.error(e.toString())
+                e.printStackTrace()
+                throw e
+            } finally {
+                log.debug({ "Notifications listener finished for '${request.agent}' - '${request.instance}'!" })
+                queryCursor.close()
             }
+        }.buffer(Channel.UNLIMITED)
 
-            queryCursor = notificationCache.query(query)
-            GlobalScope.launch {
+        override suspend fun callFinished(request: CallFilter): Empty {
+            val call = request.call
+            val callsCacheName = "calls"
+            val callsCache = ignite.getOrCreateCache<String, CallData>(callsCacheName)
+
+            val queryChannel = Channel<Unit>(Channel.CONFLATED)
+            val query = ContinuousQuery<String, CallData>()
+
+            query.localListener = CacheEntryUpdatedListener { events ->
                 try {
-                    for (event in queryCursor) {
-                        resultChannel.send(event.key)
+                    for (event in events) {
+                        runBlocking { queryChannel.send(Unit) }
                     }
-                } catch (e: java.util.NoSuchElementException) {} catch (e: org.apache.ignite.IgniteException) {} catch (e: org.apache.ignite.cache.query.QueryCancelledException) {}
+                } catch (e: Exception) {
+                    queryChannel.close(e)
+                }
             }
+
+            query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, CallData>> {
+                CacheEntryEventFilter { event ->
+                    event.eventType != EventType.REMOVED && event.key == call && event.value.finished
+                }
+            }
+
+            val queryCursor = callsCache.query(query) // Important to start query before checking if it is already finished
 
             log.debug({ "Call result notification listener started for '$call'!" })
 
-            val result = resultChannel.receive()
-
-            log.debug({ "Call result notification listener completed for '$call'!" })
-            queryCursor.close()
-
-            return result.toNotification()
+            try {
+                val callData = callsCache.get(call)
+                if (callData == null || !callData.finished)
+                {
+                    queryChannel.receive()
+                }
+                return Empty.getDefaultInstance()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.error(e.toString())
+                e.printStackTrace()
+                throw e
+            } finally {
+                log.debug({ "Call result notification listener completed for '$call'!" })
+                queryCursor.close()
+                queryChannel.close()
+            }
         }
     }
 

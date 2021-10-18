@@ -2,10 +2,13 @@ package com.obecto.perper.fabric.cache
 
 class CallData(
     var agent: String,
-    var agentDelegate: String,
+    var instance: String,
     var delegate: String,
-    var callerAgentDelegate: String,
+    var parameters: Array<Any?>,
+    var callerAgent: String,
     var caller: String,
-    var finished: Boolean,
     var localToData: Boolean,
+    var finished: Boolean,
+    var result: Array<Any?>?,
+    var error: String?,
 )

@@ -44,12 +44,11 @@ namespace Perper.Extensions
         {
             var call = CacheService.GenerateName(@delegate);
 
-            var callNotificationTask = AsyncLocals.NotificationService.GetCallResultNotification(call).ConfigureAwait(false); // HACK: Workaround bug in fabric
             await AsyncLocals.CacheService.CallCreate(call, agent.Agent, agent.Instance, @delegate, AsyncLocals.Agent, AsyncLocals.Instance, parameters).ConfigureAwait(false);
-            var (notificationKey, _) = await callNotificationTask;
+
+            await AsyncLocals.NotificationService.WaitCallFinished(call).ConfigureAwait(false);
 
             var results = await AsyncLocals.CacheService.CallReadResult(call).ConfigureAwait(false);
-            await AsyncLocals.NotificationService.ConsumeNotification(notificationKey).ConfigureAwait(false); // TODO: Consume notifications and save state entries in a smarter way
             await AsyncLocals.CacheService.CallRemove(call).ConfigureAwait(false);
 
             return results;

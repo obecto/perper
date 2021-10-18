@@ -1,11 +1,13 @@
 package com.obecto.perper.fabric.cache
 
 class StreamData(
-    var agentDelegate: String,
+    var agent: String,
+    var instance: String,
     var delegate: String,
     var delegateType: StreamDelegateType,
-    var listeners: List<StreamListener>,
+    var parameters: Array<Any?>,
+    var ephemeral: Boolean,
     var indexType: String?,
     var indexFields: LinkedHashMap<String, String>?,
-    var ephemeral: Boolean,
+    var listeners: ArrayList<StreamListener>,
 )

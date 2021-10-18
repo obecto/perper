@@ -164,13 +164,9 @@ namespace Perper.Application
         {
             taskCollection.Add(async () =>
             {
-                await foreach (var (key, notification) in AsyncLocals.NotificationService.GetCallTriggerNotifications(@delegate).ReadAllAsync(cancellationToken))
+                await foreach (var (instance, call) in AsyncLocals.NotificationService.GetCallTriggers(@delegate).ReadAllAsync(cancellationToken))
                 {
-                    taskCollection.Add(AsyncLocals.EnterContext(notification.Instance, notification.Call, async () =>
-                    {
-                        await handler().ConfigureAwait(false);
-                        await AsyncLocals.NotificationService.ConsumeNotification(key).ConfigureAwait(false); // TODO?
-                    }));
+                    taskCollection.Add(AsyncLocals.EnterContext(instance, call, handler));
                 }
             });
         }

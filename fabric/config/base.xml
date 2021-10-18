@@ -16,6 +16,12 @@
                     <property name="enum" value="true"/>
                 </bean>
                 <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.CallData"/>
+                </bean>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.StreamData"/>
+                </bean>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
                     <property name="typeName" value="com.obecto.perper.fabric.cache.StreamListener"/>
                 </bean>
                 <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
@@ -65,12 +71,6 @@
                 <property name="maxPerNodeCount" value="1"/>
                 <property name="totalCount" value="0"/>
                 <property name="service" ref="InstanceService"/>
-            </bean>
-            <bean class="org.apache.ignite.services.ServiceConfiguration">
-                <property name="name" value="CallService"/>
-                <property name="maxPerNodeCount" value="1"/>
-                <property name="totalCount" value="0"/>
-                <property name="service"><bean id="CallService" class="com.obecto.perper.fabric.CallService"/></property>
             </bean>
             <bean class="org.apache.ignite.services.ServiceConfiguration">
                 <property name="name" value="StreamService"/>

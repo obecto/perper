@@ -38,14 +38,14 @@ namespace Perper.Protocol
         private readonly ICacheClient<NotificationKey, Notification> notificationsCache;
         private readonly Fabric.FabricClient client;
 
-        private readonly ConcurrentDictionary<string, Channel<(NotificationKey, CallTriggerNotification)>> callTriggerChannels = new();
-        private readonly ConcurrentDictionary<string, TaskCompletionSource<(NotificationKey, CallResultNotification)>> callResultChannels = new();
+        private readonly ConcurrentDictionary<string, Channel<(string instance, string call)>> callTriggerChannels = new();
         private readonly ConcurrentDictionary<string, Channel<(NotificationKey, StreamTriggerNotification)>> streamTriggerChannels = new();
         private readonly ConcurrentDictionary<(string, int?), Channel<(NotificationKey, StreamItemNotification)>> streamItemChannels = new();
 
         private Task? runningTask;
         private CancellationTokenSource? runningTaskCancellation;
         private AsyncServerStreamingCall<NotificationProto>? notificationsStream;
+        private AsyncServerStreamingCall<CallTrigger>? callTriggersStream;
 
         private static NotificationKey GetNotificationKey(NotificationProto notification)
         {
@@ -66,10 +66,15 @@ namespace Perper.Protocol
         {
             runningTaskCancellation = new CancellationTokenSource();
 
-            notificationsStream = client.Notifications(new NotificationFilter { Agent = Agent, Instance = Instance ?? "" }, null, null, runningTaskCancellation.Token);
-            await notificationsStream.ResponseHeadersAsync.ConfigureAwait(false);
+            var cancellationToken = runningTaskCancellation.Token;
 
-            runningTask = RunAsync(runningTaskCancellation.Token);
+            // TODO: Refactor
+            notificationsStream = client.Notifications(new NotificationFilter { Agent = Agent, Instance = Instance ?? "" }, null, null, cancellationToken);
+            callTriggersStream = client.CallTriggers(new NotificationFilter { Agent = Agent, Instance = Instance ?? "" }, null, null, cancellationToken);
+            await notificationsStream.ResponseHeadersAsync.ConfigureAwait(false);
+            await callTriggersStream.ResponseHeadersAsync.ConfigureAwait(false);
+
+            runningTask = Task.WhenAll(RunAsync(cancellationToken), ProcessCallTriggersAsync(cancellationToken));
         }
 
         private async Task RunAsync(CancellationToken cancellationToken = default)
@@ -104,18 +109,27 @@ namespace Perper.Protocol
                         var channelSt = streamTriggerChannels.GetOrAdd(st.Delegate, _ => Channel.CreateUnbounded<(NotificationKey, StreamTriggerNotification)>());
                         await channelSt.Writer.WriteAsync((key, st), cancellationToken).ConfigureAwait(false);
                         break;
-                    case CallTriggerNotification ct:
-                        var channelCt = callTriggerChannels.GetOrAdd(ct.Delegate, _ => Channel.CreateUnbounded<(NotificationKey, CallTriggerNotification)>());
-                        await channelCt.Writer.WriteAsync((key, ct), cancellationToken).ConfigureAwait(false);
-                        break;
-                    case CallResultNotification cr:
-                        var taskCompletionSourceCr = callResultChannels.GetOrAdd(cr.Call, _ => new TaskCompletionSource<(NotificationKey, CallResultNotification)>());
-                        if (!taskCompletionSourceCr.TrySetResult((key, cr)))
-                        {
-                            Console.WriteLine($"FabricService multiple completions: {cr.Call}");
-                        }
-                        break;
                 }
+            }
+        }
+
+        private async Task ProcessCallTriggersAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                Debug.Assert(callTriggersStream != null);
+
+                while (await callTriggersStream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+                {
+                    var trigger = callTriggersStream.ResponseStream.Current;
+                    var channel = callTriggerChannels.GetOrAdd(trigger.Delegate, _ => Channel.CreateUnbounded<(string, string)>());
+                    await channel.Writer.WriteAsync((trigger.Instance, trigger.Call), cancellationToken).ConfigureAwait(false);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
             }
         }
 
@@ -141,14 +155,16 @@ namespace Perper.Protocol
             {
                 notificationsStream?.Dispose();
                 notificationsStream = null;
+                callTriggersStream?.Dispose();
+                callTriggersStream = null;
                 runningTaskCancellation?.Dispose();
                 runningTaskCancellation = null;
             }
         }
 
-        public ChannelReader<(NotificationKey, CallTriggerNotification)> GetCallTriggerNotifications(string @delegate)
+        public ChannelReader<(string instance, string call)> GetCallTriggers(string @delegate)
         {
-            return callTriggerChannels.GetOrAdd(@delegate, _ => Channel.CreateUnbounded<(NotificationKey, CallTriggerNotification)>()).Reader;
+            return callTriggerChannels.GetOrAdd(@delegate, _ => Channel.CreateUnbounded<(string, string)>()).Reader;
         }
 
         public ChannelReader<(NotificationKey, StreamTriggerNotification)> GetStreamTriggerNotifications(string @delegate)
@@ -161,23 +177,20 @@ namespace Perper.Protocol
             return streamItemChannels.GetOrAdd((stream, parameter), _ => Channel.CreateUnbounded<(NotificationKey, StreamItemNotification)>()).Reader;
         }
 
-        public async Task<(NotificationKey, CallResultNotification)> GetCallResultNotification(string call)
+        public async Task WaitCallFinished(string call, CancellationToken cancellationToken = default)
         {
-            // HACK: Workaround race condition in CallResultNotification
-            return await callResultChannels.GetOrAdd(call, _ => new TaskCompletionSource<(NotificationKey, CallResultNotification)>()).Task.ConfigureAwait(false);
-            /*var notification = await client.CallResultNotificationAsync(new CallNotificationFilter
+            await client.CallFinishedAsync(new CallFilter
             {
-                Agent = Agent,
                 Call = call
             }, cancellationToken: cancellationToken);
-            var key = GetNotificationKey(notification);
-
-            var fullNotification = await notificationsCache.GetAsync(key).ConfigureAwait(false);
-            return (key, (CallResultNotification)fullNotification);*/
         }
 
         public Task ConsumeNotification(NotificationKey key)
         {
+            if (key == null)
+            {
+                return Task.CompletedTask;
+            }
             return notificationsCache.RemoveAsync(key);
         }
     }
