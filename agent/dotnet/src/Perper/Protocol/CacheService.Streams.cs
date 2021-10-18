@@ -34,7 +34,7 @@ namespace Perper.Protocol
                 for (var i = 0 ; i < value.Listeners.Count ; i++)
                 {
                     var listenerObject = value.Listeners[i];
-                    var listener = listenerObject is IBinaryObject binObj ? binObj.Deserialize<StreamListener>() : (StreamListener)listenerObject;
+                    var listener = listenerObject is IBinaryObject binObj ? binObj.Deserialize<StreamListener>()! : (StreamListener)listenerObject!;
                     if (listener.Caller == caller && listener.Parameter == parameter)
                     {
                         value.Listeners.RemoveAt(i);

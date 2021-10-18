@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -18,7 +20,7 @@ namespace Perper.Application
         public const string CallsNamespaceName = "Calls";
         public const string InitTypeName = "Init";
 
-        public static PerperStartup AddDiscoveredHandlers(this PerperStartup startup, Assembly? assembly = null, string? rootNamespace = null)
+        public static PerperStartup DiscoverHandlersFromAssembly(this PerperStartup startup, Assembly? assembly = null, string? rootNamespace = null)
         {
             assembly ??= Assembly.GetEntryAssembly()!;
             rootNamespace ??= assembly.GetName().Name!;
@@ -28,55 +30,73 @@ namespace Perper.Application
 
             foreach (var type in assembly.GetTypes())
             {
-                var runMethod = type.GetMethod(RunAsyncMethodName) ?? type.GetMethod(RunMethodName);
-                if (type.IsClass && type.MemberType == MemberTypes.TypeInfo && !string.IsNullOrEmpty(type.Namespace) && runMethod != null)
+                if (type.IsClass && type.MemberType == MemberTypes.TypeInfo && !string.IsNullOrEmpty(type.Namespace))
                 {
-                    if (type.Namespace!.Contains(callsNamespace, StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        startup = type.Name == InitTypeName ? startup.AddInitHandler(type, runMethod) : startup.AddCallHandler(type.Name, type, runMethod);
-                    }
-                    else if (type.Namespace!.Contains(streamsNamespace, StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        startup = startup.AddStreamHandler(type.Name, type, runMethod);
-                    }
+                    continue;
+                }
+
+                var runMethod = GetRunMethod(type);
+                if (runMethod is null)
+                {
+                    continue;
+                }
+
+                if (type.Namespace!.Contains(callsNamespace, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    startup = type.Name == InitTypeName ? startup.AddInitHandler(type, runMethod) : startup.AddCallHandler(type.Name, type, runMethod);
+                }
+                else if (type.Namespace!.Contains(streamsNamespace, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    startup = startup.AddStreamHandler(type.Name, type, runMethod);
                 }
             }
 
             return startup;
         }
 
-        public static PerperStartup AddStreamHandler<T>(this PerperStartup startup) => startup.AddStreamHandler(typeof(T));
+        public static PerperStartup AddInitHandler<T>(this PerperStartup startup) => startup.AddInitHandler(typeof(T));
 
-        public static PerperStartup AddStreamHandler(this PerperStartup startup, Type streamType) =>
-            startup.AddStreamHandler(streamType.Name, streamType, streamType.GetMethod(RunAsyncMethodName) ?? streamType.GetMethod(RunMethodName));
+        public static PerperStartup AddInitHandler(this PerperStartup startup, Type initType) =>
+            startup.AddInitHandler(initType, GetRunMethodOrThrow(initType));
 
-        public static PerperStartup AddStreamHandler(this PerperStartup startup, string @delegate, Type streamType, MethodInfo methodInfo)
+        public static PerperStartup AddInitHandler(this PerperStartup startup, Type initType, MethodInfo methodInfo)
         {
-            return startup.AddStreamHandler(@delegate, () => ExecuteStream(streamType, methodInfo));
+            return startup.AddInitHandler(() => HandleInit(initType, methodInfo));
         }
 
         public static PerperStartup AddCallHandler<T>(this PerperStartup startup) => startup.AddCallHandler(typeof(T));
 
         public static PerperStartup AddCallHandler(this PerperStartup startup, Type callType) =>
-            startup.AddCallHandler(callType.Name, callType, callType.GetMethod(RunAsyncMethodName) ?? callType.GetMethod(RunMethodName));
+            startup.AddCallHandler(callType.Name, callType, GetRunMethodOrThrow(callType));
 
         public static PerperStartup AddCallHandler(this PerperStartup startup, string @delegate, Type callType, MethodInfo methodInfo)
         {
-            return startup.AddCallHandler(@delegate, () => ExecuteCall(callType, methodInfo));
+            return startup.AddCallHandler(@delegate, () => HandleCall(callType, methodInfo));
         }
 
-        public static PerperStartup AddInitHandler<T>(this PerperStartup startup) => startup.AddInitHandler(typeof(T));
+        public static PerperStartup AddStreamHandler<T>(this PerperStartup startup) => startup.AddStreamHandler(typeof(T));
 
-        public static PerperStartup AddInitHandler(this PerperStartup startup, Type initType) =>
-            startup.AddInitHandler(initType, initType.GetMethod(RunAsyncMethodName) ?? initType.GetMethod(RunMethodName));
+        public static PerperStartup AddStreamHandler(this PerperStartup startup, Type streamType) =>
+            startup.AddStreamHandler(streamType.Name, streamType, GetRunMethodOrThrow(streamType));
 
-        public static PerperStartup AddInitHandler(this PerperStartup startup, Type initType, MethodInfo methodInfo)
+        public static PerperStartup AddStreamHandler(this PerperStartup startup, string @delegate, Type streamType, MethodInfo methodInfo)
         {
-            return startup.AddInitHandler(() => ExecuteInit(initType, methodInfo));
+            return startup.AddStreamHandler(@delegate, () => HandleStream(streamType, methodInfo));
+        }
+
+        private static MethodInfo? GetRunMethod(Type type)
+        {
+            return type.GetMethod(RunAsyncMethodName) ?? type.GetMethod(RunMethodName);
+        }
+
+        private static MethodInfo GetRunMethodOrThrow(Type type)
+        {
+            return GetRunMethod(type) ?? throw new ArgumentOutOfRangeException($"Type {type} does not contain a definition for {RunAsyncMethodName} or {RunMethodName}");
         }
 
         #region Execute
-        private static async Task ExecuteInit(Type callType, MethodInfo methodInfo)
+        [SuppressMessage("Design", "CA1031: Do not catch general exception types", Justification = "Exception is logged/handled through other means; rethrowing from handler will crash whole application.")]
+        private static async Task HandleInit(Type callType, MethodInfo methodInfo)
         {
             try
             {
@@ -89,7 +109,8 @@ namespace Perper.Application
             }
         }
 
-        private static async Task ExecuteCall(Type callType, MethodInfo methodInfo)
+        [SuppressMessage("Design", "CA1031: Do not catch general exception types", Justification = "Exception is logged/handled through other means; rethrowing from handler will crash whole application.")]
+        private static async Task HandleCall(Type callType, MethodInfo methodInfo)
         {
             try
             {
@@ -105,7 +126,8 @@ namespace Perper.Application
             }
         }
 
-        private static async Task ExecuteStream(Type streamType, MethodInfo methodInfo)
+        [SuppressMessage("Design", "CA1031: Do not catch general exception types", Justification = "Exception is logged/handled through other means; rethrowing from handler will crash whole application.")]
+        private static async Task HandleStream(Type streamType, MethodInfo methodInfo)
         {
             try
             {
@@ -127,21 +149,21 @@ namespace Perper.Application
                 ? arg
                 : arg is ArrayList arrayList && parameterType == typeof(object[])
                     ? arrayList.Cast<object>().ToArray()
-                    : Convert.ChangeType(arg, parameterType);
+                    : Convert.ChangeType(arg, parameterType, CultureInfo.InvariantCulture);
         }
 
-        private static async Task<(Type?, object?)> InvokeMethodAsync(Type type, MethodInfo methodInfo, object[] arguments)
+        private static async Task<(Type?, object?)> InvokeMethodAsync(Type type, MethodInfo methodInfo, object?[] arguments)
         {
             // System.Console.WriteLine($"Invoking {type}.{RunAsyncMethodName}`${arguments.Length}(${string.Join(", ", arguments.Select(x=>x.ToString()))})");
             var parameters = methodInfo.GetParameters();
 
-            var castArguments = new object[parameters.Length];
+            var castArguments = new object?[parameters.Length];
             for (var i = 0 ; i < parameters.Length ; i++)
             {
-                object castArgument;
+                object? castArgument;
                 if (i == parameters.Length - 1 && parameters[i].GetCustomAttribute<ParamArrayAttribute>() != null)
                 {
-                    var paramsType = parameters[i].ParameterType.GetElementType();
+                    var paramsType = parameters[i].ParameterType.GetElementType()!;
                     if (i < arguments.Length)
                     {
                         var paramsArray = Array.CreateInstance(paramsType, arguments.Length - i);
@@ -208,10 +230,10 @@ namespace Perper.Application
         {
             if (returnType != null)
             {
-                object[] results;
+                object?[] results;
                 if (typeof(ITuple).IsAssignableFrom(returnType) && invokeResult is ITuple tuple)
                 {
-                    results = new object[tuple.Length];
+                    results = new object?[tuple.Length];
                     for (var i = 0 ; i < results.Length ; i++)
                     {
                         results[i] = tuple[i];
@@ -219,7 +241,7 @@ namespace Perper.Application
                 }
                 else
                 {
-                    results = typeof(object[]) == returnType ? (object[])invokeResult : (new object[] { invokeResult });
+                    results = typeof(object[]) == returnType ? (object?[])invokeResult! : (new object?[] { invokeResult });
                 }
 
                 await AsyncLocals.CacheService.CallWriteResult(AsyncLocals.Execution, results).ConfigureAwait(false);

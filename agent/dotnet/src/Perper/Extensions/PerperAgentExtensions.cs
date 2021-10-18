@@ -3,18 +3,23 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 using Perper.Model;
+using Perper.Protocol;
 
 namespace Perper.Extensions
 {
     public static class PerperAgentExtensions
     {
-        public static async Task<TResult> CallFunctionAsync<TResult>(this PerperAgent agent, string functionName, params object[] parameters)
+        public static async Task<TResult> CallFunctionAsync<TResult>(this PerperAgent agent, string functionName, params object?[] parameters)
         {
             var results = await CallAsync(agent, functionName, parameters).ConfigureAwait(false);
 
-            if (typeof(ITuple).IsAssignableFrom(typeof(TResult)))
+            if (results is null)
             {
-                return (TResult)Activator.CreateInstance(typeof(TResult), results);
+                return default!;
+            }
+            else if (typeof(ITuple).IsAssignableFrom(typeof(TResult)))
+            {
+                return (TResult)Activator.CreateInstance(typeof(TResult), results)!;
             }
             else if (typeof(object[]) == typeof(TResult))
             {
@@ -22,7 +27,7 @@ namespace Perper.Extensions
             }
             else if (results.Length >= 1)
             {
-                return (TResult)results[0];
+                return (TResult)results[0]!;
             }
             else
             {
@@ -30,14 +35,14 @@ namespace Perper.Extensions
             }
         }
 
-        public static async Task CallActionAsync(this PerperAgent agent, string actionName, params object[] parameters)
+        public static async Task CallActionAsync(this PerperAgent agent, string actionName, params object?[] parameters)
         {
             await CallAsync(agent, actionName, parameters).ConfigureAwait(false);
         }
 
-        private static async Task<object[]> CallAsync(PerperAgent agent, string @delegate, object[] parameters)
+        private static async Task<object?[]?> CallAsync(PerperAgent agent, string @delegate, object?[] parameters)
         {
-            var call = AsyncLocals.CacheService.GenerateName(@delegate);
+            var call = CacheService.GenerateName(@delegate);
 
             var callNotificationTask = AsyncLocals.NotificationService.GetCallResultNotification(call).ConfigureAwait(false); // HACK: Workaround bug in fabric
             await AsyncLocals.CacheService.CallCreate(call, agent.Agent, agent.Instance, @delegate, AsyncLocals.Agent, AsyncLocals.Instance, parameters).ConfigureAwait(false);

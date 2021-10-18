@@ -50,7 +50,7 @@ namespace Perper.Application
         {
             _tasks[item] = new EmptyStruct();
             Interlocked.Increment(ref _count);
-            item.ContinueWith(Remove);
+            item.ContinueWith(Remove, TaskScheduler.Default);
         }
 
         public bool Remove(Task item)

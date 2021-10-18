@@ -12,7 +12,7 @@ namespace Perper.Extensions
             switch (subexpression)
             {
                 case MemberExpression member:
-                    var left = ParseFieldName(member.Expression);
+                    var left = ParseFieldName(member.Expression!);
                     left?.Add(member.Member.Name);
                     return left;
                 case ParameterExpression:

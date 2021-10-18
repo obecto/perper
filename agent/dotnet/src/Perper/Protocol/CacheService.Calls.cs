@@ -6,14 +6,14 @@ namespace Perper.Protocol
 {
     public partial class CacheService
     {
-        public Task CallCreate(string call, string agent, string instance, string @delegate, string callerAgent, string caller, object[] parameters, bool localToData = false)
+        public Task CallCreate(string call, string agent, string instance, string @delegate, string callerAgent, string caller, object?[] parameters, bool localToData = false)
         {
             var callData = new CallData(agent, instance, @delegate, parameters, callerAgent, caller, localToData);
 
             return callsCache.PutIfAbsentOrThrowAsync(call, callData);
         }
 
-        public Task CallWriteResult(string call, object[] result)
+        public Task CallWriteResult(string call, object?[] result)
         {
             return callsCache.OptimisticUpdateAsync(call, igniteBinary, value => { value.Finished = true; value.Result = result; });
         }
@@ -38,14 +38,14 @@ namespace Perper.Protocol
             return callsCache.RemoveAsync(call);
         }
 
-        public async Task<(string?, object[]?)> CallReadErrorAndResult(string call) // NOTE: should return (string?, TResult?)
+        public async Task<(string?, object?[]?)> CallReadErrorAndResult(string call) // NOTE: should return (string?, TResult?)
         {
             var callData = await callsCache.GetAsync(call).ConfigureAwait(false);
 
             return (callData.Error, callData.Result);
         }
 
-        public async Task<object[]> GetCallParameters(string call)
+        public async Task<object?[]> GetCallParameters(string call)
         {
             return (await callsCache.GetAsync(call).ConfigureAwait(false)).Parameters;
         }

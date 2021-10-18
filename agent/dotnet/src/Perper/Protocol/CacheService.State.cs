@@ -10,7 +10,7 @@ namespace Perper.Protocol
             var result = await stateCache.TryGetAsync(key).ConfigureAwait(false);
             if (!result.Success)
             {
-                return (false, default(T));
+                return (false, default(T)!);
             }
             return (true, result.Value);
         }

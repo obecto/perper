@@ -59,12 +59,12 @@ namespace Perper.Application
 
         public static Task RunAsync(string agent, CancellationToken cancellationToken = default)
         {
-            return new PerperStartup(agent).AddDiscoveredHandlers().RunAsync(cancellationToken);
+            return new PerperStartup(agent).DiscoverHandlersFromAssembly().RunAsync(cancellationToken);
         }
 
         public static Task RunAsync(string agent, string rootNamespace, CancellationToken cancellationToken = default)
         {
-            return new PerperStartup(agent).AddDiscoveredHandlers(null, rootNamespace).RunAsync(cancellationToken);
+            return new PerperStartup(agent).DiscoverHandlersFromAssembly(null, rootNamespace).RunAsync(cancellationToken);
         }
 
         #endregion RunAsync

@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 
 using Perper.Model;
+using Perper.Protocol;
 using Perper.Protocol.Instance;
 
 namespace Perper.Extensions
@@ -27,7 +28,7 @@ namespace Perper.Extensions
 
         private static async Task<PerperAgent> CreateInstanceAsync(string agent)
         {
-            var instance = AsyncLocals.CacheService.GenerateName(agent);
+            var instance = CacheService.GenerateName(agent);
             await AsyncLocals.CacheService.InstanceCreate(instance, agent).ConfigureAwait(false);
             return new PerperAgent(agent, instance);
         }

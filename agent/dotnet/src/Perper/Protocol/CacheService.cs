@@ -27,6 +27,6 @@ namespace Perper.Protocol
 
         public static long CurrentTicks => DateTime.UtcNow.Ticks - DateTime.UnixEpoch.Ticks;
 
-        public string GenerateName(string? baseName = null) => $"{baseName}-{Guid.NewGuid()}";
+        public static string GenerateName(string? baseName = null) => $"{baseName}-{Guid.NewGuid()}";
     }
 }

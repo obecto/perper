@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Apache.Ignite.Core.Cache.Configuration;
 
 using Perper.Model;
+using Perper.Protocol;
 using Perper.Protocol.Instance;
 
 namespace Perper.Extensions
@@ -22,7 +23,7 @@ namespace Perper.Extensions
         public string? IndexType { get; private set; }
         public Hashtable? IndexFields { get; private set; }
 
-        public PerperStreamBuilder(string @delegate, StreamDelegateType delegateType) : this(AsyncLocals.CacheService.GenerateName(@delegate), @delegate, delegateType)
+        public PerperStreamBuilder(string @delegate, StreamDelegateType delegateType) : this(CacheService.GenerateName(@delegate), @delegate, delegateType)
         {
         }
 

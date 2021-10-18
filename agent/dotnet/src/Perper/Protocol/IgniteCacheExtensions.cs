@@ -21,10 +21,10 @@ namespace Perper.Protocol
             }
         }
 
-        public static async Task OptimisticUpdateAsync<TK, TV>(this ICacheClient<TK, TV> cache, TK key, IBinary binary, Action<TV> updateAction)
+        public static Task OptimisticUpdateAsync<TK, TV>(this ICacheClient<TK, TV> cache, TK key, IBinary binary, Action<TV> updateAction)
             where TV : class
         {
-            cache.WithKeepBinary<object, IBinaryObject>().OptimisticUpdateAsync(key, (binaryObject) =>
+            return cache.WithKeepBinary<TK, IBinaryObject>().OptimisticUpdateAsync(key, (binaryObject) =>
             {
                 var value = binaryObject.Deserialize<TV>();
                 updateAction(value);

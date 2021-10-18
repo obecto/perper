@@ -9,26 +9,26 @@ namespace Perper.Protocol.Instance
         private readonly string agent;
         private readonly string instance;
         private readonly string @delegate;
-        private readonly object[] parameters;
+        private readonly object?[] parameters;
 
         private readonly string callerAgent;
         private readonly string caller;
         private readonly bool localToData;
 
         private bool finished;
-        private object[]? result;
+        private object?[]? result;
         private string? error;
 
         public CallData(
             string agent,
             string instance,
             string @delegate,
-            object[] parameters,
+            object?[] parameters,
             string callerAgent,
             string caller,
             bool localToData,
             bool finished = false,
-            object[] result = null,
+            object?[]? result = null,
             string? error = null)
         {
             this.agent = agent;
@@ -48,14 +48,14 @@ namespace Perper.Protocol.Instance
         public string Agent => agent;
         public string Instance => instance;
         public string Delegate => @delegate;
-        public object[] Parameters => parameters;
+        public object?[] Parameters => parameters;
 
         public string CallerAgent => callerAgent;
         public string Caller => caller;
         public bool LocalToData => localToData;
 
         public bool Finished { get => finished; set => finished = value; }
-        public object[]? Result { get => result; set => result = value; }
+        public object?[]? Result { get => result; set => result = value; }
         public string? Error { get => error; set => error = value; }
     }
 }

@@ -61,7 +61,7 @@ dotnet_diagnostic.CA1010.severity = error
 dotnet_diagnostic.CA1012.severity = error
 
 # CA1014: Mark assemblies with CLSCompliantAttribute
-dotnet_diagnostic.CA1014.severity = error
+dotnet_diagnostic.CA1014.severity = none # error
 
 # CA1016: Mark assemblies with AssemblyVersionAttribute
 dotnet_diagnostic.CA1016.severity = error
@@ -154,7 +154,7 @@ dotnet_diagnostic.CA1060.severity = error
 dotnet_diagnostic.CA1061.severity = error
 
 # CA1062: Validate arguments of public methods
-dotnet_diagnostic.CA1062.severity = warning
+dotnet_diagnostic.CA1062.severity = none # TODO: warning
 
 # CA1063: Implement IDisposable correctly
 dotnet_diagnostic.CA1063.severity = error
@@ -281,6 +281,7 @@ dotnet_diagnostic.CA1725.severity = error
 
 # CA1801: Review unused parameters
 dotnet_diagnostic.CA1801.severity = error
+dotnet_code_quality.CA1801.api_surface = public, internal # TODO: Done to avoid flagging generated Main$ - https://github.com/dotnet/roslyn-analyzers/issues/5184
 
 # CA1802: Use Literals Where Appropriate
 dotnet_diagnostic.CA1802.severity = error

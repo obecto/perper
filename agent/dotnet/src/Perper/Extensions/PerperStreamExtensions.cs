@@ -53,8 +53,7 @@ namespace Perper.Extensions
 
         public static async IAsyncEnumerable<T> EnumerateAsync<T>(this PerperStream stream, bool keepBinary = false, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var random = new Random();
-            var parameter = random.Next(1, 1000000); // FIXME
+            var parameter = new Random().Next(1, 1000000); // FIXME
             await AsyncLocals.CacheService.StreamAddListener(stream, AsyncLocals.Agent, AsyncLocals.Instance, AsyncLocals.Execution, parameter).ConfigureAwait(false);
             try
             {

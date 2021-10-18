@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -73,6 +74,8 @@ namespace Perper.Protocol
 
         private async Task RunAsync(CancellationToken cancellationToken = default)
         {
+            Debug.Assert(notificationsStream != null);
+
             while (await notificationsStream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
             {
                 var key = GetNotificationKey(notificationsStream.ResponseStream.Current);
@@ -119,8 +122,11 @@ namespace Perper.Protocol
         // TODO: Pass CancellationToken argument
         public async Task StopAsync()
         {
-            runningTaskCancellation.Cancel();
-            await runningTask.ConfigureAwait(false);
+            runningTaskCancellation?.Cancel();
+            if (runningTask != null)
+            {
+                await runningTask.ConfigureAwait(false);
+            }
         }
 
         public void Dispose()

@@ -5,9 +5,9 @@ using Perper.Extensions;
 
 namespace ContainerUsageSample.Calls
 {
-    public class Init
+    public static class Init
     {
-        public async Task RunAsync()
+        public static async Task RunAsync()
         {
             Console.WriteLine("Starting container-sample #1");
             var container1 = await PerperContext.StartAgentAsync("container-sample").ConfigureAwait(false);

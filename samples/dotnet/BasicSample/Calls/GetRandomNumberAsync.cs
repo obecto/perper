@@ -5,6 +5,7 @@ namespace BasicSample.Calls
 {
     public class GetRandomNumberAsync
     {
+#pragma warning disable 1998
         public async Task<int> RunAsync(int min, int max)
         {
             var random = new Random();
@@ -12,5 +13,6 @@ namespace BasicSample.Calls
 
             return number;
         }
+#pragma warning restore 1998
     }
 }

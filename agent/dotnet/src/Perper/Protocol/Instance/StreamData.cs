@@ -17,7 +17,7 @@ namespace Perper.Protocol.Instance
         private readonly string? indexType;
         private readonly Hashtable? indexFields;
 
-        private ArrayList listeners;
+        private readonly ArrayList listeners;
 
         public StreamData(
             string agent,
@@ -53,6 +53,6 @@ namespace Perper.Protocol.Instance
         public string? IndexType => indexType;
         public Hashtable? IndexFields => indexFields;
 
-        public ArrayList Listeners { get => listeners; set => listeners = value; }
+        public ArrayList Listeners => listeners;
     }
 }

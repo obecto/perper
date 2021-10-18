@@ -1,6 +1,6 @@
 namespace BasicSample.Calls
 {
-    public class CountParams
+    public static class CountParams
     {
         public static int RunAsync(int arg1, params string[] args)
         {

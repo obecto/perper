@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
 using Perper.Model;
@@ -24,7 +25,8 @@ namespace Perper.Extensions
             return cacheService.StreamReadItem<TItem>(notification.Cache, notification.Key, keepBinary);
         }
 
-        public static async Task CallWriteTask(this CacheService cacheService, string call, Task<object[]> task)
+        [SuppressMessage("Design", "CA1031: Do not catch general exception types", Justification = "Exception is logged/handled through other means; rethrowing from handler will crash whole application.")]
+        public static async Task CallWriteTask(this CacheService cacheService, string call, Task<object?[]> task)
         {
             try
             {
@@ -42,7 +44,7 @@ namespace Perper.Extensions
             return cacheService.CallWriteError(call, exception.Message);
         }
 
-        public static async Task<object[]> CallReadResult(this CacheService cacheService, string call)
+        public static async Task<object?[]?> CallReadResult(this CacheService cacheService, string call)
         {
             var (error, result) = await cacheService.CallReadErrorAndResult(call).ConfigureAwait(false);
 
