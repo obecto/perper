@@ -11,6 +11,8 @@ import "google/protobuf/empty.proto";
 service Fabric {
     rpc CallTriggers (NotificationFilter) returns (stream CallTrigger) {}
     rpc CallFinished (CallFilter) returns (google.protobuf.Empty) {}
+    rpc StreamTriggers (NotificationFilter) returns (stream StreamTrigger) {}
+    rpc StreamItemWritten (StreamItemFilter) returns (google.protobuf.Empty) {}
     rpc Notifications (NotificationFilter) returns (stream Notification) {}
 }
 
@@ -25,12 +27,25 @@ message CallFilter {
     string call = 4;
 }
 
+message StreamItemFilter {
+    string stream = 4;
+    int64 key = 5;
+}
+
 message CallTrigger {
     //string agent = 1;
     // Can probably remove instance and delegate (99% the agent will be reading the call data for parameters)
     string instance = 2;
     string delegate = 3;
     string call = 4;
+}
+
+message StreamTrigger {
+    //string agent = 1;
+    // Can probably remove instance and delegate (99% the agent will be reading the call data for parameters)
+    string instance = 2;
+    string delegate = 3;
+    string stream = 4;
 }
 
 message Notification {

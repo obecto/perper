@@ -15,11 +15,13 @@ namespace Perper.Protocol
 
         public static ICollection<BinaryTypeConfiguration> CoreTypeConfigurations { get; } = new[]
         {
-            new BinaryTypeConfiguration(typeof(CallTriggerNotification)),
-            new BinaryTypeConfiguration(typeof(CallResultNotification)),
-            new BinaryTypeConfiguration(typeof(StreamTriggerNotification)),
+//             new BinaryTypeConfiguration(typeof(CallTriggerNotification)),
+//             new BinaryTypeConfiguration(typeof(CallResultNotification)),
+//             new BinaryTypeConfiguration(typeof(StreamTriggerNotification)),
             new BinaryTypeConfiguration(typeof(StreamItemNotification)),
-            new BinaryTypeConfiguration(typeof(StreamListener))
+            new BinaryTypeConfiguration(typeof(StreamListener)),
+//             new BinaryTypeConfiguration(typeof(StreamData)),
+//             new BinaryTypeConfiguration(typeof(CallData))
         };
 
         public static ICollection<BinaryTypeConfiguration> StandardTypeConfigurations { get; } = new[]

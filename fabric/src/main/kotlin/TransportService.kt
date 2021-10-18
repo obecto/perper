@@ -6,11 +6,15 @@ import com.obecto.perper.fabric.cache.notification.NotificationKeyLong
 import com.obecto.perper.fabric.cache.notification.NotificationKeyString
 import com.obecto.perper.fabric.cache.notification.StreamItemNotification
 import com.obecto.perper.fabric.cache.notification.StreamTriggerNotification
+import com.obecto.perper.fabric.cache.StreamDelegateType
 import com.obecto.perper.fabric.cache.CallData
+import com.obecto.perper.fabric.cache.StreamData
 import com.obecto.perper.protobuf.FabricGrpcKt
 import com.obecto.perper.protobuf.NotificationFilter
 import com.obecto.perper.protobuf.CallFilter
 import com.obecto.perper.protobuf.CallTrigger
+import com.obecto.perper.protobuf.StreamTrigger
+import com.obecto.perper.protobuf.StreamItemFilter
 import io.grpc.Server
 import io.grpc.ServerBuilder
 import kotlinx.coroutines.GlobalScope
@@ -184,11 +188,6 @@ class TransportService(var port: Int = 40400) : Service {
                         }
                         updateQueue(notification.stream, notification.parameter)
                     }
-                } else if (!confirmed) {
-                    if (instance == null || (notification is StreamTriggerNotification && notification.instance == instance)) {
-                        log.trace({ "Sending notification $instance ${request.agent}, $notification - $key" })
-                        runBlocking { send(key.toNotification()) }
-                    }
                 }
             }
 
@@ -308,7 +307,7 @@ class TransportService(var port: Int = 40400) : Service {
                 CacheEntryEventFilter { event ->
                     if (event.eventType == EventType.REMOVED)
                         false
-                    else if (event.isOldValueAvailable && event.value.finished == event.oldValue.finished)
+                    else if (event.isOldValueAvailable && !event.oldValue.finished)
                         false
                     else // TODO: Use a single query for all agents
                         event.value.agent == agent && (instance == null || event.value.instance == instance) && !event.value.finished
@@ -320,6 +319,8 @@ class TransportService(var port: Int = 40400) : Service {
                     value.agent == agent && (instance == null || value.instance == instance) && !value.finished
                 }
             }
+
+            log.debug({ "Call triggers listener stopped for '${request.agent}'|'${request.instance}'!" })
 
             val queryCursor = callsCache.query(query)
 
@@ -345,7 +346,91 @@ class TransportService(var port: Int = 40400) : Service {
                 e.printStackTrace()
                 throw e
             } finally {
-                log.debug({ "Notifications listener finished for '${request.agent}' - '${request.instance}'!" })
+                log.debug({ "Call triggers listener started for '${request.agent}'|'${request.instance}'!" })
+                queryCursor.close()
+            }
+        }.buffer(Channel.UNLIMITED)
+
+        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+        override fun streamTriggers(request: NotificationFilter) = channelFlow<StreamTrigger> {
+            val agent = request.agent
+            val instance = if (request.instance != "") request.instance else null
+            val streamsCacheName = "streams"
+            val streamsCache = ignite.getOrCreateCache<String, StreamData>(streamsCacheName)
+
+            val queryChannel = Channel<CacheEntryEvent<out String, out StreamData>>(Channel.UNLIMITED)
+            val query = ContinuousQuery<String, StreamData>()
+            query.localListener = CacheEntryUpdatedListener { events ->
+                try {
+                    for (event in events) {
+                        if (event.eventType != EventType.REMOVED) {
+                            runBlocking { queryChannel.send(event) }
+                        }
+                    }
+                } catch (e: Exception) {
+                    queryChannel.close(e)
+                }
+            }
+            query.setLocal(true)
+
+            fun shouldTrigger(value: StreamData): Boolean {
+                return value.delegateType == StreamDelegateType.Action || (value.delegateType == StreamDelegateType.Function && value.listeners.size > 0)
+            }
+
+
+            query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, StreamData>> {
+                CacheEntryEventFilter { event ->
+                    if (event.eventType == EventType.REMOVED)
+                        false
+                    else if (event.value.agent != agent || (instance != null && event.value.instance != instance)) // TODO: Use a single query for all agents
+                        false
+                    else if (!shouldTrigger(event.value))
+                        false
+                    else if (event.isOldValueAvailable && shouldTrigger(event.oldValue))
+                        false
+                    else
+                        true
+                }
+            }
+            query.initialQuery = ScanQuery<String, StreamData>().also {
+                it.setLocal(true)
+                it.filter = IgniteBiPredicate<String, StreamData> { _, value ->
+                    if (value.agent != agent || (instance != null && value.instance != instance))
+                        false
+                    else
+                        shouldTrigger(value)
+                }
+            }
+
+            log.debug({ "Stream triggers listener started for '${request.agent}'|'${request.instance}'!" })
+
+            val queryCursor = streamsCache.query(query)
+
+            try {
+                for (entry in queryCursor) {
+                    log.debug({ "Starting stream ${entry.key}" })
+                    send(StreamTrigger.newBuilder().also {
+                        it.instance = entry.value.instance
+                        it.delegate = entry.value.delegate
+                        it.stream = entry.key
+                    }.build())
+                }
+                for (entry in queryChannel) {
+                    log.debug({ "Starting stream ${entry.key}" })
+                    send(StreamTrigger.newBuilder().also {
+                        it.instance = entry.value.instance
+                        it.delegate = entry.value.delegate
+                        it.stream = entry.key
+                    }.build())
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.error(e.toString())
+                e.printStackTrace()
+                throw e
+            } finally {
+                log.debug({ "Stream triggers listener finished for '${request.agent}'|'${request.instance}'!" })
                 queryCursor.close()
             }
         }.buffer(Channel.UNLIMITED)
@@ -393,6 +478,52 @@ class TransportService(var port: Int = 40400) : Service {
                 throw e
             } finally {
                 log.debug({ "Call result notification listener completed for '$call'!" })
+                queryCursor.close()
+                queryChannel.close()
+            }
+        }
+
+        override suspend fun streamItemWritten(request: StreamItemFilter): Empty {
+            val stream = request.stream
+            val key = request.key
+            val streamCache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, Any>()
+
+            val queryChannel = Channel<Unit>(Channel.CONFLATED)
+            val query = ContinuousQuery<Long, Any>()
+
+            query.localListener = CacheEntryUpdatedListener { events ->
+                try {
+                    for (event in events) {
+                        runBlocking { queryChannel.send(Unit) }
+                    }
+                } catch (e: Exception) {
+                    queryChannel.close(e)
+                }
+            }
+
+            query.remoteFilterFactory = Factory<CacheEntryEventFilter<Long, Any>> {
+                CacheEntryEventFilter { event -> event.key == key }
+            }
+
+            val queryCursor = streamCache.query(query) // Important to start query before checking if it is already finished
+
+            log.debug({ "Stream item notification listener started for $stream.'$key'!" })
+
+            try {
+                val item = streamCache.get(key)
+                if (item == null)
+                {
+                    queryChannel.receive()
+                }
+                return Empty.getDefaultInstance()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.error(e.toString())
+                e.printStackTrace()
+                throw e
+            } finally {
+                log.debug({ "Stream item notification listener completed for $stream.'$key'!" })
                 queryCursor.close()
                 queryChannel.close()
             }

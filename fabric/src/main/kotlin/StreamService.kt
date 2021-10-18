@@ -95,8 +95,8 @@ class StreamService : JobService() {
 
     suspend fun updateStream(stream: String, streamData: BinaryObject) {
         when (streamData.delegateType) {
-            StreamDelegateType.Action -> engageStream(stream, streamData)
-            StreamDelegateType.Function -> if (streamData.listeners.size > 0) engageStream(stream, streamData)
+            StreamDelegateType.Action -> createCache(stream, streamData)
+            StreamDelegateType.Function -> if (streamData.listeners.size > 0) createCache(stream, streamData)
             StreamDelegateType.External -> createCache(stream, streamData)
             else -> Unit
         }
@@ -108,14 +108,6 @@ class StreamService : JobService() {
                     coroutineScope.launch { writeFullReplay(stream, streamData.ephemeral, listener) }
                 }
             }
-        }
-    }
-
-    suspend fun engageStream(stream: String, streamData: BinaryObject) {
-        if (createCache(stream, streamData)) {
-            log.debug({ "Starting stream '$stream'" })
-            val notificationsCache = TransportService.getNotificationCache(ignite, streamData.agent)
-            notificationsCache.put(NotificationKey(TransportService.getCurrentTicks(), stream), StreamTriggerNotification(stream, streamData.instance, streamData.delegate))
         }
     }
 
