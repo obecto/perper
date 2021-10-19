@@ -5,7 +5,6 @@ using Apache.Ignite.Core.Binary;
 
 using Perper.Model;
 using Perper.Protocol.Instance;
-using Perper.Protocol.Notifications;
 
 namespace Perper.Protocol
 {
@@ -18,7 +17,7 @@ namespace Perper.Protocol
 //             new BinaryTypeConfiguration(typeof(CallTriggerNotification)),
 //             new BinaryTypeConfiguration(typeof(CallResultNotification)),
 //             new BinaryTypeConfiguration(typeof(StreamTriggerNotification)),
-            new BinaryTypeConfiguration(typeof(StreamItemNotification)),
+//             new BinaryTypeConfiguration(typeof(StreamItemNotification)),
             new BinaryTypeConfiguration(typeof(StreamListener)),
 //             new BinaryTypeConfiguration(typeof(StreamData)),
 //             new BinaryTypeConfiguration(typeof(CallData))

@@ -110,22 +110,23 @@ namespace Perper.Application
             AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
             var grpcChannel = GrpcChannel.ForAddress(fabricGrpcAddress);
 
-            var ignite = await Policy
+            var igniteTask = Policy
                 .HandleInner<System.Net.Sockets.SocketException>()
                 .WaitAndRetryAsync(10,
                     attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt - 2)),
                     (exception, timespan) => Console.WriteLine("Failed to connect to Ignite, retrying in {0}s", timespan.TotalSeconds))
-                .ExecuteAsync(() => Task.Run(() => Ignition.StartClient(igniteConfiguration))).ConfigureAwait(false);
+                .ExecuteAsync(() => Task.Run(() => Ignition.StartClient(igniteConfiguration)));
 
-            var cacheService = new CacheService(ignite);
-            var notificationService = new NotificationService(ignite, grpcChannel, agent, instance);
-
+            var notificationService = new NotificationService(grpcChannel, agent, instance);
             await Policy
                 .Handle<Grpc.Core.RpcException>(ex => ex.Status.DebugException is System.Net.Http.HttpRequestException)
                 .WaitAndRetryAsync(10,
                     attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt - 2)),
                     (exception, timespan) => Console.WriteLine("Failed to connect to GRPC, retrying in {0}s", timespan.TotalSeconds))
                 .ExecuteAsync(notificationService.StartAsync).ConfigureAwait(false);
+
+            var ignite = await igniteTask.ConfigureAwait(false);
+            var cacheService = new CacheService(ignite);
 
             return (cacheService, notificationService);
         }

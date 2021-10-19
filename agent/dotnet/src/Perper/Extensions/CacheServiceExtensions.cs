@@ -4,25 +4,24 @@ using System.Threading.Tasks;
 
 using Perper.Model;
 using Perper.Protocol;
-using Perper.Protocol.Notifications;
 
 namespace Perper.Extensions
 {
     public static class CacheServiceExtensions
     {
+        public static Task StreamWriteItem<T>(this CacheService cacheService, string stream, T item, bool keepBinary = false)
+        {
+            return cacheService.StreamWriteItem(stream, CacheService.CurrentTicks, item, keepBinary);
+        }
+
         public static Task StreamAddListener(this CacheService cacheService, PerperStream stream, string callerAgent, string callerInstance, string caller, int parameter)
         {
-            return cacheService.StreamAddListener(stream.Stream, callerAgent, callerInstance, caller, parameter, stream.Filter, stream.Replay, stream.LocalToData);
+            return cacheService.StreamAddListener(stream.Stream, callerAgent, callerInstance, caller, parameter, stream.Filter, stream.Replay, false);
         }
 
         public static Task StreamRemoveListener(this CacheService cacheService, PerperStream stream, string caller, int parameter)
         {
             return cacheService.StreamRemoveListener(stream.Stream, caller, parameter);
-        }
-
-        public static Task<TItem> StreamReadItem<TItem>(this CacheService cacheService, StreamItemNotification notification, bool keepBinary = false)
-        {
-            return cacheService.StreamReadItem<TItem>(notification.Cache, notification.Key, keepBinary);
         }
 
         [SuppressMessage("Design", "CA1031: Do not catch general exception types", Justification = "Exception is logged/handled through other means; rethrowing from handler will crash whole application.")]

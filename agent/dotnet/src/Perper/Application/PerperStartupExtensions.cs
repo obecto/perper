@@ -306,10 +306,12 @@ namespace Perper.Application
 
         private static async Task ProcessAsyncEnumerable<T>(IAsyncEnumerable<T> values)
         {
+            var key = 0L;
             // TODO: CancellationToken
             await foreach (var value in values)
             {
-                await AsyncLocals.CacheService.StreamWriteItem(AsyncLocals.Execution, value).ConfigureAwait(false);
+                await AsyncLocals.CacheService.StreamWriteItem(AsyncLocals.Execution, key, value).ConfigureAwait(false);
+                key++;
             }
         }
         #endregion Execute

@@ -12,19 +12,19 @@ namespace Perper.Extensions
 {
     public static class PerperStreamExtensions
     {
-        public static PerperStream LocalToData(this PerperStream stream, bool localToData = true)
-        {
-            return new PerperStream(stream.Stream, stream.Filter, stream.Replay, localToData);
-        }
+//         public static PerperStream LocalToData(this PerperStream stream, bool localToData = true)
+//         {
+//             return new PerperStream(stream.Stream, stream.Filter, stream.StartIndex, localToData);
+//         }
 
         public static PerperStream Filter<T>(this PerperStream stream, Expression<Func<T, bool>> filter)
         {
-            return new PerperStream(stream.Stream, FilterUtils.ConvertFilter(filter), stream.Replay, stream.LocalToData);
+            return new PerperStream(stream.Stream, FilterUtils.ConvertFilter(filter), stream.StartIndex);
         }
 
         public static PerperStream Replay(this PerperStream stream, bool replay = true)
         {
-            return new PerperStream(stream.Stream, stream.Filter, replay, stream.LocalToData);
+            return new PerperStream(stream.Stream, stream.Filter, replay ? 0 : -1);
         }
 
         public static IQueryable<T> Query<T>(this PerperStream stream, bool keepBinary = false)
@@ -53,39 +53,26 @@ namespace Perper.Extensions
 
         public static async IAsyncEnumerable<T> EnumerateAsync<T>(this PerperStream stream, bool keepBinary = false, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var parameter = new Random().Next(1, 1000000); // FIXME
+            var parameter = 0;
             await AsyncLocals.CacheService.StreamAddListener(stream, AsyncLocals.Agent, AsyncLocals.Instance, AsyncLocals.Execution, parameter).ConfigureAwait(false);
+            await Task.Delay(200, cancellationToken).ConfigureAwait(false);
             try
             {
-                await foreach (var (key, notification) in AsyncLocals.NotificationService.GetStreamItemNotifications(AsyncLocals.Execution, parameter).ReadAllAsync(cancellationToken))
+                for (var key = 0L; ; key++) // stream.StartIndex
                 {
+                    T value;
+
                     try
                     {
-                        T value;
-
-                        try
-                        {
-                            value = await AsyncLocals.CacheService.StreamReadItem<T>(notification, keepBinary).ConfigureAwait(false);
-                        }
-                        catch (KeyNotFoundException)
-                        {
-                            try
-                            {
-                                await Task.Delay(200, cancellationToken).ConfigureAwait(false);
-                                value = await AsyncLocals.CacheService.StreamReadItem<T>(notification, keepBinary).ConfigureAwait(false);
-                            }
-                            catch (KeyNotFoundException)
-                            {
-                                continue;
-                            }
-                        }
-
-                        yield return value;
+                        value = await AsyncLocals.CacheService.StreamReadItem<T>(stream.Stream, key, keepBinary).ConfigureAwait(false);
                     }
-                    finally
+                    catch (KeyNotFoundException)
                     {
-                        await AsyncLocals.NotificationService.ConsumeNotification(key).ConfigureAwait(false);
+                        await AsyncLocals.NotificationService.StreamItemWritten(stream.Stream, key, cancellationToken).ConfigureAwait(false);
+                        value = await AsyncLocals.CacheService.StreamReadItem<T>(stream.Stream, key, keepBinary).ConfigureAwait(false);
                     }
+
+                    yield return value;
                 }
             }
             finally

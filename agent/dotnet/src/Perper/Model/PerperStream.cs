@@ -9,24 +9,24 @@ namespace Perper.Model
     {
         private readonly string stream;
         private readonly Hashtable? filter;
-        private readonly bool replay;
-        private readonly bool localToData;
+        private readonly long startIndex;
+        //private readonly bool localToData;
 
         public PerperStream(
             string stream,
             Hashtable? filter = null,
-            bool replay = false,
-            bool localToData = false)
+            long startIndex = -1)
         {
             this.stream = stream;
             this.filter = filter;
-            this.replay = replay;
-            this.localToData = localToData;
+            this.startIndex = startIndex;
+            //this.localToData = localToData;
         }
 
         public string Stream => stream;
         public Hashtable? Filter => filter;
-        public bool Replay => replay;
-        public bool LocalToData => localToData;
+        public long StartIndex => startIndex;
+
+        public bool Replay => startIndex == -1;
     }
 }

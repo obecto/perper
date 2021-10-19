@@ -13,7 +13,7 @@ service Fabric {
     rpc CallFinished (CallFilter) returns (google.protobuf.Empty) {}
     rpc StreamTriggers (NotificationFilter) returns (stream StreamTrigger) {}
     rpc StreamItemWritten (StreamItemFilter) returns (google.protobuf.Empty) {}
-    rpc Notifications (NotificationFilter) returns (stream Notification) {}
+    //rpc GetLastStreamItemIndex (StreamFilter) returns (StreamItemIndex) {}
 }
 
 message NotificationFilter {
@@ -46,13 +46,4 @@ message StreamTrigger {
     string instance = 2;
     string delegate = 3;
     string stream = 4;
-}
-
-message Notification {
-    int64 notificationKey = 1;
-
-    oneof affinity {
-      string stringAffinity = 2;
-      int64 intAffinity = 3;
-    }
 }

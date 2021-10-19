@@ -4,7 +4,9 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Apache.Ignite.Core.Binary;
+using Apache.Ignite.Core.Cache.Configuration;
 using Apache.Ignite.Core.Cache.Query;
+using Apache.Ignite.Core.Client.Cache;
 using Apache.Ignite.Linq;
 
 using Perper.Protocol.Instance;
@@ -13,11 +15,26 @@ namespace Perper.Protocol
 {
     public partial class CacheService
     {
-        public Task StreamCreate(string stream, string agent, string instance, string @delegate, StreamDelegateType delegateType, object[] parameters, bool ephemeral = true, string? indexType = null, Hashtable? indexFields = null)
+        public async Task StreamCreate(string stream, string agent, string instance, string @delegate, StreamDelegateType delegateType, object[] parameters, bool ephemeral = true, string? indexType = null, Hashtable? indexFields = null)
         {
+            if (indexType == null || indexFields == null)
+            {
+                Ignite.CreateCache<long, object>(new CacheClientConfiguration(stream));
+            }
+            else
+            {
+                var queryEntity = new QueryEntity()
+                {
+                    ValueTypeName = indexType,
+                    Fields = indexFields.Cast<DictionaryEntry>().Select(de => new QueryField((string)de.Key, (string)de.Value)).ToList(),
+                    Indexes = indexFields.Cast<DictionaryEntry>().Select(de => new QueryIndex(new QueryIndexField((string)de.Key))).ToList()
+                };
+                Ignite.CreateCache<long, object>(new CacheClientConfiguration(stream, queryEntity));
+            }
+
             var streamData = new StreamData(agent, instance, @delegate, delegateType, parameters, ephemeral, indexType, indexFields);
 
-            return streamsCache.PutIfAbsentOrThrowAsync(stream, streamData);
+            await streamsCache.PutIfAbsentOrThrowAsync(stream, streamData).ConfigureAwait(false);
         }
 
         public async Task StreamAddListener(string stream, string callerAgent, string callerInstance, string caller, int parameter, Hashtable? filter = null, bool replay = false, bool localToData = false)
@@ -44,7 +61,7 @@ namespace Perper.Protocol
             });
         }
 
-        public async Task<long> StreamWriteItem<TItem>(string stream, TItem item, bool keepBinary = false)
+        public async Task StreamWriteItem<TItem>(string stream, long key, TItem item, bool keepBinary = false)
         {
             var itemsCache = Ignite.GetCache<long, TItem>(stream);
             if (keepBinary)
@@ -52,11 +69,7 @@ namespace Perper.Protocol
                 itemsCache = itemsCache.WithKeepBinary<long, TItem>();
             }
 
-            var key = CurrentTicks;
-
             await itemsCache.PutIfAbsentOrThrowAsync(key, item).ConfigureAwait(false);
-
-            return key;
         }
 
         public Task<TItem> StreamReadItem<TItem>(string cache, long key, bool keepBinary = false)
