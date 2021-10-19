@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
@@ -134,21 +136,29 @@ namespace Perper.Protocol
             return streamTriggerChannels.GetOrAdd(@delegate, _ => Channel.CreateUnbounded<(string, string)>()).Reader;
         }
 
-        public async Task StreamItemWritten(string stream, long key, CancellationToken cancellationToken = default)
-        {
-            await client.StreamItemWrittenAsync(new StreamItemFilter
-            {
-                Stream = stream,
-                Key = key
-            }, cancellationToken: cancellationToken);
-        }
-
         public async Task WaitCallFinished(string call, CancellationToken cancellationToken = default)
         {
             await client.CallFinishedAsync(new CallFilter
             {
                 Call = call
             }, cancellationToken: cancellationToken);
+        }
+
+        public async IAsyncEnumerable<long> StreamItems(string stream, long startKey = -1, long stride = 0, bool localToData = false, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var streamItems = client.StreamItems(new StreamItemsRequest
+            {
+                Stream = stream,
+                StartKey = startKey,
+                Stride = stride,
+                LocalToData = localToData
+            }, cancellationToken: cancellationToken);
+
+            while (await streamItems.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+            {
+                var item = streamItems.ResponseStream.Current;
+                yield return item.Key;
+            }
         }
     }
 }

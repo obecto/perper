@@ -12,19 +12,19 @@ namespace Perper.Extensions
 {
     public static class PerperStreamExtensions
     {
-//         public static PerperStream LocalToData(this PerperStream stream, bool localToData = true)
-//         {
-//             return new PerperStream(stream.Stream, stream.Filter, stream.StartIndex, localToData);
-//         }
+        public static PerperStream LocalToData(this PerperStream stream, bool localToData = true)
+        {
+            return new PerperStream(stream.Stream, stream.Filter, stream.StartIndex, stream.Stride, localToData);
+        }
 
         public static PerperStream Filter<T>(this PerperStream stream, Expression<Func<T, bool>> filter)
         {
-            return new PerperStream(stream.Stream, FilterUtils.ConvertFilter(filter), stream.StartIndex);
+            return new PerperStream(stream.Stream, FilterUtils.ConvertFilter(filter), stream.StartIndex, stream.Stride, stream.LocalToData);
         }
 
         public static PerperStream Replay(this PerperStream stream, bool replay = true)
         {
-            return new PerperStream(stream.Stream, stream.Filter, replay ? 0 : -1);
+            return new PerperStream(stream.Stream, stream.Filter, replay ? 0 : -1, stream.Stride, stream.LocalToData);
         }
 
         public static IQueryable<T> Query<T>(this PerperStream stream, bool keepBinary = false)
@@ -55,10 +55,9 @@ namespace Perper.Extensions
         {
             var parameter = 0;
             await AsyncLocals.CacheService.StreamAddListener(stream, AsyncLocals.Agent, AsyncLocals.Instance, AsyncLocals.Execution, parameter).ConfigureAwait(false);
-            await Task.Delay(200, cancellationToken).ConfigureAwait(false);
             try
             {
-                for (var key = 0L; ; key++) // stream.StartIndex
+                await foreach (var key in AsyncLocals.NotificationService.StreamItems(stream.Stream, stream.StartIndex, stream.Stride, stream.LocalToData, cancellationToken))
                 {
                     T value;
 
@@ -68,8 +67,15 @@ namespace Perper.Extensions
                     }
                     catch (KeyNotFoundException)
                     {
-                        await AsyncLocals.NotificationService.StreamItemWritten(stream.Stream, key, cancellationToken).ConfigureAwait(false);
-                        value = await AsyncLocals.CacheService.StreamReadItem<T>(stream.Stream, key, keepBinary).ConfigureAwait(false);
+                        await Task.Delay(100, cancellationToken).ConfigureAwait(false); // Retry just in case
+                        try
+                        {
+                            value = await AsyncLocals.CacheService.StreamReadItem<T>(stream.Stream, key, keepBinary).ConfigureAwait(false);
+                        }
+                        catch (KeyNotFoundException)
+                        {
+                            continue;
+                        }
                     }
 
                     yield return value;

@@ -6,7 +6,7 @@ val igniteVersion = "2.10.0"
 val grpcVersion = "1.31.1"
 val grpcKotlinVersion = "0.2.0"
 val protobufVersion = "3.13.0"
-val coroutinesVersion = "1.3.9"
+val coroutinesVersion = "1.5.2"
 val slf4jVersion = "1.7.28"
 
 plugins {

@@ -24,6 +24,11 @@ namespace Perper.Extensions
             return cacheService.StreamRemoveListener(stream.Stream, caller, parameter);
         }
 
+        public static Task StreamWriteItem<T>(this CacheService cacheService, string stream, T item, bool keepBinary = false)
+        {
+            return cacheService.StreamWriteItem(stream, CacheService.CurrentTicks, item, keepBinary);
+        }
+
         [SuppressMessage("Design", "CA1031: Do not catch general exception types", Justification = "Exception is logged/handled through other means; rethrowing from handler will crash whole application.")]
         public static async Task CallWriteTask(this CacheService cacheService, string call, Task<object?[]> task)
         {

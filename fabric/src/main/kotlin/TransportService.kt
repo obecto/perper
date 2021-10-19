@@ -8,14 +8,18 @@ import com.obecto.perper.protobuf.NotificationFilter
 import com.obecto.perper.protobuf.CallFilter
 import com.obecto.perper.protobuf.CallTrigger
 import com.obecto.perper.protobuf.StreamTrigger
-import com.obecto.perper.protobuf.StreamItemFilter
+import com.obecto.perper.protobuf.StreamItemsRequest
+import com.obecto.perper.protobuf.StreamItemsResponse
 import io.grpc.Server
 import io.grpc.ServerBuilder
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ProducerScope
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -50,7 +54,6 @@ import javax.cache.event.CacheEntryEventFilter
 import javax.cache.event.CacheEntryUpdatedListener
 import javax.cache.event.EventType
 import com.google.protobuf.Empty
-import com.obecto.perper.protobuf.Notification as NotificationProto
 
 class TransportService(var port: Int = 40400) : Service {
 
@@ -100,9 +103,35 @@ class TransportService(var port: Int = 40400) : Service {
         server.awaitTermination()
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun <T> tryCatchChannelFlow(block: suspend ProducerScope<T>.() -> Unit): Flow<T> = channelFlow<T> {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            log.error(e.toString())
+            e.printStackTrace()
+            throw e
+        }
+    }
+
+    private fun <T, K, V> ContinuousQuery<K, V>.setChannelLocalListener (channel: Channel<T>, block: suspend Channel<T>.(CacheEntryEvent<out K, out V>) -> Unit): Channel<T> {
+        this.localListener = CacheEntryUpdatedListener { events ->
+            try {
+                for (event in events) {
+                    runBlocking { channel.block(event) }
+                }
+            } catch (e: Exception) {
+                channel.close(e)
+            }
+        }
+        return channel
+    }
+
     inner class FabricImpl : FabricGrpcKt.FabricCoroutineImplBase() {
         @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-        override fun callTriggers(request: NotificationFilter) = channelFlow<CallTrigger> {
+        override fun callTriggers(request: NotificationFilter) = tryCatchChannelFlow<CallTrigger> {
             val agent = request.agent
             val instance = if (request.instance != "") request.instance else null
             val callsCacheName = "calls"
@@ -140,7 +169,7 @@ class TransportService(var port: Int = 40400) : Service {
                 }
             }
 
-            log.debug({ "Call triggers listener stopped for '${request.agent}'|'${request.instance}'!" })
+            log.debug({ "Call triggers listener started for '${request.agent}'|'${request.instance}'!" })
 
             val queryCursor = callsCache.query(query)
 
@@ -166,29 +195,22 @@ class TransportService(var port: Int = 40400) : Service {
                 e.printStackTrace()
                 throw e
             } finally {
-                log.debug({ "Call triggers listener started for '${request.agent}'|'${request.instance}'!" })
+                log.debug({ "Call triggers listener stopped for '${request.agent}'|'${request.instance}'!" })
                 queryCursor.close()
             }
         }.buffer(Channel.UNLIMITED)
 
         @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-        override fun streamTriggers(request: NotificationFilter) = channelFlow<StreamTrigger> {
+        override fun streamTriggers(request: NotificationFilter) = tryCatchChannelFlow<StreamTrigger> {
             val agent = request.agent
             val instance = if (request.instance != "") request.instance else null
             val streamsCacheName = "streams"
             val streamsCache = ignite.getOrCreateCache<String, StreamData>(streamsCacheName)
 
-            val queryChannel = Channel<CacheEntryEvent<out String, out StreamData>>(Channel.UNLIMITED)
             val query = ContinuousQuery<String, StreamData>()
-            query.localListener = CacheEntryUpdatedListener { events ->
-                try {
-                    for (event in events) {
-                        if (event.eventType != EventType.REMOVED) {
-                            runBlocking { queryChannel.send(event) }
-                        }
-                    }
-                } catch (e: Exception) {
-                    queryChannel.close(e)
+            val queryChannel = query.setChannelLocalListener(Channel<CacheEntryEvent<out String, out StreamData>>(Channel.UNLIMITED)) { event ->
+                if (event.eventType != EventType.REMOVED) {
+                    send(event)
                 }
             }
             query.setLocal(true)
@@ -243,12 +265,6 @@ class TransportService(var port: Int = 40400) : Service {
                         it.stream = entry.key
                     }.build())
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                log.error(e.toString())
-                e.printStackTrace()
-                throw e
             } finally {
                 log.debug({ "Stream triggers listener finished for '${request.agent}'|'${request.instance}'!" })
                 queryCursor.close()
@@ -260,18 +276,8 @@ class TransportService(var port: Int = 40400) : Service {
             val callsCacheName = "calls"
             val callsCache = ignite.getOrCreateCache<String, CallData>(callsCacheName)
 
-            val queryChannel = Channel<Unit>(Channel.CONFLATED)
             val query = ContinuousQuery<String, CallData>()
-
-            query.localListener = CacheEntryUpdatedListener { events ->
-                try {
-                    for (event in events) {
-                        runBlocking { queryChannel.send(Unit) }
-                    }
-                } catch (e: Exception) {
-                    queryChannel.close(e)
-                }
-            }
+            val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
 
             query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, CallData>> {
                 CacheEntryEventFilter { event ->
@@ -290,12 +296,6 @@ class TransportService(var port: Int = 40400) : Service {
                     queryChannel.receive()
                 }
                 return Empty.getDefaultInstance()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                log.error(e.toString())
-                e.printStackTrace()
-                throw e
             } finally {
                 log.debug({ "Call result notification listener completed for '$call'!" })
                 queryCursor.close()
@@ -303,51 +303,127 @@ class TransportService(var port: Int = 40400) : Service {
             }
         }
 
-        override suspend fun streamItemWritten(request: StreamItemFilter): Empty {
+        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+        override fun streamItems(request: StreamItemsRequest) = tryCatchChannelFlow<StreamItemsResponse> {
             val stream = request.stream
-            val key = request.key
+            val startKey = if (request.startKey != -1L) request.startKey else null
+            val stride = request.stride
+            val localToData = request.localToData
             val streamCache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, Any>()
 
-            val queryChannel = Channel<Unit>(Channel.CONFLATED)
-            val query = ContinuousQuery<Long, Any>()
+            if (stride == 0L)
+            {
+                val query = ContinuousQuery<Long, Any>()
+                val queryChannel = query.setChannelLocalListener(Channel<Long>(Channel.UNLIMITED)) { event -> send(event.key) }
+                query.setLocal(localToData)
 
-            query.localListener = CacheEntryUpdatedListener { events ->
-                try {
-                    for (event in events) {
-                        runBlocking { queryChannel.send(Unit) }
-                    }
-                } catch (e: Exception) {
-                    queryChannel.close(e)
-                }
-            }
-
-            query.remoteFilterFactory = Factory<CacheEntryEventFilter<Long, Any>> {
-                CacheEntryEventFilter { event -> event.key == key }
-            }
-
-            val queryCursor = streamCache.query(query) // Important to start query before checking if it is already finished
-
-            log.debug({ "Stream item notification listener started for $stream.'$key'!" })
-
-            try {
-                val item = streamCache.get(key)
-                if (item == null)
+                if (startKey == null)
                 {
-                    queryChannel.receive()
+                    query.remoteFilterFactory = Factory<CacheEntryEventFilter<Long, Any>> {
+                        CacheEntryEventFilter { event -> event.eventType == EventType.CREATED }
+                    }
+                    //query.initialQuery = null;
                 }
-                return Empty.getDefaultInstance()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                log.error(e.toString())
-                e.printStackTrace()
-                throw e
-            } finally {
-                log.debug({ "Stream item notification listener completed for $stream.'$key'!" })
-                queryCursor.close()
-                queryChannel.close()
+                else
+                {
+                    query.remoteFilterFactory = Factory<CacheEntryEventFilter<Long, Any>> {
+                        CacheEntryEventFilter { event -> event.eventType == EventType.CREATED && event.key > startKey }
+                    }
+                    query.initialQuery = ScanQuery<Long, Any>().also {
+                        it.setLocal(localToData)
+                        it.filter = IgniteBiPredicate<Long, Any> { key, _ -> key > startKey }
+                    }
+                }
+
+                val queryCursor = streamCache.query(query)
+                log.debug({ "Stream items listener started for '${stream}' ${startKey ?: "last"}..!" })
+
+                try {
+                    val itemKeys = queryCursor.map({ item -> item.key }).toMutableList() // NOTE: Sorts all keys in-memory; inefficient
+                    itemKeys.sort()
+
+                    for (key in itemKeys) {
+                        send(StreamItemsResponse.newBuilder().also {
+                            it.key = key
+                        }.build())
+                    }
+                    var lastKey = itemKeys.lastOrNull() ?: startKey
+
+                    for (key in queryChannel) {
+                        if (lastKey == null || key > lastKey)
+                        {
+                            lastKey = key;
+                            send(StreamItemsResponse.newBuilder().also {
+                                it.key = key
+                            }.build())
+                        }
+                    }
+                } finally {
+                    queryCursor.close()
+                    log.debug({ "Stream items listener finished for '${stream}' ${startKey ?: "last"}..!" })
+                }
             }
-        }
+            else // if (stride != 0L)
+            {
+                log.debug({ "Stream items listener started for '${stream}' ${startKey ?: "last"}..${stride}!" })
+                try {
+                    var keyOrNull = startKey
+
+                    if (keyOrNull == null) {
+                        val keys = streamCache.query(ScanQuery<Long, Any>().also {
+                            it.setLocal(localToData)
+                        }).map({ item -> item.key })
+                        keyOrNull = if (stride > 0) keys.maxOrNull() else keys.minOrNull()
+                    }
+
+                    if (keyOrNull == null) { // Cache is empty
+                        val query = ContinuousQuery<Long, Any>()
+                        val queryChannel = query.setChannelLocalListener(Channel<Long>(1, BufferOverflow.DROP_LATEST)) { event -> send(event.key) }
+                        val queryCursor = streamCache.query(query)
+                        try {
+                            keyOrNull = queryChannel.receive()
+                        } finally {
+                            queryCursor.close()
+                            queryChannel.close()
+                        }
+                    }
+
+                    var key = keyOrNull!!
+
+                    while (true) {
+                        if (!streamCache.containsKey(key))
+                        {
+                            val query = ContinuousQuery<Long, Any>()
+                            val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
+
+                            query.remoteFilterFactory = Factory<CacheEntryEventFilter<Long, Any>> {
+                                CacheEntryEventFilter { event -> event.key == key }
+                            }
+
+                            val queryCursor = streamCache.query(query) // Important to start query before checking if it is already finished
+
+                            try {
+                                if (!streamCache.containsKey(key)) // Race check
+                                {
+                                    queryChannel.receive()
+                                }
+                            } finally {
+                                queryCursor.close()
+                                queryChannel.close()
+                            }
+                        }
+
+                        send(StreamItemsResponse.newBuilder().also {
+                            it.key = key
+                        }.build())
+
+                        key += stride
+                    }
+                } finally {
+                    log.debug({ "Stream items listener finished for '${stream}' ${startKey ?: "last"}..${stride}!" })
+                }
+            }
+        }.buffer(Channel.UNLIMITED)
     }
 
     /*inner class ExternalScalerImpl : ExternalScalerGrpcKt.ExternalScalerCoroutineImplBase() {
