@@ -73,6 +73,12 @@
                 <property name="service" ref="InstanceService"/>
             </bean>
             <bean class="org.apache.ignite.services.ServiceConfiguration">
+                <property name="name" value="StreamService"/>
+                <property name="maxPerNodeCount" value="1"/>
+                <property name="totalCount" value="0"/>
+                <property name="service"><bean name="StreamService" class="com.obecto.perper.fabric.StreamService"></bean></property>
+            </bean>
+            <bean class="org.apache.ignite.services.ServiceConfiguration">
                 <property name="name" value="TransportService"/>
                 <property name="maxPerNodeCount" value="1"/>
                 <property name="totalCount" value="0"/>

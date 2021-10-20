@@ -30,7 +30,7 @@ message StreamItemsRequest {
     string stream = 1;
     int64 startKey = 2;
     bool localToData = 3;
-    int64 stride = 4; // 0 if unknown, 1.. to wait for stream items
+    int64 stride = 4; // 0 if realtime, 1.. to wait for stream items
 }
 
 message StreamItemsResponse {

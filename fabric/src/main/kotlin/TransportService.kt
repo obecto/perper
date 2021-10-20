@@ -219,7 +219,6 @@ class TransportService(var port: Int = 40400) : Service {
                 return value.delegateType == StreamDelegateType.Action || (value.delegateType == StreamDelegateType.Function && value.listeners.size > 0)
             }
 
-
             query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, StreamData>> {
                 CacheEntryEventFilter { event ->
                     if (event.eventType == EventType.REMOVED)
@@ -311,6 +310,12 @@ class TransportService(var port: Int = 40400) : Service {
             val localToData = request.localToData
             val streamCache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, Any>()
 
+            suspend fun ProducerScope<StreamItemsResponse>.output(key: Long) {
+                send(StreamItemsResponse.newBuilder().also {
+                    it.key = key
+                }.build())
+            }
+
             if (stride == 0L)
             {
                 val query = ContinuousQuery<Long, Any>()
@@ -343,19 +348,15 @@ class TransportService(var port: Int = 40400) : Service {
                     itemKeys.sort()
 
                     for (key in itemKeys) {
-                        send(StreamItemsResponse.newBuilder().also {
-                            it.key = key
-                        }.build())
+                        output(key)
                     }
                     var lastKey = itemKeys.lastOrNull() ?: startKey
 
                     for (key in queryChannel) {
                         if (lastKey == null || key > lastKey)
                         {
-                            lastKey = key;
-                            send(StreamItemsResponse.newBuilder().also {
-                                it.key = key
-                            }.build())
+                            lastKey = key
+                            output(key)
                         }
                     }
                 } finally {
@@ -413,9 +414,7 @@ class TransportService(var port: Int = 40400) : Service {
                             }
                         }
 
-                        send(StreamItemsResponse.newBuilder().also {
-                            it.key = key
-                        }.build())
+                        output(key)
 
                         key += stride
                     }
