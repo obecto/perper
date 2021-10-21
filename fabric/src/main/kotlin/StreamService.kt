@@ -49,7 +49,14 @@ class StreamService : JobService() {
     }
 
     override suspend fun CoroutineScope.execute(ctx: ServiceContext) {
-        if (ignite.atomicLong("listeners-query", 0, true).compareAndSet(0, 1)) {
+        val queryLock = ignite.reentrantLock("listeners-query", false, false, true)
+
+        var couldLock = false
+        try {
+            couldLock = queryLock.tryLock()
+        } catch (_: Exception) {}
+
+        if (couldLock) {
             val streamListenersCache = ignite.getOrCreateCache<String, StreamListener>("stream-listeners")
             log.debug({ "Starting stream listeners query" })
 
@@ -59,6 +66,7 @@ class StreamService : JobService() {
             query.initialQuery = ScanQuery<String, StreamListener>()
 
             streamListenersCache.query(query)
+            // Not releasing the lock here; we only use to make sure only one setAutoUnsubscribe query is launched
         }
     }
 
