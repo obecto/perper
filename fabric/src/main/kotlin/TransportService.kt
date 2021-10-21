@@ -1,13 +1,11 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.AgentType
-import com.obecto.perper.fabric.cache.CallData
-import com.obecto.perper.fabric.cache.StreamData
-import com.obecto.perper.fabric.cache.StreamDelegateType
+import com.obecto.perper.fabric.cache.ExecutionData
+//import com.obecto.perper.fabric.cache.StreamDelegateType
 import com.obecto.perper.protobuf.FabricGrpcKt
-import com.obecto.perper.protobuf.NotificationFilter
-import com.obecto.perper.protobuf.CallFilter
-import com.obecto.perper.protobuf.CallTrigger
-import com.obecto.perper.protobuf.StreamTrigger
+import com.obecto.perper.protobuf.ExecutionsRequest
+import com.obecto.perper.protobuf.ExecutionFinishedRequest
+import com.obecto.perper.protobuf.ExecutionsResponse
 import com.obecto.perper.protobuf.StreamItemsRequest
 import com.obecto.perper.protobuf.StreamItemsResponse
 import io.grpc.Server
@@ -131,62 +129,61 @@ class TransportService(var port: Int = 40400) : Service {
 
     inner class FabricImpl : FabricGrpcKt.FabricCoroutineImplBase() {
         @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-        override fun callTriggers(request: NotificationFilter) = tryCatchChannelFlow<CallTrigger> {
+        override fun executions(request: ExecutionsRequest) = tryCatchChannelFlow<ExecutionsResponse> {
             val agent = request.agent
             val instance = if (request.instance != "") request.instance else null
-            val callsCacheName = "calls"
-            val callsCache = ignite.getOrCreateCache<String, CallData>(callsCacheName)
+            val localToData = (instance != null)
+            val executionsCacheName = "executions"
+            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>(executionsCacheName)
 
-            val queryChannel = Channel<CacheEntryEvent<out String, out CallData>>(Channel.UNLIMITED)
-            val query = ContinuousQuery<String, CallData>()
-            query.localListener = CacheEntryUpdatedListener { events ->
-                try {
-                    for (event in events) {
-                        if (event.eventType != EventType.REMOVED) {
-                            runBlocking { queryChannel.send(event) }
-                        }
-                    }
-                } catch (e: Exception) {
-                    queryChannel.close(e)
-                }
+            val query = ContinuousQuery<String, ExecutionData>()
+            val queryChannel = query.setChannelLocalListener(Channel<Pair<String, Pair<Boolean, ExecutionData>>>(Channel.UNLIMITED)) {
+                event -> send(Pair(event.key, Pair((event.eventType == EventType.REMOVED || event.eventType == EventType.EXPIRED), event.value)))
             }
-            query.setLocal(true)
+            query.setLocal(localToData)
 
-            query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, CallData>> {
+            query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, ExecutionData>> {
                 CacheEntryEventFilter { event ->
-                    if (event.eventType == EventType.REMOVED)
+                    if (event.isOldValueAvailable && !event.oldValue.finished)
                         false
-                    else if (event.isOldValueAvailable && !event.oldValue.finished)
-                        false
-                    else // TODO: Use a single query for all agents
+                    else // TODO: Use a single query for all executions
                         event.value.agent == agent && (instance == null || event.value.instance == instance) && !event.value.finished
                 }
             }
-            query.initialQuery = ScanQuery<String, CallData>().also {
-                it.setLocal(true)
-                it.filter = IgniteBiPredicate<String, CallData> { _, value ->
+            query.initialQuery = ScanQuery<String, ExecutionData>().also {
+                it.setLocal(localToData)
+                it.filter = IgniteBiPredicate<String, ExecutionData> { _, value ->
                     value.agent == agent && (instance == null || value.instance == instance) && !value.finished
                 }
             }
 
-            log.debug({ "Call triggers listener started for '${request.agent}'|'${request.instance}'!" })
+            log.debug({ "Executions listener started for '$agent'-'$instance'!" })
 
-            val queryCursor = callsCache.query(query)
+            val queryCursor = executionsCache.query(query)
 
             try {
+                val sentExecutions = HashMap<String, Boolean>()
+
                 for (entry in queryCursor) {
-                    send(CallTrigger.newBuilder().also {
-                        it.instance = entry.value.instance
-                        it.delegate = entry.value.delegate
-                        it.call = entry.key
-                    }.build())
+                    if (sentExecutions.put(entry.key, false) == null) {
+                        send(ExecutionsResponse.newBuilder().also {
+                            it.instance = entry.value.instance
+                            it.delegate = entry.value.delegate
+                            it.execution = entry.key
+                        }.build())
+                    }
                 }
-                for (entry in queryChannel) {
-                    send(CallTrigger.newBuilder().also {
-                        it.instance = entry.value.instance
-                        it.delegate = entry.value.delegate
-                        it.call = entry.key
-                    }.build())
+
+                for ((key, tuple) in queryChannel) {
+                    val (removed, value) = tuple
+                    if (sentExecutions.put(key, removed) != removed) {
+                        send(ExecutionsResponse.newBuilder().also {
+                            it.instance = value.instance
+                            it.delegate = value.delegate
+                            it.execution = key
+                            it.cancelled = removed
+                        }.build())
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -195,108 +192,38 @@ class TransportService(var port: Int = 40400) : Service {
                 e.printStackTrace()
                 throw e
             } finally {
-                log.debug({ "Call triggers listener stopped for '${request.agent}'|'${request.instance}'!" })
+                log.debug({ "Executions listener stopped for '$agent'-'$instance'!" })
                 queryCursor.close()
             }
         }.buffer(Channel.UNLIMITED)
 
-        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-        override fun streamTriggers(request: NotificationFilter) = tryCatchChannelFlow<StreamTrigger> {
-            val agent = request.agent
-            val instance = if (request.instance != "") request.instance else null
-            val streamsCacheName = "streams"
-            val streamsCache = ignite.getOrCreateCache<String, StreamData>(streamsCacheName)
+        override suspend fun executionFinished(request: ExecutionFinishedRequest): Empty {
+            val execution = request.execution
+            val executionsCacheName = "executions"
+            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>(executionsCacheName)
 
-            val query = ContinuousQuery<String, StreamData>()
-            val queryChannel = query.setChannelLocalListener(Channel<CacheEntryEvent<out String, out StreamData>>(Channel.UNLIMITED)) { event ->
-                if (event.eventType != EventType.REMOVED) {
-                    send(event)
-                }
-            }
-            query.setLocal(true)
-
-            fun shouldTrigger(value: StreamData): Boolean {
-                return value.delegateType == StreamDelegateType.Action || (value.delegateType == StreamDelegateType.Function && value.listeners.size > 0)
-            }
-
-            query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, StreamData>> {
-                CacheEntryEventFilter { event ->
-                    if (event.eventType == EventType.REMOVED)
-                        false
-                    else if (event.value.agent != agent || (instance != null && event.value.instance != instance)) // TODO: Use a single query for all agents
-                        false
-                    else if (!shouldTrigger(event.value))
-                        false
-                    else if (event.isOldValueAvailable && shouldTrigger(event.oldValue))
-                        false
-                    else
-                        true
-                }
-            }
-            query.initialQuery = ScanQuery<String, StreamData>().also {
-                it.setLocal(true)
-                it.filter = IgniteBiPredicate<String, StreamData> { _, value ->
-                    if (value.agent != agent || (instance != null && value.instance != instance))
-                        false
-                    else
-                        shouldTrigger(value)
-                }
-            }
-
-            log.debug({ "Stream triggers listener started for '${request.agent}'|'${request.instance}'!" })
-
-            val queryCursor = streamsCache.query(query)
-
-            try {
-                for (entry in queryCursor) {
-                    log.debug({ "Starting stream ${entry.key}" })
-                    send(StreamTrigger.newBuilder().also {
-                        it.instance = entry.value.instance
-                        it.delegate = entry.value.delegate
-                        it.stream = entry.key
-                    }.build())
-                }
-                for (entry in queryChannel) {
-                    log.debug({ "Starting stream ${entry.key}" })
-                    send(StreamTrigger.newBuilder().also {
-                        it.instance = entry.value.instance
-                        it.delegate = entry.value.delegate
-                        it.stream = entry.key
-                    }.build())
-                }
-            } finally {
-                log.debug({ "Stream triggers listener finished for '${request.agent}'|'${request.instance}'!" })
-                queryCursor.close()
-            }
-        }.buffer(Channel.UNLIMITED)
-
-        override suspend fun callFinished(request: CallFilter): Empty {
-            val call = request.call
-            val callsCacheName = "calls"
-            val callsCache = ignite.getOrCreateCache<String, CallData>(callsCacheName)
-
-            val query = ContinuousQuery<String, CallData>()
+            val query = ContinuousQuery<String, ExecutionData>()
             val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
 
-            query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, CallData>> {
+            query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, ExecutionData>> {
                 CacheEntryEventFilter { event ->
-                    event.eventType != EventType.REMOVED && event.key == call && event.value.finished
+                    event.eventType != EventType.REMOVED && event.key == execution && event.value.finished
                 }
             }
 
-            val queryCursor = callsCache.query(query) // Important to start query before checking if it is already finished
+            val queryCursor = executionsCache.query(query) // Important to start query before checking if it is already finished
 
-            log.debug({ "Call result notification listener started for '$call'!" })
+            log.debug({ "Execution finished listener started for '$execution'!" })
 
             try {
-                val callData = callsCache.get(call)
-                if (callData == null || !callData.finished)
+                val executionData = executionsCache.get(execution)
+                if (executionData == null || !executionData.finished)
                 {
                     queryChannel.receive()
                 }
                 return Empty.getDefaultInstance()
             } finally {
-                log.debug({ "Call result notification listener completed for '$call'!" })
+                log.debug({ "Execution finished listener completed for '$execution'!" })
                 queryCursor.close()
                 queryChannel.close()
             }

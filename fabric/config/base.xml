@@ -12,41 +12,10 @@
                     <property name="enum" value="true"/>
                 </bean>
                 <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.StreamDelegateType"/>
-                    <property name="enum" value="true"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.CallData"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.StreamData"/>
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.ExecutionData"/>
                 </bean>
                 <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
                     <property name="typeName" value="com.obecto.perper.fabric.cache.StreamListener"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.CallResultNotification"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.CallTriggerNotification"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.Notification"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.NotificationKey"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.NotificationKeyLong"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.NotificationKeyString"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.StreamItemNotification"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.StreamTriggerNotification"/>
                 </bean>
             </list></property>
             <property name="nameMapper"><bean class="org.apache.ignite.binary.BinaryBasicNameMapper">

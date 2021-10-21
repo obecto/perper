@@ -7,7 +7,7 @@ using Apache.Ignite.Core.Cache.Configuration;
 
 using Perper.Model;
 using Perper.Protocol;
-using Perper.Protocol.Instance;
+using Perper.Protocol.Cache;
 
 namespace Perper.Extensions
 {
@@ -18,13 +18,12 @@ namespace Perper.Extensions
         public string StreamName { get; private set; }
         public string? Delegate { get; private set; }
 
-        public StreamDelegateType DelegateType { get; private set; } = StreamDelegateType.Function;
         public bool IsEphemeral { get; private set; } = true;
         public bool IsAction { get; private set; }
         public string? IndexType { get; private set; }
         public Hashtable? IndexFields { get; private set; }
 
-        public PerperStreamBuilder(string @delegate) : this(CacheService.GenerateName(@delegate ?? ""), @delegate)
+        public PerperStreamBuilder(string? @delegate) : this(CacheService.GenerateName(@delegate ?? ""), @delegate)
         {
         }
 
@@ -36,10 +35,12 @@ namespace Perper.Extensions
 
         public async Task<PerperStream> StartAsync(params object[] parameters)
         {
-            var delegateType = Delegate == null ? StreamDelegateType.External : IsAction ? StreamDelegateType.Action : StreamDelegateType.Function;
-            await AsyncLocals.CacheService.StreamCreate(
-                StreamName, AsyncLocals.Agent, AsyncLocals.Instance, Delegate ?? "", delegateType, parameters,
-                IsEphemeral, IndexType, IndexFields).ConfigureAwait(false);
+            await AsyncLocals.CacheService.CreateStream(StreamName, IndexType, IndexFields).ConfigureAwait(false);
+            if (!IsEphemeral)
+            {
+                await AsyncLocals.CacheService.SetStreamListenerPosition($"{StreamName}-persist", StreamName, CacheService.ListenerPersistAll).ConfigureAwait(false);
+            }
+            await AsyncLocals.CacheService.CreateExecution(StreamName, AsyncLocals.Agent, AsyncLocals.Instance, Delegate, parameters).ConfigureAwait(false);
 
             return Stream;
         }

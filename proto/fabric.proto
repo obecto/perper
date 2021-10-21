@@ -9,21 +9,29 @@ package perper;
 import "google/protobuf/empty.proto";
 
 service Fabric {
-    rpc CallTriggers (NotificationFilter) returns (stream CallTrigger) {}
-    rpc CallFinished (CallFilter) returns (google.protobuf.Empty) {}
-    rpc StreamTriggers (NotificationFilter) returns (stream StreamTrigger) {}
+    rpc Executions (ExecutionsRequest) returns (stream ExecutionsResponse) {}
+    rpc ExecutionFinished (ExecutionFinishedRequest) returns (google.protobuf.Empty) {}
     rpc StreamItems (StreamItemsRequest) returns (stream StreamItemsResponse) {}
 }
 
-message NotificationFilter {
+message ExecutionsRequest {
     string agent = 1;
     string instance = 2;
     //string delegate = 3;
     //string execution = 4;
 }
 
-message CallFilter {
-    string call = 4;
+message ExecutionsResponse {
+    //string agent = 1;
+    // Can possibly remove instance and delegate (99% the agent will be reading the execution data for parameters anyway)
+    string instance = 2;
+    string delegate = 3;
+    string execution = 4;
+    bool cancelled = 5;
+}
+
+message ExecutionFinishedRequest {
+    string execution = 4;
 }
 
 message StreamItemsRequest {
@@ -35,21 +43,4 @@ message StreamItemsRequest {
 
 message StreamItemsResponse {
     int64 key = 1;
-}
-
-message CallTrigger {
-    //string agent = 1;
-    // Can probably remove instance and delegate (99% the agent will be reading the call data for parameters)
-    string instance = 2;
-    string delegate = 3;
-    string call = 4;
-    //bool canceled = 5;
-}
-
-message StreamTrigger {
-    //string agent = 1;
-    // Can probably remove instance and delegate (99% the agent will be reading the call data for parameters)
-    string instance = 2;
-    string delegate = 3;
-    string stream = 4;
 }

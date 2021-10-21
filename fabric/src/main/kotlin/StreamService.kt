@@ -50,13 +50,13 @@ class StreamService : JobService() {
 
     override suspend fun CoroutineScope.execute(ctx: ServiceContext) {
         if (ignite.atomicLong("listeners-query", 0, true).compareAndSet(0, 1)) {
-            val streamListenersCache = ignite.getOrCreateCache<Pair<String, String>, Long>("stream-listeners")
+            val streamListenersCache = ignite.getOrCreateCache<String, StreamListener>("stream-listeners")
             log.debug({ "Starting stream listeners query" })
 
-            val query = ContinuousQuery<Pair<String, String>, Long>()
-            query.remoteFilterFactory = Factory<CacheEntryEventFilter<Pair<String, String>, Long>> { StreamListenerUpdatesRemoteFilter() }
+            val query = ContinuousQuery<String, StreamListener>()
+            query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, StreamListener>> { StreamListenerUpdatesRemoteFilter() }
             query.setAutoUnsubscribe(false)
-            query.initialQuery = ScanQuery<Pair<String, String>, Long>()
+            query.initialQuery = ScanQuery<String, StreamListener>()
 
             streamListenersCache.query(query)
         }
@@ -64,7 +64,7 @@ class StreamService : JobService() {
 
     class StreamServiceHelpers(var ignite: Ignite, var log: IgniteLogger) {
 
-        fun updateStreamListener(stream: String, listener: String, oldPosition: Long?, newPosition: Long?) {
+        fun updateStreamListener(listener: String, stream: String, oldPosition: Long?, newPosition: Long?) {
             log.trace({ "Stream listener moved '$stream'.'$listener' $oldPosition->$newPosition" })
             if (newPosition != null)
             {
@@ -156,7 +156,7 @@ class StreamService : JobService() {
         }
     }
 
-    class StreamListenerUpdatesRemoteFilter : CacheEntryEventFilter<Pair<String, String>, Long> {
+    class StreamListenerUpdatesRemoteFilter : CacheEntryEventFilter<String, StreamListener> {
         @set:IgniteInstanceResource
         lateinit var ignite: Ignite
 
@@ -165,18 +165,16 @@ class StreamService : JobService() {
 
         val helpers by lazy(LazyThreadSafetyMode.PUBLICATION) { StreamServiceHelpers(ignite, log) }
 
-        override fun evaluate(event: CacheEntryEvent<out Pair<String, String>, out Long>): Boolean {
-            if (event.eventType == EventType.CREATED) {
-                ignite.scheduler().runLocal(Runnable {
-                    if (event.eventType == EventType.REMOVED || event.eventType == EventType.EXPIRED) {
-                        helpers.updateStreamListener(event.key.first, event.key.second, event.value, null)
-                    }
-                    else
-                    {
-                        helpers.updateStreamListener(event.key.first, event.key.second, if (event.isOldValueAvailable) event.oldValue else null, event.value)
-                    }
-                })
-            }
+        override fun evaluate(event: CacheEntryEvent<out String, out StreamListener>): Boolean {
+            ignite.scheduler().runLocal(Runnable {
+                if (event.eventType == EventType.REMOVED || event.eventType == EventType.EXPIRED) {
+                    helpers.updateStreamListener(event.key, event.value.stream, event.value.position, null)
+                }
+                else
+                {
+                    helpers.updateStreamListener(event.key, event.value.stream, if (event.isOldValueAvailable) event.oldValue.position else null, event.value.position)
+                }
+            })
             return false
         }
     }

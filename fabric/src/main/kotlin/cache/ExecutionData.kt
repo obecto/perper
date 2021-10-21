@@ -1,6 +1,6 @@
 package com.obecto.perper.fabric.cache
 
-class CallData(
+class ExecutionData(
     var agent: String,
     var instance: String,
     var delegate: String,

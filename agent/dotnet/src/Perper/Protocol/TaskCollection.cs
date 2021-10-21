@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Perper.Application
+namespace Perper.Protocol
 {
     public class TaskCollection : ICollection<Task>
     {

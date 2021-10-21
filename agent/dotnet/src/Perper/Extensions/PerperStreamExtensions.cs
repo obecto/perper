@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Perper.Model;
+using Perper.Protocol;
 
 namespace Perper.Extensions
 {
@@ -29,7 +30,7 @@ namespace Perper.Extensions
 
         public static IQueryable<T> Query<T>(this PerperStream stream, bool keepBinary = false)
         {
-            return AsyncLocals.CacheService.StreamGetQueryable<T>(stream.Stream, keepBinary);
+            return AsyncLocals.CacheService.QueryStream<T>(stream.Stream, keepBinary);
         }
 
         public static async IAsyncEnumerable<T> ToAsyncEnumerable<T>(this IQueryable<T> queryable) // TODO: move to another class
@@ -43,7 +44,7 @@ namespace Perper.Extensions
 
         public static IAsyncEnumerable<T> Query<T>(this PerperStream stream, string typeName, string sqlCondition, object[]? sqlParameters = null, bool keepBinary = false)
         {
-            return AsyncLocals.CacheService.StreamQuerySql<T>(stream.Stream, $"select _VAL from {typeName.ToUpper()} {sqlCondition}", sqlParameters ?? Array.Empty<object>(), keepBinary);
+            return AsyncLocals.CacheService.QueryStreamSql<T>(stream.Stream, $"select _VAL from {typeName.ToUpper()} {sqlCondition}", sqlParameters ?? Array.Empty<object>(), keepBinary);
         }
 
         public static IAsyncEnumerable<T> Query<T>(this PerperStream stream, string sqlCondition, params object[] sqlParameters)
@@ -53,24 +54,25 @@ namespace Perper.Extensions
 
         public static async IAsyncEnumerable<T> EnumerateAsync<T>(this PerperStream stream, bool keepBinary = false, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var parameter = 0;
-            await AsyncLocals.CacheService.StreamAddListener(stream, AsyncLocals.Agent, AsyncLocals.Instance, AsyncLocals.Execution, parameter).ConfigureAwait(false);
+            var listener = CacheService.GenerateName(stream.Stream); // TODO: Need some way to enumerate a stream while keeping state
+            await AsyncLocals.CacheService.SetStreamListenerPosition(listener, stream.Stream, CacheService.ListenerPersistAll).ConfigureAwait(false);
             try
             {
-                await foreach (var key in AsyncLocals.NotificationService.StreamItems(stream.Stream, stream.StartIndex, stream.Stride, stream.LocalToData, cancellationToken))
+                await foreach (var key in AsyncLocals.NotificationService.EnumerateStreamItemKeys(stream.Stream, stream.StartIndex, stream.Stride, stream.LocalToData, cancellationToken))
                 {
+                    await AsyncLocals.CacheService.SetStreamListenerPosition(listener, stream.Stream, key).ConfigureAwait(false); // Can be optimized by updating in batches
                     T value;
 
                     try
                     {
-                        value = await AsyncLocals.CacheService.StreamReadItem<T>(stream.Stream, key, keepBinary).ConfigureAwait(false);
+                        value = await AsyncLocals.CacheService.ReadStreamItem<T>(stream.Stream, key, keepBinary).ConfigureAwait(false);
                     }
                     catch (KeyNotFoundException)
                     {
                         await Task.Delay(100, cancellationToken).ConfigureAwait(false); // Retry just in case
                         try
                         {
-                            value = await AsyncLocals.CacheService.StreamReadItem<T>(stream.Stream, key, keepBinary).ConfigureAwait(false);
+                            value = await AsyncLocals.CacheService.ReadStreamItem<T>(stream.Stream, key, keepBinary).ConfigureAwait(false);
                         }
                         catch (KeyNotFoundException)
                         {
@@ -83,7 +85,7 @@ namespace Perper.Extensions
             }
             finally
             {
-                await AsyncLocals.CacheService.StreamRemoveListener(stream, AsyncLocals.Execution, parameter).ConfigureAwait(false);
+                await AsyncLocals.CacheService.RemoveStreamListener(listener).ConfigureAwait(false);
             }
         }
     }

@@ -4,7 +4,7 @@ using System.Linq;
 using Apache.Ignite.Core.Binary;
 
 using Perper.Model;
-using Perper.Protocol.Instance;
+using Perper.Protocol.Cache;
 
 namespace Perper.Protocol
 {
@@ -14,13 +14,9 @@ namespace Perper.Protocol
 
         public static ICollection<BinaryTypeConfiguration> CoreTypeConfigurations { get; } = new[]
         {
-//             new BinaryTypeConfiguration(typeof(CallTriggerNotification)),
-//             new BinaryTypeConfiguration(typeof(CallResultNotification)),
-//             new BinaryTypeConfiguration(typeof(StreamTriggerNotification)),
-//             new BinaryTypeConfiguration(typeof(StreamItemNotification)),
             new BinaryTypeConfiguration(typeof(StreamListener)),
-//             new BinaryTypeConfiguration(typeof(StreamData)),
-//             new BinaryTypeConfiguration(typeof(CallData))
+            new BinaryTypeConfiguration(typeof(InstanceData)),
+            new BinaryTypeConfiguration(typeof(ExecutionData))
         };
 
         public static ICollection<BinaryTypeConfiguration> StandardTypeConfigurations { get; } = new[]

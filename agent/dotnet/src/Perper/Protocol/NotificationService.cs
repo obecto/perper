@@ -17,93 +17,57 @@ using Perper.Protocol.Protobuf;
 
 namespace Perper.Protocol
 {
-    public partial class NotificationService : IDisposable
+    public partial class NotificationService : IAsyncDisposable, IDisposable
     {
-        public NotificationService(
-            GrpcChannel grpcChannel,
-            string agent,
-            string? instance)
+        public NotificationService(GrpcChannel grpcChannel) => FabricClient = new Fabric.FabricClient(grpcChannel);
+
+        private readonly Fabric.FabricClient FabricClient;
+        private readonly CallOptions CallOptions = new CallOptions().WithWaitForReady();
+        private readonly CancellationTokenSource CancellationTokenSource = new();
+        private readonly TaskCollection TaskCollection = new();
+        private readonly ConcurrentDictionary<(string agent, string? instance), ExecutionsListener> ExecutionsListeners = new();
+
+        public async ValueTask DisposeAsync()
         {
-            Agent = agent;
-            Instance = instance;
-            client = new Fabric.FabricClient(grpcChannel);
+            CancellationTokenSource.Cancel();
+            await TaskCollection.GetTask().ConfigureAwait(false);
         }
 
-        public string Agent { get; }
-        public string? Instance { get; }
-        private readonly Fabric.FabricClient client;
-
-        private readonly ConcurrentDictionary<string, Channel<(string instance, string call)>> callTriggerChannels = new();
-        private readonly ConcurrentDictionary<string, Channel<(string instance, string stream)>> streamTriggerChannels = new();
-
-        private Task? runningTask;
-        private CancellationTokenSource? runningTaskCancellation;
-        private AsyncServerStreamingCall<CallTrigger>? callTriggersStream;
-        private AsyncServerStreamingCall<StreamTrigger>? streamTriggersStream;
-
-        // TODO: Pass CancellationToken argument
-        public async Task StartAsync()
+        public ChannelReader<ExecutionRecord> GetExecutionsReader(string agent, string? instance, string @delegate)
         {
-            runningTaskCancellation = new CancellationTokenSource();
-
-            var cancellationToken = runningTaskCancellation.Token;
-
-            // TODO: Refactor
-            callTriggersStream = client.CallTriggers(new NotificationFilter { Agent = Agent, Instance = Instance ?? "" }, null, null, cancellationToken);
-            streamTriggersStream = client.StreamTriggers(new NotificationFilter { Agent = Agent, Instance = Instance ?? "" }, null, null, cancellationToken);
-            await callTriggersStream.ResponseHeadersAsync.ConfigureAwait(false);
-            await streamTriggersStream.ResponseHeadersAsync.ConfigureAwait(false);
-
-            runningTask = Task.WhenAll(ProcessCallTriggersAsync(cancellationToken), ProcessStreamTriggersAsync(cancellationToken));
+            return ExecutionsListeners.GetOrAdd((agent, instance), _ => new(this, agent, instance)).GetReader(@delegate);
         }
 
-        private async Task ProcessCallTriggersAsync(CancellationToken cancellationToken = default)
+        public async Task WaitExecutionFinished(string execution, CancellationToken cancellationToken = default)
         {
-            try
+            await FabricClient.ExecutionFinishedAsync(new ExecutionFinishedRequest
             {
-                Debug.Assert(callTriggersStream != null);
+                Execution = execution
+            }, CallOptions.WithCancellationToken(cancellationToken));
+        }
 
-                while (await callTriggersStream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
-                {
-                    var trigger = callTriggersStream.ResponseStream.Current;
-                    var channel = callTriggerChannels.GetOrAdd(trigger.Delegate, _ => Channel.CreateUnbounded<(string, string)>());
-                    await channel.Writer.WriteAsync((trigger.Instance, trigger.Call), cancellationToken).ConfigureAwait(false);
-                }
-            }
-            catch (Exception e)
+        public async IAsyncEnumerable<long> EnumerateStreamItemKeys(string stream, long startKey = -1, long stride = 0, bool localToData = false, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var streamItems = FabricClient.StreamItems(new StreamItemsRequest
             {
-                Console.WriteLine(e);
-                throw;
+                Stream = stream,
+                StartKey = startKey,
+                Stride = stride,
+                LocalToData = localToData
+            }, CallOptions.WithCancellationToken(cancellationToken));
+
+            while (await streamItems.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+            {
+                var item = streamItems.ResponseStream.Current;
+                yield return item.Key;
             }
         }
 
-        private async Task ProcessStreamTriggersAsync(CancellationToken cancellationToken = default)
+        protected virtual void Dispose(bool disposing)
         {
-            try
+            if (disposing)
             {
-                Debug.Assert(streamTriggersStream != null);
-
-                while (await streamTriggersStream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
-                {
-                    var trigger = streamTriggersStream.ResponseStream.Current;
-                    var channel = streamTriggerChannels.GetOrAdd(trigger.Delegate, _ => Channel.CreateUnbounded<(string, string)>());
-                    await channel.Writer.WriteAsync((trigger.Instance, trigger.Stream), cancellationToken).ConfigureAwait(false);
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                throw;
-            }
-        }
-
-        // TODO: Pass CancellationToken argument
-        public async Task StopAsync()
-        {
-            runningTaskCancellation?.Cancel();
-            if (runningTask != null)
-            {
-                await runningTask.ConfigureAwait(false);
+                CancellationTokenSource.Dispose();
             }
         }
 
@@ -113,51 +77,66 @@ namespace Perper.Protocol
             GC.SuppressFinalize(this);
         }
 
-        protected virtual void Dispose(bool disposing)
+        ~NotificationService()
         {
-            if (disposing)
+            Dispose(false);
+        }
+
+        private class ExecutionsListener
+        {
+            private readonly NotificationService NotificationService;
+            private readonly string Agent;
+            private readonly string? Instance;
+
+            private readonly Dictionary<string, (ExecutionRecord execution, CancellationTokenSource cts)> Executions = new();
+            private readonly ConcurrentDictionary<string, Channel<ExecutionRecord>> Channels = new();
+
+            private int Running = 0;
+
+            public ExecutionsListener(NotificationService notificationService, string agent, string? instance)
             {
-                callTriggersStream?.Dispose();
-                callTriggersStream = null;
-                streamTriggersStream?.Dispose();
-                streamTriggersStream = null;
-                runningTaskCancellation?.Dispose();
-                runningTaskCancellation = null;
+                NotificationService = notificationService;
+                Agent = agent;
+                Instance = instance;
             }
-        }
 
-        public ChannelReader<(string instance, string call)> GetCallTriggers(string @delegate)
-        {
-            return callTriggerChannels.GetOrAdd(@delegate, _ => Channel.CreateUnbounded<(string, string)>()).Reader;
-        }
-
-        public ChannelReader<(string instance, string stream)> GetStreamTriggers(string @delegate)
-        {
-            return streamTriggerChannels.GetOrAdd(@delegate, _ => Channel.CreateUnbounded<(string, string)>()).Reader;
-        }
-
-        public async Task WaitCallFinished(string call, CancellationToken cancellationToken = default)
-        {
-            await client.CallFinishedAsync(new CallFilter
+            public void EnsureRunning()
             {
-                Call = call
-            }, cancellationToken: cancellationToken);
-        }
+                if (Interlocked.CompareExchange(ref Running, 1, 0) == 0) {
+                    NotificationService.TaskCollection.Add(RunAsync());
+                }
+            }
 
-        public async IAsyncEnumerable<long> StreamItems(string stream, long startKey = -1, long stride = 0, bool localToData = false, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            var streamItems = client.StreamItems(new StreamItemsRequest
+            public ChannelReader<ExecutionRecord> GetReader(string @delegate)
             {
-                Stream = stream,
-                StartKey = startKey,
-                Stride = stride,
-                LocalToData = localToData
-            }, cancellationToken: cancellationToken);
+                EnsureRunning();
+                return Channels.GetOrAdd(@delegate, _ => Channel.CreateUnbounded<ExecutionRecord>()).Reader;
+            }
 
-            while (await streamItems.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+            private async Task RunAsync()
             {
-                var item = streamItems.ResponseStream.Current;
-                yield return item.Key;
+                var cancellationToken = NotificationService.CancellationTokenSource.Token;
+
+                var stream = NotificationService.FabricClient.Executions(new ExecutionsRequest {
+                    Agent = Agent,
+                    Instance = Instance ?? ""
+                }, NotificationService.CallOptions.WithCancellationToken(cancellationToken));
+
+                while (await stream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+                {
+                    var executionProto = stream.ResponseStream.Current;
+                    if (executionProto.Cancelled) {
+                        if (Executions.TryGetValue(executionProto.Execution, out var execution)) {
+                            execution.cts.Cancel();
+                        }
+                    } else {
+                        var cts = new CancellationTokenSource();
+                        var execution = new ExecutionRecord(Agent, executionProto.Instance, executionProto.Delegate, executionProto.Execution, cts.Token);
+                        Executions[executionProto.Execution] = (execution, cts);
+                        var channel = Channels.GetOrAdd(execution.Delegate, _ => Channel.CreateUnbounded<ExecutionRecord>());
+                        await channel.Writer.WriteAsync(execution, cancellationToken).ConfigureAwait(false);
+                    }
+                }
             }
         }
     }

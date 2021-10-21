@@ -4,7 +4,7 @@ namespace Perper.Protocol
 {
     public partial class CacheService
     {
-        public async Task<(bool, T)> StateTryGetValue<T>(string instance, string key)
+        public async Task<(bool, T)> TryGetStateValue<T>(string instance, string key)
         {
             var stateCache = Ignite.GetOrCreateCache<string, T>(instance);
             var result = await stateCache.TryGetAsync(key).ConfigureAwait(false);
@@ -15,7 +15,7 @@ namespace Perper.Protocol
             return (true, result.Value);
         }
 
-        public Task StateSetValue<T>(string instance, string key, T value)
+        public Task SetStateValue<T>(string instance, string key, T value)
         {
             var stateCache = Ignite.GetOrCreateCache<string, T>(instance);
             return stateCache.PutAsync(key, value);

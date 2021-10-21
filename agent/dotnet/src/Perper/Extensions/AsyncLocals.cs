@@ -9,18 +9,19 @@ namespace Perper.Extensions
     public static class AsyncLocals
     {
         private static readonly AsyncLocal<(CacheService, NotificationService)> _connection = new();
-        private static readonly AsyncLocal<(string, string)> _instance = new();
+        private static readonly AsyncLocal<ExecutionRecord> _execution = new();
 
         public static CacheService CacheService => _connection.Value.Item1;
         public static NotificationService NotificationService => _connection.Value.Item2;
-        public static string Agent => NotificationService.Agent;
-        public static string Instance => _instance.Value.Item1;
-        public static string Execution => _instance.Value.Item2;
-        // bool isCall
+        public static string Agent => _execution.Value?.Agent!;
+        public static string Instance => _execution.Value?.Instance!;
+        public static string Delegate => _execution.Value?.Delegate!;
+        public static string Execution => _execution.Value?.Execution!;
+        public static CancellationToken CancellationToken => _execution.Value?.CancellationToken ?? default;
 
         public static void SetConnection(CacheService cacheService, NotificationService notificationService)
         {
-            _connection.Value = (cacheService, notificationService);
+            SetConnection((cacheService, notificationService));
         }
 
         public static void SetConnection((CacheService, NotificationService) connection)
@@ -28,20 +29,20 @@ namespace Perper.Extensions
             _connection.Value = connection;
         }
 
-        public static Task EnterContext(string instance, string execution, Func<Task> action)
+        public static Task EnterContext(ExecutionRecord execution, Func<Task> action)
         {
             return Task.Run(() =>
             {
-                _instance.Value = (instance, execution);
+                _execution.Value = execution;
                 return action();
             });
         }
 
-        public static Task<T> EnterContext<T>(string instance, string execution, Func<Task<T>> action)
+        public static Task<T> EnterContext<T>(ExecutionRecord execution, Func<Task<T>> action)
         {
             return Task.Run(() =>
             {
-                _instance.Value = (instance, execution);
+                _execution.Value = execution;
                 return action();
             });
         }

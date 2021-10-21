@@ -21,8 +21,7 @@ namespace Perper.Application
         public string Agent { get; }
         public bool UseInstances { get; set; } = false;
         private readonly List<Func<Task>> initHandlers = new();
-        private readonly Dictionary<string, Func<Task>> callHandlers = new();
-        private readonly Dictionary<string, Func<Task>> streamHandlers = new();
+        private readonly Dictionary<string, Func<Task>> executionHandlers = new();
 
         public PerperStartup(string agent) => Agent = agent;
 
@@ -32,15 +31,9 @@ namespace Perper.Application
             return this;
         }
 
-        public PerperStartup AddCallHandler(string @delegate, Func<Task> handler)
+        public PerperStartup AddHandler(string @delegate, Func<Task> handler)
         {
-            callHandlers.Add(@delegate, handler);
-            return this;
-        }
-
-        public PerperStartup AddStreamHandler(string @delegate, Func<Task> handler)
-        {
-            streamHandlers.Add(@delegate, handler);
+            executionHandlers.Add(@delegate, handler);
             return this;
         }
 
@@ -54,7 +47,7 @@ namespace Perper.Application
 
         public async Task RunAsync(CancellationToken cancellationToken = default)
         {
-            await EnterServicesContext(Agent, () => RunInServiceContext(cancellationToken), UseInstances).ConfigureAwait(false);
+            await EnterServicesContext(() => RunInServiceContext(cancellationToken)).ConfigureAwait(false);
         }
 
         public static Task RunAsync(string agent, CancellationToken cancellationToken = default)
@@ -70,31 +63,24 @@ namespace Perper.Application
         #endregion RunAsync
         #region Services
 
-        public static async Task EnterServicesContext(string agent, Func<Task> context, bool useInstance = false)
+        public static async Task EnterServicesContext(Func<Task> context)
         {
-            var (cacheService, notificationService) = await EstablishConnection(agent, useInstance).ConfigureAwait(false);
+            var (cacheService, notificationService) = await EstablishConnection().ConfigureAwait(false);
 
             AsyncLocals.SetConnection(cacheService, notificationService);
 
             await context().ConfigureAwait(false);
 
-            await notificationService.StopAsync().ConfigureAwait(false);
-            notificationService.Dispose();
+            await notificationService.DisposeAsync().ConfigureAwait(false);
         }
 
-        public static async Task<(CacheService, NotificationService)> EstablishConnection(string agent, bool useInstance = false)
+        public static async Task<(CacheService, NotificationService)> EstablishConnection()
         {
             var apacheIgniteEndpoint = Environment.GetEnvironmentVariable("APACHE_IGNITE_ENDPOINT") ?? "127.0.0.1:10800";
             var fabricGrpcAddress = Environment.GetEnvironmentVariable("PERPER_FABRIC_ENDPOINT") ?? "http://127.0.0.1:40400";
-            string? instance = null;
 
             Console.WriteLine($"APACHE_IGNITE_ENDPOINT: {apacheIgniteEndpoint}");
             Console.WriteLine($"PERPER_FABRIC_ENDPOINT: {fabricGrpcAddress}");
-            if (useInstance)
-            {
-                instance = Environment.GetEnvironmentVariable("X_PERPER_INSTANCE") ?? "";
-                Console.WriteLine($"X_PERPER_INSTANCE: {instance}");
-            }
 
             var igniteConfiguration = new IgniteClientConfiguration
             {
@@ -107,26 +93,18 @@ namespace Perper.Application
                 }
             };
 
-            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
-            var grpcChannel = GrpcChannel.ForAddress(fabricGrpcAddress);
-
-            var igniteTask = Policy
+            var ignite = await Policy
                 .HandleInner<System.Net.Sockets.SocketException>()
                 .WaitAndRetryAsync(10,
                     attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt - 2)),
                     (exception, timespan) => Console.WriteLine("Failed to connect to Ignite, retrying in {0}s", timespan.TotalSeconds))
-                .ExecuteAsync(() => Task.Run(() => Ignition.StartClient(igniteConfiguration)));
+                .ExecuteAsync(() => Task.Run(() => Ignition.StartClient(igniteConfiguration))).ConfigureAwait(false);;
 
-            var notificationService = new NotificationService(grpcChannel, agent, instance);
-            await Policy
-                .Handle<Grpc.Core.RpcException>(ex => ex.Status.DebugException is System.Net.Http.HttpRequestException)
-                .WaitAndRetryAsync(10,
-                    attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt - 2)),
-                    (exception, timespan) => Console.WriteLine("Failed to connect to GRPC, retrying in {0}s", timespan.TotalSeconds))
-                .ExecuteAsync(notificationService.StartAsync).ConfigureAwait(false);
-
-            var ignite = await igniteTask.ConfigureAwait(false);
             var cacheService = new CacheService(ignite);
+
+            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+            var grpcChannel = GrpcChannel.ForAddress(fabricGrpcAddress);
+            var notificationService = new NotificationService(grpcChannel);
 
             return (cacheService, notificationService);
         }
@@ -136,49 +114,41 @@ namespace Perper.Application
 
         public Task RunInServiceContext(CancellationToken cancellationToken = default)
         {
+            string? instance = null;
+            if (UseInstances)
+            {
+                instance = Environment.GetEnvironmentVariable("X_PERPER_INSTANCE") ?? "";
+                Console.WriteLine($"X_PERPER_INSTANCE: {instance}");
+            }
+
             var taskCollection = new TaskCollection();
 
-            callHandlers.TryAdd(PerperContext.StartupFunctionName, async () =>
+            executionHandlers.TryAdd(PerperContext.StartupFunctionName, async () =>
             {
-                await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
+                await AsyncLocals.CacheService.WriteExecutionFinished(AsyncLocals.Execution).ConfigureAwait(false);
             });
 
             foreach (var handler in initHandlers)
             {
-                taskCollection.Add(AsyncLocals.EnterContext($"{AsyncLocals.Agent}-init", $"Init-init", handler));
+                var initExecution = new ExecutionRecord(Agent, instance ?? $"{Agent}-init", "Init", $"{Agent}-init", cancellationToken);
+                taskCollection.Add(AsyncLocals.EnterContext(initExecution, handler));
             }
 
-            foreach (var (@delegate, handler) in callHandlers)
+            foreach (var (@delegate, handler) in executionHandlers)
             {
-                ListenCallNotifications(taskCollection, @delegate, handler, cancellationToken);
-            }
-
-            foreach (var (@delegate, handler) in streamHandlers)
-            {
-                ListenStreamNotifications(taskCollection, @delegate, handler, cancellationToken);
+                ListenExecutions(taskCollection, Agent, instance, @delegate, handler, cancellationToken);
             }
 
             return taskCollection.GetTask();
         }
 
-        public static void ListenCallNotifications(TaskCollection taskCollection, string @delegate, Func<Task> handler, CancellationToken cancellationToken)
+        public static void ListenExecutions(TaskCollection taskCollection, string agent, string? instance, string @delegate, Func<Task> handler, CancellationToken cancellationToken)
         {
             taskCollection.Add(async () =>
             {
-                await foreach (var (instance, call) in AsyncLocals.NotificationService.GetCallTriggers(@delegate).ReadAllAsync(cancellationToken))
+                await foreach (var execution in AsyncLocals.NotificationService.GetExecutionsReader(agent, instance, @delegate).ReadAllAsync(cancellationToken))
                 {
-                    taskCollection.Add(AsyncLocals.EnterContext(instance, call, handler));
-                }
-            });
-        }
-
-        public static void ListenStreamNotifications(TaskCollection taskCollection, string @delegate, Func<Task> handler, CancellationToken cancellationToken)
-        {
-            taskCollection.Add(async () =>
-            {
-                await foreach (var (instance, stream) in AsyncLocals.NotificationService.GetStreamTriggers(@delegate).ReadAllAsync(cancellationToken))
-                {
-                    taskCollection.Add(AsyncLocals.EnterContext(instance, stream, handler));
+                    taskCollection.Add(AsyncLocals.EnterContext(execution, handler));
                 }
             });
         }

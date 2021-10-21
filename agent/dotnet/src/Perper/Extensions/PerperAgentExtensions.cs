@@ -42,21 +42,21 @@ namespace Perper.Extensions
 
         private static async Task<object?[]?> InternalCallAsync(PerperAgent agent, string @delegate, object?[] parameters)
         {
-            var call = CacheService.GenerateName(@delegate);
+            var execution = CacheService.GenerateName(@delegate);
 
-            await AsyncLocals.CacheService.CallCreate(call, agent.Agent, agent.Instance, @delegate, AsyncLocals.Agent, AsyncLocals.Instance, parameters).ConfigureAwait(false);
+            await AsyncLocals.CacheService.CreateExecution(execution, agent.Agent, agent.Instance, @delegate, parameters).ConfigureAwait(false);
 
-            await AsyncLocals.NotificationService.WaitCallFinished(call).ConfigureAwait(false);
+            await AsyncLocals.NotificationService.WaitExecutionFinished(execution).ConfigureAwait(false);
 
-            var results = await AsyncLocals.CacheService.CallReadResult(call).ConfigureAwait(false);
-            await AsyncLocals.CacheService.CallRemove(call).ConfigureAwait(false);
+            var results = await AsyncLocals.CacheService.ReadExecutionResult(execution).ConfigureAwait(false);
+            await AsyncLocals.CacheService.RemoveExecution(execution).ConfigureAwait(false);
 
             return results;
         }
 
         public static async Task DestroyAsync(this PerperAgent agent)
         {
-            await AsyncLocals.CacheService.InstanceDestroy(agent.Instance).ConfigureAwait(false);
+            await AsyncLocals.CacheService.RemoveInstance(agent.Instance).ConfigureAwait(false);
         }
     }
 }

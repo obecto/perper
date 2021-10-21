@@ -71,7 +71,7 @@ namespace Perper.Application
 
         public static PerperStartup AddCallHandler(this PerperStartup startup, string @delegate, Type callType, MethodInfo methodInfo)
         {
-            return startup.AddCallHandler(@delegate, () => HandleCall(callType, methodInfo));
+            return startup.AddHandler(@delegate, () => HandleCall(callType, methodInfo));
         }
 
         public static PerperStartup AddStreamHandler<T>(this PerperStartup startup) => startup.AddStreamHandler(typeof(T));
@@ -81,7 +81,7 @@ namespace Perper.Application
 
         public static PerperStartup AddStreamHandler(this PerperStartup startup, string @delegate, Type streamType, MethodInfo methodInfo)
         {
-            return startup.AddStreamHandler(@delegate, () => HandleStream(streamType, methodInfo));
+            return startup.AddHandler(@delegate, () => HandleStream(streamType, methodInfo));
         }
 
         private static MethodInfo? GetRunMethod(Type type)
@@ -114,7 +114,7 @@ namespace Perper.Application
         {
             try
             {
-                var callArguments = await AsyncLocals.CacheService.GetCallParameters(AsyncLocals.Execution).ConfigureAwait(false);
+                var callArguments = await AsyncLocals.CacheService.ReadExecutionParameters(AsyncLocals.Execution).ConfigureAwait(false);
                 var (returnType, invokeResult) = await InvokeMethodAsync(callType, methodInfo, callArguments).ConfigureAwait(false);
 
                 await WriteCallResultAsync(returnType, invokeResult).ConfigureAwait(false);
@@ -131,7 +131,7 @@ namespace Perper.Application
         {
             try
             {
-                var streamArguments = await AsyncLocals.CacheService.GetStreamParameters(AsyncLocals.Execution).ConfigureAwait(false);
+                var streamArguments = await AsyncLocals.CacheService.ReadExecutionParameters(AsyncLocals.Execution).ConfigureAwait(false);
                 var (returnType, invokeResult) = await InvokeMethodAsync(streamType, methodInfo, streamArguments).ConfigureAwait(false);
 
                 await WriteStreamResultAsync(returnType, invokeResult).ConfigureAwait(false);
@@ -244,17 +244,17 @@ namespace Perper.Application
                     results = typeof(object[]) == returnType ? (object?[])invokeResult! : (new object?[] { invokeResult });
                 }
 
-                await AsyncLocals.CacheService.CallWriteResult(AsyncLocals.Execution, results).ConfigureAwait(false);
+                await AsyncLocals.CacheService.WriteExecutionResult(AsyncLocals.Execution, results).ConfigureAwait(false);
             }
             else
             {
                 if (invokeResult is Exception e)
                 {
-                    await AsyncLocals.CacheService.CallWriteError(AsyncLocals.Execution, e.Message).ConfigureAwait(false);
+                    await AsyncLocals.CacheService.WriteExecutionError(AsyncLocals.Execution, e.Message).ConfigureAwait(false);
                 }
                 else
                 {
-                    await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
+                    await AsyncLocals.CacheService.WriteExecutionFinished(AsyncLocals.Execution).ConfigureAwait(false);
                 }
             }
         }
@@ -309,7 +309,7 @@ namespace Perper.Application
             // TODO: CancellationToken
             await foreach (var value in values)
             {
-                await AsyncLocals.CacheService.StreamWriteItem(AsyncLocals.Execution, value).ConfigureAwait(false);
+                await AsyncLocals.CacheService.WriteStreamItem(AsyncLocals.Execution, value).ConfigureAwait(false);
             }
         }
         #endregion Execute

@@ -4,7 +4,7 @@ using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
 
-using Perper.Protocol.Instance;
+using Perper.Protocol.Cache;
 
 namespace Perper.Protocol
 {
@@ -14,15 +14,15 @@ namespace Perper.Protocol
         {
             Ignite = ignite;
             igniteBinary = ignite.GetBinary();
-            streamsCache = ignite.GetCache<string, StreamData>("streams");
-            callsCache = ignite.GetCache<string, CallData>("calls");
-            instancesCache = ignite.GetCache<string, InstanceData>("instances");
+            executionsCache = ignite.GetOrCreateCache<string, ExecutionData>("executions");
+            streamListenersCache = ignite.GetOrCreateCache<string, StreamListener>("stream-listeners");
+            instancesCache = ignite.GetOrCreateCache<string, InstanceData>("instances");
         }
 
         public IIgniteClient Ignite { get; }
         private readonly IBinary igniteBinary;
-        private readonly ICacheClient<string, StreamData> streamsCache;
-        private readonly ICacheClient<string, CallData> callsCache;
+        private readonly ICacheClient<string, ExecutionData> executionsCache;
+        private readonly ICacheClient<string, StreamListener> streamListenersCache;
         private readonly ICacheClient<string, InstanceData> instancesCache;
 
         public static long CurrentTicks => DateTime.UtcNow.Ticks - DateTime.UnixEpoch.Ticks;
