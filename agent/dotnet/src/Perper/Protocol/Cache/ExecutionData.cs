@@ -9,9 +9,9 @@ namespace Perper.Protocol.Cache
         private readonly string agent;
         private readonly string instance;
         private readonly string @delegate;
-        private readonly object?[] parameters;
-
         private bool finished;
+
+        private readonly object?[] parameters;
         private object?[]? result;
         private string? error;
 
@@ -28,7 +28,6 @@ namespace Perper.Protocol.Cache
             this.instance = instance;
             this.@delegate = @delegate;
             this.parameters = parameters;
-
 
             this.finished = finished;
             this.result = result;

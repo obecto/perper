@@ -15,26 +15,14 @@ namespace Perper.Protocol
 {
     public partial class CacheService
     {
-        public Task CreateStream(string stream, string? indexType = null, Hashtable? indexFields = null)
+        public Task CreateStream(string stream, params QueryEntity[] indexes)
         {
-            if (indexType == null || indexFields == null)
-            {
-                Ignite.CreateCache<long, object>(new CacheClientConfiguration(stream));
-            }
-            else
-            {
-                var queryEntity = new QueryEntity()
-                {
-                    ValueTypeName = indexType,
-                    Fields = indexFields.Cast<DictionaryEntry>().Select(de => new QueryField((string)de.Key!, (string)de.Value!)).ToList(),
-                    Indexes = indexFields.Cast<DictionaryEntry>().Select(de => new QueryIndex(new QueryIndexField((string)de.Key!))).ToList()
-                };
-                Ignite.CreateCache<long, object>(new CacheClientConfiguration(stream, queryEntity));
-            }
+            Ignite.CreateCache<long, object>(new CacheClientConfiguration(stream, indexes));
             return Task.CompletedTask;
         }
 
         public const long ListenerPersistAll = long.MinValue;
+        public const long ListenerJustTrigger = long.MaxValue;
 
         public async Task SetStreamListenerPosition(string listener, string stream, long position)
         {

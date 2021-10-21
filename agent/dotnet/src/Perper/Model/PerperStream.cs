@@ -33,7 +33,7 @@ namespace Perper.Model
         public long Stride => stride;
         public bool LocalToData => localToData;
 
-        public bool Replay => startIndex == -1;
+        public bool Replay => startIndex != -1;
         public bool Packed => stride != 0;
     }
 }

@@ -46,6 +46,14 @@ namespace Perper.Protocol
             }, CallOptions.WithCancellationToken(cancellationToken));
         }
 
+        public async Task WaitListenerAttached(string stream, CancellationToken cancellationToken = default)
+        {
+            await FabricClient.ListenerAttachedAsync(new ListenerAttachedRequest
+            {
+                Stream = stream
+            }, CallOptions.WithCancellationToken(cancellationToken));
+        }
+
         public async IAsyncEnumerable<long> EnumerateStreamItemKeys(string stream, long startKey = -1, long stride = 0, bool localToData = false, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var streamItems = FabricClient.StreamItems(new StreamItemsRequest

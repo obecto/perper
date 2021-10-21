@@ -131,6 +131,8 @@ namespace Perper.Application
         {
             try
             {
+                await AsyncLocals.NotificationService.WaitListenerAttached(AsyncLocals.Execution, AsyncLocals.CancellationToken).ConfigureAwait(false);
+
                 var streamArguments = await AsyncLocals.CacheService.ReadExecutionParameters(AsyncLocals.Execution).ConfigureAwait(false);
                 var (returnType, invokeResult) = await InvokeMethodAsync(streamType, methodInfo, streamArguments).ConfigureAwait(false);
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,23 +12,26 @@ using Perper.Protocol.Cache;
 
 namespace Perper.Extensions
 {
+
     public class PerperStreamBuilder
     {
+
         public PerperStream Stream => new(StreamName);
 
-        public string StreamName { get; private set; }
-        public string? Delegate { get; private set; }
+        public string StreamName { get; }
+        public string? Delegate { get; }
 
-        public bool IsEphemeral { get; private set; } = true;
+        public bool IsPersistent { get; private set; }
         public bool IsAction { get; private set; }
-        public string? IndexType { get; private set; }
-        public Hashtable? IndexFields { get; private set; }
+
+        private readonly List<QueryEntity> indexes = new();
+        public IReadOnlyCollection<QueryEntity> Indexes => indexes;
 
         public PerperStreamBuilder(string? @delegate) : this(CacheService.GenerateName(@delegate ?? ""), @delegate)
         {
         }
 
-        public PerperStreamBuilder(string stream, string @delegate)
+        public PerperStreamBuilder(string stream, string? @delegate)
         {
             StreamName = stream;
             Delegate = @delegate;
@@ -35,25 +39,34 @@ namespace Perper.Extensions
 
         public async Task<PerperStream> StartAsync(params object[] parameters)
         {
-            await AsyncLocals.CacheService.CreateStream(StreamName, IndexType, IndexFields).ConfigureAwait(false);
-            if (!IsEphemeral)
+            await AsyncLocals.CacheService.CreateStream(StreamName, Indexes.ToArray()).ConfigureAwait(false);
+
+            if (IsPersistent)
             {
                 await AsyncLocals.CacheService.SetStreamListenerPosition($"{StreamName}-persist", StreamName, CacheService.ListenerPersistAll).ConfigureAwait(false);
             }
-            await AsyncLocals.CacheService.CreateExecution(StreamName, AsyncLocals.Agent, AsyncLocals.Instance, Delegate, parameters).ConfigureAwait(false);
+            else if (IsAction)
+            {
+                await AsyncLocals.CacheService.SetStreamListenerPosition($"{StreamName}-trigger", StreamName, CacheService.ListenerJustTrigger).ConfigureAwait(false);
+            }
+
+            if (Delegate != null)
+            {
+                await AsyncLocals.CacheService.CreateExecution(StreamName, AsyncLocals.Agent, AsyncLocals.Instance, Delegate, parameters).ConfigureAwait(false);
+            }
 
             return Stream;
         }
 
         public PerperStreamBuilder Ephemeral()
         {
-            IsEphemeral = true;
+            IsPersistent = false;
             return this;
         }
 
         public PerperStreamBuilder Persistent()
         {
-            IsEphemeral = false;
+            IsPersistent = true;
             return this;
         }
 
@@ -63,27 +76,21 @@ namespace Perper.Extensions
             return this;
         }
 
-        public PerperStreamBuilder Index(string indexType, Hashtable indexFields)
+        public PerperStreamBuilder Index(QueryEntity queryEntity)
         {
-            IndexType = indexType;
-            IndexFields = indexFields;
+            indexes.Add(queryEntity);
             return this;
         }
 
-        public PerperStreamBuilder Index(string indexType, IEnumerable<KeyValuePair<string, string>> indexFields)
+        public PerperStreamBuilder Index<T>() => Index(typeof(T));
+
+        public PerperStreamBuilder Index(Type type) => Index(new QueryEntity(type));
+
+        public PerperStreamBuilder Index(string indexType, Dictionary<string, string> indexFields) => Index(new QueryEntity()
         {
-            var indexFieldHashtable = new Hashtable();
-
-            foreach (var (name, type) in indexFields)
-            {
-                indexFieldHashtable[name] = type;
-            }
-
-            return Index(indexType, indexFieldHashtable);
-        }
-
-        public PerperStreamBuilder Index(QueryEntity queryEntity) => Index(queryEntity.ValueTypeName, queryEntity.Fields.Select(field => KeyValuePair.Create(field.Name, field.FieldTypeName)));
-
-        public PerperStreamBuilder Index<T>() => Index(new QueryEntity(typeof(T)));
+            ValueTypeName = indexType,
+            Fields = indexFields.Select(kv => new QueryField(kv.Key, kv.Value)).ToList(),
+            Indexes = indexFields.Select(kv => new QueryIndex(new QueryIndexField(kv.Key))).ToList()
+        });
     }
 }

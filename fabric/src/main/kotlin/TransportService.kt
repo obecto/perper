@@ -1,10 +1,12 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.AgentType
 import com.obecto.perper.fabric.cache.ExecutionData
+import com.obecto.perper.fabric.cache.StreamListener
 //import com.obecto.perper.fabric.cache.StreamDelegateType
 import com.obecto.perper.protobuf.FabricGrpcKt
 import com.obecto.perper.protobuf.ExecutionsRequest
 import com.obecto.perper.protobuf.ExecutionFinishedRequest
+import com.obecto.perper.protobuf.ListenerAttachedRequest
 import com.obecto.perper.protobuf.ExecutionsResponse
 import com.obecto.perper.protobuf.StreamItemsRequest
 import com.obecto.perper.protobuf.StreamItemsResponse
@@ -207,7 +209,7 @@ class TransportService(var port: Int = 40400) : Service {
 
             query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, ExecutionData>> {
                 CacheEntryEventFilter { event ->
-                    event.eventType != EventType.REMOVED && event.key == execution && event.value.finished
+                    event.eventType != EventType.REMOVED && event.eventType != EventType.EXPIRED && event.key == execution && event.value.finished
                 }
             }
 
@@ -350,6 +352,39 @@ class TransportService(var port: Int = 40400) : Service {
                 }
             }
         }.buffer(Channel.UNLIMITED)
+
+        override suspend fun listenerAttached(request: ListenerAttachedRequest): Empty {
+            val stream = request.stream
+
+            val streamListenersCacheName = "stream-listeners"
+            val streamListenersCache = ignite.cache<String, StreamListener>(streamListenersCacheName)
+
+            val query = ContinuousQuery<String, StreamListener>()
+            val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
+
+            query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, StreamListener>> {
+                CacheEntryEventFilter { event ->
+                    event.eventType != EventType.REMOVED && event.eventType != EventType.EXPIRED && event.value.stream == stream
+                }
+            }
+            query.initialQuery = ScanQuery(IgniteBiPredicate<String, StreamListener> { _, value -> value.stream == stream })
+
+            val queryCursor = streamListenersCache.query(query)
+
+            log.debug({ "Listener attached listener started for '$stream'!" })
+
+            try {
+                for (_i in queryCursor) {
+                    return Empty.getDefaultInstance()
+                }
+                queryChannel.receive()
+                return Empty.getDefaultInstance()
+            } finally {
+                log.debug({ "Listener attached listener completed for '$stream'!" })
+                queryCursor.close()
+                queryChannel.close()
+            }
+        }
     }
 
     /*inner class ExternalScalerImpl : ExternalScalerGrpcKt.ExternalScalerCoroutineImplBase() {

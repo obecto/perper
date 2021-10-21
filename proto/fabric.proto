@@ -12,6 +12,7 @@ service Fabric {
     rpc Executions (ExecutionsRequest) returns (stream ExecutionsResponse) {}
     rpc ExecutionFinished (ExecutionFinishedRequest) returns (google.protobuf.Empty) {}
     rpc StreamItems (StreamItemsRequest) returns (stream StreamItemsResponse) {}
+    rpc ListenerAttached (ListenerAttachedRequest) returns (google.protobuf.Empty) {}
 }
 
 message ExecutionsRequest {
@@ -44,3 +45,8 @@ message StreamItemsRequest {
 message StreamItemsResponse {
     int64 key = 1;
 }
+
+message ListenerAttachedRequest {
+    string stream = 1;
+}
+
