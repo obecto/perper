@@ -1,39 +1,33 @@
 package com.obecto.perper.fabric
+import com.google.protobuf.Empty
 import com.obecto.perper.fabric.cache.AgentType
-import com.obecto.perper.fabric.cache.InstanceData
 import com.obecto.perper.fabric.cache.ExecutionData
+import com.obecto.perper.fabric.cache.InstanceData
 import com.obecto.perper.fabric.cache.StreamListener
-import com.obecto.perper.protobuf.FabricGrpcKt
-import com.obecto.perper.protobuf.ExecutionsRequest
 import com.obecto.perper.protobuf.ExecutionFinishedRequest
-import com.obecto.perper.protobuf.ListenerAttachedRequest
+import com.obecto.perper.protobuf.ExecutionsRequest
 import com.obecto.perper.protobuf.ExecutionsResponse
+import com.obecto.perper.protobuf.FabricGrpcKt
+import com.obecto.perper.protobuf.ListenerAttachedRequest
 import com.obecto.perper.protobuf.StreamItemsRequest
 import com.obecto.perper.protobuf.StreamItemsResponse
 import io.grpc.Server
 import io.grpc.ServerBuilder
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ProducerScope
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
-import org.apache.ignite.IgniteCache
 import org.apache.ignite.IgniteLogger
-import org.apache.ignite.IgniteQueue
-import org.apache.ignite.binary.BinaryObject
 import org.apache.ignite.cache.query.ContinuousQuery
 import org.apache.ignite.cache.query.QueryCursor
 import org.apache.ignite.cache.query.ScanQuery
-import org.apache.ignite.configuration.CollectionConfiguration
 import org.apache.ignite.lang.IgniteBiPredicate
 import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
@@ -46,7 +40,6 @@ import sh.keda.externalscaler.GetMetricsResponse
 import sh.keda.externalscaler.IsActiveResponse
 import sh.keda.externalscaler.ScaledObjectRef
 import java.util.concurrent.CancellationException
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import javax.cache.Cache.Entry
@@ -55,7 +48,6 @@ import javax.cache.event.CacheEntryEvent
 import javax.cache.event.CacheEntryEventFilter
 import javax.cache.event.CacheEntryUpdatedListener
 import javax.cache.event.EventType
-import com.google.protobuf.Empty
 
 private inline val EventType.isRemoval get() = this == EventType.REMOVED || this == EventType.EXPIRED
 private inline val EventType.isCreation get() = this == EventType.CREATED
@@ -99,7 +91,6 @@ class FabricService(var port: Int = 40400) : Service {
     override fun execute(ctx: ServiceContext) {
         server.start()
         log.debug({ "Transport service started!" })
-
     }
 
     override fun cancel(ctx: ServiceContext) {
@@ -122,7 +113,7 @@ class FabricService(var port: Int = 40400) : Service {
         }
     }
 
-    private fun <T, K, V> ContinuousQuery<K, V>.setChannelLocalListener (channel: Channel<T>, block: suspend Channel<T>.(CacheEntryEvent<out K, out V>) -> Unit): Channel<T> {
+    private fun <T, K, V> ContinuousQuery<K, V>.setChannelLocalListener(channel: Channel<T>, block: suspend Channel<T>.(CacheEntryEvent<out K, out V>) -> Unit): Channel<T> {
         this.localListener = CacheEntryUpdatedListener { events ->
             try {
                 for (event in events) {
@@ -149,16 +140,19 @@ class FabricService(var port: Int = 40400) : Service {
 
             val query = ContinuousQuery<String, ExecutionData>()
             val queryChannel = query.setChannelLocalListener(Channel<Pair<String, Pair<Boolean, ExecutionData>>>(Channel.UNLIMITED)) {
-                event -> send(Pair(event.key, Pair(event.eventType.isRemoval, event.value)))
+                event ->
+                send(Pair(event.key, Pair(event.eventType.isRemoval, event.value)))
             }
             query.setLocal(localToData)
 
-            query.remoteFilterFactory = Factory { CacheEntryEventFilter { event ->
-                if (event.isOldValueAvailable && !event.oldValue.finished)
-                    false
-                else // NOTE: Can probably use a single query for all executions
-                    event.value.agent == agent && (instance == null || event.value.instance == instance) && !event.value.finished
-            } }
+            query.remoteFilterFactory = Factory {
+                CacheEntryEventFilter { event ->
+                    if (event.isOldValueAvailable && !event.oldValue.finished)
+                        false
+                    else // NOTE: Can probably use a single query for all executions
+                        event.value.agent == agent && (instance == null || event.value.instance == instance) && !event.value.finished
+                }
+            }
             query.initialQuery = ScanQuery<String, ExecutionData>().also {
                 it.setLocal(localToData)
                 it.filter = IgniteBiPredicate<String, ExecutionData> { _, value ->
@@ -175,12 +169,14 @@ class FabricService(var port: Int = 40400) : Service {
 
                 suspend fun ProducerScope<ExecutionsResponse>.output(key: String, value: ExecutionData, removed: Boolean) {
                     if (sentExecutions.put(key, removed) != removed) {
-                        send(ExecutionsResponse.newBuilder().also {
-                            it.instance = value.instance
-                            it.delegate = value.delegate
-                            it.execution = key
-                            it.cancelled = removed
-                        }.build())
+                        send(
+                            ExecutionsResponse.newBuilder().also {
+                                it.instance = value.instance
+                                it.delegate = value.delegate
+                                it.execution = key
+                                it.cancelled = removed
+                            }.build()
+                        )
                     }
                 }
 
@@ -211,9 +207,12 @@ class FabricService(var port: Int = 40400) : Service {
             val query = ContinuousQuery<String, ExecutionData>()
             val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
 
-            query.remoteFilterFactory = Factory { CacheEntryEventFilter {
-                event -> event.eventType.isRemoval || (event.key == execution && event.value.finished)
-            } }
+            query.remoteFilterFactory = Factory {
+                CacheEntryEventFilter {
+                    event ->
+                    event.eventType.isRemoval || (event.key == execution && event.value.finished)
+                }
+            }
 
             val queryCursor = executionsCache.query(query) // Important to start query before checking if it is already finished
 
@@ -221,8 +220,7 @@ class FabricService(var port: Int = 40400) : Service {
 
             try {
                 val executionData = executionsCache.get(execution)
-                if (executionData == null || !executionData.finished)
-                {
+                if (executionData == null || !executionData.finished) {
                     queryChannel.receive()
                 }
                 return Empty.getDefaultInstance()
@@ -241,38 +239,42 @@ class FabricService(var port: Int = 40400) : Service {
             val localToData = request.localToData
 
             suspend fun ProducerScope<StreamItemsResponse>.output(key: Long) {
-                send(StreamItemsResponse.newBuilder().also {
-                    it.key = key
-                }.build())
+                send(
+                    StreamItemsResponse.newBuilder().also {
+                        it.key = key
+                    }.build()
+                )
             }
 
             val streamCache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, Any>()
 
-            if (stride == 0L)
-            {
+            if (stride == 0L) {
                 val query = ContinuousQuery<Long, Any>()
                 val queryChannel = query.setChannelLocalListener(Channel<Long>(Channel.UNLIMITED)) { event -> send(event.key) }
                 query.setLocal(localToData)
 
-                if (startKey == null)
-                {
-                    query.remoteFilterFactory = Factory { CacheEntryEventFilter {
-                        event -> event.eventType.isCreation
-                    } }
-                    //query.initialQuery = null;
-                }
-                else
-                {
-                    query.remoteFilterFactory = Factory { CacheEntryEventFilter {
-                        event -> event.eventType.isCreation && event.key > startKey
-                    } }
+                if (startKey == null) {
+                    query.remoteFilterFactory = Factory {
+                        CacheEntryEventFilter {
+                            event ->
+                            event.eventType.isCreation
+                        }
+                    }
+                    // query.initialQuery = null;
+                } else {
+                    query.remoteFilterFactory = Factory {
+                        CacheEntryEventFilter {
+                            event ->
+                            event.eventType.isCreation && event.key > startKey
+                        }
+                    }
                     query.initialQuery = ScanQuery(IgniteBiPredicate<Long, Any> { key, _ -> key > startKey }).also {
                         it.setLocal(localToData)
                     }
                 }
 
                 val queryCursor = streamCache.query(query)
-                log.debug({ "Stream items listener started for '${stream}' ${startKey ?: "last"}..!" })
+                log.debug({ "Stream items listener started for '$stream' ${startKey ?: "last"}..!" })
 
                 try {
                     val itemKeys = queryCursor.map({ item -> item.key }).toMutableList() // NOTE: Sorts all keys in-memory; inefficient
@@ -284,75 +286,77 @@ class FabricService(var port: Int = 40400) : Service {
                     var lastKey = itemKeys.lastOrNull() ?: startKey
 
                     for (key in queryChannel) {
-                        if (lastKey == null || key > lastKey)
-                        {
+                        if (lastKey == null || key > lastKey) {
                             lastKey = key
                             output(key)
                         }
                     }
                 } finally {
                     queryCursor.close()
-                    log.debug({ "Stream items listener finished for '${stream}' ${startKey ?: "last"}..!" })
+                    log.debug({ "Stream items listener finished for '$stream' ${startKey ?: "last"}..!" })
                 }
-            }
-            else // if (stride != 0L)
-            {
-                log.debug({ "Stream items listener started for '${stream}' ${startKey ?: "last"}..+${stride}!" })
-                try {
-                    var keyOrNull = startKey
+            } else // if (stride != 0L)
+                {
+                    log.debug({ "Stream items listener started for '$stream' ${startKey ?: "last"}..+$stride!" })
+                    try {
+                        var keyOrNull = startKey
 
-                    if (keyOrNull == null) {
-                        val keys = streamCache.query(ScanQuery<Long, Any>().also {
-                            it.setLocal(localToData)
-                        }).map({ item -> item.key })
-                        keyOrNull = if (stride > 0) keys.maxOrNull() else keys.minOrNull()
-                    }
-
-                    if (keyOrNull == null) { // Cache is empty
-                        val query = ContinuousQuery<Long, Any>()
-                        val queryChannel = query.setChannelLocalListener(Channel<Long>(1, BufferOverflow.DROP_LATEST)) { event -> send(event.key) }
-                        val queryCursor = streamCache.query(query)
-                        try {
-                            keyOrNull = queryChannel.receive()
-                        } finally {
-                            queryCursor.close()
-                            queryChannel.close()
-                        }
-                    }
-
-                    var key = keyOrNull!!
-
-                    while (true) {
-                        if (!streamCache.containsKey(key))
-                        {
-                            val query = ContinuousQuery<Long, Any>()
-                            val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
-
-                            query.remoteFilterFactory = Factory { CacheEntryEventFilter {
-                                event -> event.key == key
-                            } }
-
-                            val queryCursor = streamCache.query(query) // Important to start query before checking if it is already finished
-
-                            try {
-                                if (!streamCache.containsKey(key)) // Race check
-                                {
-                                    queryChannel.receive()
+                        if (keyOrNull == null) {
+                            val keys = streamCache.query(
+                                ScanQuery<Long, Any>().also {
+                                    it.setLocal(localToData)
                                 }
+                            ).map({ item -> item.key })
+                            keyOrNull = if (stride > 0) keys.maxOrNull() else keys.minOrNull()
+                        }
+
+                        if (keyOrNull == null) { // Cache is empty
+                            val query = ContinuousQuery<Long, Any>()
+                            val queryChannel = query.setChannelLocalListener(Channel<Long>(1, BufferOverflow.DROP_LATEST)) { event -> send(event.key) }
+                            val queryCursor = streamCache.query(query)
+                            try {
+                                keyOrNull = queryChannel.receive()
                             } finally {
                                 queryCursor.close()
                                 queryChannel.close()
                             }
                         }
 
-                        output(key)
+                        var key = keyOrNull!!
 
-                        key += stride
+                        while (true) {
+                            if (!streamCache.containsKey(key)) {
+                                val query = ContinuousQuery<Long, Any>()
+                                val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
+
+                                query.remoteFilterFactory = Factory {
+                                    CacheEntryEventFilter {
+                                        event ->
+                                        event.key == key
+                                    }
+                                }
+
+                                val queryCursor = streamCache.query(query) // Important to start query before checking if it is already finished
+
+                                try {
+                                    if (!streamCache.containsKey(key)) // Race check
+                                        {
+                                            queryChannel.receive()
+                                        }
+                                } finally {
+                                    queryCursor.close()
+                                    queryChannel.close()
+                                }
+                            }
+
+                            output(key)
+
+                            key += stride
+                        }
+                    } finally {
+                        log.debug({ "Stream items listener finished for '$stream' ${startKey ?: "last"}..+$stride!" })
                     }
-                } finally {
-                    log.debug({ "Stream items listener finished for '${stream}' ${startKey ?: "last"}..+${stride}!" })
                 }
-            }
         }.buffer(Channel.UNLIMITED)
 
         override suspend fun listenerAttached(request: ListenerAttachedRequest): Empty {
@@ -364,9 +368,12 @@ class FabricService(var port: Int = 40400) : Service {
             val query = ContinuousQuery<String, StreamListener>()
             val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
 
-            query.remoteFilterFactory = Factory { CacheEntryEventFilter {
-                event -> event.eventType.isCreation  && event.value.stream == stream
-            } }
+            query.remoteFilterFactory = Factory {
+                CacheEntryEventFilter {
+                    event ->
+                    event.eventType.isCreation && event.value.stream == stream
+                }
+            }
             query.initialQuery = ScanQuery(IgniteBiPredicate<String, StreamListener> { _, value -> value.stream == stream })
 
             val queryCursor = streamListenersCache.query(query)
@@ -390,7 +397,7 @@ class FabricService(var port: Int = 40400) : Service {
     inner class ExternalScalerImpl : ExternalScalerGrpcKt.ExternalScalerCoroutineImplBase() {
         val ScaledObjectRef.agent
             get() = scalerMetadataMap.getOrDefault("agent", name)
-        //val ScaledObjectRef.targetExecutions
+        // val ScaledObjectRef.targetExecutions
         //    get() = scalerMetadataMap.getOrDefault("targetExecutions", "10").toLong()
         val ScaledObjectRef.targetInstances
             get() = scalerMetadataMap.getOrDefault("targetInstances", "10").toLong()
@@ -399,7 +406,7 @@ class FabricService(var port: Int = 40400) : Service {
             val agent = request.agent
 
             val instancesCache = ignite.getOrCreateCache<String, InstanceData>("instances")
-            val query = ScanQuery(IgniteBiPredicate<String, InstanceData> {_, value -> value.agent == agent}).also {
+            val query = ScanQuery(IgniteBiPredicate<String, InstanceData> { _, value -> value.agent == agent }).also {
                 it.setLocal(true)
             }
             val queryCursor = instancesCache.query(query)
@@ -434,7 +441,7 @@ class FabricService(var port: Int = 40400) : Service {
                 }
             }
             query.setLocal(true)
-            query.initialQuery = ScanQuery(IgniteBiPredicate<String, InstanceData> {_, value -> value.agent == agent}).also {
+            query.initialQuery = ScanQuery(IgniteBiPredicate<String, InstanceData> { _, value -> value.agent == agent }).also {
                 it.setLocal(true)
             }
             queryCursor = instancesCache.query(query)
@@ -463,7 +470,7 @@ class FabricService(var port: Int = 40400) : Service {
 
             val instancesCache = ignite.getOrCreateCache<String, InstanceData>("instances")
 
-            val query = ScanQuery(IgniteBiPredicate<String, InstanceData> {_, value -> value.agent == agent}).also {
+            val query = ScanQuery(IgniteBiPredicate<String, InstanceData> { _, value -> value.agent == agent }).also {
                 it.setLocal(true)
             }
             val queryCursor = instancesCache.query(query)

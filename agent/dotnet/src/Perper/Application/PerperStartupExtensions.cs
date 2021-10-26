@@ -153,7 +153,7 @@ namespace Perper.Application
             }
             else if (resultType == typeof(object[]) || resultType == typeof(void))
             {
-                return (object?[]?) result;
+                return (object?[]?)result;
             }
             else
             {
@@ -181,14 +181,15 @@ namespace Perper.Application
                 if (returnType.IsGenericType)
                 {
                     var _invoker = invoker;
-                    invoker = async () => await (dynamic) (await _invoker().ConfigureAwait(false))!;
+                    invoker = async () => await (dynamic)(await _invoker().ConfigureAwait(false))!;
                     returnType = returnType.GetGenericArguments()[0];
                 }
                 else
                 {
                     var _invoker = invoker;
-                    invoker = async () => {
-                        await (dynamic) (await _invoker().ConfigureAwait(false))!;
+                    invoker = async () =>
+                    {
+                        await (dynamic)(await _invoker().ConfigureAwait(false))!;
                         return null;
                     };
                     returnType = typeof(void);
@@ -213,7 +214,8 @@ namespace Perper.Application
                 }
 
                 var _invoker = invoker;
-                invoker = async () => {
+                invoker = async () =>
+                {
                     await AsyncLocals.FabricService.WaitListenerAttached(AsyncLocals.Execution, AsyncLocals.CancellationToken).ConfigureAwait(false);
                     var asyncEnumerable = await _invoker().ConfigureAwait(false);
                     await ((Task)processMethod.Invoke(null, new object?[] { asyncEnumerable })!).ConfigureAwait(false);

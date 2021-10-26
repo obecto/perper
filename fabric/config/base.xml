@@ -15,6 +15,9 @@
                     <property name="typeName" value="com.obecto.perper.fabric.cache.ExecutionData"/>
                 </bean>
                 <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.InstanceData"/>
+                </bean>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
                     <property name="typeName" value="com.obecto.perper.fabric.cache.StreamListener"/>
                 </bean>
             </list></property>

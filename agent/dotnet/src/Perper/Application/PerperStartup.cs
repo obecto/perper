@@ -98,7 +98,7 @@ namespace Perper.Application
                 .WaitAndRetryAsync(10,
                     attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt - 2)),
                     (exception, timespan) => Console.WriteLine("Failed to connect to Ignite, retrying in {0}s", timespan.TotalSeconds))
-                .ExecuteAsync(() => Task.Run(() => Ignition.StartClient(igniteConfiguration))).ConfigureAwait(false);;
+                .ExecuteAsync(() => Task.Run(() => Ignition.StartClient(igniteConfiguration))).ConfigureAwait(false);
 
             AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
             var grpcChannel = GrpcChannel.ForAddress(fabricGrpcAddress);
@@ -106,15 +106,20 @@ namespace Perper.Application
             return new FabricService(ignite, grpcChannel);
         }
 
+        public static string GetConfiguredInstance()
+        {
+            return Environment.GetEnvironmentVariable("X_PERPER_INSTANCE") ?? "";
+        }
+
         #endregion Services
         #region ListenNotifications
 
         public Task RunInServiceContext(CancellationToken cancellationToken = default)
         {
-            string? instance = null;
-            if (UseInstances)
+            var instance = UseInstances ? null : GetConfiguredInstance();
+
+            if (instance != null)
             {
-                instance = Environment.GetEnvironmentVariable("X_PERPER_INSTANCE") ?? "";
                 Console.WriteLine($"X_PERPER_INSTANCE: {instance}");
             }
 

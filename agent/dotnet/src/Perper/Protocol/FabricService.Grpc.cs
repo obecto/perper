@@ -1,17 +1,11 @@
-using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
-
-using Apache.Ignite.Core.Client;
-using Apache.Ignite.Core.Client.Cache;
 
 using Grpc.Core;
-using Grpc.Net.Client;
 
 using Perper.Protocol.Protobuf;
 
@@ -86,7 +80,8 @@ namespace Perper.Protocol
 
             public void EnsureRunning()
             {
-                if (Interlocked.CompareExchange(ref Running, 1, 0) == 0) {
+                if (Interlocked.CompareExchange(ref Running, 1, 0) == 0)
+                {
                     FabricService.TaskCollection.Add(RunAsync());
                 }
             }
@@ -101,7 +96,8 @@ namespace Perper.Protocol
             {
                 var cancellationToken = FabricService.CancellationTokenSource.Token;
 
-                var stream = FabricService.FabricClient.Executions(new ExecutionsRequest {
+                var stream = FabricService.FabricClient.Executions(new ExecutionsRequest
+                {
                     Agent = Agent,
                     Instance = Instance ?? ""
                 }, FabricService.CallOptions.WithCancellationToken(cancellationToken));
@@ -109,11 +105,15 @@ namespace Perper.Protocol
                 while (await stream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
                 {
                     var executionProto = stream.ResponseStream.Current;
-                    if (executionProto.Cancelled) {
-                        if (Executions.TryGetValue(executionProto.Execution, out var execution)) {
+                    if (executionProto.Cancelled)
+                    {
+                        if (Executions.TryGetValue(executionProto.Execution, out var execution))
+                        {
                             execution.cts.Cancel();
                         }
-                    } else {
+                    }
+                    else
+                    {
                         var cts = new CancellationTokenSource();
                         var execution = new Execution(Agent, executionProto.Instance, executionProto.Delegate, executionProto.Execution, cts.Token);
                         Executions[executionProto.Execution] = (execution, cts);

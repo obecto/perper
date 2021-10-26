@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,11 +7,9 @@ using Apache.Ignite.Core.Cache.Configuration;
 
 using Perper.Model;
 using Perper.Protocol;
-using Perper.Protocol.Cache;
 
 namespace Perper.Extensions
 {
-
     public class PerperStreamBuilder
     {
         public PerperStream Stream => new(StreamName, -1, IsPacked ? 1 : 0, false);

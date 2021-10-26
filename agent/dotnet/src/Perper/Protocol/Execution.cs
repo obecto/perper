@@ -8,5 +8,6 @@ namespace Perper.Protocol
         string Delegate,
         string ExecutionId,
         CancellationToken CancellationToken
-    ) {}
+    )
+    { }
 }

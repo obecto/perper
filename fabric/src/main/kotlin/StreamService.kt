@@ -1,28 +1,18 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.StreamListener
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
-import org.apache.ignite.IgniteCache
-import org.apache.ignite.IgniteException
 import org.apache.ignite.IgniteLogger
 import org.apache.ignite.binary.BinaryObject
-import org.apache.ignite.cache.QueryEntity
 import org.apache.ignite.cache.query.ContinuousQuery
 import org.apache.ignite.cache.query.ScanQuery
-import org.apache.ignite.configuration.CacheConfiguration
 import org.apache.ignite.configuration.CollectionConfiguration
-import org.apache.ignite.lang.IgniteBiPredicate
 import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
 import org.apache.ignite.services.ServiceContext
-import javax.cache.CacheException
 import javax.cache.configuration.Factory
 import javax.cache.event.CacheEntryEvent
 import javax.cache.event.CacheEntryEventFilter
-import javax.cache.event.CacheEntryUpdatedListener
 import javax.cache.event.EventType
 
 object StreamServiceConstants {
@@ -74,20 +64,15 @@ class StreamService : JobService() {
 
         fun updateStreamListener(listener: String, stream: String, oldPosition: Long?, newPosition: Long?) {
             log.trace({ "Stream listener moved '$stream'.'$listener' $oldPosition->$newPosition" })
-            if (newPosition != null)
-            {
+            if (newPosition != null) {
                 ignite.atomicLong("$stream-at-$newPosition", 0, true).incrementAndGet()
             }
 
-            if (oldPosition != null)
-            {
-                if (ignite.atomicLong("$stream-at-$oldPosition", 0, true).decrementAndGet() == 0L)
-                {
+            if (oldPosition != null) {
+                if (ignite.atomicLong("$stream-at-$oldPosition", 0, true).decrementAndGet() == 0L) {
                     cleanupStream(stream)
                 }
-            }
-            else
-            {
+            } else {
                 startStreamQuery(stream)
             }
         }
@@ -139,7 +124,7 @@ class StreamService : JobService() {
                         }
                     }
                 } finally {
-                    updateLock.unlock();
+                    updateLock.unlock()
                 }
             }
         }
@@ -156,9 +141,11 @@ class StreamService : JobService() {
 
         override fun evaluate(event: CacheEntryEvent<out Long, out Any>): Boolean {
             if (event.eventType == EventType.CREATED) {
-                ignite.scheduler().runLocal(Runnable {
-                    helpers.getKeysQueue(stream).put(event.key)
-                })
+                ignite.scheduler().runLocal(
+                    Runnable {
+                        helpers.getKeysQueue(stream).put(event.key)
+                    }
+                )
             }
             return false
         }
@@ -174,15 +161,15 @@ class StreamService : JobService() {
         val helpers by lazy(LazyThreadSafetyMode.PUBLICATION) { StreamServiceHelpers(ignite, log) }
 
         override fun evaluate(event: CacheEntryEvent<out String, out StreamListener>): Boolean {
-            ignite.scheduler().runLocal(Runnable {
-                if (event.eventType == EventType.REMOVED || event.eventType == EventType.EXPIRED) {
-                    helpers.updateStreamListener(event.key, event.value.stream, event.value.position, null)
+            ignite.scheduler().runLocal(
+                Runnable {
+                    if (event.eventType == EventType.REMOVED || event.eventType == EventType.EXPIRED) {
+                        helpers.updateStreamListener(event.key, event.value.stream, event.value.position, null)
+                    } else {
+                        helpers.updateStreamListener(event.key, event.value.stream, if (event.isOldValueAvailable) event.oldValue.position else null, event.value.position)
+                    }
                 }
-                else
-                {
-                    helpers.updateStreamListener(event.key, event.value.stream, if (event.isOldValueAvailable) event.oldValue.position else null, event.value.position)
-                }
-            })
+            )
             return false
         }
     }

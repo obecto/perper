@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
-using Perper.Model;
 using Perper.Protocol;
 
 namespace Perper.Extensions
