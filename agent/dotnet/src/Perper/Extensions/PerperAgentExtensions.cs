@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Perper.Model;
@@ -11,7 +12,7 @@ namespace Perper.Extensions
     {
         public static async Task<TResult> CallAsync<TResult>(this PerperAgent agent, string functionName, params object?[] parameters)
         {
-            var results = await InternalCallAsync(agent, functionName, parameters).ConfigureAwait(false);
+            var results = await InternalCallAsync(agent, functionName, parameters, default).ConfigureAwait(false);
 
             if (results is null)
             {
@@ -37,26 +38,35 @@ namespace Perper.Extensions
 
         public static async Task CallAsync(this PerperAgent agent, string actionName, params object?[] parameters)
         {
-            await InternalCallAsync(agent, actionName, parameters).ConfigureAwait(false);
+            await InternalCallAsync(agent, actionName, parameters, default).ConfigureAwait(false);
         }
 
-        private static async Task<object?[]?> InternalCallAsync(PerperAgent agent, string @delegate, object?[] parameters)
+        private static async Task<object?[]?> InternalCallAsync(PerperAgent agent, string @delegate, object?[] parameters, CancellationToken cancellationToken)
         {
-            var execution = CacheService.GenerateName(@delegate);
+            var execution = FabricService.GenerateName(@delegate);
 
-            await AsyncLocals.CacheService.CreateExecution(execution, agent.Agent, agent.Instance, @delegate, parameters).ConfigureAwait(false);
+            await AsyncLocals.FabricService.CreateExecution(execution, agent.Agent, agent.Instance, @delegate, parameters).ConfigureAwait(false);
 
-            await AsyncLocals.NotificationService.WaitExecutionFinished(execution).ConfigureAwait(false);
+            try
+            {
+                await AsyncLocals.FabricService.WaitExecutionFinished(execution, cancellationToken).ConfigureAwait(false);
 
-            var results = await AsyncLocals.CacheService.ReadExecutionResult(execution).ConfigureAwait(false);
-            await AsyncLocals.CacheService.RemoveExecution(execution).ConfigureAwait(false);
+                var results = await AsyncLocals.FabricService.ReadExecutionResult(execution).ConfigureAwait(false);
+                await AsyncLocals.FabricService.RemoveExecution(execution).ConfigureAwait(false);
 
-            return results;
+                return results;
+            }
+            catch (OperationCanceledException)
+            {
+                await AsyncLocals.FabricService.RemoveExecution(execution).ConfigureAwait(false);
+                throw;
+            }
+
         }
 
         public static async Task DestroyAsync(this PerperAgent agent)
         {
-            await AsyncLocals.CacheService.RemoveInstance(agent.Instance).ConfigureAwait(false);
+            await AsyncLocals.FabricService.RemoveInstance(agent.Instance).ConfigureAwait(false);
         }
     }
 }

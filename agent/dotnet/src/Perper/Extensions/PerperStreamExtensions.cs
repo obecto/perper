@@ -13,24 +13,29 @@ namespace Perper.Extensions
 {
     public static class PerperStreamExtensions
     {
-        public static PerperStream LocalToData(this PerperStream stream, bool localToData = true)
-        {
-            return new PerperStream(stream.Stream, stream.Filter, stream.StartIndex, stream.Stride, localToData);
-        }
-
-        public static PerperStream Filter<T>(this PerperStream stream, Expression<Func<T, bool>> filter)
-        {
-            return new PerperStream(stream.Stream, FilterUtils.ConvertFilter(filter), stream.StartIndex, stream.Stride, stream.LocalToData);
-        }
-
         public static PerperStream Replay(this PerperStream stream, bool replay = true)
         {
-            return new PerperStream(stream.Stream, stream.Filter, replay ? 0 : -1, stream.Stride, stream.LocalToData);
+            return new PerperStream(stream.Stream, replay ? 0 : -1, stream.Stride, stream.LocalToData);
         }
+
+        public static PerperStream Replay(this PerperStream stream, long replayFromKey)
+        {
+            return new PerperStream(stream.Stream, replayFromKey, stream.Stride, stream.LocalToData);
+        }
+
+        public static PerperStream LocalToData(this PerperStream stream, bool localToData = true)
+        {
+            return new PerperStream(stream.Stream, stream.StartIndex, stream.Stride, localToData);
+        }
+
+        /*public static PerperStream Filter<T>(this PerperStream stream, Expression<Func<T, bool>> filter)
+        {
+            return new PerperStream(stream.Stream, FilterUtils.ConvertFilter(filter), stream.StartIndex, stream.Stride, stream.LocalToData);
+        }*/
 
         public static IQueryable<T> Query<T>(this PerperStream stream, bool keepBinary = false)
         {
-            return AsyncLocals.CacheService.QueryStream<T>(stream.Stream, keepBinary);
+            return AsyncLocals.FabricService.QueryStream<T>(stream.Stream, keepBinary);
         }
 
         public static async IAsyncEnumerable<T> ToAsyncEnumerable<T>(this IQueryable<T> queryable) // TODO: move to another class
@@ -42,9 +47,15 @@ namespace Perper.Extensions
             }
         }
 
+        public static async Task DestroyAsync(this PerperStream stream)
+        {
+            await AsyncLocals.FabricService.RemoveExecution(stream.Stream).ConfigureAwait(false); // Cancel the execution first
+            await AsyncLocals.FabricService.RemoveStream(stream.Stream).ConfigureAwait(false);
+        }
+
         public static IAsyncEnumerable<T> Query<T>(this PerperStream stream, string typeName, string sqlCondition, object[]? sqlParameters = null, bool keepBinary = false)
         {
-            return AsyncLocals.CacheService.QueryStreamSql<T>(stream.Stream, $"select _VAL from {typeName.ToUpper()} {sqlCondition}", sqlParameters ?? Array.Empty<object>(), keepBinary);
+            return AsyncLocals.FabricService.QueryStreamSql<T>(stream.Stream, $"select _VAL from {typeName.ToUpper()} {sqlCondition}", sqlParameters ?? Array.Empty<object>(), keepBinary);
         }
 
         public static IAsyncEnumerable<T> Query<T>(this PerperStream stream, string sqlCondition, params object[] sqlParameters)
@@ -54,25 +65,27 @@ namespace Perper.Extensions
 
         public static async IAsyncEnumerable<T> EnumerateAsync<T>(this PerperStream stream, bool keepBinary = false, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var listener = CacheService.GenerateName(stream.Stream); // TODO: Need some way to enumerate a stream while keeping state
-            await AsyncLocals.CacheService.SetStreamListenerPosition(listener, stream.Stream, CacheService.ListenerPersistAll).ConfigureAwait(false);
+            var listener = FabricService.GenerateName(stream.Stream); // TODO: Implement a way to keep state while enumerating a stream
+            var itemsEnumerable = await AsyncLocals.FabricService.EnumerateStreamItemKeys(stream.Stream, stream.StartIndex, stream.Stride, stream.LocalToData, cancellationToken).ConfigureAwait(false);
+
+            await AsyncLocals.FabricService.SetStreamListenerPosition(listener, stream.Stream, FabricService.ListenerPersistAll).ConfigureAwait(false);
             try
             {
-                await foreach (var key in AsyncLocals.NotificationService.EnumerateStreamItemKeys(stream.Stream, stream.StartIndex, stream.Stride, stream.LocalToData, cancellationToken))
+                await foreach (var key in itemsEnumerable)
                 {
-                    await AsyncLocals.CacheService.SetStreamListenerPosition(listener, stream.Stream, key).ConfigureAwait(false); // Can be optimized by updating in batches
+                    await AsyncLocals.FabricService.SetStreamListenerPosition(listener, stream.Stream, key).ConfigureAwait(false); // Can be optimized by updating in batches
                     T value;
 
                     try
                     {
-                        value = await AsyncLocals.CacheService.ReadStreamItem<T>(stream.Stream, key, keepBinary).ConfigureAwait(false);
+                        value = await AsyncLocals.FabricService.ReadStreamItem<T>(stream.Stream, key, keepBinary).ConfigureAwait(false);
                     }
                     catch (KeyNotFoundException)
                     {
                         await Task.Delay(100, cancellationToken).ConfigureAwait(false); // Retry just in case
                         try
                         {
-                            value = await AsyncLocals.CacheService.ReadStreamItem<T>(stream.Stream, key, keepBinary).ConfigureAwait(false);
+                            value = await AsyncLocals.FabricService.ReadStreamItem<T>(stream.Stream, key, keepBinary).ConfigureAwait(false);
                         }
                         catch (KeyNotFoundException)
                         {
@@ -85,7 +98,7 @@ namespace Perper.Extensions
             }
             finally
             {
-                await AsyncLocals.CacheService.RemoveStreamListener(listener).ConfigureAwait(false);
+                await AsyncLocals.FabricService.RemoveStreamListener(listener).ConfigureAwait(false);
             }
         }
     }

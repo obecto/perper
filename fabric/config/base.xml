@@ -48,10 +48,10 @@
                 <property name="service"><bean name="StreamService" class="com.obecto.perper.fabric.StreamService"></bean></property>
             </bean>
             <bean class="org.apache.ignite.services.ServiceConfiguration">
-                <property name="name" value="TransportService"/>
+                <property name="name" value="FabricService"/>
                 <property name="maxPerNodeCount" value="1"/>
                 <property name="totalCount" value="0"/>
-                <property name="service" ref="TransportService"/>
+                <property name="service" ref="FabricService"/>
             </bean>
         </list></property>
 
@@ -64,7 +64,7 @@
     <bean name="InstanceService" class="com.obecto.perper.fabric.InstanceService">
         <property name="composeFile" value="docker-compose.yml"/>
     </bean>
-    <bean name="TransportService" class="com.obecto.perper.fabric.TransportService">
+    <bean name="FabricService" class="com.obecto.perper.fabric.FabricService">
         <property name="port" value="40400"/>
     </bean>
 </beans>

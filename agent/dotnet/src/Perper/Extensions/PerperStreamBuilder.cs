@@ -15,19 +15,19 @@ namespace Perper.Extensions
 
     public class PerperStreamBuilder
     {
-
-        public PerperStream Stream => new(StreamName);
+        public PerperStream Stream => new(StreamName, -1, IsPacked ? 1 : 0, false);
 
         public string StreamName { get; }
         public string? Delegate { get; }
 
         public bool IsPersistent { get; private set; }
+        public bool IsPacked { get; private set; }
         public bool IsAction { get; private set; }
 
         private readonly List<QueryEntity> indexes = new();
         public IReadOnlyCollection<QueryEntity> Indexes => indexes;
 
-        public PerperStreamBuilder(string? @delegate) : this(CacheService.GenerateName(@delegate ?? ""), @delegate)
+        public PerperStreamBuilder(string? @delegate) : this(FabricService.GenerateName(@delegate ?? ""), @delegate)
         {
         }
 
@@ -39,20 +39,20 @@ namespace Perper.Extensions
 
         public async Task<PerperStream> StartAsync(params object[] parameters)
         {
-            await AsyncLocals.CacheService.CreateStream(StreamName, Indexes.ToArray()).ConfigureAwait(false);
+            await AsyncLocals.FabricService.CreateStream(StreamName, Indexes.ToArray()).ConfigureAwait(false);
 
             if (IsPersistent)
             {
-                await AsyncLocals.CacheService.SetStreamListenerPosition($"{StreamName}-persist", StreamName, CacheService.ListenerPersistAll).ConfigureAwait(false);
+                await AsyncLocals.FabricService.SetStreamListenerPosition($"{StreamName}-persist", StreamName, FabricService.ListenerPersistAll).ConfigureAwait(false);
             }
             else if (IsAction)
             {
-                await AsyncLocals.CacheService.SetStreamListenerPosition($"{StreamName}-trigger", StreamName, CacheService.ListenerJustTrigger).ConfigureAwait(false);
+                await AsyncLocals.FabricService.SetStreamListenerPosition($"{StreamName}-trigger", StreamName, FabricService.ListenerJustTrigger).ConfigureAwait(false);
             }
 
             if (Delegate != null)
             {
-                await AsyncLocals.CacheService.CreateExecution(StreamName, AsyncLocals.Agent, AsyncLocals.Instance, Delegate, parameters).ConfigureAwait(false);
+                await AsyncLocals.FabricService.CreateExecution(StreamName, AsyncLocals.Agent, AsyncLocals.Instance, Delegate, parameters).ConfigureAwait(false);
             }
 
             return Stream;
@@ -67,6 +67,12 @@ namespace Perper.Extensions
         public PerperStreamBuilder Persistent()
         {
             IsPersistent = true;
+            return this;
+        }
+
+        public PerperStreamBuilder Packed()
+        {
+            IsPacked = true;
             return this;
         }
 

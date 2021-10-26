@@ -17,23 +17,11 @@ using Perper.Protocol.Protobuf;
 
 namespace Perper.Protocol
 {
-    public partial class NotificationService : IAsyncDisposable, IDisposable
+    public partial class FabricService
     {
-        public NotificationService(GrpcChannel grpcChannel) => FabricClient = new Fabric.FabricClient(grpcChannel);
-
-        private readonly Fabric.FabricClient FabricClient;
-        private readonly CallOptions CallOptions = new CallOptions().WithWaitForReady();
-        private readonly CancellationTokenSource CancellationTokenSource = new();
-        private readonly TaskCollection TaskCollection = new();
         private readonly ConcurrentDictionary<(string agent, string? instance), ExecutionsListener> ExecutionsListeners = new();
 
-        public async ValueTask DisposeAsync()
-        {
-            CancellationTokenSource.Cancel();
-            await TaskCollection.GetTask().ConfigureAwait(false);
-        }
-
-        public ChannelReader<ExecutionRecord> GetExecutionsReader(string agent, string? instance, string @delegate)
+        public ChannelReader<Execution> GetExecutionsReader(string agent, string? instance, string @delegate)
         {
             return ExecutionsListeners.GetOrAdd((agent, instance), _ => new(this, agent, instance)).GetReader(@delegate);
         }
@@ -54,7 +42,7 @@ namespace Perper.Protocol
             }, CallOptions.WithCancellationToken(cancellationToken));
         }
 
-        public async IAsyncEnumerable<long> EnumerateStreamItemKeys(string stream, long startKey = -1, long stride = 0, bool localToData = false, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public async Task<IAsyncEnumerable<long>> EnumerateStreamItemKeys(string stream, long startKey = -1, long stride = 0, bool localToData = false, CancellationToken cancellationToken = default)
         {
             var streamItems = FabricClient.StreamItems(new StreamItemsRequest
             {
@@ -64,46 +52,34 @@ namespace Perper.Protocol
                 LocalToData = localToData
             }, CallOptions.WithCancellationToken(cancellationToken));
 
-            while (await streamItems.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+            await streamItems.ResponseHeadersAsync.ConfigureAwait(false);
+
+            async IAsyncEnumerable<long> helper([EnumeratorCancellation] CancellationToken cancellationToken = default)
             {
-                var item = streamItems.ResponseStream.Current;
-                yield return item.Key;
+                while (await streamItems.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+                {
+                    var item = streamItems.ResponseStream.Current;
+                    yield return item.Key;
+                }
             }
-        }
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                CancellationTokenSource.Dispose();
-            }
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        ~NotificationService()
-        {
-            Dispose(false);
+            return helper(cancellationToken);
         }
 
         private class ExecutionsListener
         {
-            private readonly NotificationService NotificationService;
+            private readonly FabricService FabricService;
             private readonly string Agent;
             private readonly string? Instance;
 
-            private readonly Dictionary<string, (ExecutionRecord execution, CancellationTokenSource cts)> Executions = new();
-            private readonly ConcurrentDictionary<string, Channel<ExecutionRecord>> Channels = new();
+            private readonly Dictionary<string, (Execution execution, CancellationTokenSource cts)> Executions = new();
+            private readonly ConcurrentDictionary<string, Channel<Execution>> Channels = new();
 
             private int Running = 0;
 
-            public ExecutionsListener(NotificationService notificationService, string agent, string? instance)
+            public ExecutionsListener(FabricService fabricService, string agent, string? instance)
             {
-                NotificationService = notificationService;
+                FabricService = fabricService;
                 Agent = agent;
                 Instance = instance;
             }
@@ -111,24 +87,24 @@ namespace Perper.Protocol
             public void EnsureRunning()
             {
                 if (Interlocked.CompareExchange(ref Running, 1, 0) == 0) {
-                    NotificationService.TaskCollection.Add(RunAsync());
+                    FabricService.TaskCollection.Add(RunAsync());
                 }
             }
 
-            public ChannelReader<ExecutionRecord> GetReader(string @delegate)
+            public ChannelReader<Execution> GetReader(string @delegate)
             {
                 EnsureRunning();
-                return Channels.GetOrAdd(@delegate, _ => Channel.CreateUnbounded<ExecutionRecord>()).Reader;
+                return Channels.GetOrAdd(@delegate, _ => Channel.CreateUnbounded<Execution>()).Reader;
             }
 
             private async Task RunAsync()
             {
-                var cancellationToken = NotificationService.CancellationTokenSource.Token;
+                var cancellationToken = FabricService.CancellationTokenSource.Token;
 
-                var stream = NotificationService.FabricClient.Executions(new ExecutionsRequest {
+                var stream = FabricService.FabricClient.Executions(new ExecutionsRequest {
                     Agent = Agent,
                     Instance = Instance ?? ""
-                }, NotificationService.CallOptions.WithCancellationToken(cancellationToken));
+                }, FabricService.CallOptions.WithCancellationToken(cancellationToken));
 
                 while (await stream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
                 {
@@ -139,9 +115,9 @@ namespace Perper.Protocol
                         }
                     } else {
                         var cts = new CancellationTokenSource();
-                        var execution = new ExecutionRecord(Agent, executionProto.Instance, executionProto.Delegate, executionProto.Execution, cts.Token);
+                        var execution = new Execution(Agent, executionProto.Instance, executionProto.Delegate, executionProto.Execution, cts.Token);
                         Executions[executionProto.Execution] = (execution, cts);
-                        var channel = Channels.GetOrAdd(execution.Delegate, _ => Channel.CreateUnbounded<ExecutionRecord>());
+                        var channel = Channels.GetOrAdd(execution.Delegate, _ => Channel.CreateUnbounded<Execution>());
                         await channel.Writer.WriteAsync(execution, cancellationToken).ConfigureAwait(false);
                     }
                 }

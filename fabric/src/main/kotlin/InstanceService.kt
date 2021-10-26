@@ -1,11 +1,11 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.AgentType
+import com.obecto.perper.fabric.cache.InstanceData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteCache
 import org.apache.ignite.IgniteLogger
-import org.apache.ignite.binary.BinaryObject
 import org.apache.ignite.cache.query.ContinuousQuery
 import org.apache.ignite.cache.query.ScanQuery
 import org.apache.ignite.lang.IgniteBiPredicate
@@ -40,7 +40,7 @@ class InstanceService(var composeFile: String = "docker-compose.yml") : JobServi
 
     lateinit var ignite: Ignite
 
-    lateinit var instancesCache: IgniteCache<String, BinaryObject>
+    lateinit var instancesCache: IgniteCache<String, InstanceData>
     lateinit var agentTypesCache: IgniteCache<String, AgentType>
     lateinit var runningInstancesCache: IgniteCache<String, Boolean>
 
@@ -59,17 +59,16 @@ class InstanceService(var composeFile: String = "docker-compose.yml") : JobServi
     }
 
     override fun init(ctx: ServiceContext) {
-        instancesCache = ignite.getOrCreateCache<String, Any>("instances").withKeepBinary<String, BinaryObject>()
+        instancesCache = ignite.getOrCreateCache<String, InstanceData>("instances")
         agentTypesCache = ignite.getOrCreateCache("agentTypes")
         runningInstancesCache = ignite.getOrCreateCache("runningInstances")
 
         super.init(ctx)
     }
-    val BinaryObject.agent get() = field<String>("agent")
 
     override suspend fun CoroutineScope.execute(ctx: ServiceContext) {
         launch {
-            val query = ContinuousQuery<String, BinaryObject>()
+            val query = ContinuousQuery<String, InstanceData>()
             query.localListener = CacheEntryUpdatedListener { events ->
                 for (event in events) {
                     coroutineScope.launch {
@@ -87,8 +86,8 @@ class InstanceService(var composeFile: String = "docker-compose.yml") : JobServi
                 for (event in events) {
                     if (event.oldValue != AgentType.CONTAINERS && event.value == AgentType.CONTAINERS) {
                         coroutineScope.launch {
-                            val oldAgentsQuery = ScanQuery<String, BinaryObject>()
-                            oldAgentsQuery.filter = IgniteBiPredicate<String, BinaryObject> { _, agent -> agent.agent == event.key }
+                            val oldAgentsQuery = ScanQuery<String, InstanceData>()
+                            oldAgentsQuery.filter = IgniteBiPredicate<String, InstanceData> { _, agent -> agent.agent == event.key }
                             for (agent in instancesCache.query(oldAgentsQuery)) {
                                 updateAgent(agent.key, agent.value)
                             }
@@ -101,7 +100,7 @@ class InstanceService(var composeFile: String = "docker-compose.yml") : JobServi
         }
     }
 
-    suspend fun updateAgent(instance: String, instanceData: BinaryObject?) {
+    suspend fun updateAgent(instance: String, instanceData: InstanceData?) {
         if (instanceData == null) {
             stopInstance(instance)
         } else {

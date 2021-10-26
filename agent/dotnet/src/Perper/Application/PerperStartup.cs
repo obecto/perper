@@ -65,16 +65,16 @@ namespace Perper.Application
 
         public static async Task EnterServicesContext(Func<Task> context)
         {
-            var (cacheService, notificationService) = await EstablishConnection().ConfigureAwait(false);
+            var fabricService = await EstablishConnection().ConfigureAwait(false);
 
-            AsyncLocals.SetConnection(cacheService, notificationService);
+            AsyncLocals.SetConnection(fabricService);
 
             await context().ConfigureAwait(false);
 
-            await notificationService.DisposeAsync().ConfigureAwait(false);
+            await fabricService.DisposeAsync().ConfigureAwait(false);
         }
 
-        public static async Task<(CacheService, NotificationService)> EstablishConnection()
+        public static async Task<FabricService> EstablishConnection()
         {
             var apacheIgniteEndpoint = Environment.GetEnvironmentVariable("APACHE_IGNITE_ENDPOINT") ?? "127.0.0.1:10800";
             var fabricGrpcAddress = Environment.GetEnvironmentVariable("PERPER_FABRIC_ENDPOINT") ?? "http://127.0.0.1:40400";
@@ -100,13 +100,10 @@ namespace Perper.Application
                     (exception, timespan) => Console.WriteLine("Failed to connect to Ignite, retrying in {0}s", timespan.TotalSeconds))
                 .ExecuteAsync(() => Task.Run(() => Ignition.StartClient(igniteConfiguration))).ConfigureAwait(false);;
 
-            var cacheService = new CacheService(ignite);
-
             AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
             var grpcChannel = GrpcChannel.ForAddress(fabricGrpcAddress);
-            var notificationService = new NotificationService(grpcChannel);
 
-            return (cacheService, notificationService);
+            return new FabricService(ignite, grpcChannel);
         }
 
         #endregion Services
@@ -125,13 +122,17 @@ namespace Perper.Application
 
             executionHandlers.TryAdd(PerperContext.StartupFunctionName, async () =>
             {
-                await AsyncLocals.CacheService.WriteExecutionFinished(AsyncLocals.Execution).ConfigureAwait(false);
+                await AsyncLocals.FabricService.WriteExecutionFinished(AsyncLocals.Execution).ConfigureAwait(false);
             });
 
+            var initExecution = new Execution(Agent, instance ?? $"{Agent}-init", "Init", $"{Agent}-init", cancellationToken);
             foreach (var handler in initHandlers)
             {
-                var initExecution = new ExecutionRecord(Agent, instance ?? $"{Agent}-init", "Init", $"{Agent}-init", cancellationToken);
-                taskCollection.Add(AsyncLocals.EnterContext(initExecution, handler));
+                taskCollection.Add(async () =>
+                {
+                    AsyncLocals.SetExecution(initExecution);
+                    await handler().ConfigureAwait(false);
+                });
             }
 
             foreach (var (@delegate, handler) in executionHandlers)
@@ -146,9 +147,13 @@ namespace Perper.Application
         {
             taskCollection.Add(async () =>
             {
-                await foreach (var execution in AsyncLocals.NotificationService.GetExecutionsReader(agent, instance, @delegate).ReadAllAsync(cancellationToken))
+                await foreach (var execution in AsyncLocals.FabricService.GetExecutionsReader(agent, instance, @delegate).ReadAllAsync(cancellationToken))
                 {
-                    taskCollection.Add(AsyncLocals.EnterContext(execution, handler));
+                    taskCollection.Add(async () =>
+                    {
+                        AsyncLocals.SetExecution(execution);
+                        await handler().ConfigureAwait(false);
+                    });
                 }
             });
         }

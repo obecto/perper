@@ -19,7 +19,7 @@ message ExecutionsRequest {
     string agent = 1;
     string instance = 2;
     //string delegate = 3;
-    //string execution = 4;
+    bool localToData = 4;
 }
 
 message ExecutionsResponse {

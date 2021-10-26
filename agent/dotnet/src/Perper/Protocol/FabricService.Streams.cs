@@ -13,12 +13,16 @@ using Perper.Protocol.Cache;
 
 namespace Perper.Protocol
 {
-    public partial class CacheService
+    public partial class FabricService
     {
-        public Task CreateStream(string stream, params QueryEntity[] indexes)
+        public async Task CreateStream(string stream, params QueryEntity[] indexes)
         {
-            Ignite.CreateCache<long, object>(new CacheClientConfiguration(stream, indexes));
-            return Task.CompletedTask;
+            await Task.Run(() => Ignite.CreateCache<long, object>(new CacheClientConfiguration(stream, indexes))).ConfigureAwait(false);
+        }
+
+        public async Task RemoveStream(string stream)
+        {
+            await Task.Run(() => Ignite.DestroyCache(stream)).ConfigureAwait(false);
         }
 
         public const long ListenerPersistAll = long.MinValue;
@@ -26,12 +30,12 @@ namespace Perper.Protocol
 
         public async Task SetStreamListenerPosition(string listener, string stream, long position)
         {
-            await streamListenersCache.PutAsync(listener, new StreamListener(stream, position)).ConfigureAwait(false);
+            await StreamListenersCache.PutAsync(listener, new StreamListener(stream, position)).ConfigureAwait(false);
         }
 
         public async Task RemoveStreamListener(string listener)
         {
-            await streamListenersCache.RemoveAsync(listener).ConfigureAwait(false);
+            await StreamListenersCache.RemoveAsync(listener).ConfigureAwait(false);
         }
 
         public async Task WriteStreamItem<TItem>(string stream, long key, TItem item, bool keepBinary = false)
@@ -45,11 +49,11 @@ namespace Perper.Protocol
             await itemsCache.PutIfAbsentOrThrowAsync(key, item).ConfigureAwait(false);
         }
 
-        public Task<TItem> ReadStreamItem<TItem>(string cache, long key, bool keepBinary = false)
+        public async Task<TItem> ReadStreamItem<TItem>(string cache, long key, bool keepBinary = false)
         {
             var itemsCache = Ignite.GetCache<long, TItem>(cache).WithKeepBinary(keepBinary);
 
-            return itemsCache.GetAsync(key);
+            return await itemsCache.GetAsync(key).ConfigureAwait(false);
         }
 
         public IQueryable<TItem> QueryStream<TItem>(string stream, bool keepBinary = false)

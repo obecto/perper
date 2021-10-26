@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 
 namespace Perper.Protocol
 {
-    public partial class CacheService
+    public partial class FabricService
     {
         public async Task<(bool, T)> TryGetStateValue<T>(string instance, string key)
         {
@@ -15,10 +15,10 @@ namespace Perper.Protocol
             return (true, result.Value);
         }
 
-        public Task SetStateValue<T>(string instance, string key, T value)
+        public async Task SetStateValue<T>(string instance, string key, T value)
         {
             var stateCache = Ignite.GetOrCreateCache<string, T>(instance);
-            return stateCache.PutAsync(key, value);
+            await stateCache.PutAsync(key, value).ConfigureAwait(false);
         }
     }
 }

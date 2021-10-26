@@ -1,8 +1,8 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.AgentType
+import com.obecto.perper.fabric.cache.InstanceData
 import com.obecto.perper.fabric.cache.ExecutionData
 import com.obecto.perper.fabric.cache.StreamListener
-//import com.obecto.perper.fabric.cache.StreamDelegateType
 import com.obecto.perper.protobuf.FabricGrpcKt
 import com.obecto.perper.protobuf.ExecutionsRequest
 import com.obecto.perper.protobuf.ExecutionFinishedRequest
@@ -16,6 +16,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.debounce
@@ -38,15 +39,16 @@ import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
 import org.apache.ignite.services.Service
 import org.apache.ignite.services.ServiceContext
-/*import sh.keda.externalscaler.ExternalScalerGrpcKt
+import sh.keda.externalscaler.ExternalScalerGrpcKt
 import sh.keda.externalscaler.GetMetricSpecResponse
 import sh.keda.externalscaler.GetMetricsRequest
 import sh.keda.externalscaler.GetMetricsResponse
 import sh.keda.externalscaler.IsActiveResponse
-import sh.keda.externalscaler.ScaledObjectRef*/
+import sh.keda.externalscaler.ScaledObjectRef
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import javax.cache.Cache.Entry
 import javax.cache.configuration.Factory
 import javax.cache.event.CacheEntryEvent
@@ -55,14 +57,17 @@ import javax.cache.event.CacheEntryUpdatedListener
 import javax.cache.event.EventType
 import com.google.protobuf.Empty
 
-class TransportService(var port: Int = 40400) : Service {
+private inline val EventType.isRemoval get() = this == EventType.REMOVED || this == EventType.EXPIRED
+private inline val EventType.isCreation get() = this == EventType.CREATED
 
-    companion object Ticks {
+class FabricService(var port: Int = 40400) : Service {
+
+    /*companion object Ticks {
         val startTicks = (System.currentTimeMillis()) * 10_000
         val startNanos = System.nanoTime()
 
         fun getCurrentTicks() = startTicks + (System.nanoTime() - startNanos) / 100
-    }
+    }*/
 
     lateinit var log: IgniteLogger
 
@@ -94,6 +99,7 @@ class TransportService(var port: Int = 40400) : Service {
     override fun execute(ctx: ServiceContext) {
         server.start()
         log.debug({ "Transport service started!" })
+
     }
 
     override fun cancel(ctx: ServiceContext) {
@@ -130,28 +136,29 @@ class TransportService(var port: Int = 40400) : Service {
     }
 
     inner class FabricImpl : FabricGrpcKt.FabricCoroutineImplBase() {
+
         @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
         override fun executions(request: ExecutionsRequest) = tryCatchChannelFlow<ExecutionsResponse> {
             val agent = request.agent
             val instance = if (request.instance != "") request.instance else null
-            val localToData = (instance != null)
-            val executionsCacheName = "executions"
-            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>(executionsCacheName)
+            val localToData = request.localToData
+
+            InstanceService.setAgentType(ignite, agent, if (instance == null) AgentType.FUNCTIONS else AgentType.CONTAINERS)
+
+            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
 
             val query = ContinuousQuery<String, ExecutionData>()
             val queryChannel = query.setChannelLocalListener(Channel<Pair<String, Pair<Boolean, ExecutionData>>>(Channel.UNLIMITED)) {
-                event -> send(Pair(event.key, Pair((event.eventType == EventType.REMOVED || event.eventType == EventType.EXPIRED), event.value)))
+                event -> send(Pair(event.key, Pair(event.eventType.isRemoval, event.value)))
             }
             query.setLocal(localToData)
 
-            query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, ExecutionData>> {
-                CacheEntryEventFilter { event ->
-                    if (event.isOldValueAvailable && !event.oldValue.finished)
-                        false
-                    else // TODO: Use a single query for all executions
-                        event.value.agent == agent && (instance == null || event.value.instance == instance) && !event.value.finished
-                }
-            }
+            query.remoteFilterFactory = Factory { CacheEntryEventFilter { event ->
+                if (event.isOldValueAvailable && !event.oldValue.finished)
+                    false
+                else // NOTE: Can probably use a single query for all executions
+                    event.value.agent == agent && (instance == null || event.value.instance == instance) && !event.value.finished
+            } }
             query.initialQuery = ScanQuery<String, ExecutionData>().also {
                 it.setLocal(localToData)
                 it.filter = IgniteBiPredicate<String, ExecutionData> { _, value ->
@@ -166,18 +173,7 @@ class TransportService(var port: Int = 40400) : Service {
             try {
                 val sentExecutions = HashMap<String, Boolean>()
 
-                for (entry in queryCursor) {
-                    if (sentExecutions.put(entry.key, false) == null) {
-                        send(ExecutionsResponse.newBuilder().also {
-                            it.instance = entry.value.instance
-                            it.delegate = entry.value.delegate
-                            it.execution = entry.key
-                        }.build())
-                    }
-                }
-
-                for ((key, tuple) in queryChannel) {
-                    val (removed, value) = tuple
+                suspend fun ProducerScope<ExecutionsResponse>.output(key: String, value: ExecutionData, removed: Boolean) {
                     if (sentExecutions.put(key, removed) != removed) {
                         send(ExecutionsResponse.newBuilder().also {
                             it.instance = value.instance
@@ -186,6 +182,14 @@ class TransportService(var port: Int = 40400) : Service {
                             it.cancelled = removed
                         }.build())
                     }
+                }
+
+                for (entry in queryCursor) {
+                    output(entry.key, entry.value, false)
+                }
+
+                for (pair in queryChannel) {
+                    output(pair.first, pair.second.second, pair.second.first)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -201,17 +205,15 @@ class TransportService(var port: Int = 40400) : Service {
 
         override suspend fun executionFinished(request: ExecutionFinishedRequest): Empty {
             val execution = request.execution
-            val executionsCacheName = "executions"
-            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>(executionsCacheName)
+
+            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
 
             val query = ContinuousQuery<String, ExecutionData>()
             val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
 
-            query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, ExecutionData>> {
-                CacheEntryEventFilter { event ->
-                    event.eventType != EventType.REMOVED && event.eventType != EventType.EXPIRED && event.key == execution && event.value.finished
-                }
-            }
+            query.remoteFilterFactory = Factory { CacheEntryEventFilter {
+                event -> event.eventType.isRemoval || (event.key == execution && event.value.finished)
+            } }
 
             val queryCursor = executionsCache.query(query) // Important to start query before checking if it is already finished
 
@@ -237,13 +239,14 @@ class TransportService(var port: Int = 40400) : Service {
             val startKey = if (request.startKey != -1L) request.startKey else null
             val stride = request.stride
             val localToData = request.localToData
-            val streamCache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, Any>()
 
             suspend fun ProducerScope<StreamItemsResponse>.output(key: Long) {
                 send(StreamItemsResponse.newBuilder().also {
                     it.key = key
                 }.build())
             }
+
+            val streamCache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, Any>()
 
             if (stride == 0L)
             {
@@ -253,19 +256,18 @@ class TransportService(var port: Int = 40400) : Service {
 
                 if (startKey == null)
                 {
-                    query.remoteFilterFactory = Factory<CacheEntryEventFilter<Long, Any>> {
-                        CacheEntryEventFilter { event -> event.eventType == EventType.CREATED }
-                    }
+                    query.remoteFilterFactory = Factory { CacheEntryEventFilter {
+                        event -> event.eventType.isCreation
+                    } }
                     //query.initialQuery = null;
                 }
                 else
                 {
-                    query.remoteFilterFactory = Factory<CacheEntryEventFilter<Long, Any>> {
-                        CacheEntryEventFilter { event -> event.eventType == EventType.CREATED && event.key > startKey }
-                    }
-                    query.initialQuery = ScanQuery<Long, Any>().also {
+                    query.remoteFilterFactory = Factory { CacheEntryEventFilter {
+                        event -> event.eventType.isCreation && event.key > startKey
+                    } }
+                    query.initialQuery = ScanQuery(IgniteBiPredicate<Long, Any> { key, _ -> key > startKey }).also {
                         it.setLocal(localToData)
-                        it.filter = IgniteBiPredicate<Long, Any> { key, _ -> key > startKey }
                     }
                 }
 
@@ -295,7 +297,7 @@ class TransportService(var port: Int = 40400) : Service {
             }
             else // if (stride != 0L)
             {
-                log.debug({ "Stream items listener started for '${stream}' ${startKey ?: "last"}..${stride}!" })
+                log.debug({ "Stream items listener started for '${stream}' ${startKey ?: "last"}..+${stride}!" })
                 try {
                     var keyOrNull = startKey
 
@@ -326,9 +328,9 @@ class TransportService(var port: Int = 40400) : Service {
                             val query = ContinuousQuery<Long, Any>()
                             val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
 
-                            query.remoteFilterFactory = Factory<CacheEntryEventFilter<Long, Any>> {
-                                CacheEntryEventFilter { event -> event.key == key }
-                            }
+                            query.remoteFilterFactory = Factory { CacheEntryEventFilter {
+                                event -> event.key == key
+                            } }
 
                             val queryCursor = streamCache.query(query) // Important to start query before checking if it is already finished
 
@@ -348,7 +350,7 @@ class TransportService(var port: Int = 40400) : Service {
                         key += stride
                     }
                 } finally {
-                    log.debug({ "Stream items listener finished for '${stream}' ${startKey ?: "last"}..${stride}!" })
+                    log.debug({ "Stream items listener finished for '${stream}' ${startKey ?: "last"}..+${stride}!" })
                 }
             }
         }.buffer(Channel.UNLIMITED)
@@ -362,11 +364,9 @@ class TransportService(var port: Int = 40400) : Service {
             val query = ContinuousQuery<String, StreamListener>()
             val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
 
-            query.remoteFilterFactory = Factory<CacheEntryEventFilter<String, StreamListener>> {
-                CacheEntryEventFilter { event ->
-                    event.eventType != EventType.REMOVED && event.eventType != EventType.EXPIRED && event.value.stream == stream
-                }
-            }
+            query.remoteFilterFactory = Factory { CacheEntryEventFilter {
+                event -> event.eventType.isCreation  && event.value.stream == stream
+            } }
             query.initialQuery = ScanQuery(IgniteBiPredicate<String, StreamListener> { _, value -> value.stream == stream })
 
             val queryCursor = streamListenersCache.query(query)
@@ -387,39 +387,61 @@ class TransportService(var port: Int = 40400) : Service {
         }
     }
 
-    /*inner class ExternalScalerImpl : ExternalScalerGrpcKt.ExternalScalerCoroutineImplBase() {
-        val ScaledObjectRef.delegate
-            get() = scalerMetadataMap.getOrDefault("delegate", name)
-        val ScaledObjectRef.targetNotifications
-            get() = scalerMetadataMap.getOrDefault("targetNotifications", "10").toLong()
+    inner class ExternalScalerImpl : ExternalScalerGrpcKt.ExternalScalerCoroutineImplBase() {
+        val ScaledObjectRef.agent
+            get() = scalerMetadataMap.getOrDefault("agent", name)
+        //val ScaledObjectRef.targetExecutions
+        //    get() = scalerMetadataMap.getOrDefault("targetExecutions", "10").toLong()
+        val ScaledObjectRef.targetInstances
+            get() = scalerMetadataMap.getOrDefault("targetInstances", "10").toLong()
 
         override suspend fun isActive(request: ScaledObjectRef): IsActiveResponse {
-            val notificationCache = getNotificationCache(ignite, request.delegate)
-            val available = notificationCache.localSizeLong()
+            val agent = request.agent
+
+            val instancesCache = ignite.getOrCreateCache<String, InstanceData>("instances")
+            val query = ScanQuery(IgniteBiPredicate<String, InstanceData> {_, value -> value.agent == agent}).also {
+                it.setLocal(true)
+            }
+            val queryCursor = instancesCache.query(query)
+            val hasAvailable = queryCursor.any()
             return IsActiveResponse.newBuilder().also {
-                it.result = available > 0
+                it.result = hasAvailable
             }.build()
         }
 
         @OptIn(kotlinx.coroutines.FlowPreview::class)
         override fun streamIsActive(request: ScaledObjectRef) = flow<Boolean> {
-            val notificationCache = getNotificationCache(ignite, request.delegate).withKeepBinary<BinaryObject, BinaryObject>()
+            val agent = request.agent
 
-            lateinit var queryCursor: QueryCursor<Entry<BinaryObject, BinaryObject>>
-            val query = ContinuousQuery<BinaryObject, BinaryObject>().also {
-                it.localListener = CacheEntryUpdatedListener {
-                    val available = notificationCache.localSizeLong()
-                    runBlocking {
-                        try {
-                            emit(available > 0)
-                        } catch (_: CancellationException) {
-                            queryCursor.close()
+            val instancesCache = ignite.getOrCreateCache<String, InstanceData>("instances")
+
+            var count = AtomicInteger(0)
+            lateinit var queryCursor: QueryCursor<Entry<String, InstanceData>>
+
+            val query = ContinuousQuery<String, InstanceData>()
+            query.localListener = CacheEntryUpdatedListener { events ->
+                for (event in events) {
+                    if (event.value.agent == agent) {
+                        val value = if (event.eventType.isRemoval) count.incrementAndGet() else if (event.eventType.isCreation) count.decrementAndGet() else continue
+                        runBlocking {
+                            try {
+                                emit(value > 0)
+                            } catch (_: CancellationException) {
+                                queryCursor.close()
+                            }
                         }
                     }
                 }
+            }
+            query.setLocal(true)
+            query.initialQuery = ScanQuery(IgniteBiPredicate<String, InstanceData> {_, value -> value.agent == agent}).also {
                 it.setLocal(true)
             }
-            queryCursor = notificationCache.query(query)
+            queryCursor = instancesCache.query(query)
+
+            for (entry in queryCursor) {
+                emit(count.incrementAndGet() > 0)
+            }
         }.debounce(100).map({ value ->
             IsActiveResponse.newBuilder().also {
                 it.result = value
@@ -427,24 +449,32 @@ class TransportService(var port: Int = 40400) : Service {
         })
 
         override suspend fun getMetricSpec(request: ScaledObjectRef): GetMetricSpecResponse {
+            val agent = request.agent
             return GetMetricSpecResponse.newBuilder().also {
                 it.addMetricSpecsBuilder().also {
-                    it.metricName = "${request.delegate}-notifications"
-                    it.targetSize = request.targetNotifications
+                    it.metricName = "$agent-instances"
+                    it.targetSize = request.targetInstances
                 }
             }.build()
         }
 
         override suspend fun getMetrics(request: GetMetricsRequest): GetMetricsResponse {
-            val notificationCache = getNotificationCache(ignite, request.scaledObjectRef.delegate)
-            val available = notificationCache.localSizeLong()
+            val agent = request.scaledObjectRef.agent
+
+            val instancesCache = ignite.getOrCreateCache<String, InstanceData>("instances")
+
+            val query = ScanQuery(IgniteBiPredicate<String, InstanceData> {_, value -> value.agent == agent}).also {
+                it.setLocal(true)
+            }
+            val queryCursor = instancesCache.query(query)
+            val available = queryCursor.count()
 
             return GetMetricsResponse.newBuilder().also {
                 it.addMetricValuesBuilder().also {
-                    it.metricName = "${request.scaledObjectRef.delegate}-notifications"
-                    it.metricValue = available
+                    it.metricName = "$agent-instances"
+                    it.metricValue = available.toLong()
                 }
             }.build()
         }
-    }*/
+    }
 }
