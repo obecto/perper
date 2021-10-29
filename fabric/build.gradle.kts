@@ -46,8 +46,8 @@ compileKotlin.kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
 
 application {
     version = "0.7.1"
-    mainClass.set("com.obecto.perper.fabric.Main")
     description = "Perper Fabric"
+    mainClass.set("com.obecto.perper.fabric.Main")
 }
 
 java {
