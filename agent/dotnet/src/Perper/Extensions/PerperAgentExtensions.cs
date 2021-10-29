@@ -9,9 +9,9 @@ namespace Perper.Extensions
 {
     public static class PerperAgentExtensions
     {
-        public static async Task<TResult> CallFunctionAsync<TResult>(this PerperAgent agent, string functionName, params object?[] parameters)
+        public static async Task<TResult> CallAsync<TResult>(this PerperAgent agent, string functionName, params object?[] parameters)
         {
-            var results = await CallAsync(agent, functionName, parameters).ConfigureAwait(false);
+            var results = await InternalCallAsync(agent, functionName, parameters).ConfigureAwait(false);
 
             if (results is null)
             {
@@ -35,12 +35,12 @@ namespace Perper.Extensions
             }
         }
 
-        public static async Task CallActionAsync(this PerperAgent agent, string actionName, params object?[] parameters)
+        public static async Task CallAsync(this PerperAgent agent, string actionName, params object?[] parameters)
         {
-            await CallAsync(agent, actionName, parameters).ConfigureAwait(false);
+            await InternalCallAsync(agent, actionName, parameters).ConfigureAwait(false);
         }
 
-        private static async Task<object?[]?> CallAsync(PerperAgent agent, string @delegate, object?[] parameters)
+        private static async Task<object?[]?> InternalCallAsync(PerperAgent agent, string @delegate, object?[] parameters)
         {
             var call = CacheService.GenerateName(@delegate);
 

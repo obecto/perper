@@ -2,7 +2,6 @@ using System.Threading.Tasks;
 
 using Perper.Model;
 using Perper.Protocol;
-using Perper.Protocol.Instance;
 
 namespace Perper.Extensions
 {
@@ -15,14 +14,14 @@ namespace Perper.Extensions
         public static async Task<PerperAgent> StartAgentAsync(string agent, params object[] parameters)
         {
             var instance = await CreateInstanceAsync(agent).ConfigureAwait(false);
-            await instance.CallActionAsync(StartupFunctionName, parameters).ConfigureAwait(false);
+            await instance.CallAsync(StartupFunctionName, parameters).ConfigureAwait(false);
             return instance;
         }
 
         public static async Task<(PerperAgent, TResult)> StartAgentAsync<TResult>(string agent, params object[] parameters)
         {
             var instance = await CreateInstanceAsync(agent).ConfigureAwait(false);
-            var result = await instance.CallFunctionAsync<TResult>(StartupFunctionName, parameters).ConfigureAwait(false);
+            var result = await instance.CallAsync<TResult>(StartupFunctionName, parameters).ConfigureAwait(false);
             return (instance, result);
         }
 
@@ -33,29 +32,23 @@ namespace Perper.Extensions
             return new PerperAgent(agent, instance);
         }
 
-        public static PerperStreamBuilder StreamAction(string @delegate)
+        public static PerperStreamBuilder Stream(string @delegate)
         {
-            return new PerperStreamBuilder(@delegate, StreamDelegateType.Action);
-        }
-
-        public static PerperStreamBuilder StreamFunction(string @delegate)
-        {
-            return new PerperStreamBuilder(@delegate, StreamDelegateType.Function);
+            return new PerperStreamBuilder(@delegate);
         }
 
         public static PerperStreamBuilder BlankStream()
         {
-            return new PerperStreamBuilder("", StreamDelegateType.External);
+            return new PerperStreamBuilder(null);
         }
 
-        public static Task<TResult> CallFunctionAsync<TResult>(string functionName, params object[] parameters)
-        {
-            return Agent.CallFunctionAsync<TResult>(functionName, parameters);
-        }
+        public static Task<TResult> CallAsync<TResult>(string functionName, params object[] parameters) => Agent.CallAsync<TResult>(functionName, parameters);
 
-        public static Task CallActionAsync(string actionName, params object[] parameters)
+        public static Task CallAsync(string actionName, params object[] parameters) => Agent.CallAsync(actionName, parameters);
+
+        public static async Task WriteToBlankStream<TItem>(PerperStream stream, TItem item, bool keepBinary = false)
         {
-            return Agent.CallActionAsync(actionName, parameters);
+            await AsyncLocals.CacheService.StreamWriteItem(stream.Stream, item, keepBinary).ConfigureAwait(false);
         }
     }
 }

@@ -16,28 +16,29 @@ namespace Perper.Extensions
         public PerperStream Stream => new(StreamName);
 
         public string StreamName { get; private set; }
-        public string Delegate { get; private set; }
+        public string? Delegate { get; private set; }
 
         public StreamDelegateType DelegateType { get; private set; } = StreamDelegateType.Function;
         public bool IsEphemeral { get; private set; } = true;
+        public bool IsAction { get; private set; }
         public string? IndexType { get; private set; }
         public Hashtable? IndexFields { get; private set; }
 
-        public PerperStreamBuilder(string @delegate, StreamDelegateType delegateType) : this(CacheService.GenerateName(@delegate), @delegate, delegateType)
+        public PerperStreamBuilder(string @delegate) : this(CacheService.GenerateName(@delegate ?? ""), @delegate)
         {
         }
 
-        public PerperStreamBuilder(string stream, string @delegate, StreamDelegateType delegateType)
+        public PerperStreamBuilder(string stream, string @delegate)
         {
             StreamName = stream;
             Delegate = @delegate;
-            DelegateType = delegateType;
         }
 
         public async Task<PerperStream> StartAsync(params object[] parameters)
         {
+            var delegateType = Delegate == null ? StreamDelegateType.External : IsAction ? StreamDelegateType.Action : StreamDelegateType.Function;
             await AsyncLocals.CacheService.StreamCreate(
-                StreamName, AsyncLocals.Agent, AsyncLocals.Instance, Delegate, DelegateType, parameters,
+                StreamName, AsyncLocals.Agent, AsyncLocals.Instance, Delegate ?? "", delegateType, parameters,
                 IsEphemeral, IndexType, IndexFields).ConfigureAwait(false);
 
             return Stream;
@@ -55,14 +56,20 @@ namespace Perper.Extensions
             return this;
         }
 
-        public PerperStreamBuilder Query(string indexType, Hashtable indexFields)
+        public PerperStreamBuilder Action()
+        {
+            IsAction = true;
+            return this;
+        }
+
+        public PerperStreamBuilder Index(string indexType, Hashtable indexFields)
         {
             IndexType = indexType;
             IndexFields = indexFields;
             return this;
         }
 
-        public PerperStreamBuilder Query(string indexType, IEnumerable<KeyValuePair<string, string>> indexFields)
+        public PerperStreamBuilder Index(string indexType, IEnumerable<KeyValuePair<string, string>> indexFields)
         {
             var indexFieldHashtable = new Hashtable();
 
@@ -71,11 +78,11 @@ namespace Perper.Extensions
                 indexFieldHashtable[name] = type;
             }
 
-            return Query(indexType, indexFieldHashtable);
+            return Index(indexType, indexFieldHashtable);
         }
 
-        public PerperStreamBuilder Query(QueryEntity queryEntity) => Query(queryEntity.ValueTypeName, queryEntity.Fields.Select(field => KeyValuePair.Create(field.Name, field.FieldTypeName)));
+        public PerperStreamBuilder Index(QueryEntity queryEntity) => Index(queryEntity.ValueTypeName, queryEntity.Fields.Select(field => KeyValuePair.Create(field.Name, field.FieldTypeName)));
 
-        public PerperStreamBuilder Query<T>() => Query(new QueryEntity(typeof(T)));
+        public PerperStreamBuilder Index<T>() => Index(new QueryEntity(typeof(T)));
     }
 }
