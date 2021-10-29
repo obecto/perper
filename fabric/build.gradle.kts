@@ -1,7 +1,8 @@
 import com.google.protobuf.gradle.*
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URI
 
-val igniteVersion = "2.8.1"
+val igniteVersion = "2.10.0"
 val grpcVersion = "1.31.1"
 val grpcKotlinVersion = "0.2.0"
 val protobufVersion = "3.13.0"
@@ -10,9 +11,9 @@ val slf4jVersion = "1.7.28"
 
 plugins {
     id("org.gradle.application")
-    kotlin("jvm") version "1.4.10"
-    id("org.jmailen.kotlinter") version "3.2.0"
-    id("com.google.protobuf") version "0.8.13"
+    kotlin("jvm") version "1.5.30"
+    id("org.jmailen.kotlinter") version "3.6.0"
+    id("com.google.protobuf") version "0.8.17"
 }
 
 repositories {
@@ -21,7 +22,7 @@ repositories {
 }
 
 dependencies {
-    implementation(kotlin("stdlib"))
+    implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
     implementation("org.apache.ignite:ignite-core:$igniteVersion")
     runtimeOnly("org.apache.ignite:ignite-indexing:$igniteVersion")
@@ -38,8 +39,12 @@ dependencies {
     testImplementation("junit:junit:4.12")
 }
 
+val compileKotlin: KotlinCompile by tasks
+
+compileKotlin.kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
+
 application {
-    version = "0.6.0-alpha7"
+    version = "0.7.0"
     mainClass.set("com.obecto.perper.fabric.Main")
     description = "Perper Fabric"
 }

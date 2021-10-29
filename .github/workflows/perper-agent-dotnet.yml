@@ -1,0 +1,27 @@
+name: Perper Dotnet Agent
+
+on:
+  push:
+    paths:
+      - 'agent/dotnet/src/Perper/**'
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '5.0.x'
+
+      - name: Build with dotnet
+        working-directory: ./agent/dotnet/src/Perper
+        run: dotnet build --configuration Release
+
+      - name: Push generated package to nuget.org
+        working-directory: ./agent/dotnet/src/Perper/bin/Release
+        run: dotnet nuget push *.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate

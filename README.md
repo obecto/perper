@@ -87,7 +87,7 @@ project language.
 #### C#
 
 The first step is to define Launcher function that creates the stream graph
-that will be executed:
+that will be executed: 
 
 *Launcher*
 ```csharp

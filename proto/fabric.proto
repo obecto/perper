@@ -1,8 +1,8 @@
-syntax = "proto2";
+syntax = "proto3";
 
 option java_multiple_files = true;
 option java_package = "com.obecto.perper.protobuf";
-option csharp_namespace = "Perper.WebJobs.Extensions.Protobuf";
+option csharp_namespace = "Perper.Protocol.Protobuf";
 
 package perper;
 
@@ -12,16 +12,17 @@ service Fabric {
 }
 
 message NotificationFilter {
-    required string agentDelegate = 1;
+    string agent = 1;
+    string instance = 2;
 }
 
 message CallNotificationFilter {
-    required string agentDelegate = 1;
-    required string callName = 2;
+    string agent = 1;
+    string call = 2;
 }
 
 message Notification {
-    required int64 notificationKey = 1;
+    int64 notificationKey = 1;
 
     oneof affinity {
       string stringAffinity = 2;

@@ -10,6 +10,7 @@ import org.apache.ignite.binary.BinaryTypeConfiguration
 import org.apache.ignite.cache.CacheKeyConfiguration
 import org.apache.ignite.configuration.BinaryConfiguration
 import org.apache.ignite.configuration.ClientConnectorConfiguration
+import org.apache.ignite.configuration.DataStorageConfiguration
 import org.apache.ignite.configuration.IgniteConfiguration
 import org.apache.ignite.logger.slf4j.Slf4jLogger
 import org.apache.ignite.services.Service
@@ -31,16 +32,20 @@ fun main(args: Array<String>) {
     val parser = ArgParser("perper-fabric")
 
     val debug by parser.option(ArgType.Boolean, shortName = "d", description = "Show debug logs").default(false)
+    val trace by parser.option(ArgType.Boolean, description = "Show trace logs").default(false)
     val verbose by parser.option(ArgType.Boolean, shortName = "v", description = "Show Ignite information logs").default(false)
     val ignitePort by parser.option(ArgType.Int, "ignite-port", description = "Ignite client port").default(10800)
     val grpcPort by parser.option(ArgType.Int, "grpc-port", description = "Transport service port").default(40400)
     val noDiscovery by parser.option(ArgType.Boolean, "no-discovery", description = "Disable discovery").default(false)
+    val composeFile by parser.option(ArgType.String, "compose-file", shortName = "f", description = "Path to docker-compose.yml used for instancing agents").default("docker-compose.yml")
+    val maxDataRegionSizeMb by parser.option(ArgType.Int, "max-data-region-size", description = "Max Ignite data region size (in MB)").default(-1)
 
     parser.parse(args)
 
     System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", if (verbose) "info" else "warn")
-    System.setProperty("org.slf4j.simpleLogger.log.com.obecto.perper", if (debug) "debug" else "info")
+    System.setProperty("org.slf4j.simpleLogger.log.com.obecto.perper", if (trace) "trace" else if (debug) "debug" else "info")
     System.setProperty("org.slf4j.simpleLogger.levelInBrackets", "true")
+    System.setProperty("org.slf4j.simpleLogger.showDateTime", "true")
 
     val igniteConfiguration = IgniteConfiguration().also {
         it.clientConnectorConfiguration = ClientConnectorConfiguration().also {
@@ -53,10 +58,11 @@ fun main(args: Array<String>) {
         }
         it.binaryConfiguration = BinaryConfiguration().also {
             it.typeConfigurations = listOf(
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.CallData>(),
-                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamData>(),
+//                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.CallData>(),
+//                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamData>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamDelegateType>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.StreamListener>(),
+                BinaryTypeConfiguration<com.obecto.perper.fabric.cache.AgentType>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.CallResultNotification>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.CallTriggerNotification>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.Notification>(),
@@ -66,7 +72,7 @@ fun main(args: Array<String>) {
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.StreamItemNotification>(),
                 BinaryTypeConfiguration<com.obecto.perper.fabric.cache.notification.StreamTriggerNotification>(),
             )
-            it.serializer = PerperBinarySerializer()
+//             it.serializer = PerperBinarySerializer()
             it.nameMapper = BinaryBasicNameMapper(true)
         }
         it.setCacheKeyConfiguration(
@@ -74,10 +80,16 @@ fun main(args: Array<String>) {
             CacheKeyConfiguration(com.obecto.perper.fabric.cache.notification.NotificationKeyString::class.java)
         )
         it.setServiceConfiguration(
+            singletonServiceConfiguration("InstanceService", InstanceService(composeFile)),
             singletonServiceConfiguration("CallService", CallService()),
             singletonServiceConfiguration("StreamService", StreamService()),
             singletonServiceConfiguration("TransportService", TransportService(grpcPort)),
         )
+        it.dataStorageConfiguration = DataStorageConfiguration().also {
+            if (maxDataRegionSizeMb > 0) {
+                it.defaultDataRegionConfiguration.maxSize = maxDataRegionSizeMb.toLong() * 1024 * 1024
+            }
+        }
         it.gridLogger = Slf4jLogger()
     }
 

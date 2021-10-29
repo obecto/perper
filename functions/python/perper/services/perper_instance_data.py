@@ -1,2 +1,0 @@
-class PerperInstanceData(object):
-    pass

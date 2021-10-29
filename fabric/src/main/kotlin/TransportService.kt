@@ -1,10 +1,13 @@
 package com.obecto.perper.fabric
+import com.obecto.perper.fabric.cache.AgentType
 import com.obecto.perper.fabric.cache.notification.CallResultNotification
+import com.obecto.perper.fabric.cache.notification.CallTriggerNotification
 import com.obecto.perper.fabric.cache.notification.Notification
 import com.obecto.perper.fabric.cache.notification.NotificationKey
 import com.obecto.perper.fabric.cache.notification.NotificationKeyLong
 import com.obecto.perper.fabric.cache.notification.NotificationKeyString
 import com.obecto.perper.fabric.cache.notification.StreamItemNotification
+import com.obecto.perper.fabric.cache.notification.StreamTriggerNotification
 import com.obecto.perper.protobuf.CallNotificationFilter
 import com.obecto.perper.protobuf.FabricGrpcKt
 import com.obecto.perper.protobuf.NotificationFilter
@@ -12,6 +15,7 @@ import io.grpc.Server
 import io.grpc.ServerBuilder
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flow
@@ -42,6 +46,7 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.ConcurrentHashMap
 import javax.cache.Cache.Entry
 import javax.cache.configuration.Factory
+import javax.cache.event.CacheEntryEvent
 import javax.cache.event.CacheEntryEventFilter
 import javax.cache.event.CacheEntryUpdatedListener
 import javax.cache.event.EventType
@@ -50,13 +55,13 @@ import com.obecto.perper.protobuf.Notification as NotificationProto
 class TransportService(var port: Int) : Service {
 
     companion object Caches {
-        fun getNotificationCache(ignite: Ignite, agentDelegate: String): IgniteCache<NotificationKey, Notification> {
-            return ignite.getOrCreateCache<NotificationKey, Notification>("$agentDelegate-\$notifications")
+        fun getNotificationCache(ignite: Ignite, agent: String): IgniteCache<NotificationKey, Notification> {
+            return ignite.getOrCreateCache<NotificationKey, Notification>("$agent-\$notifications")
         }
 
-        fun getNotificationQueue(ignite: Ignite, streamName: String): IgniteQueue<NotificationKey> {
+        fun getNotificationQueue(ignite: Ignite, streamName: String, streamParameter: Int): IgniteQueue<NotificationKey> {
             return ignite.queue(
-                "$streamName-\$notifications", 0,
+                "$streamName-\$notifications-$streamParameter", 0,
                 CollectionConfiguration().also {
                     it.backups = 1 // Workaround IGNITE-7789
                 }
@@ -120,20 +125,27 @@ class TransportService(var port: Int) : Service {
             }
         }.build()
 
-        @kotlinx.coroutines.ExperimentalCoroutinesApi
+        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
         override fun notifications(request: NotificationFilter) = channelFlow<NotificationProto> {
-            val notificationCache = getNotificationCache(ignite, request.agentDelegate)
-            val notificationAffinity = ignite.affinity<NotificationKey>(request.agentDelegate)
+            val instance = if (request.instance != "") request.instance else null
+            if (instance != null) {
+                InstanceService.setInstanceRunning(ignite, instance, true)
+                InstanceService.setAgentType(ignite, request.agent, AgentType.CONTAINERS)
+            } else {
+                InstanceService.setAgentType(ignite, request.agent, AgentType.FUNCTIONS)
+            }
+            val notificationCache = getNotificationCache(ignite, request.agent)
+            val notificationAffinity = ignite.affinity<NotificationKey>(notificationCache.name)
             val localNode = ignite.cluster().localNode()
-            val finishChannel = Channel<Throwable>(Channel.CONFLATED)
 
             val sentQueueNotificationsMap = ConcurrentHashMap<String, NotificationKey>()
 
-            fun updateQueue(stream: String) {
-                val queue = getNotificationQueue(ignite, stream)
+            fun updateQueue(stream: String, parameter: Int) {
+                val queue = getNotificationQueue(ignite, stream, parameter)
                 val queuedKey: NotificationKey? = queue.peek()
 
                 if (queuedKey == null) {
+                    log.trace({ "No notifications for: $stream (${queue.size})" })
                     return
                 }
 
@@ -144,76 +156,114 @@ class TransportService(var port: Int) : Service {
                 } catch (e: Exception) { } // Necessitated by IGNITE-8978
 
                 if (sentQueueNotificationsMap.put(stream, queuedKey) != queuedKey) {
+                    log.trace({ "Sending notification: $instance $stream - $queuedKey (${queue.size})" })
                     runBlocking { send(queuedKey.toNotification()) }
                 }
             }
 
             fun processNotification(key: NotificationKey, notification: Notification, confirmed: Boolean) {
-                if (notification is CallResultNotification) {
-                    // pass, handled by callResultNotification below
-                } else if (notification is StreamItemNotification) {
-                    if (confirmed) {
-                        getNotificationQueue(ignite, notification.stream).remove(key)
+                if (notification is StreamItemNotification) {
+                    if (instance == null || notification.instance == instance) {
+                        if (confirmed) {
+                            val queue = getNotificationQueue(ignite, notification.stream, notification.parameter)
+                            log.trace({ "Consume notification start: ${notification.stream} - $key (${queue.size})" })
+                            queue.remove(key)
 
-                        if (notification.ephemeral) {
-                            val counter = ignite.atomicLong("${notification.cache}-${notification.key}", 0, true)
-                            if (counter.decrementAndGet() == 0L) {
-                                ignite.cache<Long, BinaryObject>(notification.cache).withKeepBinary<Long, BinaryObject>().remove(notification.key)
-                                counter.close()
+                            if (notification.ephemeral) {
+                                val counter = ignite.atomicLong("${notification.cache}-${notification.key}", 0, true)
+                                if (counter.decrementAndGet() == 0L) {
+                                    ignite.cache<Long, BinaryObject>(notification.cache).withKeepBinary<Long, BinaryObject>().remove(notification.key)
+                                    counter.close()
+                                }
+                            }
+                            log.trace({ "Consume notification end: ${notification.stream} - $key (${queue.size})" })
+                        }
+                        updateQueue(notification.stream, notification.parameter)
+                    }
+                } else if (!confirmed) {
+                    if (instance == null || (notification is CallTriggerNotification && notification.instance == instance) || (notification is StreamTriggerNotification && notification.instance == instance) || (notification is CallResultNotification && notification.caller == instance)) {
+                        log.trace({ "Sending notification $instance ${request.agent}, $notification - $key" })
+                        runBlocking { send(key.toNotification()) }
+                    }
+                }
+            }
+
+            val remoteJob = launch {
+                val remoteQueryChannel = Channel<Pair<String, Int>>(Channel.UNLIMITED)
+
+                // warn: Might lead to race conditions in local-only scenarious if updateQueue gets called from multiple threads.
+                val remoteConfirmationQuery = ContinuousQuery<NotificationKey, Notification>()
+                remoteConfirmationQuery.remoteFilterFactory = Factory<CacheEntryEventFilter<NotificationKey, Notification>> {
+                    CacheEntryEventFilter { event ->
+                        if (event.eventType == EventType.REMOVED) {
+                            var notification = (event.value ?: event.oldValue)
+                            notification is StreamItemNotification && (instance == null || notification.instance == instance)
+                        } else {
+                            false
+                        }
+                    }
+                }
+                remoteConfirmationQuery.localListener = CacheEntryUpdatedListener { events ->
+                    try {
+                        for (event in events) {
+                            if (event.eventType == EventType.REMOVED) {
+                                val value = (event.value ?: event.oldValue) as StreamItemNotification
+                                runBlocking { remoteQueryChannel.send(Pair(value.stream, value.parameter)) }
                             }
                         }
+                    } catch (e: Exception) {
+                        remoteQueryChannel.close(e)
                     }
-                    updateQueue(notification.stream)
-                } else if (!confirmed) {
-                    runBlocking { send(key.toNotification()) }
+                }
+
+                val remoteQueryCursor = notificationCache.query(remoteConfirmationQuery)
+
+                try {
+                    for ((stream, parameter) in remoteQueryChannel) {
+                        updateQueue(stream, parameter)
+                    }
+                } finally {
+                    remoteQueryCursor.close()
                 }
             }
 
-            val remoteConfirmationQuery = ContinuousQuery<NotificationKey, Notification>()
-            remoteConfirmationQuery.localListener = CacheEntryUpdatedListener { events ->
-                try {
-                    for (event in events) {
-                        if (event.eventType == EventType.REMOVED) {
-                            val value = event.value ?: event.oldValue
-                            updateQueue((value as StreamItemNotification).stream)
+            val localJob = launch {
+                val queryChannel = Channel<CacheEntryEvent<out NotificationKey, out Notification>>(Channel.UNLIMITED)
+                val query = ContinuousQuery<NotificationKey, Notification>()
+                query.localListener = CacheEntryUpdatedListener { events ->
+                    try {
+                        for (event in events) {
+                            runBlocking { queryChannel.send(event) }
                         }
+                    } catch (e: Exception) {
+                        queryChannel.close(e)
                     }
-                } catch (e: Exception) {
-                    runBlocking { finishChannel.send(e) }
                 }
-            }
+                query.setLocal(true)
 
-            remoteConfirmationQuery.remoteFilterFactory = Factory<CacheEntryEventFilter<NotificationKey, Notification>> {
-                CacheEntryEventFilter { event -> event.eventType == EventType.REMOVED && (event.value ?: event.oldValue) is StreamItemNotification }
-            }
+                query.initialQuery = ScanQuery<NotificationKey, Notification>().also { it.setLocal(true) }
 
-            val remoteQueryCursor = notificationCache.query(remoteConfirmationQuery)
+                val queryCursor = notificationCache.query(query)
 
-            val query = ContinuousQuery<NotificationKey, Notification>()
-            query.localListener = CacheEntryUpdatedListener { events ->
                 try {
-                    for (event in events) {
+                    for (entry in queryCursor) {
+                        processNotification(entry.key, entry.value, false)
+                    }
+                    for (event in queryChannel) {
                         processNotification(event.key, event.value ?: event.oldValue, event.eventType == EventType.REMOVED)
                     }
-                } catch (e: Exception) {
-                    runBlocking { finishChannel.send(e) }
+                } finally {
+                    queryCursor.close()
                 }
             }
 
-            query.setLocal(true)
-            query.initialQuery = ScanQuery<NotificationKey, Notification>().also { it.setLocal(true) }
-            val queryCursor = notificationCache.query(query)
+            log.debug({ "Notifications listener started for '${request.agent}' - '${request.instance}'!" })
 
-            log.debug({ "Notifications listener started for '${request.agentDelegate}'!" })
-
-            invokeOnClose({ runBlocking { finishChannel.send(it ?: CancellationException()) } })
+            invokeOnClose({ localJob.cancel(); remoteJob.cancel() })
 
             try {
-                for (entry in queryCursor) {
-                    processNotification(entry.key, entry.value, false)
-                }
-
-                throw finishChannel.receive()
+                localJob.join()
+                remoteJob.join()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -221,16 +271,16 @@ class TransportService(var port: Int) : Service {
                 e.printStackTrace()
                 throw e
             } finally {
-                remoteQueryCursor.close()
-                queryCursor.close()
-
-                log.debug({ "Notifications listener finished for '${request.agentDelegate}'!" })
+                log.debug({ "Notifications listener finished for '${request.agent}' - '${request.instance}'!" })
+                if (instance != null) {
+                    InstanceService.setInstanceRunning(ignite, instance, false)
+                }
             }
-        }
+        }.buffer(Channel.UNLIMITED)
 
         override suspend fun callResultNotification(request: CallNotificationFilter): NotificationProto {
-            val callName = request.callName
-            val notificationCache = getNotificationCache(ignite, request.agentDelegate)
+            val call = request.call
+            val notificationCache = getNotificationCache(ignite, request.agent)
             lateinit var queryCursor: QueryCursor<Entry<NotificationKey, Notification>>
             val query = ContinuousQuery<NotificationKey, Notification>()
             val resultChannel = Channel<NotificationKey>(Channel.CONFLATED)
@@ -242,11 +292,11 @@ class TransportService(var port: Int) : Service {
             }
 
             query.remoteFilterFactory = Factory<CacheEntryEventFilter<NotificationKey, Notification>> {
-                CacheEntryEventFilter { event -> (event.value as? CallResultNotification)?.call == callName }
+                CacheEntryEventFilter { event -> (event.value as? CallResultNotification)?.call == call }
             }
 
             query.initialQuery = ScanQuery<NotificationKey, Notification>().also {
-                it.filter = IgniteBiPredicate { _, notification -> notification is CallResultNotification && notification.call == callName }
+                it.filter = IgniteBiPredicate { _, notification -> notification is CallResultNotification && notification.call == call }
             }
 
             queryCursor = notificationCache.query(query)
@@ -258,11 +308,11 @@ class TransportService(var port: Int) : Service {
                 } catch (e: java.util.NoSuchElementException) {} catch (e: org.apache.ignite.IgniteException) {} catch (e: org.apache.ignite.cache.query.QueryCancelledException) {}
             }
 
-            log.debug({ "Call result notification listener started for '${request.callName}'!" })
+            log.debug({ "Call result notification listener started for '$call'!" })
 
             val result = resultChannel.receive()
 
-            log.debug({ "Call result notification listener completed for '${request.callName}'!" })
+            log.debug({ "Call result notification listener completed for '$call'!" })
             queryCursor.close()
 
             return result.toNotification()
@@ -283,7 +333,7 @@ class TransportService(var port: Int) : Service {
             }.build()
         }
 
-        @kotlinx.coroutines.FlowPreview
+        @OptIn(kotlinx.coroutines.FlowPreview::class)
         override fun streamIsActive(request: ScaledObjectRef) = flow<Boolean> {
             val notificationCache = getNotificationCache(ignite, request.delegate).withKeepBinary<BinaryObject, BinaryObject>()
 

@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+    simple-container-agent:
+        image: python:3.9
+        volumes:
+            - ../../../:/perper/
+            - /tmp/pyagent-install:/root/.local/ # to not have to redownload dependencies every time
+        command: "sh -c 'pip install --user -e /perper/agent/python; python /perper/agent/python/test/sample-container-agent.py'"
+
+        network_mode: host #perper
+#networks:
+#    perper:
+#        driver: bridge
