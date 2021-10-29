@@ -9,8 +9,8 @@ from ..extensions.context_vars import fabric_service, fabric_execution
 from ..protocol import FabricService, FabricExecution, TaskCollection
 from contextvars import ContextVar
 
-StartupContext = namedtuple('StartupContext', ['agent', 'instance', 'task_collection'])
-startup_context = ContextVar('startup_context')
+StartupContext = namedtuple("StartupContext", ["agent", "instance", "task_collection"])
+startup_context = ContextVar("startup_context")
 
 
 def run_init_delegate(function):
@@ -24,6 +24,7 @@ def register_delegate(delegate, function):
     async def helper():
         async for execution in fabric_service.get().enumerate_executions(startup_context.get().agent, startup_context.get().instance, delegate):
             startup_context.get().task_collection.add(process_execution(execution, function))
+
     startup_context.get().task_collection.add(helper())
 
 
@@ -41,7 +42,8 @@ async def process_execution(execution, function, is_init=False):
             if result is None:
                 fabric_service.get().write_execution_finished(fabric_execution.get().execution)
             elif isinstance(result, AsyncIterable):
-                await fabric_service.get().wait_listener_attached(fabric_execution.get().execution)  # NOTE: unlike C# code, here we read the parameters before waiting for a listener.
+                # NOTE: unlike C# code, here we read the parameters before waiting for a listener.
+                await fabric_service.get().wait_listener_attached(fabric_execution.get().execution)
                 async for data in result:
                     if isinstance(data, tuple) and len(data) == 2 and isinstance(data[0], int):
                         (key, data) = data
@@ -62,4 +64,3 @@ async def process_execution(execution, function, is_init=False):
             except Exception as ex:
                 print(f"Error while executing {fabric_execution.get().execution}:")
                 traceback.print_exception(type(ex), ex, ex.__traceback__)
-

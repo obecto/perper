@@ -9,5 +9,5 @@ from .stream import (
     enumerate_stream,
     query_stream,
     query_stream_sync,
-    destroy_stream
+    destroy_stream,
 )

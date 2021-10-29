@@ -15,7 +15,7 @@ from .proto import fabric_pb2, fabric_pb2_grpc
 from .ignite_extensions import put_if_absent_or_raise, optimistic_update
 
 
-FabricExecution = namedtuple('Execution', ['agent', 'instance', 'delegate', 'execution'])
+FabricExecution = namedtuple("Execution", ["agent", "instance", "delegate", "execution"])
 
 
 class factorydict(dict):
@@ -66,7 +66,7 @@ class FabricService:
 
     async def stop(self):
         self.task_collection.cancel()
-        #print(self.task_collection.tasks)
+        # print(self.task_collection.tasks)
         await self.task_collection.wait()
         await self.grpc_channel.close()
 
@@ -130,23 +130,16 @@ class FabricService:
     # STREAMS:
 
     def create_stream(self, stream, query_entities=[]):
-        self.ignite.create_cache({
-            prop_codes.PROP_NAME: stream,
-            prop_codes.PROP_QUERY_ENTITIES: query_entities
-        })
+        self.ignite.create_cache({prop_codes.PROP_NAME: stream, prop_codes.PROP_QUERY_ENTITIES: query_entities})
 
     def remove_stream(self, stream):
         self.item_caches[instance].destroy()
-
 
     LISTENER_PERSIST_ALL = -1 << 63
     LISTENER_JUST_TRIGGER = ~(-1 << 63)
 
     def set_stream_listener_position(self, listener, stream, position):
-        stream_listener = StreamListener(
-            stream=stream,
-            position=position
-        )
+        stream_listener = StreamListener(stream=stream, position=position)
         self.stream_listeners_cache.put(listener, stream_listener)
 
     def remove_stream_listener(self, listener):
@@ -164,30 +157,14 @@ class FabricService:
     # GRPC:
 
     async def wait_execution_finished(self, execution):
-        await self.fabric_stub.ExecutionFinished(
-            fabric_pb2.ExecutionFinishedRequest(
-                execution = execution
-            ),
-            wait_for_ready = True
-        )
+        await self.fabric_stub.ExecutionFinished(fabric_pb2.ExecutionFinishedRequest(execution=execution), wait_for_ready=True)
 
     async def wait_listener_attached(self, stream):
-        await self.fabric_stub.ListenerAttached(
-            fabric_pb2.ListenerAttachedRequest(
-                stream = stream
-            ),
-            wait_for_ready = True
-        )
+        await self.fabric_stub.ListenerAttached(fabric_pb2.ListenerAttachedRequest(stream=stream), wait_for_ready=True)
 
     async def enumerate_stream_item_keys(self, stream, start_key=-1, stride=0, local_to_data=False):
         stream_items = self.fabric_stub.StreamItems(
-            fabric_pb2.StreamItemsRequest(
-                stream = stream,
-                startKey = start_key,
-                stride = stride,
-                localToData = local_to_data
-            ),
-            wait_for_ready = True
+            fabric_pb2.StreamItemsRequest(stream=stream, startKey=start_key, stride=stride, localToData=local_to_data), wait_for_ready=True
         )
         await stream_items.initial_metadata()
 
@@ -199,14 +176,9 @@ class FabricService:
 
     def _create_executions_listener(self, key):
         (agent, instance) = key
+
         async def helper():
-            executions = self.fabric_stub.Executions(
-                fabric_pb2.ExecutionsRequest(
-                    agent = agent,
-                    instance = instance
-                ),
-                wait_for_ready = True
-            )
+            executions = self.fabric_stub.Executions(fabric_pb2.ExecutionsRequest(agent=agent, instance=instance), wait_for_ready=True)
 
             async for proto in executions:
                 if proto.cancelled:
@@ -217,6 +189,7 @@ class FabricService:
                 else:
                     execution = FabricExecution(agent, proto.instance, proto.delegate, proto.execution)
                     await self.execution_channels[(agent, instance, proto.delegate)].put(execution)
+
         return asyncio.create_task(helper())
 
     async def get_executions_queue(self, agent, instance, delegate):

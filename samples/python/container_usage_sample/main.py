@@ -1,6 +1,4 @@
 import asyncio
-from pyignite.datatypes.primitive_objects import IntObject
-from pyignite.datatypes.standard import String
 import perper
 
 
@@ -16,7 +14,7 @@ async def init():
     id1 = await perper.call_agent(agent1, "Test", 1)
     id2 = await perper.call_agent(agent2, "Test", 1)
 
-    for i in range(1270):
+    for i in range(127):
         if ((i ^ (i << 2)) & 8) == 0:
             r1 = await perper.call_agent(agent1, "Test", 1)
             if r1 != id1:

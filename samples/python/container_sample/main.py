@@ -1,7 +1,6 @@
 import asyncio
 import uuid
 from pyignite.datatypes.primitive_objects import IntObject
-from pyignite.datatypes.standard import String, UUIDObject
 from perper.application.connection import establish_connection, configure_instance
 
 

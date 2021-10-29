@@ -2,6 +2,7 @@ from collections import OrderedDict
 from pyignite import GenericObjectMeta
 from pyignite.datatypes import String, BoolObject, ObjectArrayObject
 
+
 class ExecutionData(
     metaclass=GenericObjectMeta,
     schema=OrderedDict(

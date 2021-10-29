@@ -9,7 +9,7 @@ from .connection import establish_connection, configure_instance
 from .context import StartupContext, startup_context, run_init_delegate, register_delegate
 
 
-def run_notebook(*, agent='notebook', instance='notebook-Main'):  # It is important that this function is not async, as it sets context
+def run_notebook(*, agent="notebook", instance="notebook-Main"):  # It is important that this function is not async, as it sets context
     fabric_service.set(establish_connection())
     startup_context.set(StartupContext(agent, instance, TaskCollection()))
     fabric_execution.set(FabricExecution(agent, instance, "Main", fabric_service.get().generate_name(agent)))

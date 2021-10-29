@@ -18,14 +18,16 @@ def establish_connection():
     ignite_port = int(ignite_port)
 
     ignite = Client()
+
     @backoff.on_exception(backoff.expo, ReconnectError, on_backoff=(lambda x: print(f"Failed to connect to Ignite, retrying in {x['wait']:0.1f}s")))
     def connect_ignite():
         ignite.connect(ignite_address, ignite_port)
+
     connect_ignite()
 
-    if grpc_endpoint.startswith('http://'):
+    if grpc_endpoint.startswith("http://"):
         grpc_channel = grpc.aio.insecure_channel(grpc_endpoint[7:])
-    elif grpc_endpoint.startswith('https://'):
+    elif grpc_endpoint.startswith("https://"):
         grpc_channel = grpc.aio.secure_channel(grpc_endpoint[8:], grpc.ssl_channel_credentials())
     else:  # Fallback
         grpc_channel = grpc.aio.insecure_channel(grpc_endpoint)

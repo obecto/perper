@@ -1,8 +1,8 @@
 import asyncio
 import random
 import perper
-from pyignite.datatypes.primitive_objects import IntObject
-from pyignite.datatypes.standard import String
+from pyignite.datatypes import IntObject
+
 
 async def node1(other):
     yield 1
@@ -12,6 +12,7 @@ async def node1(other):
             break
         await asyncio.sleep(0.1)
         yield number - 1
+
 
 async def node2(other):
     async for number in perper.enumerate_stream(other):
@@ -83,20 +84,20 @@ async def init():
     node2_start(node1_stream)
 
     # Calls
-    randomNumber1 = await perper.call_function("GetRandomNumber", 1, 100)
+    randomNumber1 = await perper.call("GetRandomNumber", 1, 100)
     print(f"Random number: {randomNumber1}")
 
-    randomNumber2 = await perper.call_function("GetRandomNumberAsync", 1, 100)
+    randomNumber2 = await perper.call("GetRandomNumberAsync", 1, 100)
     print(f"Random number: {randomNumber2}")
 
-    randomNumber3, randomNumber4 = await perper.call_function("GetTwoRandomNumbers", 1, 100)
+    randomNumber3, randomNumber4 = await perper.call("GetTwoRandomNumbers", 1, 100)
     print(f"Random numbers: {randomNumber3} + {randomNumber4}")
 
-    countParams = await perper.call_function("CountParams", 1, "a", "b", "c")
+    countParams = await perper.call("CountParams", 1, "a", "b", "c")
     print(f"Count params: {countParams}")
 
-    await perper.call_action("DoSomething", "123")
-    await perper.call_action("DoSomethingAsync", "456")
+    await perper.call("DoSomething", "123")
+    await perper.call("DoSomethingAsync", "456")
 
 
 asyncio.run(
@@ -114,7 +115,7 @@ asyncio.run(
             "Processor": processor,
             "Consumer": consumer,
             "Node1": node1,
-            "Node2": node2
+            "Node2": node2,
         },
     )
 )
