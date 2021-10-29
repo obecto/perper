@@ -1,0 +1,1 @@
+await Perper.Application.PerperStartup.RunAsync("basic-sample", default).ConfigureAwait(false);

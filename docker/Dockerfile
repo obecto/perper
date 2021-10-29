@@ -1,10 +1,12 @@
-FROM gradle:6.8.3-jdk11 AS build-env
+FROM gradle:7.2-jdk11 AS build-env
 # Build
 WORKDIR /fabric
-COPY fabric /fabric
-COPY proto /proto
 USER root
-RUN gradle assemble
+COPY fabric/*gradle* /fabric
+RUN gradle tasks --no-daemon
+COPY proto /proto
+COPY fabric /fabric
+RUN gradle assemble --no-daemon
 
 FROM openjdk:11-buster
 # Install Docker CLI:
@@ -17,4 +19,5 @@ RUN apt-get update && apt-get -qq install docker-ce docker-ce-cli containerd.io 
 WORKDIR /app
 COPY --from=build-env /fabric/build/distributions/*.tar perper-fabric.tar
 RUN tar -xvf *.tar && rm *.tar && mv perper-fabric-*/ perper-fabric/
+COPY fabric/config/*.xml perper-fabric/config/
 ENTRYPOINT ["perper-fabric/bin/perper-fabric"]

@@ -18,7 +18,7 @@ import javax.cache.event.EventType
 import kotlin.collections.toList
 import kotlin.streams.asSequence
 
-class InstanceService(val composeFile: String = "docker-compose.yml") : JobService() {
+class InstanceService(var composeFile: String = "docker-compose.yml") : JobService() {
 
     companion object Caches {
         fun setInstanceRunning(ignite: Ignite, instance: String, running: Boolean) {

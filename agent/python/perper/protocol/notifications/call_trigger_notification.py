@@ -5,12 +5,12 @@ from pyignite.datatypes import String
 
 class CallTriggerNotification(
     metaclass=GenericObjectMeta,
-    type_name='CallTriggerNotification',
+    type_name="CallTriggerNotification",
     schema=OrderedDict(
         [
-            ('call', String),
-            ('instance', String),
-            ('delegate', String),
+            ("call", String),
+            ("instance", String),
+            ("delegate", String),
         ]
     ),
 ):

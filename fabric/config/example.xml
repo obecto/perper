@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd">
+    <import resource="base.xml"/>
+
+    <bean class="org.springframework.beans.factory.config.PropertyOverrideConfigurer">
+        <property name="properties"><value>
+            InstanceService.composeFile=../samples/dotnet/ContainerSample/docker-compose.yml
+<!--             InstanceService.composeFile=../samples/python/container_sample/docker-compose.yml -->
+        </value></property>
+    </bean>
+
+    <bean parent="PerperDefaultConfig" />
+</beans>

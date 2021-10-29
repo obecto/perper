@@ -27,6 +27,7 @@ dependencies {
     implementation("org.apache.ignite:ignite-core:$igniteVersion")
     runtimeOnly("org.apache.ignite:ignite-indexing:$igniteVersion")
     implementation("org.apache.ignite:ignite-slf4j:$igniteVersion")
+    implementation("org.apache.ignite:ignite-spring:$igniteVersion")
     runtimeOnly("org.slf4j:slf4j-simple:$slf4jVersion")
     implementation("javax.annotation:javax.annotation-api:1.2")
     implementation("com.google.protobuf:protobuf-java-util:$protobufVersion")
@@ -44,7 +45,7 @@ val compileKotlin: KotlinCompile by tasks
 compileKotlin.kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
 
 application {
-    version = "0.7.0"
+    version = "0.7.1"
     mainClass.set("com.obecto.perper.fabric.Main")
     description = "Perper Fabric"
 }

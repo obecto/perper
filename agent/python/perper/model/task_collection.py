@@ -1,9 +1,9 @@
 import asyncio
 import functools
 
-class TaskCollection(asyncio.Future):
+
+class TaskCollection:
     def __init__(self):
-        super().__init__()
         self.tasks = set()
         self.tasks_left = 0
         self.future = asyncio.get_running_loop().create_future()
@@ -15,9 +15,9 @@ class TaskCollection(asyncio.Future):
             if task.done():
                 if task.cancelled():
                     self.future.cancel()
-                if task.exception() is not None:
+                elif task.exception() is not None:
                     self.future.set_exception(task.exception())
-                if self.tasks_left == 0:
+                elif self.tasks_left == 0:
                     self.future.set_result(None)
 
     def add(self, task):

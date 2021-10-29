@@ -6,13 +6,6 @@ from pyignite.datatypes import String, MapObject, BoolObject
 class PerperStream(
     metaclass=GenericObjectMeta,
     type_name="PerperStream",
-    schema=OrderedDict(
-        [
-            ("stream", String),
-            ("filter", MapObject),
-            ("replay", BoolObject),
-            ("localToData", BoolObject)
-        ]
-    ),
+    schema=OrderedDict([("stream", String), ("filter", MapObject), ("replay", BoolObject), ("localToData", BoolObject)]),
 ):
     pass

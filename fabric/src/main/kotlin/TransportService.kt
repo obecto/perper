@@ -44,6 +44,7 @@ import sh.keda.externalscaler.IsActiveResponse
 import sh.keda.externalscaler.ScaledObjectRef
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import javax.cache.Cache.Entry
 import javax.cache.configuration.Factory
 import javax.cache.event.CacheEntryEvent
@@ -52,7 +53,7 @@ import javax.cache.event.CacheEntryUpdatedListener
 import javax.cache.event.EventType
 import com.obecto.perper.protobuf.Notification as NotificationProto
 
-class TransportService(var port: Int) : Service {
+class TransportService(var port: Int = 40400) : Service {
 
     companion object Caches {
         fun getNotificationCache(ignite: Ignite, agent: String): IgniteCache<NotificationKey, Notification> {
@@ -108,6 +109,8 @@ class TransportService(var port: Int) : Service {
 
     override fun cancel(ctx: ServiceContext) {
         server.shutdown()
+        server.awaitTermination(1L, TimeUnit.SECONDS)
+        server.shutdownNow()
         server.awaitTermination()
     }
 

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="PerperDefaultConfig" class="org.apache.ignite.configuration.IgniteConfiguration" abstract="true">
+        <property name="binaryConfiguration"><bean class="org.apache.ignite.configuration.BinaryConfiguration">
+            <property name="typeConfigurations"><list>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.AgentType"/>
+                    <property name="enum" value="true"/>
+                </bean>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.StreamDelegateType"/>
+                    <property name="enum" value="true"/>
+                </bean>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.StreamListener"/>
+                </bean>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.CallResultNotification"/>
+                </bean>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.CallTriggerNotification"/>
+                </bean>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.Notification"/>
+                </bean>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.NotificationKey"/>
+                </bean>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.NotificationKeyLong"/>
+                </bean>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.NotificationKeyString"/>
+                </bean>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.StreamItemNotification"/>
+                </bean>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.StreamTriggerNotification"/>
+                </bean>
+            </list></property>
+            <property name="nameMapper"><bean class="org.apache.ignite.binary.BinaryBasicNameMapper">
+                <property name="simpleName" value="true"/>
+            </bean></property>
+        </bean></property>
+
+        <property name="cacheKeyConfiguration"><list>
+            <bean class="org.apache.ignite.cache.CacheKeyConfiguration">
+                <property name="typeName" value="com.obecto.perper.fabric.cache.notification.NotificationKeyLong"/>
+                <property name="affinityKeyFieldName" value="affinity"/>
+            </bean>
+            <bean class="org.apache.ignite.cache.CacheKeyConfiguration">
+                <property name="typeName" value="com.obecto.perper.fabric.cache.notification.NotificationKeyString"/>
+                <property name="affinityKeyFieldName" value="affinity"/>
+            </bean>
+        </list></property>
+
+        <property name="serviceConfiguration"><list>
+            <bean class="org.apache.ignite.services.ServiceConfiguration">
+                <property name="name" value="InstanceService"/>
+                <property name="maxPerNodeCount" value="1"/>
+                <property name="totalCount" value="0"/>
+                <property name="service" ref="InstanceService"/>
+            </bean>
+            <bean class="org.apache.ignite.services.ServiceConfiguration">
+                <property name="name" value="CallService"/>
+                <property name="maxPerNodeCount" value="1"/>
+                <property name="totalCount" value="0"/>
+                <property name="service"><bean id="CallService" class="com.obecto.perper.fabric.CallService"/></property>
+            </bean>
+            <bean class="org.apache.ignite.services.ServiceConfiguration">
+                <property name="name" value="StreamService"/>
+                <property name="maxPerNodeCount" value="1"/>
+                <property name="totalCount" value="0"/>
+                <property name="service"><bean id="StreamService" class="com.obecto.perper.fabric.StreamService"/></property>
+            </bean>
+            <bean class="org.apache.ignite.services.ServiceConfiguration">
+                <property name="name" value="TransportService"/>
+                <property name="maxPerNodeCount" value="1"/>
+                <property name="totalCount" value="0"/>
+                <property name="service" ref="TransportService"/>
+            </bean>
+        </list></property>
+
+        <property name="clientConnectorConfiguration"><bean class="org.apache.ignite.configuration.ClientConnectorConfiguration">
+            <property name="port" value="10800"/>
+        </bean></property>
+
+        <property name="gridLogger"><bean class="org.apache.ignite.logger.slf4j.Slf4jLogger"/></property>
+    </bean>
+    <bean name="InstanceService" class="com.obecto.perper.fabric.InstanceService">
+        <property name="composeFile" value="docker-compose.yml"/>
+    </bean>
+    <bean name="TransportService" class="com.obecto.perper.fabric.TransportService">
+        <property name="port" value="40400"/>
+    </bean>
+</beans>

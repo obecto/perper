@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+    container-sample:
+        image: python:3.9
+        volumes:
+            - ../../../:/perper/
+            - /tmp/pyagent-install:/root/.local/
+        command: "sh -c 'pip install --user -e /perper/agent/python; python /perper/samples/python/container_sample/main.py'"
+
+        network_mode: host #perper
+#networks:
+#    perper:
+#        driver: bridge

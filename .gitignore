@@ -12,6 +12,7 @@
 
 venv
 **/__pycache__
+.ipynb_checkpoints/
 /.vs
 /samples/DotNet.FunctionApp/Properties/launchSettings.json
 /samples/Python.FunctionApp/.vscode/settings.json
