@@ -1,6 +1,0 @@
-{
-    "python.pythonPath": "/home/viktorv/.cache/pypoetry/virtualenvs/ds-python-S5ZPTSam-py3.9/bin/python",
-    "python.linting.pylintEnabled": false,
-    "python.linting.flake8Enabled": true,
-    "python.linting.enabled": true
-}
