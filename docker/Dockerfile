@@ -2,7 +2,7 @@ FROM gradle:7.2-jdk11 AS build-env
 # Build
 WORKDIR /fabric
 USER root
-COPY fabric/*gradle* /fabric
+COPY fabric/*gradle* /fabric/
 RUN gradle tasks --no-daemon
 COPY proto /proto
 COPY fabric /fabric
