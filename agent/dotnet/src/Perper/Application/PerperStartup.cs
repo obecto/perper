@@ -130,7 +130,8 @@ namespace Perper.Application
                 await AsyncLocals.FabricService.WriteExecutionFinished(AsyncLocals.Execution).ConfigureAwait(false);
             });
 
-            var initExecution = new Execution(Agent, instance ?? $"{Agent}-init", "Init", $"{Agent}-init", cancellationToken);
+            var initInstance = instance ?? $"{Agent}-init";
+            var initExecution = new FabricExecution(Agent, initInstance, "Init", $"{initInstance}-init", cancellationToken);
             foreach (var handler in initHandlers)
             {
                 taskCollection.Add(async () =>

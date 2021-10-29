@@ -3,9 +3,12 @@ from pyignite import GenericObjectMeta
 from pyignite.datatypes import String
 
 
-class PerperAgent(
+class InstanceData(
     metaclass=GenericObjectMeta,
-    type_name="PerperAgent",
-    schema=OrderedDict([("agent", String), ("instance", String)]),
+    schema=OrderedDict(
+        [
+            ("agent", String),
+        ]
+    ),
 ):
     pass

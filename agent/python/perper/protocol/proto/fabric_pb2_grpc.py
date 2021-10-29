@@ -3,6 +3,7 @@
 import grpc
 
 from . import fabric_pb2 as fabric__pb2
+from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 
 class FabricStub(object):
@@ -14,28 +15,50 @@ class FabricStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.Notifications = channel.unary_stream(
-                '/perper.Fabric/Notifications',
-                request_serializer=fabric__pb2.NotificationFilter.SerializeToString,
-                response_deserializer=fabric__pb2.Notification.FromString,
+        self.Executions = channel.unary_stream(
+                '/perper.Fabric/Executions',
+                request_serializer=fabric__pb2.ExecutionsRequest.SerializeToString,
+                response_deserializer=fabric__pb2.ExecutionsResponse.FromString,
                 )
-        self.CallResultNotification = channel.unary_unary(
-                '/perper.Fabric/CallResultNotification',
-                request_serializer=fabric__pb2.CallNotificationFilter.SerializeToString,
-                response_deserializer=fabric__pb2.Notification.FromString,
+        self.ExecutionFinished = channel.unary_unary(
+                '/perper.Fabric/ExecutionFinished',
+                request_serializer=fabric__pb2.ExecutionFinishedRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+        self.StreamItems = channel.unary_stream(
+                '/perper.Fabric/StreamItems',
+                request_serializer=fabric__pb2.StreamItemsRequest.SerializeToString,
+                response_deserializer=fabric__pb2.StreamItemsResponse.FromString,
+                )
+        self.ListenerAttached = channel.unary_unary(
+                '/perper.Fabric/ListenerAttached',
+                request_serializer=fabric__pb2.ListenerAttachedRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
 
 
 class FabricServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def Notifications(self, request, context):
+    def Executions(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def CallResultNotification(self, request, context):
+    def ExecutionFinished(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def StreamItems(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListenerAttached(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -44,15 +67,25 @@ class FabricServicer(object):
 
 def add_FabricServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'Notifications': grpc.unary_stream_rpc_method_handler(
-                    servicer.Notifications,
-                    request_deserializer=fabric__pb2.NotificationFilter.FromString,
-                    response_serializer=fabric__pb2.Notification.SerializeToString,
+            'Executions': grpc.unary_stream_rpc_method_handler(
+                    servicer.Executions,
+                    request_deserializer=fabric__pb2.ExecutionsRequest.FromString,
+                    response_serializer=fabric__pb2.ExecutionsResponse.SerializeToString,
             ),
-            'CallResultNotification': grpc.unary_unary_rpc_method_handler(
-                    servicer.CallResultNotification,
-                    request_deserializer=fabric__pb2.CallNotificationFilter.FromString,
-                    response_serializer=fabric__pb2.Notification.SerializeToString,
+            'ExecutionFinished': grpc.unary_unary_rpc_method_handler(
+                    servicer.ExecutionFinished,
+                    request_deserializer=fabric__pb2.ExecutionFinishedRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'StreamItems': grpc.unary_stream_rpc_method_handler(
+                    servicer.StreamItems,
+                    request_deserializer=fabric__pb2.StreamItemsRequest.FromString,
+                    response_serializer=fabric__pb2.StreamItemsResponse.SerializeToString,
+            ),
+            'ListenerAttached': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListenerAttached,
+                    request_deserializer=fabric__pb2.ListenerAttachedRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -65,7 +98,7 @@ class Fabric(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def Notifications(request,
+    def Executions(request,
             target,
             options=(),
             channel_credentials=None,
@@ -75,14 +108,14 @@ class Fabric(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/perper.Fabric/Notifications',
-            fabric__pb2.NotificationFilter.SerializeToString,
-            fabric__pb2.Notification.FromString,
+        return grpc.experimental.unary_stream(request, target, '/perper.Fabric/Executions',
+            fabric__pb2.ExecutionsRequest.SerializeToString,
+            fabric__pb2.ExecutionsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def CallResultNotification(request,
+    def ExecutionFinished(request,
             target,
             options=(),
             channel_credentials=None,
@@ -92,8 +125,42 @@ class Fabric(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/perper.Fabric/CallResultNotification',
-            fabric__pb2.CallNotificationFilter.SerializeToString,
-            fabric__pb2.Notification.FromString,
+        return grpc.experimental.unary_unary(request, target, '/perper.Fabric/ExecutionFinished',
+            fabric__pb2.ExecutionFinishedRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def StreamItems(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/perper.Fabric/StreamItems',
+            fabric__pb2.StreamItemsRequest.SerializeToString,
+            fabric__pb2.StreamItemsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ListenerAttached(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/perper.Fabric/ListenerAttached',
+            fabric__pb2.ListenerAttachedRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

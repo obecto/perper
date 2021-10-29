@@ -46,7 +46,7 @@ class BuildProtos(setuptools.Command):
             with open(grpc_generated_path, 'r') as grpc_generated_file:
                 grpc_content = grpc_generated_file.read()
 
-            grpc_content = re.sub('^(import.*_pb2)(?m)', 'from . \\1', grpc_content)
+            grpc_content = re.sub('(?m)^(import.*_pb2)', 'from . \\1', grpc_content)
 
             with open(grpc_generated_path, 'w') as grpc_generated_file:
                 grpc_generated_file.write(grpc_content)

@@ -1,15 +1,15 @@
 from collections import OrderedDict
 from pyignite import GenericObjectMeta
-from pyignite.datatypes import String
+from pyignite.datatypes import String, LongObject, ObjectArrayObject
 
 
-class CallResultNotification(
+
+class StreamListener(
     metaclass=GenericObjectMeta,
-    type_name="CallResultNotification",
     schema=OrderedDict(
         [
-            ("call", String),
-            ("caller", String),
+            ("stream", String),
+            ("position", LongObject)
         ]
     ),
 ):

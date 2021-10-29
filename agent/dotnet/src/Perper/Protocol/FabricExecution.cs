@@ -2,11 +2,11 @@ using System.Threading;
 
 namespace Perper.Protocol
 {
-    public record Execution(
+    public record FabricExecution(
         string Agent,
         string Instance,
         string Delegate,
-        string ExecutionId,
+        string Execution,
         CancellationToken CancellationToken
     )
     { }
