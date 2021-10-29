@@ -7,7 +7,8 @@ services:
             - ../../../:/perper/
             - /tmp/pyagent-install:/root/.local/
         command: "sh -c 'pip install --user -e /perper/agent/python; python /perper/samples/python/container_sample/main.py'"
-
+        environment:
+            - PYTHONUNBUFFERED=1
         network_mode: host #perper
 #networks:
 #    perper:

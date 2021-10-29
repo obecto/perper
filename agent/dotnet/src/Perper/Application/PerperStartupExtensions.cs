@@ -25,9 +25,6 @@ namespace Perper.Application
             assembly ??= Assembly.GetEntryAssembly()!;
             rootNamespace ??= assembly.GetName().Name!;
 
-            var streamsNamespace = $"{rootNamespace}.{StreamsNamespaceName}";
-            var callsNamespace = $"{rootNamespace}.{CallsNamespaceName}";
-
             foreach (var type in assembly.GetTypes())
             {
                 if (!type.IsClass || type.MemberType != MemberTypes.TypeInfo || string.IsNullOrEmpty(type.Namespace))
@@ -41,13 +38,9 @@ namespace Perper.Application
                     continue;
                 }
 
-                if (type.Namespace!.Contains(callsNamespace, StringComparison.InvariantCultureIgnoreCase))
+                if (type.Namespace!.Contains(rootNamespace, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    startup = type.Name == InitTypeName ? startup.AddInitHandler(type, runMethod) : startup.AddCallHandler(type.Name, type, runMethod);
-                }
-                else if (type.Namespace!.Contains(streamsNamespace, StringComparison.InvariantCultureIgnoreCase))
-                {
-                    startup = startup.AddStreamHandler(type.Name, type, runMethod);
+                    startup = type.Name == InitTypeName ? startup.AddInitHandler(type, runMethod) : startup.AddHandler(type.Name, type, runMethod);
                 }
             }
 
@@ -61,29 +54,20 @@ namespace Perper.Application
 
         public static PerperStartup AddInitHandler(this PerperStartup startup, Type initType, MethodInfo methodInfo)
         {
-            return startup.AddInitHandler(() => HandleInit(initType, methodInfo));
+            return startup.AddInitHandler(CreateHandler(initType, methodInfo, isInit: true));
         }
 
-        public static PerperStartup AddCallHandler<T>(this PerperStartup startup) => startup.AddCallHandler(typeof(T));
+        public static PerperStartup AddHandler<T>(this PerperStartup startup) => startup.AddHandler(typeof(T));
 
-        public static PerperStartup AddCallHandler(this PerperStartup startup, Type callType) =>
-            startup.AddCallHandler(callType.Name, callType, GetRunMethodOrThrow(callType));
+        public static PerperStartup AddHandler(this PerperStartup startup, Type type) =>
+            startup.AddHandler(type.Name, type, GetRunMethodOrThrow(type));
 
-        public static PerperStartup AddCallHandler(this PerperStartup startup, string @delegate, Type callType, MethodInfo methodInfo)
+        public static PerperStartup AddHandler(this PerperStartup startup, string @delegate, Type type, MethodInfo methodInfo)
         {
-            return startup.AddCallHandler(@delegate, () => HandleCall(callType, methodInfo));
+            return startup.AddHandler(@delegate, CreateHandler(type, methodInfo, isInit: false));
         }
 
-        public static PerperStartup AddStreamHandler<T>(this PerperStartup startup) => startup.AddStreamHandler(typeof(T));
-
-        public static PerperStartup AddStreamHandler(this PerperStartup startup, Type streamType) =>
-            startup.AddStreamHandler(streamType.Name, streamType, GetRunMethodOrThrow(streamType));
-
-        public static PerperStartup AddStreamHandler(this PerperStartup startup, string @delegate, Type streamType, MethodInfo methodInfo)
-        {
-            return startup.AddStreamHandler(@delegate, () => HandleStream(streamType, methodInfo));
-        }
-
+        #region Utils
         private static MethodInfo? GetRunMethod(Type type)
         {
             return type.GetMethod(RunAsyncMethodName) ?? type.GetMethod(RunMethodName);
@@ -93,68 +77,11 @@ namespace Perper.Application
         {
             return GetRunMethod(type) ?? throw new ArgumentOutOfRangeException($"Type {type} does not contain a definition for {RunAsyncMethodName} or {RunMethodName}");
         }
+        #endregion Utils
 
-        #region Execute
-        [SuppressMessage("Design", "CA1031: Do not catch general exception types", Justification = "Exception is logged/handled through other means; rethrowing from handler will crash whole application.")]
-        private static async Task HandleInit(Type callType, MethodInfo methodInfo)
+        #region Cast
+        private static object?[] CastArguments(MethodInfo methodInfo, object?[] arguments)
         {
-            try
-            {
-                var initArguments = Array.Empty<object>();
-                await InvokeMethodAsync(callType, methodInfo, initArguments).ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Exception while invoking init ({callType}.{methodInfo}): {e}");
-            }
-        }
-
-        [SuppressMessage("Design", "CA1031: Do not catch general exception types", Justification = "Exception is logged/handled through other means; rethrowing from handler will crash whole application.")]
-        private static async Task HandleCall(Type callType, MethodInfo methodInfo)
-        {
-            try
-            {
-                var callArguments = await AsyncLocals.CacheService.GetCallParameters(AsyncLocals.Execution).ConfigureAwait(false);
-                var (returnType, invokeResult) = await InvokeMethodAsync(callType, methodInfo, callArguments).ConfigureAwait(false);
-
-                await WriteCallResultAsync(returnType, invokeResult).ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Exception while invoking call {AsyncLocals.Execution} ({callType}.{methodInfo}): {e}");
-                await WriteCallResultAsync(null, e).ConfigureAwait(false);
-            }
-        }
-
-        [SuppressMessage("Design", "CA1031: Do not catch general exception types", Justification = "Exception is logged/handled through other means; rethrowing from handler will crash whole application.")]
-        private static async Task HandleStream(Type streamType, MethodInfo methodInfo)
-        {
-            try
-            {
-                var streamArguments = await AsyncLocals.CacheService.GetStreamParameters(AsyncLocals.Execution).ConfigureAwait(false);
-                var (returnType, invokeResult) = await InvokeMethodAsync(streamType, methodInfo, streamArguments).ConfigureAwait(false);
-
-                await WriteStreamResultAsync(returnType, invokeResult).ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Exception while executing stream {AsyncLocals.Execution} ({streamType}.{methodInfo}): {e}");
-                await WriteStreamResultAsync(null, e).ConfigureAwait(false);
-            }
-        }
-
-        private static object? CastArgument(object? arg, Type parameterType)
-        {
-            return arg != null && parameterType.IsAssignableFrom(arg.GetType())
-                ? arg
-                : arg is ArrayList arrayList && parameterType == typeof(object[])
-                    ? arrayList.Cast<object>().ToArray()
-                    : Convert.ChangeType(arg, parameterType, CultureInfo.InvariantCulture);
-        }
-
-        private static async Task<(Type?, object?)> InvokeMethodAsync(Type type, MethodInfo methodInfo, object?[] arguments)
-        {
-            // System.Console.WriteLine($"Invoking {type}.{RunAsyncMethodName}`${arguments.Length}(${string.Join(", ", arguments.Select(x=>x.ToString()))})");
             var parameters = methodInfo.GetParameters();
 
             var castArguments = new object?[parameters.Length];
@@ -187,129 +114,158 @@ namespace Perper.Application
                 {
                     if (!parameters[i].HasDefaultValue)
                     {
-                        throw new ArgumentException($"Not enough arguments passed to {type}.{methodInfo}; expected at least {i + 1}, got {arguments.Length}");
+                        throw new ArgumentException($"Not enough arguments passed; expected at least {i + 1}, got {arguments.Length}");
                     }
                     castArgument = parameters[i].DefaultValue;
                 }
                 castArguments[i] = castArgument;
             }
 
-            var instance = methodInfo.IsStatic ? null : Activator.CreateInstance(type);
-
-            var isAwaitable = methodInfo.ReturnType.GetMethod(nameof(Task.GetAwaiter)) != null;
-            object? invokeResult = null;
-            Type? returnType = null;
-
-            // Pass CancellationToken
-            if (isAwaitable)
-            {
-                if (methodInfo.ReturnType.IsGenericType)
-                {
-                    returnType = methodInfo.ReturnType.GetGenericArguments()[0];
-                    invokeResult = await (dynamic)methodInfo.Invoke(instance, castArguments)!;
-                }
-                else
-                {
-                    await (dynamic)methodInfo.Invoke(instance, castArguments)!;
-                }
-
-            }
-            else
-            {
-                invokeResult = methodInfo.Invoke(instance, castArguments);
-                if (methodInfo.ReturnType != typeof(void))
-                {
-                    returnType = methodInfo.ReturnType;
-                }
-            }
-
-            return (returnType, invokeResult);
+            return castArguments;
         }
 
-        private static async Task WriteCallResultAsync(Type? returnType, object? invokeResult)
+        private static object? CastArgument(object? arg, Type parameterType)
         {
-            if (returnType != null)
+            return arg != null && parameterType.IsAssignableFrom(arg.GetType())
+                ? arg
+                : arg is ArrayList arrayList && parameterType == typeof(object[])
+                    ? arrayList.Cast<object>().ToArray()
+                    : Convert.ChangeType(arg, parameterType, CultureInfo.InvariantCulture);
+        }
+
+        private static object?[]? CastResult(Type resultType, object? result)
+        {
+            if (typeof(ITuple).IsAssignableFrom(resultType))
             {
-                object?[] results;
-                if (typeof(ITuple).IsAssignableFrom(returnType) && invokeResult is ITuple tuple)
+                if (result is ITuple tuple)
                 {
-                    results = new object?[tuple.Length];
+                    var results = new object?[tuple.Length];
                     for (var i = 0 ; i < results.Length ; i++)
                     {
                         results[i] = tuple[i];
                     }
+                    return results;
                 }
                 else
                 {
-                    results = typeof(object[]) == returnType ? (object?[])invokeResult! : (new object?[] { invokeResult });
+                    return null;
                 }
-
-                await AsyncLocals.CacheService.CallWriteResult(AsyncLocals.Execution, results).ConfigureAwait(false);
+            }
+            else if (resultType == typeof(object[]) || resultType == typeof(void))
+            {
+                return (object?[]?)result;
             }
             else
             {
-                if (invokeResult is Exception e)
+                return new object?[] { result };
+            }
+        }
+        #endregion Cast
+
+        #region Execute
+        [SuppressMessage("Design", "CA1031: Do not catch general exception types", Justification = "Exception is logged/handled through other means; rethrowing from handler will crash whole application.")]
+        private static Func<Task> CreateHandler(Type type, MethodInfo methodInfo, bool isInit)
+        {
+            // Pass CancellationToken?
+            Func<ValueTask<object?>> invoker = async () =>
+            {
+                var arguments = isInit ? Array.Empty<object?>() : await AsyncLocals.FabricService.ReadExecutionParameters(AsyncLocals.Execution).ConfigureAwait(false);
+                var castArguments = CastArguments(methodInfo, arguments);
+                return methodInfo.Invoke(methodInfo.IsStatic ? null : Activator.CreateInstance(type), castArguments);
+            };
+            var returnType = methodInfo.ReturnType;
+
+            var isAwaitable = returnType.GetMethod(nameof(Task.GetAwaiter)) != null;
+            if (isAwaitable)
+            {
+                if (returnType.IsGenericType)
                 {
-                    await AsyncLocals.CacheService.CallWriteError(AsyncLocals.Execution, e.Message).ConfigureAwait(false);
+                    var _invoker = invoker;
+                    invoker = async () => await (dynamic)(await _invoker().ConfigureAwait(false))!;
+                    returnType = returnType.GetGenericArguments()[0];
                 }
                 else
                 {
-                    await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
+                    var _invoker = invoker;
+                    invoker = async () =>
+                    {
+                        await (dynamic)(await _invoker().ConfigureAwait(false))!;
+                        return null;
+                    };
+                    returnType = typeof(void);
                 }
             }
-        }
 
-        private static async Task WriteStreamResultAsync(Type? returnType, object? invokeResult)
-        {
-            if (returnType != null)
+            var isStream = returnType.IsGenericType && returnType.GetGenericTypeDefinition().Equals(typeof(IAsyncEnumerable<>));
+            if (isStream)
             {
-                Type? asyncEnumerableType = null;
+                var itemType = returnType.GetGenericArguments()[0]!;
+                MethodInfo processMethod;
+                if (itemType.IsGenericType && itemType.GetGenericTypeDefinition().Equals(typeof(ValueTuple<,>)) && itemType.GetGenericArguments()[0].Equals(typeof(long)))
+                {
+                    itemType = itemType.GetGenericArguments()[1];
+                    processMethod = typeof(PerperStartupExtensions).GetMethod(nameof(ProcessKeyedAsyncEnumerable), BindingFlags.NonPublic | BindingFlags.Static)!
+                        .MakeGenericMethod(itemType);
+                }
+                else
+                {
+                    processMethod = typeof(PerperStartupExtensions).GetMethod(nameof(ProcessAsyncEnumerable), BindingFlags.NonPublic | BindingFlags.Static)!
+                        .MakeGenericMethod(itemType);
+                }
+
+                var _invoker = invoker;
+                invoker = async () =>
+                {
+                    await AsyncLocals.FabricService.WaitListenerAttached(AsyncLocals.Execution, AsyncLocals.CancellationToken).ConfigureAwait(false);
+                    var asyncEnumerable = await _invoker().ConfigureAwait(false);
+                    await ((Task)processMethod.Invoke(null, new object?[] { asyncEnumerable })!).ConfigureAwait(false);
+                    return null;
+                };
+                returnType = typeof(void);
+            }
+
+            return isInit ? async () => await invoker().ConfigureAwait(false) : async () =>
+            {
                 try
                 {
-                    var isAsyncEnumerable = returnType.GetGenericTypeDefinition().Equals(typeof(IAsyncEnumerable<>));
-                    if (isAsyncEnumerable)
+                    var results = CastResult(returnType, await invoker().ConfigureAwait(false));
+                    if (results == null)
                     {
-                        asyncEnumerableType = returnType.GetGenericArguments()[0];
+                        await AsyncLocals.FabricService.WriteExecutionFinished(AsyncLocals.Execution).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await AsyncLocals.FabricService.WriteExecutionResult(AsyncLocals.Execution, results).ConfigureAwait(false);
                     }
                 }
-                catch (InvalidOperationException)
+                catch (Exception e)
                 {
+                    Console.WriteLine($"Exception while executing {AsyncLocals.Execution}: {e}");
+                    try
+                    {
+                        await AsyncLocals.FabricService.WriteExecutionException(AsyncLocals.Execution, e).ConfigureAwait(false);
+                    }
+                    catch (Exception e2)
+                    {
+                        Console.WriteLine($"Exception while executing {AsyncLocals.Execution}: {e2}");
+                    }
                 }
-
-                if (asyncEnumerableType != null)
-                {
-                    var processMethod = typeof(PerperStartupExtensions).GetMethod(nameof(ProcessAsyncEnumerable), BindingFlags.NonPublic | BindingFlags.Static)!
-                        .MakeGenericMethod(asyncEnumerableType);
-
-                    await ((Task)processMethod.Invoke(null, new object?[] { invokeResult })!).ConfigureAwait(false);
-                }
-            }
-        }
-
-        private static Type? GetGenericInterface(Type type, Type genericInterface)
-        {
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == genericInterface)
-            {
-                return type;
-            }
-
-            foreach (var iface in type.GetInterfaces())
-            {
-                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == genericInterface)
-                {
-                    return iface;
-                }
-            }
-
-            return null;
+            };
         }
 
         private static async Task ProcessAsyncEnumerable<T>(IAsyncEnumerable<T> values)
         {
-            // TODO: CancellationToken
             await foreach (var value in values)
             {
-                await AsyncLocals.CacheService.StreamWriteItem(AsyncLocals.Execution, value).ConfigureAwait(false);
+                await AsyncLocals.FabricService.WriteStreamItem(AsyncLocals.Execution, value).ConfigureAwait(false);
+            }
+        }
+
+        private static async Task ProcessKeyedAsyncEnumerable<T>(IAsyncEnumerable<(long, T)> values)
+        {
+            await foreach (var (key, value) in values)
+            {
+                await AsyncLocals.FabricService.WriteStreamItem(AsyncLocals.Execution, key, value).ConfigureAwait(false);
             }
         }
         #endregion Execute

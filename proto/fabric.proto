@@ -6,26 +6,47 @@ option csharp_namespace = "Perper.Protocol.Protobuf";
 
 package perper;
 
+import "google/protobuf/empty.proto";
+
 service Fabric {
-    rpc Notifications (NotificationFilter) returns (stream Notification) {}
-    rpc CallResultNotification (CallNotificationFilter) returns (Notification) {}
+    rpc Executions (ExecutionsRequest) returns (stream ExecutionsResponse) {}
+    rpc ExecutionFinished (ExecutionFinishedRequest) returns (google.protobuf.Empty) {}
+    rpc StreamItems (StreamItemsRequest) returns (stream StreamItemsResponse) {}
+    rpc ListenerAttached (ListenerAttachedRequest) returns (google.protobuf.Empty) {}
 }
 
-message NotificationFilter {
+message ExecutionsRequest {
     string agent = 1;
     string instance = 2;
+    //string delegate = 3;
+    bool localToData = 4;
 }
 
-message CallNotificationFilter {
-    string agent = 1;
-    string call = 2;
+message ExecutionsResponse {
+    //string agent = 1;
+    // Can possibly remove instance and delegate (99% the agent will be reading the execution data for parameters anyway)
+    string instance = 2;
+    string delegate = 3;
+    string execution = 4;
+    bool cancelled = 5;
 }
 
-message Notification {
-    int64 notificationKey = 1;
-
-    oneof affinity {
-      string stringAffinity = 2;
-      int64 intAffinity = 3;
-    }
+message ExecutionFinishedRequest {
+    string execution = 4;
 }
+
+message StreamItemsRequest {
+    string stream = 1;
+    int64 startKey = 2;
+    bool localToData = 3;
+    int64 stride = 4; // 0 if realtime, 1.. to wait for stream items
+}
+
+message StreamItemsResponse {
+    int64 key = 1;
+}
+
+message ListenerAttachedRequest {
+    string stream = 1;
+}
+

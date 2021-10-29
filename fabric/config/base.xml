@@ -12,35 +12,13 @@
                     <property name="enum" value="true"/>
                 </bean>
                 <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.StreamDelegateType"/>
-                    <property name="enum" value="true"/>
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.ExecutionData"/>
+                </bean>
+                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
+                    <property name="typeName" value="com.obecto.perper.fabric.cache.InstanceData"/>
                 </bean>
                 <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
                     <property name="typeName" value="com.obecto.perper.fabric.cache.StreamListener"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.CallResultNotification"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.CallTriggerNotification"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.Notification"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.NotificationKey"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.NotificationKeyLong"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.NotificationKeyString"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.StreamItemNotification"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.notification.StreamTriggerNotification"/>
                 </bean>
             </list></property>
             <property name="nameMapper"><bean class="org.apache.ignite.binary.BinaryBasicNameMapper">
@@ -67,22 +45,16 @@
                 <property name="service" ref="InstanceService"/>
             </bean>
             <bean class="org.apache.ignite.services.ServiceConfiguration">
-                <property name="name" value="CallService"/>
-                <property name="maxPerNodeCount" value="1"/>
-                <property name="totalCount" value="0"/>
-                <property name="service"><bean id="CallService" class="com.obecto.perper.fabric.CallService"/></property>
-            </bean>
-            <bean class="org.apache.ignite.services.ServiceConfiguration">
                 <property name="name" value="StreamService"/>
                 <property name="maxPerNodeCount" value="1"/>
                 <property name="totalCount" value="0"/>
-                <property name="service"><bean id="StreamService" class="com.obecto.perper.fabric.StreamService"/></property>
+                <property name="service"><bean name="StreamService" class="com.obecto.perper.fabric.StreamService"></bean></property>
             </bean>
             <bean class="org.apache.ignite.services.ServiceConfiguration">
-                <property name="name" value="TransportService"/>
+                <property name="name" value="FabricService"/>
                 <property name="maxPerNodeCount" value="1"/>
                 <property name="totalCount" value="0"/>
-                <property name="service" ref="TransportService"/>
+                <property name="service" ref="FabricService"/>
             </bean>
         </list></property>
 
@@ -95,7 +67,7 @@
     <bean name="InstanceService" class="com.obecto.perper.fabric.InstanceService">
         <property name="composeFile" value="docker-compose.yml"/>
     </bean>
-    <bean name="TransportService" class="com.obecto.perper.fabric.TransportService">
+    <bean name="FabricService" class="com.obecto.perper.fabric.FabricService">
         <property name="port" value="40400"/>
     </bean>
 </beans>

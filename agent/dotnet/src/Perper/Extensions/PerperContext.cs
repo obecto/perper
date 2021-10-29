@@ -27,8 +27,8 @@ namespace Perper.Extensions
 
         private static async Task<PerperAgent> CreateInstanceAsync(string agent)
         {
-            var instance = CacheService.GenerateName(agent);
-            await AsyncLocals.CacheService.InstanceCreate(instance, agent).ConfigureAwait(false);
+            var instance = FabricService.GenerateName(agent);
+            await AsyncLocals.FabricService.CreateInstance(instance, agent).ConfigureAwait(false);
             return new PerperAgent(agent, instance);
         }
 
@@ -46,9 +46,14 @@ namespace Perper.Extensions
 
         public static Task CallAsync(string actionName, params object[] parameters) => Agent.CallAsync(actionName, parameters);
 
+        public static async Task WriteToBlankStream<TItem>(PerperStream stream, long key, TItem item, bool keepBinary = false)
+        {
+            await AsyncLocals.FabricService.WriteStreamItem(stream.Stream, key, item, keepBinary).ConfigureAwait(false);
+        }
+
         public static async Task WriteToBlankStream<TItem>(PerperStream stream, TItem item, bool keepBinary = false)
         {
-            await AsyncLocals.CacheService.StreamWriteItem(stream.Stream, item, keepBinary).ConfigureAwait(false);
+            await AsyncLocals.FabricService.WriteStreamItem(stream.Stream, item, keepBinary).ConfigureAwait(false);
         }
     }
 }

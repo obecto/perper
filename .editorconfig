@@ -1096,7 +1096,7 @@ csharp_preserve_single_line_blocks = true
 csharp_preserve_single_line_statements = true
 
 # Using directive preferences
-csharp_using_directive_placement = true
+csharp_using_directive_placement = outside_namespace
 
 
 

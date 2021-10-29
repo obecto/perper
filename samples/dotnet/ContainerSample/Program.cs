@@ -4,24 +4,16 @@ using Perper.Application;
 using Perper.Extensions;
 
 var agent = "container-sample";
+var instance = PerperStartup.GetConfiguredInstance();
+await using var fabricService = await PerperStartup.EstablishConnection().ConfigureAwait(false);
 
-AsyncLocals.SetConnection(await PerperStartup.EstablishConnection(agent, true).ConfigureAwait(false));
-
-var (notificationKey, callNotification) = await AsyncLocals.NotificationService.GetCallTriggerNotifications(PerperContext.StartupFunctionName).ReadAsync().ConfigureAwait(false);
-
-await AsyncLocals.EnterContext(callNotification.Instance, callNotification.Call, async () =>
-{
-    var parameters = await AsyncLocals.CacheService.GetCallParameters(AsyncLocals.Execution).ConfigureAwait(false);
-    await AsyncLocals.CacheService.CallWriteFinished(AsyncLocals.Execution).ConfigureAwait(false);
-    await AsyncLocals.NotificationService.ConsumeNotification(notificationKey).ConfigureAwait(false);
-}).ConfigureAwait(false);
+var startupExecution = await fabricService.GetExecutionsReader(agent, instance, PerperContext.StartupFunctionName).ReadAsync().ConfigureAwait(false);
+var startupParameters = await fabricService.ReadExecutionParameters(startupExecution.Execution).ConfigureAwait(false);
+await fabricService.WriteExecutionFinished(startupExecution.Execution).ConfigureAwait(false);
 
 var id = Guid.NewGuid();
 
-await foreach (var (notification2Key, notification) in AsyncLocals.NotificationService.GetCallTriggerNotifications("Test").ReadAllAsync())
+await foreach (var testExecution in fabricService.GetExecutionsReader(agent, instance, "Test").ReadAllAsync())
 {
-    await AsyncLocals.CacheService.CallWriteResult(notification.Call, new object[] { id }).ConfigureAwait(false);
-    await AsyncLocals.NotificationService.ConsumeNotification(notification2Key).ConfigureAwait(false);
+    await fabricService.WriteExecutionResult(testExecution.Execution, new object[] { id }).ConfigureAwait(false);
 }
-
-await AsyncLocals.NotificationService.StopAsync().ConfigureAwait(false);

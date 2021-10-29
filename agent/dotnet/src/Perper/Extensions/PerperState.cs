@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 
 namespace Perper.Extensions
@@ -6,12 +7,22 @@ namespace Perper.Extensions
     {
         public static async Task<(bool, T)> TryGetAsync<T>(string key)
         {
-            return await AsyncLocals.CacheService.StateTryGetValue<T>(AsyncLocals.Instance, key).ConfigureAwait(false);
+            return await AsyncLocals.FabricService.TryGetStateValue<T>(AsyncLocals.Instance, key).ConfigureAwait(false);
+        }
+
+        public static Task<T> GetOrDefaultAsync<T>(string key, T @default = default!) => GetOrNewAsync(key, () => @default);
+
+        public static Task<T> GetOrNewAsync<T>(string key) where T : new() => GetOrNewAsync(key, () => new T());
+
+        public static async Task<T> GetOrNewAsync<T>(string key, Func<T> createFunc)
+        {
+            var (success, value) = await TryGetAsync<T>(key).ConfigureAwait(false);
+            return success ? value : createFunc();
         }
 
         public static async Task SetAsync<T>(string key, T value)
         {
-            await AsyncLocals.CacheService.StateSetValue(AsyncLocals.Instance, key, value).ConfigureAwait(false);
+            await AsyncLocals.FabricService.SetStateValue(AsyncLocals.Instance, key, value).ConfigureAwait(false);
         }
     }
 }
