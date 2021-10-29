@@ -9,38 +9,19 @@ def get_agent():
     return PerperAgent(fabric_execution.get().agent, fabric_execution.get().instance)
 
 
-def call_function(delegate, *parameters):
-    return agent_call_function(get_agent(), delegate, *parameters)
-
-
-def call_action(delegate, *parameters):
-    return agent_call_action(get_agent(), delegate, *parameters)
+def call(delegate, *parameters):
+    return call_agent(get_agent(), delegate, *parameters)
 
 
 async def start_agent(agent, *parameters):
     instance = fabric_service.get().generate_name(agent)
     fabric_service.get().create_instance(instance, agent)
     model = PerperAgent(agent, instance)
-    result = await agent_call_function(model, startup_function_name, *parameters)
+    result = await call_agent(model, startup_function_name, *parameters)
     return (model, result)
 
 
-async def agent_call_function(agent, delegate, *parameters):
-    result = await _agent_call(agent, delegate, parameters)
-
-    if result is None:
-        return None
-    elif len(result) == 1:
-        return result[0]
-    else:
-        return tuple(result)
-
-
-async def agent_call_action(agent, delegate, *parameters):
-    await _agent_call(agent, delegate, parameters)
-
-
-async def _agent_call(agent, delegate, parameters):
+async def call_agent(agent, delegate, *parameters):
     execution = fabric_service.get().generate_name(delegate)
 
     try:
@@ -50,7 +31,12 @@ async def _agent_call(agent, delegate, parameters):
     finally:
         fabric_service.get().remove_execution(execution)
 
-    return result
+    if result is None:
+        return None
+    elif len(result) == 1:
+        return result[0]
+    else:
+        return tuple(result)
 
 
 def destroy_agent(agent):

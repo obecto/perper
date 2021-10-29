@@ -1,4 +1,4 @@
-from .agent import get_agent, call_function, call_action, start_agent, agent_call_function, agent_call_action, destroy_agent
+from .agent import get_agent, call, start_agent, call_agent, destroy_agent
 from .state import set_state, get_state
 from .stream import (
     start_stream,

@@ -20,6 +20,7 @@ namespace Perper.Extensions
         public bool IsPersistent { get; private set; }
         public bool IsPacked { get; private set; }
         public bool IsAction { get; private set; }
+        public bool IsExternal => Delegate == null;
 
         private readonly List<QueryEntity> indexes = new();
         public IReadOnlyCollection<QueryEntity> Indexes => indexes;
@@ -51,19 +52,23 @@ namespace Perper.Extensions
             {
                 await AsyncLocals.FabricService.CreateExecution(StreamName, AsyncLocals.Agent, AsyncLocals.Instance, Delegate, parameters).ConfigureAwait(false);
             }
+            else if (parameters.Length > 0)
+            {
+                throw new InvalidOperationException("PerperStreamBuilder.StartAsync() does not take parameters for external streams");
+            }
 
             return Stream;
-        }
-
-        public PerperStreamBuilder Ephemeral()
-        {
-            IsPersistent = false;
-            return this;
         }
 
         public PerperStreamBuilder Persistent()
         {
             IsPersistent = true;
+            return this;
+        }
+
+        public PerperStreamBuilder Ephemeral()
+        {
+            IsPersistent = false;
             return this;
         }
 
@@ -75,6 +80,10 @@ namespace Perper.Extensions
 
         public PerperStreamBuilder Action()
         {
+            if (IsExternal)
+            {
+                throw new InvalidOperationException("PerperStreamBuilder.Action() does not apply to external streams");
+            }
             IsAction = true;
             return this;
         }
