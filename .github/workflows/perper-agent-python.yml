@@ -1,9 +1,9 @@
-name: Perper Python Binding
+name: Perper Python Agent
 
 on:
   push:
     paths:
-      - 'functions/python/**'
+      - 'agent/python/**'
     branches:
       - master
 
@@ -19,12 +19,12 @@ jobs:
       with:
         python-version: '3.x'
     - name: Install dependencies
-      working-directory: ./functions/python
+      working-directory: ./agent/python
       run: |
         python -m pip install --upgrade pip
         pip install setuptools wheel twine
     - name: Build and publish
-      working-directory: ./functions/python
+      working-directory: ./agent/python
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}

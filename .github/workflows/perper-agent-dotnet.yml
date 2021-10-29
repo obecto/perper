@@ -1,16 +1,16 @@
-name: Perper Functions
+name: Perper Dotnet Agent
 
 on:
   push:
     paths:
       - 'agent/dotnet/src/Perper/**'
     branches:
-      - layer-restructure
+      - master
 
 jobs:
   build:
-    runs-on: windows-latest
-    
+    runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v1
 
@@ -20,7 +20,7 @@ jobs:
 
       - name: Build with dotnet
         working-directory: ./agent/dotnet/src/Perper
-        run: dotnet build --configuration Release  
+        run: dotnet build --configuration Release
 
       - name: Push generated package to nuget.org
         working-directory: ./agent/dotnet/src/Perper/bin/Release

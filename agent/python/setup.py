@@ -56,7 +56,7 @@ with open("README.md") as f:
 
 setup(
     name='Perper',
-    version='0.0.1',
+    version='0.7.0',
     packages=['perper'],
     long_description=long_description,
     long_description_content_type='text/markdown',

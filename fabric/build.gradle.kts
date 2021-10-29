@@ -44,7 +44,7 @@ val compileKotlin: KotlinCompile by tasks
 compileKotlin.kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
 
 application {
-    version = "0.6.0-alpha8"
+    version = "0.7.0"
     mainClass.set("com.obecto.perper.fabric.Main")
     description = "Perper Fabric"
 }
