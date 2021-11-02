@@ -4,7 +4,7 @@ using Perper.Application;
 using Perper.Extensions;
 
 var agent = "container-sample";
-var instance = PerperStartup.GetConfiguredInstance();
+var instance = PerperStartup.ConfigureInstance();
 await using var fabricService = await PerperStartup.EstablishConnection().ConfigureAwait(false);
 
 var startupExecution = await fabricService.GetExecutionsReader(agent, instance, PerperContext.StartupFunctionName).ReadAsync().ConfigureAwait(false);

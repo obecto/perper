@@ -106,9 +106,11 @@ namespace Perper.Application
             return new FabricService(ignite, grpcChannel);
         }
 
-        public static string GetConfiguredInstance()
+        public static string ConfigureInstance()
         {
-            return Environment.GetEnvironmentVariable("X_PERPER_INSTANCE") ?? "";
+            var instance = Environment.GetEnvironmentVariable("X_PERPER_INSTANCE") ?? "";
+            Console.WriteLine($"X_PERPER_INSTANCE: {instance}");
+            return instance;
         }
 
         #endregion Services
@@ -116,12 +118,7 @@ namespace Perper.Application
 
         public Task RunInServiceContext(CancellationToken cancellationToken = default)
         {
-            var instance = UseInstances ? null : GetConfiguredInstance();
-
-            if (instance != null)
-            {
-                Console.WriteLine($"X_PERPER_INSTANCE: {instance}");
-            }
+            var instance = UseInstances ? ConfigureInstance() : null;
 
             var taskCollection = new TaskCollection();
 
