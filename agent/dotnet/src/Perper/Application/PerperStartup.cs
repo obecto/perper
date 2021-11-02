@@ -277,7 +277,7 @@ namespace Perper.Application
         {
             if (ServiceProvider != null)
             {
-                return ActivatorUtilities.GetServiceOrCreateInstance(ServiceProvider, callType);
+                return ActivatorUtilities.CreateInstance(ServiceProvider, callType, new Context(), new State());
             }
 
             // dependency injection
