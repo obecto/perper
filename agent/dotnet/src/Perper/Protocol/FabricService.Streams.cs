@@ -47,9 +47,9 @@ namespace Perper.Protocol
             await itemsCache.PutIfAbsentOrThrowAsync(key, item).ConfigureAwait(false);
         }
 
-        public async Task<TItem> ReadStreamItem<TItem>(string cache, long key, bool keepBinary = false)
+        public async Task<TItem> ReadStreamItem<TItem>(string stream, long key, bool keepBinary = false)
         {
-            var itemsCache = Ignite.GetCache<long, TItem>(cache).WithKeepBinary(keepBinary);
+            var itemsCache = Ignite.GetCache<long, TItem>(stream).WithKeepBinary(keepBinary);
 
             return await itemsCache.GetAsync(key).ConfigureAwait(false);
         }

@@ -87,38 +87,44 @@ namespace Perper.Application
             var castArguments = new object?[parameters.Length];
             for (var i = 0 ; i < parameters.Length ; i++)
             {
-                object? castArgument;
-                if (i == parameters.Length - 1 && parameters[i].GetCustomAttribute<ParamArrayAttribute>() != null)
+                try
                 {
-                    var paramsType = parameters[i].ParameterType.GetElementType()!;
-                    if (i < arguments.Length)
+                    object? castArgument;
+                    if (i == parameters.Length - 1 && parameters[i].GetCustomAttribute<ParamArrayAttribute>() != null)
                     {
-                        var paramsArray = Array.CreateInstance(paramsType, arguments.Length - i);
-                        for (var j = 0 ; j < paramsArray.Length ; j++)
+                        var paramsType = parameters[i].ParameterType.GetElementType()!;
+                        if (i < arguments.Length)
                         {
-                            paramsArray.SetValue(CastArgument(arguments[i + j], paramsType), j);
+                            var paramsArray = Array.CreateInstance(paramsType, arguments.Length - i);
+                            for (var j = 0 ; j < paramsArray.Length ; j++)
+                            {
+                                paramsArray.SetValue(CastArgument(arguments[i + j], paramsType), j);
+                            }
+                            castArgument = paramsArray;
                         }
-                        castArgument = paramsArray;
+                        else
+                        {
+                            castArgument = Array.CreateInstance(paramsType, 0);
+                        }
+                    }
+                    else if (i < arguments.Length)
+                    {
+                        castArgument = CastArgument(arguments[i], parameters[i].ParameterType);
                     }
                     else
                     {
-                        castArgument = Array.CreateInstance(paramsType, 0);
+                        if (!parameters[i].HasDefaultValue)
+                        {
+                            throw new ArgumentException($"Not enough arguments passed; expected at least {i + 1}, got {arguments.Length}");
+                        }
+                        castArgument = parameters[i].DefaultValue;
                     }
-
+                    castArguments[i] = castArgument;
                 }
-                else if (i < arguments.Length)
+                catch (Exception e)
                 {
-                    castArgument = CastArgument(arguments[i], parameters[i].ParameterType);
+                    throw new ArgumentException($"Failed decoding parameter {i+1} ({parameters[i]}) of {methodInfo}", e);
                 }
-                else
-                {
-                    if (!parameters[i].HasDefaultValue)
-                    {
-                        throw new ArgumentException($"Not enough arguments passed; expected at least {i + 1}, got {arguments.Length}");
-                    }
-                    castArgument = parameters[i].DefaultValue;
-                }
-                castArguments[i] = castArgument;
             }
 
             return castArguments;

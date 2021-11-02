@@ -88,6 +88,7 @@ namespace Perper.Extensions
                         }
                         catch (KeyNotFoundException)
                         {
+                            Console.WriteLine($"Warning: Failed reading item {key} from {stream.Stream}, skipping");
                             continue;
                         }
                     }
