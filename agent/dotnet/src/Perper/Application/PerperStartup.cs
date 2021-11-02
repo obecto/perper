@@ -12,6 +12,8 @@ using Apache.Ignite.Core.Client;
 
 using Grpc.Net.Client;
 
+using Microsoft.Extensions.DependencyInjection;
+
 using Perper.Model;
 using Perper.Protocol;
 using Perper.Protocol.Cache.Notifications;
@@ -29,6 +31,8 @@ namespace Perper.Application
         public const string StreamsNamespaceName = "Streams";
         public const string CallsNamespaceName = "Calls";
         public const string InitCallName = "Init";
+
+        public static IServiceProvider? ServiceProvider { get; set; }
 
         #region RunAsync
 
@@ -271,6 +275,11 @@ namespace Perper.Application
 
         private static object InstanciateType(Type callType)
         {
+            if (ServiceProvider != null)
+            {
+                return ActivatorUtilities.GetServiceOrCreateInstance(ServiceProvider, callType);
+            }
+
             // dependency injection
             var parametrizedConstructor = callType
             .GetConstructors()
