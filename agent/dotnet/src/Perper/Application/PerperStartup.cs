@@ -324,7 +324,7 @@ namespace Perper.Application
 
                     castArgument = arg is ArrayList arrayList && parameters[i].ParameterType == typeof(object[])
                         ? arrayList.Cast<object>().ToArray()
-                        : Convert.ChangeType(arg, parameters[i].ParameterType);
+                        : arg;
                 }
                 else
                 {
