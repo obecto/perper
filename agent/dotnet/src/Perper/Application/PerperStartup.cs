@@ -275,11 +275,6 @@ namespace Perper.Application
 
         private static object InstanciateType(Type callType)
         {
-            if (ServiceProvider != null)
-            {
-                return ActivatorUtilities.CreateInstance(ServiceProvider, callType, new Context(), new State());
-            }
-
             // dependency injection
             var parametrizedConstructor = callType
             .GetConstructors()
@@ -299,6 +294,14 @@ namespace Perper.Application
                 else if (parameterInfo.ParameterType == typeof(IState))
                 {
                     constructorArguments[i] = new State();
+                }
+                else if (ServiceProvider != null)
+                {
+                    var service = ServiceProvider.GetService(parameterInfo.ParameterType);
+                    if (service != null)
+                    {
+                        constructorArguments[i] = service;
+                    }
                 }
             }
 
