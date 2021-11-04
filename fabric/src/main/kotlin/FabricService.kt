@@ -210,7 +210,7 @@ class FabricService(var port: Int = 40400) : Service {
             query.remoteFilterFactory = Factory {
                 CacheEntryEventFilter {
                     event ->
-                    event.eventType.isRemoval || (event.key == execution && event.value.finished)
+                    event.key == execution && (event.eventType.isRemoval || event.value.finished)
                 }
             }
 
@@ -220,7 +220,7 @@ class FabricService(var port: Int = 40400) : Service {
 
             try {
                 val executionData = executionsCache.get(execution)
-                if (executionData == null || !executionData.finished) {
+                if (!(executionData == null || executionData.finished)) {
                     queryChannel.receive()
                 }
                 return Empty.getDefaultInstance()
