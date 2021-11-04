@@ -1,6 +1,10 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.StreamListener
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.channels.actor
+import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteLogger
 import org.apache.ignite.binary.BinaryObject
@@ -10,16 +14,12 @@ import org.apache.ignite.configuration.CollectionConfiguration
 import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
 import org.apache.ignite.services.ServiceContext
-import kotlinx.coroutines.channels.SendChannel
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.actor
-import kotlinx.coroutines.runBlocking
-import kotlin.coroutines.EmptyCoroutineContext
+import java.util.concurrent.ConcurrentHashMap
 import javax.cache.configuration.Factory
 import javax.cache.event.CacheEntryEvent
 import javax.cache.event.CacheEntryEventFilter
 import javax.cache.event.EventType
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.EmptyCoroutineContext
 
 object StreamServiceConstants {
     val persistAllIndex = Long.MIN_VALUE
@@ -31,21 +31,17 @@ object StreamServiceExecutor {
     val channels = ConcurrentHashMap<String, SendChannel<Runnable>>()
 
     @OptIn(kotlinx.coroutines.ObsoleteCoroutinesApi::class)
-    fun run(channelName: String, runnable: Runnable)
-    {
+    fun run(channelName: String, runnable: Runnable) {
         val channel = channels.getOrPut(channelName) {
             coroutineScope.actor<Runnable>(capacity = Channel.UNLIMITED) {
-                for (runnable in this) {
-                    println(1)
-                    runnable.run()
+                for (_runnable in this) {
+                    _runnable.run()
                 }
-                println(100)
             }
         }
         runBlocking {
             channel.send(runnable)
         }
-        println(41)
     }
 }
 
@@ -156,7 +152,7 @@ class StreamService : JobService() {
                             break
                         }
                         val count = ignite.atomicLong("$stream-at-$oldestElement", 0, true).get()
-                        log.trace({"cleanup $stream; at $oldestElement = $count"})
+                        log.trace({ "cleanup $stream; at $oldestElement = $count" })
                         if (count != 0L) {
                             break
                         }
@@ -184,7 +180,7 @@ class StreamService : JobService() {
                 StreamServiceExecutor.run(
                     stream,
                     Runnable {
-                        log.trace({"add to $stream key ${event.key}"})
+                        log.trace({ "add to $stream key ${event.key}" })
                         helpers.getKeysQueue(stream).put(event.key)
                     }
                 )
