@@ -72,6 +72,11 @@ def local_stream(stream, local_to_data=True):
 
 
 async def enumerate_stream(stream):
+    async for _, item in enumerate_stream_with_keys(stream):
+        yield item
+
+
+async def enumerate_stream_with_keys(stream):
     listener = fabric_service.get().generate_name(stream.stream)  # TODO: keep state while iterating
 
     keys = await fabric_service.get().enumerate_stream_item_keys(stream.stream, stream.startIndex, stream.stride, stream.localToData)
@@ -80,7 +85,7 @@ async def enumerate_stream(stream):
     try:
         async for key in keys:
             fabric_service.get().set_stream_listener_position(listener, stream.stream, key)
-            yield fabric_service.get().read_stream_item(stream.stream, key)
+            yield (key, fabric_service.get().read_stream_item(stream.stream, key))
     finally:
         fabric_service.get().remove_stream_listener(listener)
 

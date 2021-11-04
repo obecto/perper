@@ -64,6 +64,14 @@ namespace Perper.Extensions
 
         public static async IAsyncEnumerable<T> EnumerateAsync<T>(this PerperStream stream, bool keepBinary = false, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            await foreach (var (_, item) in stream.EnumerateWithKeysAsync<T>(keepBinary, cancellationToken))
+            {
+                yield return item;
+            }
+        }
+
+        public static async IAsyncEnumerable<(long, T)> EnumerateWithKeysAsync<T>(this PerperStream stream, bool keepBinary = false, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
             var listener = FabricService.GenerateName(stream.Stream); // TODO: Implement a way to keep state while enumerating a stream
             var itemsEnumerable = await AsyncLocals.FabricService.EnumerateStreamItemKeys(stream.Stream, stream.StartIndex, stream.Stride, stream.LocalToData, cancellationToken).ConfigureAwait(false);
 
@@ -93,7 +101,7 @@ namespace Perper.Extensions
                         }
                     }
 
-                    yield return value;
+                    yield return (key, value);
                 }
             }
             finally

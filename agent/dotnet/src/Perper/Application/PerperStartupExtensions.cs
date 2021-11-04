@@ -123,7 +123,7 @@ namespace Perper.Application
                 }
                 catch (Exception e)
                 {
-                    throw new ArgumentException($"Failed decoding parameter {i+1} ({parameters[i]}) of {methodInfo}", e);
+                    throw new ArgumentException($"Failed decoding parameter {i + 1} ({parameters[i]}) of {methodInfo}", e);
                 }
             }
 
