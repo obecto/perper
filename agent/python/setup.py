@@ -58,7 +58,7 @@ with open("README.md") as f:
 setup(
     name="Perper",
     version="0.8.0b0",
-    packages=["perper"],
+    packages=setuptools.find_packages(),
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="MIT License",
