@@ -46,12 +46,12 @@ namespace Perper.Extensions
 
         public static Task CallAsync(string actionName, params object[] parameters) => Agent.CallAsync(actionName, parameters);
 
-        public static async Task WriteToBlankStream<TItem>(PerperStream stream, long key, TItem item, bool keepBinary = false)
+        public static async Task WriteToBlankStreamAsync<TItem>(PerperStream stream, long key, TItem item, bool keepBinary = false)
         {
             await AsyncLocals.FabricService.WriteStreamItem(stream.Stream, key, item, keepBinary).ConfigureAwait(false);
         }
 
-        public static async Task WriteToBlankStream<TItem>(PerperStream stream, TItem item, bool keepBinary = false)
+        public static async Task WriteToBlankStreamAsync<TItem>(PerperStream stream, TItem item, bool keepBinary = false)
         {
             await AsyncLocals.FabricService.WriteStreamItem(stream.Stream, item, keepBinary).ConfigureAwait(false);
         }

@@ -12,13 +12,13 @@ namespace Perper.Extensions
 {
     public class PerperStreamBuilder
     {
-        public PerperStream Stream => new(StreamName, -1, IsPacked ? 1 : 0, false);
+        public PerperStream Stream => new(StreamName, -1, Stride, false);
 
         public string StreamName { get; }
         public string? Delegate { get; }
 
         public bool IsPersistent { get; private set; }
-        public bool IsPacked { get; private set; }
+        public long Stride { get; private set; }
         public bool IsAction { get; private set; }
         public bool IsExternal => Delegate == null;
 
@@ -72,9 +72,9 @@ namespace Perper.Extensions
             return this;
         }
 
-        public PerperStreamBuilder Packed()
+        public PerperStreamBuilder Packed(long stride = 0)
         {
-            IsPacked = true;
+            Stride = stride;
             return this;
         }
 

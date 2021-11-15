@@ -23,7 +23,6 @@ def create_query_entity(
     value_type_name=None,
     query_fields=[],
     query_indexes=[],
-    /,
     table_name=None,
     key_field_name=None,
     value_field_name=None,

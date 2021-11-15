@@ -1,6 +1,10 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.StreamListener
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.channels.actor
+import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteLogger
 import org.apache.ignite.binary.BinaryObject
@@ -10,13 +14,35 @@ import org.apache.ignite.configuration.CollectionConfiguration
 import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
 import org.apache.ignite.services.ServiceContext
+import java.util.concurrent.ConcurrentHashMap
 import javax.cache.configuration.Factory
 import javax.cache.event.CacheEntryEvent
 import javax.cache.event.CacheEntryEventFilter
 import javax.cache.event.EventType
+import kotlin.coroutines.EmptyCoroutineContext
 
 object StreamServiceConstants {
     val persistAllIndex = Long.MIN_VALUE
+}
+
+object StreamServiceExecutor {
+    val coroutineScope by lazy(LazyThreadSafetyMode.PUBLICATION) { CoroutineScope(EmptyCoroutineContext) }
+
+    val channels = ConcurrentHashMap<String, SendChannel<Runnable>>()
+
+    @OptIn(kotlinx.coroutines.ObsoleteCoroutinesApi::class)
+    fun run(channelName: String, runnable: Runnable) {
+        val channel = channels.getOrPut(channelName) {
+            coroutineScope.actor<Runnable>(capacity = Channel.UNLIMITED) {
+                for (_runnable in this) {
+                    _runnable.run()
+                }
+            }
+        }
+        runBlocking {
+            channel.send(runnable)
+        }
+    }
 }
 
 class StreamService : JobService() {
@@ -78,7 +104,14 @@ class StreamService : JobService() {
         }
 
         fun startStreamQuery(stream: String) {
-            if (ignite.atomicLong("stream-$stream-query", 0, true).compareAndSet(0, 1)) {
+            val queryLock = ignite.reentrantLock("stream-$stream-query", false, false, true)
+
+            var couldLock = false
+            try {
+                couldLock = queryLock.tryLock()
+            } catch (_: Exception) {}
+
+            if (couldLock) {
                 log.debug({ "Starting query on '$stream'" })
 
                 val cache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, BinaryObject>()
@@ -118,10 +151,13 @@ class StreamService : JobService() {
                         if (oldestElement == null) { // Queue is empty
                             break
                         }
-                        if (ignite.atomicLong("$stream-at-$oldestElement", 0, true).get() == 0L) {
-                            cache.remove(oldestElement)
-                            keysQueue.remove(oldestElement)
+                        val count = ignite.atomicLong("$stream-at-$oldestElement", 0, true).get()
+                        log.trace({ "cleanup $stream; at $oldestElement = $count" })
+                        if (count != 0L) {
+                            break
                         }
+                        cache.remove(oldestElement)
+                        keysQueue.remove(oldestElement)
                     }
                 } finally {
                     updateLock.unlock()
@@ -141,8 +177,10 @@ class StreamService : JobService() {
 
         override fun evaluate(event: CacheEntryEvent<out Long, out Any>): Boolean {
             if (event.eventType == EventType.CREATED) {
-                ignite.scheduler().runLocal(
+                StreamServiceExecutor.run(
+                    stream,
                     Runnable {
+                        log.trace({ "add to $stream key ${event.key}" })
                         helpers.getKeysQueue(stream).put(event.key)
                     }
                 )
@@ -161,7 +199,8 @@ class StreamService : JobService() {
         val helpers by lazy(LazyThreadSafetyMode.PUBLICATION) { StreamServiceHelpers(ignite, log) }
 
         override fun evaluate(event: CacheEntryEvent<out String, out StreamListener>): Boolean {
-            ignite.scheduler().runLocal(
+            StreamServiceExecutor.run(
+                event.key,
                 Runnable {
                     if (event.eventType == EventType.REMOVED || event.eventType == EventType.EXPIRED) {
                         helpers.updateStreamListener(event.key, event.value.stream, event.value.position, null)

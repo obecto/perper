@@ -40,6 +40,7 @@ class FabricService:
         self.instances_cache = self.ignite.get_or_create_cache("instances")
 
         self.item_caches = factorydict(self.ignite.get_cache)
+        self.state_caches = factorydict(self.ignite.get_or_create_cache)
 
         self.grpc_channel = grpc_channel
         self.fabric_stub = fabric_pb2_grpc.FabricStub(self.grpc_channel)
@@ -119,10 +120,10 @@ class FabricService:
     # STATE:
 
     def set_state_value(self, instance, key, value, value_hint=None):
-        self.item_caches[instance].put(key, value, value_hint=value_hint)
+        self.state_caches[instance].put(key, value, value_hint=value_hint)
 
     def get_state_value(self, instance, key, default=None):
-        result = self.item_caches[instance].get(key)
+        result = self.state_caches[instance].get(key)
         if result is None:
             return default
         return result

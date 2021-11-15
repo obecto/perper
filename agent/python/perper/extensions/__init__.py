@@ -7,6 +7,7 @@ from .stream import (
     replay_stream,
     local_stream,
     enumerate_stream,
+    enumerate_stream_with_keys,
     query_stream,
     query_stream_sync,
     destroy_stream,
