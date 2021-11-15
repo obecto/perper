@@ -1,1 +1,2 @@
-await Perper.Application.PerperStartup.RunAsync("container-usage-sample", default).ConfigureAwait(false);
+using Perper.Application;
+await new PerperStartup().AddAssemblyHandlers("container-usage-sample").RunAsync(default).ConfigureAwait(false);
