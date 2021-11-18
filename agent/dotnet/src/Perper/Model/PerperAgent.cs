@@ -18,5 +18,7 @@ namespace Perper.Model
 
         public string Agent => agent;
         public string Instance => instance;
+
+        public override string ToString() => $"PerperAgent({Agent}, {Instance})";
     }
 }
