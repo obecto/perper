@@ -9,12 +9,19 @@ using Perper.Model;
 
 static async Task Init()
 {
-    var generator = await PerperContext.StartAgentAsync(nameof(GeneratorAgent), 100).ConfigureAwait(false);
-    var generatorStream = await generator.CallAsync<PerperStream>("GetStream").ConfigureAwait(false);
-    var processor = await PerperContext.StartAgentAsync(nameof(ProcessorAgent), generatorStream).ConfigureAwait(false);
-    var processorStream = await processor.CallAsync<PerperStream>("GetStream").ConfigureAwait(false);
+    var (exists, processorStream) = await PerperState.TryGetAsync<PerperStream>("processor").ConfigureAwait(false);
 
-    await foreach (var i in processorStream.EnumerateAsync<int>())
+    if (!exists)
+    {
+        var generator = await PerperContext.StartAgentAsync(nameof(GeneratorAgent), 100).ConfigureAwait(false);
+        var generatorStream = await generator.CallAsync<PerperStream>("GetStream").ConfigureAwait(false);
+        var processor = await PerperContext.StartAgentAsync(nameof(ProcessorAgent), generatorStream).ConfigureAwait(false);
+        processorStream = await processor.CallAsync<PerperStream>("GetStream").ConfigureAwait(false);
+
+        PerperState.SetAsync("processor", processorStream).ConfigureAwait(false);
+    }
+
+    await foreach (var i in processorStream.EnumerateAsync<int>("processor"))
     {
         Console.WriteLine(i);
     }
