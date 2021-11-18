@@ -265,7 +265,7 @@ class FabricService(var port: Int = 40400) : Service {
                     query.remoteFilterFactory = Factory {
                         CacheEntryEventFilter {
                             event ->
-                            event.eventType.isCreation && event.key > startKey
+                            event.eventType.isCreation && event.key >= startKey
                         }
                     }
                     query.initialQuery = ScanQuery(IgniteBiPredicate<Long, Any> { key, _ -> key > startKey }).also {
@@ -283,7 +283,7 @@ class FabricService(var port: Int = 40400) : Service {
                     for (key in itemKeys) {
                         output(key)
                     }
-                    var lastKey = itemKeys.lastOrNull() ?: startKey
+                    var lastKey = itemKeys.lastOrNull() ?: startKey?.minus(1) // -1 so that we still deliver the item at the start key
 
                     for (key in queryChannel) {
                         if (lastKey == null || key > lastKey) {
