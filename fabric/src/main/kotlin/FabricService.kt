@@ -134,6 +134,9 @@ class FabricService(var port: Int = 40400) : Service {
             val instance = if (request.instance != "") request.instance else null
             val localToData = request.localToData
 
+            if (instance != null) {
+                InstanceService.setInstanceRunning(ignite, instance, true)
+            }
             InstanceService.setAgentType(ignite, agent, if (instance == null) AgentType.FUNCTIONS else AgentType.CONTAINERS)
 
             val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
@@ -195,6 +198,9 @@ class FabricService(var port: Int = 40400) : Service {
                 throw e
             } finally {
                 log.debug({ "Executions listener stopped for '$agent'-'$instance'!" })
+                if (instance != null) {
+                    InstanceService.setInstanceRunning(ignite, instance, false)
+                }
                 queryCursor.close()
             }
         }.buffer(Channel.UNLIMITED)
