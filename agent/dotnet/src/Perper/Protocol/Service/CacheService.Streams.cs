@@ -25,19 +25,19 @@ namespace Perper.Protocol.Service
         {
             var streamListener = igniteBinary.ToBinary<IBinaryObject>(new StreamListener(callerAgent, callerInstance, caller, parameter, replay, localToData, filter));
 
-            await streamsCache.OptimisticUpdateAsync(stream, value => StreamData.AddListener(value.ToBuilder(), streamListener).Build()).ConfigureAwait(false);
+            await streamsCache.OptimisticUpdateAsync(stream, value => StreamData.AddListener(value.ToBuilder().Build().ToBuilder(), streamListener).Build()).ConfigureAwait(false);
 
             return streamListener;
         }
 
         public Task StreamRemoveListener(string stream, IBinaryObject streamListener)
         {
-            return streamsCache.OptimisticUpdateAsync(stream, value => StreamData.RemoveListener(value.ToBuilder(), streamListener).Build());
+            return streamsCache.OptimisticUpdateAsync(stream, value => StreamData.RemoveListener(value.ToBuilder().Build().ToBuilder(), streamListener).Build());
         }
 
         public Task StreamRemoveListener(string stream, string caller, int parameter)
         {
-            return streamsCache.OptimisticUpdateAsync(stream, value => StreamData.RemoveListener(value.ToBuilder(), caller, parameter).Build());
+            return streamsCache.OptimisticUpdateAsync(stream, value => StreamData.RemoveListener(value.ToBuilder().Build().ToBuilder(), caller, parameter).Build());
         }
 
         public async Task<long> StreamWriteItem<TItem>(string stream, TItem item, bool keepBinary = false)

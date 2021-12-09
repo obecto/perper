@@ -19,17 +19,17 @@ namespace Perper.Protocol.Service
 
         public Task CallWriteResult<TResult>(string call, TResult result)
         {
-            return callsCache.OptimisticUpdateAsync(call, value => CallData.SetResult(value.ToBuilder(), result).Build());
+            return callsCache.OptimisticUpdateAsync(call, value => CallData.SetResult(value.ToBuilder().Build().ToBuilder(), result).Build());
         }
 
         public Task CallWriteError(string call, string error)
         {
-            return callsCache.OptimisticUpdateAsync(call, value => CallData.SetError(value.ToBuilder(), error).Build());
+            return callsCache.OptimisticUpdateAsync(call, value => CallData.SetError(value.ToBuilder().Build().ToBuilder(), error).Build());
         }
 
         public Task CallWriteFinished(string call)
         {
-            return callsCache.OptimisticUpdateAsync(call, value => CallData.SetFinished(value.ToBuilder()).Build());
+            return callsCache.OptimisticUpdateAsync(call, value => CallData.SetFinished(value.ToBuilder().Build().ToBuilder()).Build());
         }
 
         public async Task<string?> CallReadError(string call)
