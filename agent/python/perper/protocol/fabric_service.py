@@ -122,6 +122,9 @@ class FabricService:
     def set_state_value(self, instance, key, value, value_hint=None):
         self.state_caches[instance].put(key, value, value_hint=value_hint)
 
+    def remove_state_value(self, instance, key):
+        self.state_caches[instance].remove_key(key)
+
     def get_state_value(self, instance, key, default=None):
         result = self.state_caches[instance].get(key)
         if result is None:

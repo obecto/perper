@@ -14,3 +14,7 @@ def get_state(key, default=None, default_factory=None):
 
 def set_state(key, value, value_hint=None):
     fabric_service.get().set_state_value(fabric_execution.get().instance, key, value, value_hint)
+
+
+def remove_state(key):
+    fabric_service.get().remove_state_value(fabric_execution.get().instance, key)

@@ -20,5 +20,11 @@ namespace Perper.Protocol
             var stateCache = Ignite.GetOrCreateCache<string, T>(instance);
             await stateCache.PutAsync(key, value).ConfigureAwait(false);
         }
+
+        public async Task RemoveStateValue(string instance, string key)
+        {
+            var stateCache = Ignite.GetOrCreateCache<string, object>(instance);
+            await stateCache.RemoveAsync(key).ConfigureAwait(false);
+        }
     }
 }
