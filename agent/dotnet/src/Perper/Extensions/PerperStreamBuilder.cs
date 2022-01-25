@@ -72,7 +72,7 @@ namespace Perper.Extensions
             return this;
         }
 
-        public PerperStreamBuilder Packed(long stride = 0)
+        public PerperStreamBuilder Packed(long stride)
         {
             Stride = stride;
             return this;
@@ -90,6 +90,10 @@ namespace Perper.Extensions
 
         public PerperStreamBuilder Index(QueryEntity queryEntity)
         {
+            if (queryEntity.Fields == null)
+            {
+                Console.WriteLine($"Warning: Stream indexing configured on {Stream} for type {queryEntity.ValueTypeName}, but no fields are configured; this can cause problems when writing items. If using Index<T> or Index(Type), consider annotating one or more properties with [Apache.Ignite.Core.Cache.Configuration.QuerySqlField].");
+            }
             indexes.Add(queryEntity);
             return this;
         }

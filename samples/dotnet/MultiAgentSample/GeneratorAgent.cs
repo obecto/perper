@@ -19,7 +19,7 @@ namespace MultiAgentSample
         {
             var i = await PerperState.GetOrDefaultAsync("i", 0).ConfigureAwait(false);
 
-            for ( ; i < count ; i++)
+            for (; i < count ; i++)
             {
                 await PerperState.SetAsync("i", i).ConfigureAwait(false);
                 yield return i;
