@@ -26,6 +26,12 @@ namespace Perper.Protocol
         public const long ListenerPersistAll = long.MinValue;
         public const long ListenerJustTrigger = long.MaxValue;
 
+        public async Task<long?> GetStreamListenerPosition(string listener)
+        {
+            var result = await StreamListenersCache.TryGetAsync(listener).ConfigureAwait(false);
+            return result.Success ? result.Value.Position : null;
+        }
+
         public async Task SetStreamListenerPosition(string listener, string stream, long position)
         {
             await StreamListenersCache.PutAsync(listener, new StreamListener(stream, position)).ConfigureAwait(false);

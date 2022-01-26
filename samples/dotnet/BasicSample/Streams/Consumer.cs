@@ -10,9 +10,9 @@ namespace BasicSample.Streams
     {
         public async Task RunAsync(PerperStream input)
         {
-            await foreach (var messagesBatch in input.EnumerateAsync<string[]>())
+            await foreach (var x in input.EnumerateAsync<SampleUserType>())
             {
-                Console.WriteLine($"Received batch of {messagesBatch.Length} messages.\n{string.Join(", ", messagesBatch)}");
+                Console.WriteLine($"Received batch {x.Id} of {x.MessagesBatch.Length} messages.");
             }
         }
     }

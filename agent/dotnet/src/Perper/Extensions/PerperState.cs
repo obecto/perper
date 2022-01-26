@@ -1,18 +1,27 @@
 using System;
 using System.Threading.Tasks;
 
+using Apache.Ignite.Core.Client.Cache;
+
 namespace Perper.Extensions
 {
     public static class PerperState
     {
-        public static async Task<(bool, T)> TryGetAsync<T>(string key)
+        public static ICacheClient<TK, TV> GetCacheClient<TK, TV>(string cache)
+        {
+            return AsyncLocals.FabricService.GetStateCache<TK, TV>(AsyncLocals.Instance, cache);
+        }
+
+        public static async Task<(bool Exists, T Value)> TryGetAsync<T>(string key)
         {
             return await AsyncLocals.FabricService.TryGetStateValue<T>(AsyncLocals.Instance, key).ConfigureAwait(false);
         }
 
-        public static Task<T> GetOrDefaultAsync<T>(string key, T @default = default!) => GetOrNewAsync(key, () => @default);
+        public static Task<T> GetOrDefaultAsync<T>(string key, T @default = default!) =>
+            GetOrNewAsync(key, () => @default);
 
-        public static Task<T> GetOrNewAsync<T>(string key) where T : new() => GetOrNewAsync(key, () => new T());
+        public static Task<T> GetOrNewAsync<T>(string key) where T : new() =>
+            GetOrNewAsync(key, () => new T());
 
         public static async Task<T> GetOrNewAsync<T>(string key, Func<T> createFunc)
         {

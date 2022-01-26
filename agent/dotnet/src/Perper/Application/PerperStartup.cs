@@ -3,37 +3,30 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Apache.Ignite.Core;
-using Apache.Ignite.Core.Binary;
-using Apache.Ignite.Core.Client;
-
-using Grpc.Net.Client;
-
 using Perper.Extensions;
 using Perper.Protocol;
-
-using Polly;
 
 namespace Perper.Application
 {
     public class PerperStartup
     {
-        public string Agent { get; }
         public bool UseInstances { get; set; } = false;
-        private readonly List<Func<Task>> initHandlers = new();
-        private readonly Dictionary<string, Func<Task>> executionHandlers = new();
+        private readonly List<(string, Func<Task>)> initHandlers = new();
+        private readonly Dictionary<string, Dictionary<string, Func<Task>>> executionHandlers = new();
 
-        public PerperStartup(string agent) => Agent = agent;
-
-        public PerperStartup AddInitHandler(Func<Task> handler)
+        public PerperStartup AddInitHandler(string agent, Func<Task> handler)
         {
-            initHandlers.Add(handler);
+            initHandlers.Add((agent, handler));
             return this;
         }
 
-        public PerperStartup AddHandler(string @delegate, Func<Task> handler)
+        public PerperStartup AddHandler(string agent, string @delegate, Func<Task> handler)
         {
-            executionHandlers.Add(@delegate, handler);
+            if (!executionHandlers.TryGetValue(agent, out var agentExecutionHandlers))
+            {
+                executionHandlers[agent] = agentExecutionHandlers = new();
+            }
+            agentExecutionHandlers.Add(@delegate, handler);
             return this;
         }
 
@@ -43,95 +36,29 @@ namespace Perper.Application
             return this;
         }
 
-        #region RunAsync
-
         public async Task RunAsync(CancellationToken cancellationToken = default)
         {
-            await EnterServicesContext(() => RunInServiceContext(cancellationToken)).ConfigureAwait(false);
-        }
-
-        public static Task RunAsync(string agent, CancellationToken cancellationToken = default)
-        {
-            return new PerperStartup(agent).DiscoverHandlersFromAssembly().RunAsync(cancellationToken);
-        }
-
-        public static Task RunAsync(string agent, string rootNamespace, CancellationToken cancellationToken = default)
-        {
-            return new PerperStartup(agent).DiscoverHandlersFromAssembly(null, rootNamespace).RunAsync(cancellationToken);
-        }
-
-        #endregion RunAsync
-        #region Services
-
-        public static async Task EnterServicesContext(Func<Task> context)
-        {
-            var fabricService = await EstablishConnection().ConfigureAwait(false);
-
+            await using var fabricService = await PerperConnection.EstablishConnection().ConfigureAwait(false);
             AsyncLocals.SetConnection(fabricService);
 
-            await context().ConfigureAwait(false);
-
-            await fabricService.DisposeAsync().ConfigureAwait(false);
+            await RunInServiceContext(cancellationToken).ConfigureAwait(false);
         }
-
-        public static async Task<FabricService> EstablishConnection()
-        {
-            var apacheIgniteEndpoint = Environment.GetEnvironmentVariable("APACHE_IGNITE_ENDPOINT") ?? "127.0.0.1:10800";
-            var fabricGrpcAddress = Environment.GetEnvironmentVariable("PERPER_FABRIC_ENDPOINT") ?? "http://127.0.0.1:40400";
-
-            Console.WriteLine($"APACHE_IGNITE_ENDPOINT: {apacheIgniteEndpoint}");
-            Console.WriteLine($"PERPER_FABRIC_ENDPOINT: {fabricGrpcAddress}");
-
-            var igniteConfiguration = new IgniteClientConfiguration
-            {
-                Endpoints = new List<string> { apacheIgniteEndpoint },
-                BinaryConfiguration = new BinaryConfiguration
-                {
-                    NameMapper = PerperBinaryConfigurations.NameMapper,
-                    TypeConfigurations = PerperBinaryConfigurations.TypeConfigurations,
-                    ForceTimestamp = true,
-                },
-                SocketTimeout = TimeSpan.FromSeconds(60)
-            };
-
-            var ignite = await Policy
-                .HandleInner<System.Net.Sockets.SocketException>()
-                .WaitAndRetryAsync(10,
-                    attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt - 2)),
-                    (exception, timespan) => Console.WriteLine("Failed to connect to Ignite, retrying in {0}s", timespan.TotalSeconds))
-                .ExecuteAsync(() => Task.Run(() => Ignition.StartClient(igniteConfiguration))).ConfigureAwait(false);
-
-            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
-            var grpcChannel = GrpcChannel.ForAddress(fabricGrpcAddress);
-
-            return new FabricService(ignite, grpcChannel);
-        }
-
-        public static string ConfigureInstance()
-        {
-            var instance = Environment.GetEnvironmentVariable("X_PERPER_INSTANCE") ?? "";
-            Console.WriteLine($"X_PERPER_INSTANCE: {instance}");
-            return instance;
-        }
-
-        #endregion Services
-        #region ListenNotifications
 
         public Task RunInServiceContext(CancellationToken cancellationToken = default)
         {
-            var instance = UseInstances ? ConfigureInstance() : null;
+            var (instanceAgent, instance) = UseInstances ? PerperConnection.ConfigureInstance() : (null, null);
 
             var taskCollection = new TaskCollection();
 
-            executionHandlers.TryAdd(PerperContext.StartupFunctionName, async () =>
+            foreach (var (agent, handler) in initHandlers)
             {
-                await AsyncLocals.FabricService.WriteExecutionFinished(AsyncLocals.Execution).ConfigureAwait(false);
-            });
+                if (instanceAgent != null && instanceAgent != agent)
+                {
+                    continue;
+                }
 
-            var initInstance = instance ?? $"{Agent}-init";
-            var initExecution = new FabricExecution(Agent, initInstance, "Init", $"{initInstance}-init", cancellationToken);
-            foreach (var handler in initHandlers)
-            {
+                var initInstance = instance ?? $"{agent}-init";
+                var initExecution = new FabricExecution(agent, initInstance, "Init", $"{initInstance}-init", cancellationToken);
                 taskCollection.Add(async () =>
                 {
                     AsyncLocals.SetExecution(initExecution);
@@ -139,9 +66,22 @@ namespace Perper.Application
                 });
             }
 
-            foreach (var (@delegate, handler) in executionHandlers)
+            foreach (var (agent, agentExecutionHandlers) in executionHandlers)
             {
-                ListenExecutions(taskCollection, Agent, instance, @delegate, handler, cancellationToken);
+                if (instanceAgent != null && instanceAgent != agent)
+                {
+                    continue;
+                }
+
+                agentExecutionHandlers.TryAdd(PerperContext.StartupFunctionName, async () =>
+                {
+                    await AsyncLocals.FabricService.WriteExecutionFinished(AsyncLocals.Execution).ConfigureAwait(false);
+                });
+
+                foreach (var (@delegate, handler) in agentExecutionHandlers)
+                {
+                    ListenExecutions(taskCollection, agent, instance, @delegate, handler, cancellationToken);
+                }
             }
 
             return taskCollection.GetTask();
@@ -162,6 +102,10 @@ namespace Perper.Application
             });
         }
 
-        #endregion ListenNotifications
+        [Obsolete("Use `new PerperStartup().AddAssemblyHandlers().RunAsync()` instead")]
+        public static Task RunAsync(string agent, CancellationToken cancellationToken = default)
+        {
+            return new PerperStartup().AddAssemblyHandlers(agent).RunAsync(cancellationToken);
+        }
     }
 }

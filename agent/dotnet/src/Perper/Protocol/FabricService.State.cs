@@ -1,24 +1,36 @@
 using System.Threading.Tasks;
 
+using Apache.Ignite.Core.Client.Cache;
+
 namespace Perper.Protocol
 {
     public partial class FabricService
     {
-        public async Task<(bool, T)> TryGetStateValue<T>(string instance, string key)
+        public ICacheClient<TK, TV> GetStateCache<TK, TV>(string instance, string cache)
         {
-            var stateCache = Ignite.GetOrCreateCache<string, T>(instance);
-            var result = await stateCache.TryGetAsync(key).ConfigureAwait(false);
+            return Ignite.GetOrCreateCache<TK, TV>($"{instance}-{cache}");
+        }
+
+        public async Task<(bool Exists, T Value)> TryGetStateValue<T>(string instance, string key)
+        {
+            var result = await StatesCache.TryGetAsync($"{instance}-{key}").ConfigureAwait(false);
             if (!result.Success)
             {
                 return (false, default(T)!);
             }
-            return (true, result.Value);
+            return (true, (T)result.Value);
         }
 
         public async Task SetStateValue<T>(string instance, string key, T value)
         {
-            var stateCache = Ignite.GetOrCreateCache<string, T>(instance);
-            await stateCache.PutAsync(key, value).ConfigureAwait(false);
+            if (value != null)
+            {
+                await StatesCache.PutAsync($"{instance}-{key}", value).ConfigureAwait(false);
+            }
+            else
+            {
+                await StatesCache.RemoveAsync($"{instance}-{key}").ConfigureAwait(false);
+            }
         }
 
         public async Task RemoveStateValue(string instance, string key)

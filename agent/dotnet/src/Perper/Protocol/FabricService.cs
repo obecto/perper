@@ -25,6 +25,7 @@ namespace Perper.Protocol
             ExecutionsCache = ignite.GetOrCreateCache<string, ExecutionData>("executions");
             StreamListenersCache = ignite.GetOrCreateCache<string, StreamListener>("stream-listeners");
             InstancesCache = ignite.GetOrCreateCache<string, InstanceData>("instances");
+            StatesCache = ignite.GetOrCreateCache<string, object>("states");
         }
 
         public IIgniteClient Ignite { get; }
@@ -33,6 +34,7 @@ namespace Perper.Protocol
         private readonly ICacheClient<string, ExecutionData> ExecutionsCache;
         private readonly ICacheClient<string, StreamListener> StreamListenersCache;
         private readonly ICacheClient<string, InstanceData> InstancesCache;
+        private readonly ICacheClient<string, object> StatesCache;
 
         private readonly Fabric.FabricClient FabricClient;
         private readonly CallOptions CallOptions = new CallOptions().WithWaitForReady();

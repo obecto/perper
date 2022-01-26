@@ -13,8 +13,8 @@ namespace BasicSample.Calls
             const int batchCount = 10;
             const int messageCount = 28;
 
-            var generator = await PerperContext.Stream("Generator").Packed().Persistent().StartAsync(messageCount).ConfigureAwait(false);
-            var processor = await PerperContext.Stream("Processor").StartAsync(generator.Replay(), batchCount).ConfigureAwait(false);
+            var generator = await PerperContext.Stream("Generator").Packed(1).Persistent().StartAsync(messageCount).ConfigureAwait(false);
+            var processor = await PerperContext.Stream("Processor").Index<SampleUserType>().StartAsync(generator.Replay(1), batchCount).ConfigureAwait(false);
             var _ = await PerperContext.Stream("Consumer").Action().StartAsync(processor).ConfigureAwait(false);
 
             // Cyclic streams:

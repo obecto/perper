@@ -62,20 +62,45 @@ namespace Perper.Extensions
             return stream.Query<T>(typeof(T).Name, sqlCondition, sqlParameters);
         }
 
-        public static async IAsyncEnumerable<T> EnumerateAsync<T>(this PerperStream stream, bool keepBinary = false, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public static async IAsyncEnumerable<T> EnumerateAsync<T>(
+            this PerperStream stream,
+            string? listenerName = null,
+            bool keepBinary = false,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            await foreach (var (_, item) in stream.EnumerateWithKeysAsync<T>(keepBinary, cancellationToken))
+            await foreach (var (_, item) in stream.EnumerateWithKeysAsync<T>(listenerName, keepBinary, cancellationToken))
             {
                 yield return item;
             }
         }
 
-        public static async IAsyncEnumerable<(long, T)> EnumerateWithKeysAsync<T>(this PerperStream stream, bool keepBinary = false, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public static async IAsyncEnumerable<(long, T)> EnumerateWithKeysAsync<T>(
+            this PerperStream stream,
+            string? listenerName = null,
+            bool keepBinary = false,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var listener = FabricService.GenerateName(stream.Stream); // TODO: Implement a way to keep state while enumerating a stream
-            var itemsEnumerable = await AsyncLocals.FabricService.EnumerateStreamItemKeys(stream.Stream, stream.StartIndex, stream.Stride, stream.LocalToData, cancellationToken).ConfigureAwait(false);
+            var listener = listenerName == null ?
+                FabricService.GenerateName(stream.Stream) :
+                $"{stream.Stream}-{AsyncLocals.Execution}-{listenerName}";
 
-            await AsyncLocals.FabricService.SetStreamListenerPosition(listener, stream.Stream, FabricService.ListenerPersistAll).ConfigureAwait(false);
+            var position = listenerName == null ?
+                null :
+                await AsyncLocals.FabricService.GetStreamListenerPosition(listener).ConfigureAwait(false);
+
+            var startIndex = stream.StartIndex;
+
+            if (position == null)
+            {
+                await AsyncLocals.FabricService.SetStreamListenerPosition(listener, stream.Stream, FabricService.ListenerPersistAll).ConfigureAwait(false);
+            }
+            else
+            {
+                startIndex = position.Value;
+            }
+
+            var itemsEnumerable = await AsyncLocals.FabricService.EnumerateStreamItemKeys(stream.Stream, startIndex, stream.Stride, stream.LocalToData, cancellationToken).ConfigureAwait(false);
+
             try
             {
                 await foreach (var key in itemsEnumerable)

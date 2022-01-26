@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -13,8 +14,8 @@ namespace BasicSample.Streams
 
                 //var randomNumber = await context.CallFunctionAsync<int, (int, int)>("GetRandomNumber", (0, 100));
                 //string message = $"{i}. Message: {randomNumber}";
-                var message = $"{j}. Message: {i}";
-                System.Console.WriteLine(message);
+                var message = $"message {j}";
+                Console.WriteLine($"Generating {message}");
 
                 yield return (j, message);
 
