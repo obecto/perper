@@ -90,7 +90,8 @@ namespace Perper.Application
                     NameMapper = PerperBinaryConfigurations.NameMapper,
                     TypeConfigurations = PerperBinaryConfigurations.TypeConfigurations,
                     ForceTimestamp = true,
-                }
+                },
+                SocketTimeout = TimeSpan.FromSeconds(60)
             };
 
             var ignite = await Policy

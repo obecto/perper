@@ -24,5 +24,10 @@ namespace Perper.Extensions
         {
             await AsyncLocals.FabricService.SetStateValue(AsyncLocals.Instance, key, value).ConfigureAwait(false);
         }
+
+        public static async Task RemoveAsync(string key)
+        {
+            await AsyncLocals.FabricService.RemoveStateValue(AsyncLocals.Instance, key).ConfigureAwait(false);
+        }
     }
 }

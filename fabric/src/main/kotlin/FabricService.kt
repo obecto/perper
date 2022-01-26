@@ -15,10 +15,8 @@ import io.grpc.Server
 import io.grpc.ServerBuilder
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.buffer
-import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -101,7 +99,7 @@ class FabricService(var port: Int = 40400) : Service {
     }
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    private fun <T> tryCatchChannelFlow(block: suspend ProducerScope<T>.() -> Unit): Flow<T> = channelFlow<T> {
+    private fun <T> tryCatchFlow(block: suspend FlowCollector<T>.() -> Unit): Flow<T> = flow<T> {
         try {
             block()
         } catch (e: CancellationException) {
@@ -129,11 +127,14 @@ class FabricService(var port: Int = 40400) : Service {
     inner class FabricImpl : FabricGrpcKt.FabricCoroutineImplBase() {
 
         @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-        override fun executions(request: ExecutionsRequest) = tryCatchChannelFlow<ExecutionsResponse> {
+        override fun executions(request: ExecutionsRequest) = tryCatchFlow<ExecutionsResponse> {
             val agent = request.agent
             val instance = if (request.instance != "") request.instance else null
             val localToData = request.localToData
 
+            if (instance != null) {
+                InstanceService.setInstanceRunning(ignite, instance, true)
+            }
             InstanceService.setAgentType(ignite, agent, if (instance == null) AgentType.FUNCTIONS else AgentType.CONTAINERS)
 
             val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
@@ -167,9 +168,9 @@ class FabricService(var port: Int = 40400) : Service {
             try {
                 val sentExecutions = HashMap<String, Boolean>()
 
-                suspend fun ProducerScope<ExecutionsResponse>.output(key: String, value: ExecutionData, removed: Boolean) {
+                suspend fun FlowCollector<ExecutionsResponse>.output(key: String, value: ExecutionData, removed: Boolean) {
                     if (sentExecutions.put(key, removed) != removed) {
-                        send(
+                        emit(
                             ExecutionsResponse.newBuilder().also {
                                 it.instance = value.instance
                                 it.delegate = value.delegate
@@ -195,9 +196,13 @@ class FabricService(var port: Int = 40400) : Service {
                 throw e
             } finally {
                 log.debug({ "Executions listener stopped for '$agent'-'$instance'!" })
+                if (instance != null) {
+                    InstanceService.setInstanceRunning(ignite, instance, false)
+                }
                 queryCursor.close()
+                queryChannel.close()
             }
-        }.buffer(Channel.UNLIMITED)
+        }
 
         override suspend fun executionFinished(request: ExecutionFinishedRequest): Empty {
             val execution = request.execution
@@ -232,14 +237,14 @@ class FabricService(var port: Int = 40400) : Service {
         }
 
         @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-        override fun streamItems(request: StreamItemsRequest) = tryCatchChannelFlow<StreamItemsResponse> {
+        override fun streamItems(request: StreamItemsRequest) = tryCatchFlow<StreamItemsResponse> {
             val stream = request.stream
             val startKey = if (request.startKey != -1L) request.startKey else null
             val stride = request.stride
             val localToData = request.localToData
 
-            suspend fun ProducerScope<StreamItemsResponse>.output(key: Long) {
-                send(
+            suspend fun FlowCollector<StreamItemsResponse>.output(key: Long) {
+                emit(
                     StreamItemsResponse.newBuilder().also {
                         it.key = key
                     }.build()
@@ -292,8 +297,9 @@ class FabricService(var port: Int = 40400) : Service {
                         }
                     }
                 } finally {
-                    queryCursor.close()
                     log.debug({ "Stream items listener finished for '$stream' ${startKey ?: "last"}..!" })
+                    queryCursor.close()
+                    queryChannel.close()
                 }
             } else // if (stride != 0L)
                 {
@@ -339,10 +345,9 @@ class FabricService(var port: Int = 40400) : Service {
                                 val queryCursor = streamCache.query(query) // Important to start query before checking if it is already finished
 
                                 try {
-                                    if (!streamCache.containsKey(key)) // Race check
-                                        {
-                                            queryChannel.receive()
-                                        }
+                                    if (!streamCache.containsKey(key)) { // Race check
+                                        queryChannel.receive()
+                                    }
                                 } finally {
                                     queryCursor.close()
                                     queryChannel.close()
@@ -357,7 +362,7 @@ class FabricService(var port: Int = 40400) : Service {
                         log.debug({ "Stream items listener finished for '$stream' ${startKey ?: "last"}..+$stride!" })
                     }
                 }
-        }.buffer(Channel.UNLIMITED)
+        }
 
         override suspend fun listenerAttached(request: ListenerAttachedRequest): Empty {
             val stream = request.stream
@@ -417,7 +422,7 @@ class FabricService(var port: Int = 40400) : Service {
         }
 
         @OptIn(kotlinx.coroutines.FlowPreview::class)
-        override fun streamIsActive(request: ScaledObjectRef) = flow<Boolean> {
+        override fun streamIsActive(request: ScaledObjectRef) = tryCatchFlow<Boolean> {
             val agent = request.agent
 
             val instancesCache = ignite.getOrCreateCache<String, InstanceData>("instances")
