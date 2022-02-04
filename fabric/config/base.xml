@@ -38,12 +38,12 @@
         </list></property>
 
         <property name="serviceConfiguration"><list>
-            <bean class="org.apache.ignite.services.ServiceConfiguration">
+            <!--<bean class="org.apache.ignite.services.ServiceConfiguration">
                 <property name="name" value="InstanceService"/>
                 <property name="maxPerNodeCount" value="1"/>
                 <property name="totalCount" value="0"/>
                 <property name="service" ref="InstanceService"/>
-            </bean>
+            </bean>-->
             <bean class="org.apache.ignite.services.ServiceConfiguration">
                 <property name="name" value="StreamService"/>
                 <property name="maxPerNodeCount" value="1"/>

@@ -3,6 +3,7 @@ syntax = "proto3";
 option java_multiple_files = true;
 option java_package = "com.obecto.perper.protobuf";
 option csharp_namespace = "Perper.Protocol.Protobuf";
+option go_package = "github.com/obecto/perper/scaler/proto";
 
 package perper;
 
@@ -10,9 +11,14 @@ import "google/protobuf/empty.proto";
 
 service Fabric {
     rpc Executions (ExecutionsRequest) returns (stream ExecutionsResponse) {}
+    rpc AllExecutions (ExecutionsRequest) returns (AllExecutionsResponse) {}
     rpc ExecutionFinished (ExecutionFinishedRequest) returns (google.protobuf.Empty) {}
     rpc StreamItems (StreamItemsRequest) returns (stream StreamItemsResponse) {}
     rpc ListenerAttached (ListenerAttachedRequest) returns (google.protobuf.Empty) {}
+}
+
+message AllExecutionsResponse {
+    repeated ExecutionsResponse executions = 1;
 }
 
 message ExecutionsRequest {
@@ -29,6 +35,8 @@ message ExecutionsResponse {
     string delegate = 3;
     string execution = 4;
     bool cancelled = 5;
+
+    bool startOfStream = 10;
 }
 
 message ExecutionFinishedRequest {
