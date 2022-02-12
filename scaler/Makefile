@@ -39,33 +39,48 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
-##@ Build
-
-.PHONY: generate-proto
-generate-proto: protoc-gen-go protoc-gen-go-grpc ## Generate proto files.
-	protoc --go_out=./common/proto --go_opt=paths=source_relative --go-grpc_out=./common/proto --go-grpc_opt=paths=source_relative --proto_path=../proto/ fabric.proto
-
 .PHONY: build
-build: build-compose ## Build everything
+build: build-compose ## Build everything.
+
+.PHONY: clean
+clean: clean-proto clean-compose ## Clean everything.
+
+##@ Compose
 
 .PHONY: build-compose
-build-compose: generate-proto ## Build compose binary.
-	go build -o bin/perper-scaler-compose compose/main.go
+build-compose: generate-proto ## Build compose scaler binary.
+	go build -o bin/perper-scaler-compose cmd/compose/main.go
+
+.PHONY: run-compose
+run-compose: generate-proto  ## Run compose scaler.
+	go run cmd/compose/main.go
+
+.PHONY: clean-compose
+clean-compose: ## Clean compose scaler binary.
+	rm bin/perper-scaler-compose
 
 ##@ Dependencies
 
-PROTOC_GEN_GO = $(BIN_DIR)/protoc-gen-go
+.PHONY: generate-proto
+generate-proto: pb/fabric.pb.go pb/fabric_grpc.pb.go  ## Generate proto files.
+
+.PHONY: clean-proto
+clean-proto:  ## Clean proto files.
+	rm pb/fabric.pb.go pb/fabric_grpc.pb.go
+
+pb/fabric.pb.go pb/fabric_grpc.pb.go &: ../proto/fabric.proto | protoc-gen-go protoc-gen-go-grpc
+	protoc --go_out=./pb --go_opt=paths=source_relative --go-grpc_out=./pb --go-grpc_opt=paths=source_relative --proto_path=../proto/ fabric.proto
+
+
 .PHONY: protoc-gen-go
 protoc-gen-go: ## Download protoc-gen-go locally if necessary.
-	which protoc-gen-go > /dev/null || go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.26
+ifeq (,$(shell PATH=$(PATH) which protoc-gen-go 2>/dev/null))
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.26
+endif
 
-PROTOC_GEN_GO_GRPC = $(BIN_DIR)/protoc-gen-go-grpc
 .PHONY: protoc-gen-go-grpc
 protoc-gen-go-grpc: ## Download protoc-gen-go locally if necessary.
-	which protoc-gen-go-grpc > /dev/null || go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1
+ifeq (,$(shell PATH=$(PATH) which protoc-gen-go-grpc 2>/dev/null))
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1
+endif
 
-##@ Run
-
-.PHONY: run-compose
-run-compose: generate-proto  ## Run compose.
-	go run compose/main.go
