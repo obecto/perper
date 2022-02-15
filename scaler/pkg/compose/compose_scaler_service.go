@@ -28,9 +28,9 @@ type composeScalerService struct {
 
 func NewComposeScalerService(composeService api.Service, fabricService fabric.FabricService, options ComposeScalerOptions) ComposeScalerService {
 	return &composeScalerService{
+		options: options,
 		fabric:  fabricService,
 		compose: composeService,
-		options: options,
 	}
 }
 
@@ -39,28 +39,32 @@ func (c *composeScalerService) Start(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case executions := <-c.fabric.Executions():
+		case allInstances := <-c.fabric.Instances():
 			project := c.options.Project // <<-- Important that we make a copy here
 			project.Services = nil       // TODO: Only remove services that are managed by us
 
-			for _, execution := range executions {
-				service, err := project.GetService(execution.Agent)
+			for agent, instances := range allInstances {
+				service, err := project.GetService(string(agent))
 				if err != nil {
 					// return err
-					fmt.Fprintf(os.Stderr, "Unable to locate agent %s: %v\n", execution.Agent, err)
+					fmt.Fprintf(os.Stderr, "Unable to locate agent %s: %v\n", agent, err)
 					continue
 				}
+				for _, instance := range instances {
+					serviceCopy := service
+					environment := make(types.MappingWithEquals)
+					for k, v := range serviceCopy.Environment {
+						environment[k] = v
+					}
 
-				environment := make(types.MappingWithEquals)
-				for k, v := range service.Environment {
-					environment[k] = v
+					agentCopy, instanceCopy := string(agent), string(instance)
+					environment["X_PERPER_AGENT"] = &agentCopy
+					environment["X_PERPER_INSTANCE"] = &instanceCopy
+
+					serviceCopy.Environment = environment
+					serviceCopy.Name = fmt.Sprintf("%s-%s", serviceCopy.Name, instance)
+					project.Services = append(project.Services, serviceCopy)
 				}
-				executionCopy := execution
-				environment["X_PERPER_AGENT"] = &executionCopy.Agent
-				environment["X_PERPER_INSTANCE"] = &executionCopy.Instance
-				service.Environment = environment
-				service.Name = fmt.Sprintf("%s-%s", service.Name, execution.Instance)
-				project.Services = append(project.Services, service)
 			}
 
 			{

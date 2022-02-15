@@ -40,10 +40,10 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: build
-build: build-compose ## Build everything.
+build: build-compose build-kubernetes ## Build everything.
 
 .PHONY: clean
-clean: clean-proto clean-compose ## Clean everything.
+clean: clean-proto clean-compose clean-kubernetes ## Clean everything.
 
 ##@ Compose
 
@@ -58,6 +58,20 @@ run-compose: generate-proto  ## Run compose scaler.
 .PHONY: clean-compose
 clean-compose: ## Clean compose scaler binary.
 	rm bin/perper-scaler-compose
+
+##@ Kubernetes
+
+.PHONY: build-kubernetes
+build-kubernetes: generate-proto ## Build kubernetes scaler binary.
+	go build -o bin/perper-scaler-kubernetes cmd/kubernetes/main.go
+
+.PHONY: run-kubernetes
+run-kubernetes: generate-proto  ## Run kubernetes scaler.
+	go run cmd/kubernetes/main.go
+
+.PHONY: clean-kubernetes
+clean-kubernetes: ## Clean compose scaler binary.
+	rm bin/perper-scaler-kubernetes
 
 ##@ Dependencies
 

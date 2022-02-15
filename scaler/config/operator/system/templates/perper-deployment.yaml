@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: perper-fabric
+spec:
+  selector:
+    matchLabels:
+      app: perper-fabric
+  template:
+    metadata:
+      labels:
+        app: perper-fabric
+    spec:
+      containers:
+      - name: perper-fabric
+        image: obecto/perper-fabric:0.8.0
+        command: ['perper-fabric/bin/perper-fabric', '-d', 'perper-fabric/config/example.xml']
+        ports:
+            - containerPort: 10800
+            - containerPort: 40400
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: perper-fabric
+  labels:
+    app: perper-fabric
+spec:
+  ports:
+  - port: 10800
+    protocol: TCP
+    name: ignite
+  - port: 40400
+    protocol: TCP
+    name: grpc
+  selector:
+    app: perper-fabric
+
+

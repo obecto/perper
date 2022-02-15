@@ -1,0 +1,17 @@
+{{ range $agent, $params := $.Params.agents }}
+---
+apiVersion: kudo.dev/v1beta1
+kind: Instance
+metadata:
+  name: {{$.Name}}-perper-agent-{{ lower $agent }}
+  labels:
+    perper.obecto.com/agent: {{ $agent }}
+spec:
+  operatorVersion:
+    name: {{ $.Params.perperAgentOperatorVersion }}
+  parameters:
+    agent: {{ $agent }}
+    {{ range $key, $value := $params }}
+    {{ $key }}: {{ $value }}
+    {{ end }}
+{{ end }}
