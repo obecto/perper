@@ -145,18 +145,27 @@ class FabricService(var port: Int = 40400) : Service {
             }
             query.setLocal(localToData)
 
-            query.remoteFilterFactory = Factory {
-                CacheEntryEventFilter { event ->
-                    if (event.isOldValueAvailable && !event.oldValue.finished)
-                        false
-                    else // NOTE: Can probably use a single query for all executions
-                        event.value.agent == agent && (instance == null || event.value.instance == instance) && !event.value.finished
+            query.remoteFilterFactory = object : Factory<CacheEntryEventFilter<String, ExecutionData>> {
+                val agent = agent
+                val instance = instance
+                override fun create() = object : CacheEntryEventFilter<String, ExecutionData> {
+                    val agent = agent
+                    val instance = instance
+                    override fun evaluate(event: CacheEntryEvent<out String, out ExecutionData>) =
+                        if (event.isOldValueAvailable && !event.oldValue.finished)
+                            false
+                        else // NOTE: Can probably use a single query for all executions
+                            event.value.agent == agent && (instance == null || event.value.instance == instance) && !event.value.finished
                 }
             }
+
             query.initialQuery = ScanQuery<String, ExecutionData>().also {
                 it.setLocal(localToData)
-                it.filter = IgniteBiPredicate<String, ExecutionData> { _, value ->
-                    value.agent == agent && (instance == null || value.instance == instance) && !value.finished
+                it.filter = object : IgniteBiPredicate<String, ExecutionData> {
+                    val agent = agent
+                    val instance = instance
+                    override fun apply(key: String, value: ExecutionData) =
+                        value.agent == agent && (instance == null || value.instance == instance) && !value.finished
                 }
             }
 
@@ -207,10 +216,12 @@ class FabricService(var port: Int = 40400) : Service {
             val query = ContinuousQuery<String, ExecutionData>()
             val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
 
-            query.remoteFilterFactory = Factory {
-                CacheEntryEventFilter {
-                    event ->
-                    event.key == execution && (event.eventType.isRemoval || event.value.finished)
+            query.remoteFilterFactory = object : Factory<CacheEntryEventFilter<String, ExecutionData>> {
+                val execution = execution
+                override fun create() = object : CacheEntryEventFilter<String, ExecutionData> {
+                    val execution = execution
+                    override fun evaluate(event: CacheEntryEvent<out String, out ExecutionData>) =
+                        event.key == execution && (event.eventType.isRemoval || event.value.finished)
                 }
             }
 
@@ -254,21 +265,26 @@ class FabricService(var port: Int = 40400) : Service {
                 query.setLocal(localToData)
 
                 if (startKey == null) {
-                    query.remoteFilterFactory = Factory {
-                        CacheEntryEventFilter {
-                            event ->
-                            event.eventType.isCreation
+                    query.remoteFilterFactory = object : Factory<CacheEntryEventFilter<Long, Any>> {
+                        override fun create() = object : CacheEntryEventFilter<Long, Any> {
+                            override fun evaluate(event: CacheEntryEvent<out Long, out Any>) =
+                                event.eventType.isCreation
                         }
                     }
                     // query.initialQuery = null;
                 } else {
-                    query.remoteFilterFactory = Factory {
-                        CacheEntryEventFilter {
-                            event ->
-                            event.eventType.isCreation && event.key > startKey
+                    query.remoteFilterFactory = object : Factory<CacheEntryEventFilter<Long, Any>> {
+                        val startKey = startKey
+                        override fun create() = object : CacheEntryEventFilter<Long, Any> {
+                            val startKey = startKey
+                            override fun evaluate(event: CacheEntryEvent<out Long, out Any>) =
+                                event.eventType.isCreation && event.key > startKey
                         }
                     }
-                    query.initialQuery = ScanQuery(IgniteBiPredicate<Long, Any> { key, _ -> key > startKey }).also {
+                    query.initialQuery = ScanQuery(object : IgniteBiPredicate<Long, Any> {
+                        override fun apply(key: Long, value: Any) =
+                            key > startKey
+                    }).also {
                         it.setLocal(localToData)
                     }
                 }
@@ -329,10 +345,12 @@ class FabricService(var port: Int = 40400) : Service {
                                 val query = ContinuousQuery<Long, Any>()
                                 val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
 
-                                query.remoteFilterFactory = Factory {
-                                    CacheEntryEventFilter {
-                                        event ->
-                                        event.key == key
+                                query.remoteFilterFactory = object : Factory<CacheEntryEventFilter<Long, Any>> {
+                                    val key = key
+                                    override fun create() = object : CacheEntryEventFilter<Long, Any> {
+                                        val key = key
+                                        override fun evaluate(event: CacheEntryEvent<out Long, out Any>) =
+                                            event.eventType.isCreation && event.key == key
                                     }
                                 }
 
@@ -368,13 +386,19 @@ class FabricService(var port: Int = 40400) : Service {
             val query = ContinuousQuery<String, StreamListener>()
             val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
 
-            query.remoteFilterFactory = Factory {
-                CacheEntryEventFilter {
-                    event ->
-                    event.eventType.isCreation && event.value.stream == stream
+            query.remoteFilterFactory = object : Factory<CacheEntryEventFilter<String, StreamListener>> {
+                val stream = stream
+                override fun create() = object : CacheEntryEventFilter<String, StreamListener> {
+                    val stream = stream
+                    override fun evaluate(event: CacheEntryEvent<out String, out StreamListener>) =
+                        event.eventType.isCreation && event.value.stream == stream
                 }
             }
-            query.initialQuery = ScanQuery(IgniteBiPredicate<String, StreamListener> { _, value -> value.stream == stream })
+
+            query.initialQuery = ScanQuery(object : IgniteBiPredicate<String, StreamListener> {
+                override fun apply(key: String, value: StreamListener) =
+                    value.stream == stream
+            })
 
             val queryCursor = streamListenersCache.query(query)
 
