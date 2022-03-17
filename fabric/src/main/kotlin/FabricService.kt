@@ -202,7 +202,7 @@ class FabricService(var port: Int = 40400) : Service {
                 queryCursor.close()
                 queryChannel.close()
             }
-        }
+        } // .buffer(Channel.UNLIMITED)
 
         override suspend fun executionFinished(request: ExecutionFinishedRequest): Empty {
             val execution = request.execution
@@ -332,6 +332,8 @@ class FabricService(var port: Int = 40400) : Service {
 
                         while (true) {
                             if (!streamCache.containsKey(key)) {
+
+                                log.trace({ "Awaiting $stream -- $key" })
                                 val query = ContinuousQuery<Long, Any>()
                                 val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
 
@@ -354,6 +356,7 @@ class FabricService(var port: Int = 40400) : Service {
                                 }
                             }
 
+                            log.trace({ "Sending $stream -- $key" })
                             output(key)
 
                             key += stride
@@ -362,7 +365,7 @@ class FabricService(var port: Int = 40400) : Service {
                         log.debug({ "Stream items listener finished for '$stream' ${startKey ?: "last"}..+$stride!" })
                     }
                 }
-        }
+        } // .buffer(Channel.BUFFERED)
 
         override suspend fun listenerAttached(request: ListenerAttachedRequest): Empty {
             val stream = request.stream

@@ -13,11 +13,33 @@ namespace Perper.Protocol
 {
     public partial class FabricService
     {
-        private readonly ConcurrentDictionary<(string agent, string? instance), ExecutionsListener> ExecutionsListeners = new();
-
-        public ChannelReader<FabricExecution> GetExecutionsReader(string agent, string? instance, string @delegate)
+        public async IAsyncEnumerable<FabricExecution> EnumerateExecutions(string agent, string? instance, CancellationToken cancellationToken = default)
         {
-            return ExecutionsListeners.GetOrAdd((agent, instance), _ => new(this, agent, instance)).GetReader(@delegate);
+            var cancellationTokenSources = new Dictionary<string, CancellationTokenSource>();
+
+            var stream = FabricClient.Executions(new ExecutionsRequest
+            {
+                Agent = agent,
+                Instance = instance ?? ""
+            }, CallOptions.WithCancellationToken(cancellationToken));
+
+            while (await stream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+            {
+                var executionProto = stream.ResponseStream.Current;
+                if (!executionProto.Cancelled)
+                {
+                    var cts = new CancellationTokenSource();
+                    cancellationTokenSources[executionProto.Execution] = cts;
+                    yield return new FabricExecution(agent, executionProto.Instance, executionProto.Delegate, executionProto.Execution, cts.Token);
+                }
+                else
+                {
+                    if (cancellationTokenSources.TryGetValue(executionProto.Execution, out var cts))
+                    {
+                        cts.Cancel();
+                    }
+                }
+            }
         }
 
         public async Task WaitExecutionFinished(string execution, CancellationToken cancellationToken = default)
@@ -60,13 +82,19 @@ namespace Perper.Protocol
             return helper(cancellationToken);
         }
 
+        private readonly ConcurrentDictionary<(string agent, string? instance), ExecutionsListener> ExecutionsListeners = new();
+
+        public ChannelReader<FabricExecution> GetExecutionsReader(string agent, string? instance, string @delegate)
+        {
+            return ExecutionsListeners.GetOrAdd((agent, instance), _ => new(this, agent, instance)).GetReader(@delegate);
+        }
+
         private class ExecutionsListener
         {
             private readonly FabricService FabricService;
             private readonly string Agent;
             private readonly string? Instance;
 
-            private readonly Dictionary<string, (FabricExecution execution, CancellationTokenSource cts)> Executions = new();
             private readonly ConcurrentDictionary<string, Channel<FabricExecution>> Channels = new();
 
             private int Running = 0;
@@ -95,31 +123,10 @@ namespace Perper.Protocol
             private async Task RunAsync()
             {
                 var cancellationToken = FabricService.CancellationTokenSource.Token;
-
-                var stream = FabricService.FabricClient.Executions(new ExecutionsRequest
+                await foreach (var execution in FabricService.EnumerateExecutions(Agent, Instance))
                 {
-                    Agent = Agent,
-                    Instance = Instance ?? ""
-                }, FabricService.CallOptions.WithCancellationToken(cancellationToken));
-
-                while (await stream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
-                {
-                    var executionProto = stream.ResponseStream.Current;
-                    if (executionProto.Cancelled)
-                    {
-                        if (Executions.TryGetValue(executionProto.Execution, out var execution))
-                        {
-                            execution.cts.Cancel();
-                        }
-                    }
-                    else
-                    {
-                        var cts = new CancellationTokenSource();
-                        var execution = new FabricExecution(Agent, executionProto.Instance, executionProto.Delegate, executionProto.Execution, cts.Token);
-                        Executions[executionProto.Execution] = (execution, cts);
-                        var channel = Channels.GetOrAdd(execution.Delegate, _ => Channel.CreateUnbounded<FabricExecution>());
-                        await channel.Writer.WriteAsync(execution, cancellationToken).ConfigureAwait(false);
-                    }
+                    var channel = Channels.GetOrAdd(execution.Delegate, _ => Channel.CreateUnbounded<FabricExecution>());
+                    await channel.Writer.WriteAsync(execution, cancellationToken).ConfigureAwait(false);
                 }
             }
         }

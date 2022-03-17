@@ -125,7 +125,8 @@ class InstanceService(var composeFile: String = "docker-compose.yml") : JobServi
         val serviceName = agent
         val process = ProcessBuilder(
             "docker-compose", "-f", composeFile, "run",
-            "--rm", "--detach",
+            // "--rm",
+            "--detach",
             "-l", "com.obecto.perper.agent=" + agent,
             "-e", "X_PERPER_AGENT=" + agent,
             "-l", "com.obecto.perper.instance=" + instance,
