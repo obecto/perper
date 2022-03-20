@@ -18,15 +18,12 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
-
+	
 	// 	"github.com/spf13/cobra"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
+	"k8s.io/client-go/rest"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -37,15 +34,7 @@ import (
 )
 
 func run(ctx context.Context) error {
-	addr := "localhost:40400" // TODO: accept flags
-
-	var kubeconfig *string
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-	}
-	flag.Parse()
+	addr := "perper-fabric:40400" // TODO: accept flags
 
 	namespace := "default" // TODO: accept flags
 
@@ -62,9 +51,11 @@ func run(ctx context.Context) error {
 	defer connection.Close()
 
 	fabricService := fabric.NewFabricService(connection, fabricOptions)
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	
+	// creates the in-cluster config
+	config, err := rest.InClusterConfig()
 	if err != nil {
-		return err
+		panic(err.Error())
 	}
 
 	client, err := dynamic.NewForConfig(config)

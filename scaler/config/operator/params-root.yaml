@@ -1,0 +1,3 @@
+agent: root
+image: perper-root-agent:1.0.0
+instances: ["root-singleton"]

@@ -10,6 +10,3 @@ parameters:
   - name: env
     default: {}
     type: map
-  - name: singleInstance
-    default: true
-    type: boolean

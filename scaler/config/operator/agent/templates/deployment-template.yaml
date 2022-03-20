@@ -1,54 +1,28 @@
-{{ if $.Params.singleInstance }}
 {{ range $instance := $.Params.instances }}
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Pod
 metadata:
   name: {{ $.Name }}-{{ lower $instance }}
+  labels:
+    perper.obecto.com/agent: {{ $.Params.agent }}
+    perper.obecto.com/instance: {{ $instance }}
 spec:
-  selector:
-    matchLabels:
-      perper.obecto.com/instance: {{ $instance }}
-  template:
-    metadata:
-      labels:
-        perper.obecto.com/instance: {{ $instance }}
-    spec:
-      containers:
-      - name: {{ lower $.Params.agent }}
-        image: {{ $.Params.image }}
-        env:
-        - name: X_PERPER_AGENT
-          value: {{ $.Params.agent }}
-        - name: X_PERPER_INSTANCE
-          value: {{ $instance }}
-        - name: APACHE_IGNITE_ENDPOINT
-          value: perper-fabric:10800
-        - name: PERPER_FABRIC_ENDPOINT
-          value: http://perper-fabric:40400
-        {{ range $key, $value := $.Params.env }}
-        - name: $key
-          value: $value
-        {{ end }}
-{{ end }}
-{{ else }}
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ $.Name }}-instance
-spec:
-  selector:
-    matchLabels:
-      perper.obecto.com/agent-instance: {{ $.Params.agent }}
-  template:
-    metadata:
-      labels:
-        perper.obecto.com/agent-instance: {{ $.Params.agent }}
-    spec:
-      containers:
-      - name: {{ lower $.Params.agent }}
-        image: {{ $.Params.image }}
-        env:
-        - name: X_PERPER_AGENT
-          value: {{ $.Params.agent }}
+  containers:
+  - name: agent
+    image: {{ $.Params.image }}
+    env:
+    - name: X_PERPER_AGENT
+      value: {{ $.Params.agent }}
+    - name: X_PERPER_INSTANCE
+      value: {{ $instance }}
+    - name: APACHE_IGNITE_ENDPOINT
+      value: perper-fabric:10800
+    - name: PERPER_FABRIC_ENDPOINT
+      value: http://perper-fabric:40400
+    {{ range $key, $value := $.Params.env }}
+    - name: $key
+      value: $value
+    {{ end }}
+  restartPolicy: Never
 {{ end }}
