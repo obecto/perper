@@ -1,0 +1,32 @@
+apiVersion: kudo.dev/v1beta1
+appVersion: 0.8.0
+kubernetesVersion: 0.16.0
+kudoVersion: 0.19.0
+maintainers:
+- email: MyEmail@invalid
+  name: My Name
+name: perper-system
+operatorVersion: 0.1.4
+plans:
+  deploy:
+    phases:
+    - name: deploy
+      steps:
+      - name: deploy
+        tasks:
+        - perper
+        - agents
+      strategy: serial
+    strategy: serial
+tasks:
+- kind: Apply
+  name: agents
+  spec:
+    resources:
+      - agent.yaml
+- kind: Toggle
+  name: perper
+  spec:
+    parameter: deployPerper
+    resources:
+      - perper-deployment.yaml

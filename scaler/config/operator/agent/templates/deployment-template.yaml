@@ -1,0 +1,28 @@
+{{ range $instance := $.Params.instances }}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ $.Name }}-{{ lower $instance }}
+  labels:
+    perper.obecto.com/agent: {{ $.Params.agent }}
+    perper.obecto.com/instance: {{ $instance }}
+spec:
+  containers:
+  - name: agent
+    image: {{ $.Params.image }}
+    env:
+    - name: X_PERPER_AGENT
+      value: {{ $.Params.agent }}
+    - name: X_PERPER_INSTANCE
+      value: {{ $instance }}
+    - name: APACHE_IGNITE_ENDPOINT
+      value: perper-fabric:10800
+    - name: PERPER_FABRIC_ENDPOINT
+      value: http://perper-fabric:40400
+    {{ range $key, $value := $.Params.env }}
+    - name: $key
+      value: $value
+    {{ end }}
+  restartPolicy: Never
+{{ end }}

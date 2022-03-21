@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 
 using Perper.Protocol.Cache;
+using System;
 
 namespace Perper.Protocol
 {
@@ -8,14 +9,15 @@ namespace Perper.Protocol
     {
         public async Task CreateInstance(string instance, string agent)
         {
-            var instanceData = new InstanceData(agent);
-
-            await InstancesCache.PutIfAbsentOrThrowAsync(instance, instanceData).ConfigureAwait(false);
+            await CreateExecution(instance, "Registry", agent, "Run", Array.Empty<object>()).ConfigureAwait(false);
+            // var instanceData = new InstanceData(agent);
+            // await InstancesCache.PutIfAbsentOrThrowAsync(instance, instanceData).ConfigureAwait(false);
         }
 
         public async Task RemoveInstance(string instance)
         {
-            await InstancesCache.RemoveAsync(instance).ConfigureAwait(false);
+            await RemoveExecution(instance).ConfigureAwait(false);
+            //await InstancesCache.RemoveAsync(instance).ConfigureAwait(false);
         }
     }
 }
