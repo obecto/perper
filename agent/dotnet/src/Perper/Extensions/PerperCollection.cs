@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -10,7 +11,7 @@ using Apache.Ignite.Linq;
 
 namespace Perper.Extensions
 {
-    public class PerperCollection<T> : IAsyncEnumerable<T>
+    public class PerperCollection<T> : IEnumerable<KeyValuePair<string, T>>, IAsyncEnumerable<KeyValuePair<string, T>>
     {
         private readonly string name;
 
@@ -117,7 +118,7 @@ namespace Perper.Extensions
              .AsCacheQueryable()
              .FirstOrDefault(x => x.Key.EndsWith(key));
 
-            if(cacheEntry != null)
+            if (cacheEntry != null)
             {
                 throw new ArgumentException("Key existing");
             }
@@ -152,15 +153,90 @@ namespace Perper.Extensions
             await AsyncLocals.FabricService.GetCollectionCache<T>(AsyncLocals.Instance, name).ClearAsync().ConfigureAwait(false);
         }
 
-        public async Task<bool> ContainsKeyAsync(string key) => throw new NotImplementedException();
-        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) => throw new NotImplementedException();
-        public async Task<int> IndexOfAsync(T item) => throw new NotImplementedException();
-        public async Task InsertAsync(int index, T item) => throw new NotImplementedException();
-        public async Task<bool> RemoveAsync(string key) => throw new NotImplementedException();
-        public async Task RemoveAtAsync(int index) => throw new NotImplementedException();
-        public async Task<bool> TryGetValueAsync(string key, [MaybeNullWhen(false)] out object value) => throw new NotImplementedException();
+        public async Task<bool> ContainsKeyAsync(string key)
+        {
+            return AsyncLocals.FabricService.GetCollectionCache<T>(AsyncLocals.Instance, name)
+                .AsCacheQueryable()
+                .Any(x => x.Key.EndsWith($"-{key}"));
+        }
 
-        public async Task<T> DequeueAsync() => throw new NotImplementedException();
+        public async Task<int> IndexOfAsync(T item)
+        {
+            var result = await AsyncLocals.FabricService.GetCollectionCache<T>(AsyncLocals.Instance, name)
+                .AsCacheQueryable()
+                .ToAsyncEnumerable()
+                .FirstOrDefaultAsync(x => x.Value.Equals(item))
+                .ConfigureAwait(false);
+
+            if (result == null)
+            {
+                return -1;
+            }
+
+            return int.Parse(result.Key.Split('-')[0]);
+        }
+
+        public async Task<bool> RemoveAsync(string key)
+        {
+            var collection = AsyncLocals.FabricService.GetCollectionCache<T>(AsyncLocals.Instance, name);
+
+            var result = await collection
+             .AsCacheQueryable()
+             .ToAsyncEnumerable()
+             .FirstOrDefaultAsync(x => x.Key.EndsWith($"-{key}"))
+             .ConfigureAwait(false);
+
+            if (result == null)
+            {
+                return false;
+            }
+
+            return await collection
+                .RemoveAsync(result.Key)
+                .ConfigureAwait(false);
+        }
+
+
+        public async Task RemoveAtAsync(int index)
+        {
+            var collection = AsyncLocals.FabricService.GetCollectionCache<T>(AsyncLocals.Instance, name);
+
+            var result = await collection
+             .AsCacheQueryable()
+             .ToAsyncEnumerable()
+             .FirstOrDefaultAsync(x => x.Key.StartsWith($"{index}-"))
+             .ConfigureAwait(false);
+
+            if (result == null)
+            {
+                return;
+            }
+
+            await collection
+                .RemoveAsync(result.Key)
+                .ConfigureAwait(false);
+        }
+
+        public async Task<(bool, T?)> TryGetValueAsync(string key)
+        {
+            var result = await AsyncLocals.FabricService.GetCollectionCache<T>(AsyncLocals.Instance, name)
+             .AsCacheQueryable()
+             .ToAsyncEnumerable()
+             .FirstOrDefaultAsync(x => x.Key.EndsWith($"-{key}"))
+             .ConfigureAwait(false);
+
+            if (result == null)
+            {
+                return (false, default);
+            }
+
+            return (true, result.Value);
+        }
+
+        public async Task<T> DequeueAsync()
+        {
+
+        }
 
         public async Task<T> PopAsync() => throw new NotImplementedException();
 
@@ -180,6 +256,27 @@ namespace Perper.Extensions
             await configCache.PutAsync("end_index", lastIndex).ConfigureAwait(false);
 
             return lastIndex;
+        }
+
+        public IEnumerator<KeyValuePair<string, T>> GetEnumerator()
+        {
+            foreach (var kv in AsyncLocals.FabricService.GetCollectionCache<T>(AsyncLocals.Instance, name).AsCacheQueryable())
+            {
+                yield return new KeyValuePair<string, T>(kv.Key, kv.Value);
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public async IAsyncEnumerator<KeyValuePair<string, T>> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+        {
+            await foreach (var kv in AsyncLocals.FabricService.GetCollectionCache<T>(AsyncLocals.Instance, name)
+              .AsCacheQueryable()
+              .Select(x => new KeyValuePair<string, T>(x.Key, x.Value))
+              .ToAsyncEnumerable().ConfigureAwait(false))
+            {
+                yield return kv;
+            }
         }
     }
 }
