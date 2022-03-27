@@ -66,6 +66,11 @@ namespace Perper.Extensions
 
         public static async Task DestroyAsync(this PerperAgent agent)
         {
+            await foreach(var child in agent.Children)
+            {
+                await child.Value.DestroyAsync().ConfigureAwait(false);
+            }
+
             await AsyncLocals.FabricService.RemoveInstance(agent.Instance).ConfigureAwait(false);
         }
     }

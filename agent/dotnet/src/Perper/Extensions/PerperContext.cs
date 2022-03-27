@@ -29,7 +29,13 @@ namespace Perper.Extensions
         {
             var instance = FabricService.GenerateName(agent);
             await AsyncLocals.FabricService.CreateInstance(instance, agent).ConfigureAwait(false);
-            return new PerperAgent(agent, instance);
+            var resultAgent = new PerperAgent(agent, instance);
+
+            await Agent.Children
+                .AddAsync(resultAgent.Instance, resultAgent)
+                .ConfigureAwait(false);
+
+            return resultAgent;
         }
 
         public static PerperStreamBuilder Stream(string @delegate)
