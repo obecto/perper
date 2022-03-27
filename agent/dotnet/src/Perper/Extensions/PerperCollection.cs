@@ -167,6 +167,7 @@ namespace Perper.Extensions
             var result = await FindByIndexAsync(collection, startIndex)
                 .ConfigureAwait(false);
 
+            await DecrementCount(configCache).ConfigureAwait(false);
             await collection.RemoveAsync(result.Key).ConfigureAwait(false);
 
             return result.Value;
@@ -189,6 +190,7 @@ namespace Perper.Extensions
             var result = await FindByIndexAsync(collection, lastIndex)
                 .ConfigureAwait(false);
 
+            await DecrementCount(configCache).ConfigureAwait(false);
             await collection.RemoveAsync(result.Key).ConfigureAwait(false);
 
             return result.Value;
