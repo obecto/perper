@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 
+using Apache.Ignite.Core.Cache.Configuration;
 using Apache.Ignite.Core.Client.Cache;
 
 namespace Perper.Protocol
@@ -8,7 +9,9 @@ namespace Perper.Protocol
     {
         public ICacheClient<string, T> GetCollectionCache<T>(string instance, string name)
         {
-            return Ignite.GetOrCreateCache<string, T>($"{instance}-collections-{name}");
+            var queryEntity = new QueryEntity(typeof(string), typeof(T));
+
+            return Ignite.GetOrCreateCache<string, T>(new CacheClientConfiguration( $"{instance}-collections-{name}", queryEntity));
         }
 
         public async Task<(bool Exists, T Value)> TryGetCollectionValue<T>(string instance, string name, string key)
