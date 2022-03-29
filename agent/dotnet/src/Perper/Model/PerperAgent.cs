@@ -1,6 +1,9 @@
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
-using Perper.Extensions;
+using Perper.Extensions.Collections;
+
+//using Perper.Extensions.Collections;
 
 namespace Perper.Model
 {
@@ -9,7 +12,7 @@ namespace Perper.Model
     {
         private readonly string agent;
         private readonly string instance;
-        private readonly PerperCollection<PerperAgent> children;
+        private readonly PerperDictionary<string, string> children;
 
         public PerperAgent(
             string agent,
@@ -18,14 +21,14 @@ namespace Perper.Model
             this.agent = agent;
             this.instance = instance;
 
-            children = new PerperCollection<PerperAgent>("children");
+            children = new PerperDictionary<string, string>(instance, "children");
         }
 
         public string Agent => agent;
         public string Instance => instance;
 
-        public PerperCollection<PerperAgent> Children => children;
+        public PerperDictionary<string, string> Children => children;
 
-        public override string ToString() => $"PerperAgent({Agent}, {Instance})";
+        public override string ToString() => $"PerperAgent({Agent}, {Instance}, {Children})";
     }
 }

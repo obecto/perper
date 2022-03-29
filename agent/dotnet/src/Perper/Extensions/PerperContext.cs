@@ -32,7 +32,7 @@ namespace Perper.Extensions
             var resultAgent = new PerperAgent(agent, instance);
 
             await Agent.Children
-                .AddAsync(resultAgent.Instance, resultAgent)
+                .AddAsync(resultAgent.Instance, resultAgent.Agent)
                 .ConfigureAwait(false);
 
             return resultAgent;

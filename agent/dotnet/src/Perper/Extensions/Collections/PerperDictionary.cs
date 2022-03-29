@@ -14,9 +14,14 @@ namespace Perper.Extensions.Collections
     [SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
     public class PerperDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IAsyncDictionary<TKey, TValue>
     {
+        private readonly string instance;
         private readonly string name;
 
-        public PerperDictionary(string name) => this.name = name;
+        public PerperDictionary(string instance, string name)
+        {
+            this.instance = instance;
+            this.name = name;
+        }
 
         public TValue this[TKey key] { get => DataCache[key]; set => DataCache[key] = value; }
 
@@ -28,6 +33,7 @@ namespace Perper.Extensions.Collections
 
         public bool IsReadOnly => true;
 
+        public string Instance => instance;
         public string Name => name;
 
         public void Add(TKey key, TValue value)
@@ -138,6 +144,8 @@ namespace Perper.Extensions.Collections
             => await DataCache.ReplaceAsync(key, oldValue, newValue).ConfigureAwait(false);
 
         private ICacheClient<TKey, TValue> DataCache
-            => AsyncLocals.FabricService.GetDictionaryCache<TKey, TValue>(AsyncLocals.Instance, name);
+            => AsyncLocals.FabricService.GetDictionaryCache<TKey, TValue>(instance, name);
+
+        public override string ToString() => $"PerperDictionary({Instance},{Name})";
     }
 }

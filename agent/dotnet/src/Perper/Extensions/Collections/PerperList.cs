@@ -13,10 +13,12 @@ namespace Perper.Extensions.Collections
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
     public class PerperList<T> : IAsyncList<T>, IList<T>
     {
+        private readonly string instance;
         private readonly string name;
 
-        public PerperList(string name)
+        public PerperList(string instance, string name)
         {
+            this.instance = instance;
             this.name = name;
 
             var configCache = ConfigCache;
@@ -40,6 +42,7 @@ namespace Perper.Extensions.Collections
         public bool IsReadOnly => false;
 
 
+        public string Instance => instance;
         public string Name => name;
 
         public void Add(T item) => DataCache.Put(GetNextIndex("end_index"), item);
@@ -296,8 +299,10 @@ namespace Perper.Extensions.Collections
             }
         }
 
-        private ICacheClient<string, int> ConfigCache => AsyncLocals.FabricService.GetListMetaCache<int>(AsyncLocals.Instance, name);
+        private ICacheClient<string, int> ConfigCache => AsyncLocals.FabricService.GetListMetaCache<int>(instance, name);
 
-        private ICacheClient<int, T> DataCache => AsyncLocals.FabricService.GetListCache<T>(AsyncLocals.Instance, name);
+        private ICacheClient<int, T> DataCache => AsyncLocals.FabricService.GetListCache<T>(instance, name);
+
+        public override string ToString() => $"PerperList({Instance},{Name})";
     }
 }
