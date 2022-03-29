@@ -71,6 +71,7 @@ namespace Perper.Extensions.Collections
         public void Clear() => DataCache.Clear();
         public async Task ClearAsync() => await DataCache.ClearAsync().ConfigureAwait(false);
         public bool Contains(KeyValuePair<TKey, TValue> item) => TryGetValue(item.Key, out var value) && value!.Equals(item.Value);
+
         public async Task<bool> ContainsAsync(KeyValuePair<TKey, TValue> item)
         {
             var (result, value) = await TryGetValueAsync(item.Key).ConfigureAwait(false);
@@ -102,7 +103,13 @@ namespace Perper.Extensions.Collections
             return Task.Run(() => DataCache.AsCacheQueryable().Count());
         }
 
-        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => GetEnumerator();
+        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+        {
+            foreach (var item in DataCache.AsCacheQueryable())
+            {
+                yield return new KeyValuePair<TKey, TValue>(item.Key, item.Value);
+            }
+        }
 
         public Task<ICollection<TKey>> GetKeysAsync() =>
             Task.Run(() =>
@@ -130,13 +137,7 @@ namespace Perper.Extensions.Collections
             return (result.Success, result.Value);
         }
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            foreach (var item in DataCache.AsCacheQueryable())
-            {
-                yield return item;
-            }
-        }
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public async Task<bool> SetIfNotExistingAsync(TKey key, TValue value)
             => await DataCache.PutIfAbsentAsync(key, value).ConfigureAwait(false);
