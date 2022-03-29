@@ -105,8 +105,8 @@ namespace Perper.Extensions.Collections
 
         public async Task<ICollection<TKey>> GetKeysAsync() => await DataCache
             .AsCacheQueryable()
-            .ToAsyncEnumerable()
             .Select(x => x.Key)
+            .ToAsyncEnumerable()
             .ToListAsync()
             .ConfigureAwait(false);
 
