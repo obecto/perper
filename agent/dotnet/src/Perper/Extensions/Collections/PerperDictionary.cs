@@ -112,8 +112,8 @@ namespace Perper.Extensions.Collections
 
         public async Task<ICollection<TValue>> GetValuesAsync() => await DataCache
             .AsCacheQueryable()
-            .ToAsyncEnumerable()
             .Select(x => x.Value)
+            .ToAsyncEnumerable()
             .ToListAsync()
             .ConfigureAwait(false);
 
