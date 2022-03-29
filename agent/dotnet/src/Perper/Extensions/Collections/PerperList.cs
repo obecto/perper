@@ -13,10 +13,12 @@ namespace Perper.Extensions.Collections
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
     public class PerperList<T> : IAsyncList<T>, IList<T>
     {
+        private readonly string instance;
         private readonly string name;
 
-        public PerperList(string name)
+        public PerperList(string instance, string name)
         {
+            this.instance = instance;
             this.name = name;
 
             var configCache = ConfigCache;
@@ -40,6 +42,7 @@ namespace Perper.Extensions.Collections
         public bool IsReadOnly => false;
 
 
+        public string Instance => instance;
         public string Name => name;
 
         public void Add(T item) => DataCache.Put(GetNextIndex("end_index"), item);
@@ -116,7 +119,7 @@ namespace Perper.Extensions.Collections
         {
             var result = DataCache.AsCacheQueryable().FirstOrDefault(x => x.Value!.Equals(item));
 
-            if(result == null)
+            if (result == null)
             {
                 return -1;
             }
@@ -147,9 +150,9 @@ namespace Perper.Extensions.Collections
             var startIndex = ConfigCache["start_index"];
             index += startIndex;
             var count = Count + startIndex;
-            for(var i = index ; i<count ; i++)
+            for (var i = index ; i < count ; i++)
             {
-                item = dataCache.GetAndReplace(i,item).Value;
+                item = dataCache.GetAndReplace(i, item).Value;
             }
 
             Add(item);
@@ -182,7 +185,7 @@ namespace Perper.Extensions.Collections
                 .AsCacheQueryable()
                 .FirstOrDefault(x => x.Value!.Equals(item))?.Key;
 
-            if(index == null)
+            if (index == null)
             {
                 return false;
             }
@@ -243,9 +246,9 @@ namespace Perper.Extensions.Collections
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            foreach(var value in DataCache
+            foreach (var value in DataCache
                 .AsCacheQueryable()
-                .Select(x=> x.Value))
+                .Select(x => x.Value))
             {
                 yield return value;
             }
@@ -296,8 +299,10 @@ namespace Perper.Extensions.Collections
             }
         }
 
-        private ICacheClient<string, int> ConfigCache => AsyncLocals.FabricService.GetListMetaCache<int>(AsyncLocals.Instance, name);
+        private ICacheClient<string, int> ConfigCache => AsyncLocals.FabricService.GetListMetaCache<int>(instance, name);
 
-        private ICacheClient<int, T> DataCache => AsyncLocals.FabricService.GetListCache<T>(AsyncLocals.Instance, name);
+        private ICacheClient<int, T> DataCache => AsyncLocals.FabricService.GetListCache<T>(instance, name);
+
+        public override string ToString() => $"PerperList({Instance},{Name})";
     }
 }
