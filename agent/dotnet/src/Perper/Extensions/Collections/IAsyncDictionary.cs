@@ -6,6 +6,7 @@ namespace Perper.Extensions.Collections
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "We want define async dictionary")]
     public interface IAsyncDictionary<TKey, TValue> : IAsyncEnumerable<KeyValuePair<TKey, TValue>>
     {
+        public string Name { get; }
         Task<ICollection<TKey>> GetKeysAsync();
         Task<ICollection<TValue>> GetValuesAsync();
         Task<int> GetCountAsync();
@@ -17,5 +18,8 @@ namespace Perper.Extensions.Collections
         Task<bool> RemoveAsync(TKey key);
         Task<bool> RemoveAsync(KeyValuePair<TKey, TValue> item);
         Task<(bool, TValue)> TryGetValueAsync(TKey key);
+        Task SetAsync(TKey key, TValue value);
+        Task<bool> SetIfNotExistingAsync(TKey key, TValue value);
+        Task<bool> SetIfNotChangedAsync(TKey key, TValue oldValue, TValue newValue);
     }
 }

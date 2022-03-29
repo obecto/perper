@@ -130,9 +130,8 @@ namespace Perper.Extensions.Collections
 
         public async Task<int> IndexOfAsync(T item)
         {
-            var result = await DataCache.AsCacheQueryable()
-                .ToAsyncEnumerable()
-                .FirstOrDefaultAsync(x => x.Value!.Equals(item))
+            var result = await Task.Run(() => DataCache.AsCacheQueryable()
+                .FirstOrDefault(x => x.Value!.Equals(item)))
                 .ConfigureAwait(false);
 
             if (result == null)
@@ -179,37 +178,29 @@ namespace Perper.Extensions.Collections
 
         public bool Remove(T item)
         {
-            var dataCache = DataCache;
+            var index = IndexOf(item);
 
-            var index = dataCache
-                .AsCacheQueryable()
-                .FirstOrDefault(x => x.Value!.Equals(item))?.Key;
-
-            if (index == null)
+            if (index == -1)
             {
                 return false;
             }
 
-            RemoveAt(index.Value);
+            RemoveAt(index);
 
             return true;
         }
 
         public async Task<bool> RemoveAsync(T item)
         {
-            var dataCache = DataCache;
+            var index = await IndexOfAsync(item)
+                .ConfigureAwait(false);
 
-            var index = (await dataCache
-                .AsCacheQueryable()
-                .ToAsyncEnumerable()
-                .FirstOrDefaultAsync(x => x.Value!.Equals(item)).ConfigureAwait(false))?.Key;
-
-            if (index == null)
+            if (index == -1)
             {
                 return false;
             }
 
-            await RemoveAtAsync(index.Value).ConfigureAwait(false);
+            await RemoveAtAsync(index).ConfigureAwait(false);
 
             return true;
         }
