@@ -70,11 +70,13 @@ namespace Perper.Extensions.Collections
 
         public void Clear() => DataCache.Clear();
         public async Task ClearAsync() => await DataCache.ClearAsync().ConfigureAwait(false);
-        public bool Contains(KeyValuePair<TKey, TValue> item) => DataCache.AsCacheQueryable()
-            .Any(x => x.Key!.Equals(item.Key) && x.Value!.Equals(item.Value));
-        public async Task<bool> ContainsAsync(KeyValuePair<TKey, TValue> item) => await DataCache.AsCacheQueryable()
-            .ToAsyncEnumerable().AnyAsync(x => x.Key!.Equals(item.Key) && x.Value!.Equals(item.Value))
-            .ConfigureAwait(false);
+        public bool Contains(KeyValuePair<TKey, TValue> item) => TryGetValue(item.Key, out var value) && value!.Equals(item.Value);
+        public async Task<bool> ContainsAsync(KeyValuePair<TKey, TValue> item)
+        {
+            var (result, value) = await TryGetValueAsync(item.Key).ConfigureAwait(false);
+
+            return result && value!.Equals(item.Value);
+        }
 
         public bool ContainsKey(TKey key) => DataCache.ContainsKey(key);
         public Task<bool> ContainsKeyAsync(TKey key) => DataCache.ContainsKeyAsync(key);
@@ -102,9 +104,9 @@ namespace Perper.Extensions.Collections
 
         public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => GetEnumerator();
 
-        public Task<ICollection<TKey>> GetKeysAsync() => 
+        public Task<ICollection<TKey>> GetKeysAsync() =>
             Task.Run(() =>
-                (ICollection<TKey>) DataCache
+                (ICollection<TKey>)DataCache
                     .AsCacheQueryable()
                     .Select(x => x.Key)
                     .ToList());
