@@ -137,7 +137,7 @@ namespace Perper.Extensions.Collections
             }
         }
 
-        public async Task<bool> SetIfNotExisting(TKey key, TValue value)
+        public async Task<bool> SetIfNotExistingAsync(TKey key, TValue value)
             => await DataCache.PutIfAbsentAsync(key, value).ConfigureAwait(false);
 
         public async Task<bool> SetIfNotChangedAsync(TKey key, TValue oldValue, TValue newValue)
