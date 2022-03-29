@@ -95,27 +95,26 @@ namespace Perper.Extensions.Collections
             }
         }
 
-        public async Task<int> GetCountAsync() => await DataCache
-            .AsCacheQueryable()
-            .ToAsyncEnumerable()
-            .CountAsync()
-            .ConfigureAwait(false);
+        public Task<int> GetCountAsync()
+        {
+            return Task.Run(() => DataCache.AsCacheQueryable().Count());
+        }
 
         public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => GetEnumerator();
 
-        public async Task<ICollection<TKey>> GetKeysAsync() => await DataCache
-            .AsCacheQueryable()
-            .ToAsyncEnumerable()
-            .Select(x => x.Key)
-            .ToListAsync()
-            .ConfigureAwait(false);
+        public Task<ICollection<TKey>> GetKeysAsync() => 
+            Task.Run(() =>
+                (ICollection<TKey>) DataCache
+                    .AsCacheQueryable()
+                    .Select(x => x.Key)
+                    .ToList());
 
-        public async Task<ICollection<TValue>> GetValuesAsync() => await DataCache
-            .AsCacheQueryable()
-            .ToAsyncEnumerable()
-            .Select(x => x.Value)
-            .ToListAsync()
-            .ConfigureAwait(false);
+        public Task<ICollection<TValue>> GetValuesAsync() =>
+            Task.Run(() =>
+                (ICollection<TValue>)DataCache
+                    .AsCacheQueryable()
+                    .Select(x => x.Value)
+                    .ToList());
 
         public bool Remove(TKey key) => DataCache.Remove(key);
         public bool Remove(KeyValuePair<TKey, TValue> item) => DataCache.Remove(item.Key, item.Value);
@@ -137,11 +136,14 @@ namespace Perper.Extensions.Collections
             }
         }
 
-        public async Task<bool> SetIfNotExisting(TKey key, TValue value)
+        public async Task<bool> SetIfNotExistingAsync(TKey key, TValue value)
             => await DataCache.PutIfAbsentAsync(key, value).ConfigureAwait(false);
 
-        public async Task<bool> SetIfNotChanged(TKey key, TValue oldValue, TValue newValue)
+        public async Task<bool> SetIfNotChangedAsync(TKey key, TValue oldValue, TValue newValue)
             => await DataCache.ReplaceAsync(key, oldValue, newValue).ConfigureAwait(false);
+
+        public async Task SetAsync(TKey key, TValue value)
+            => await DataCache.PutAsync(key, value).ConfigureAwait(false);
 
         private ICacheClient<TKey, TValue> DataCache
             => AsyncLocals.FabricService.GetDictionaryCache<TKey, TValue>(instance, name);

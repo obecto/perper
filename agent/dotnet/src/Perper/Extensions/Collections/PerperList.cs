@@ -119,7 +119,7 @@ namespace Perper.Extensions.Collections
         {
             var result = DataCache.AsCacheQueryable().FirstOrDefault(x => x.Value!.Equals(item));
 
-            if(result == null)
+            if (result == null)
             {
                 return -1;
             }
@@ -130,9 +130,8 @@ namespace Perper.Extensions.Collections
 
         public async Task<int> IndexOfAsync(T item)
         {
-            var result = await DataCache.AsCacheQueryable()
-                .ToAsyncEnumerable()
-                .FirstOrDefaultAsync(x => x.Value!.Equals(item))
+            var result = await Task.Run(() => DataCache.AsCacheQueryable()
+                .FirstOrDefault(x => x.Value!.Equals(item)))
                 .ConfigureAwait(false);
 
             if (result == null)
@@ -150,9 +149,9 @@ namespace Perper.Extensions.Collections
             var startIndex = ConfigCache["start_index"];
             index += startIndex;
             var count = Count + startIndex;
-            for(var i = index ; i<count ; i++)
+            for (var i = index ; i < count ; i++)
             {
-                item = dataCache.GetAndReplace(i,item).Value;
+                item = dataCache.GetAndReplace(i, item).Value;
             }
 
             Add(item);
@@ -179,37 +178,29 @@ namespace Perper.Extensions.Collections
 
         public bool Remove(T item)
         {
-            var dataCache = DataCache;
+            var index = IndexOf(item);
 
-            var index = dataCache
-                .AsCacheQueryable()
-                .FirstOrDefault(x => x.Value!.Equals(item))?.Key;
-
-            if(index == null)
+            if (index == -1)
             {
                 return false;
             }
 
-            RemoveAt(index.Value);
+            RemoveAt(index);
 
             return true;
         }
 
         public async Task<bool> RemoveAsync(T item)
         {
-            var dataCache = DataCache;
+            var index = await IndexOfAsync(item)
+                .ConfigureAwait(false);
 
-            var index = (await dataCache
-                .AsCacheQueryable()
-                .ToAsyncEnumerable()
-                .FirstOrDefaultAsync(x => x.Value!.Equals(item)).ConfigureAwait(false))?.Key;
-
-            if (index == null)
+            if (index == -1)
             {
                 return false;
             }
 
-            await RemoveAtAsync(index.Value).ConfigureAwait(false);
+            await RemoveAtAsync(index).ConfigureAwait(false);
 
             return true;
         }
@@ -246,9 +237,9 @@ namespace Perper.Extensions.Collections
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            foreach(var value in DataCache
+            foreach (var value in DataCache
                 .AsCacheQueryable()
-                .Select(x=> x.Value))
+                .Select(x => x.Value))
             {
                 yield return value;
             }
