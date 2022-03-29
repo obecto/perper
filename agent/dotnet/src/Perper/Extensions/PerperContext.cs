@@ -31,7 +31,7 @@ namespace Perper.Extensions
             await AsyncLocals.FabricService.CreateInstance(instance, agent).ConfigureAwait(false);
             var resultAgent = new PerperAgent(agent, instance);
 
-            await Agent.Children
+            await Agent.GetChildren()
                 .AddAsync(resultAgent.Instance, resultAgent.Agent)
                 .ConfigureAwait(false);
 
