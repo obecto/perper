@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 
 using Perper.Extensions;
+using Perper.Model;
 
 namespace BasicSample.Calls
 {

@@ -28,8 +28,8 @@ namespace Perper.Model
         public long Stride => stride;
         public bool LocalToData => localToData;
 
-        public bool Replay => startIndex != -1;
-        public bool Packed => stride != 0;
+        public bool IsReplay => startIndex != -1;
+        public bool IsPacked => stride != 0;
 
         public override string ToString() => $"PerperStream({Stream}, from: {StartIndex}, stride: {Stride}, local: {LocalToData})";
     }

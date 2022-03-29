@@ -6,6 +6,7 @@ using MultiAgentSample;
 using Perper.Application;
 using Perper.Extensions;
 using Perper.Model;
+using PerperState = Perper.Extensions.PerperState;
 
 static async Task Init()
 {

@@ -1,16 +1,12 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.DependencyInjection;
 
 using Perper.Extensions;
-using Perper.Protocol;
+using Perper.Model;
 
 namespace Perper.Application
 {
@@ -37,125 +33,43 @@ namespace Perper.Application
         {
         }
 
-        protected override async Task<object?[]> Handle(IServiceProvider serviceProvider, object?[] arguments)
+        protected override ParameterInfo[]? GetParameters() => Method.GetParameters();
+
+        protected override async Task<(Type, object?)> Handle(IServiceProvider serviceProvider, object?[] arguments)
         {
             var instance = Method.IsStatic ? null : CreateInstance?.Invoke(serviceProvider);
-            var castArguments = CastArguments(Method.GetParameters(), arguments);
 
-            AsyncLocals.SetConnection(serviceProvider.GetRequiredService<FabricService>());
-            AsyncLocals.SetExecution(serviceProvider.GetRequiredService<FabricExecution>());
-
-            var result = Method.Invoke(instance, castArguments);
-
-            return await ProcessResult(serviceProvider, Method.ReturnType, result).ConfigureAwait(false);
-        }
-
-        public static object?[] CastArguments(ParameterInfo[] parameters, object?[] arguments)
-        {
-            var castArguments = new object?[parameters.Length];
-            for (var i = 0 ; i < parameters.Length ; i++)
+            using (serviceProvider.GetRequiredService<IPerperContext>().UseContext())
             {
-                try
-                {
-                    object? castArgument;
-                    if (i == parameters.Length - 1 && parameters[i].GetCustomAttribute<ParamArrayAttribute>() != null)
-                    {
-                        var paramsType = parameters[i].ParameterType.GetElementType()!;
-                        if (i < arguments.Length)
-                        {
-                            var paramsArray = Array.CreateInstance(paramsType, arguments.Length - i);
-                            for (var j = 0 ; j < paramsArray.Length ; j++)
-                            {
-                                paramsArray.SetValue(CastArgument(paramsType, arguments[i + j]), j);
-                            }
-                            castArgument = paramsArray;
-                        }
-                        else
-                        {
-                            castArgument = Array.CreateInstance(paramsType, 0);
-                        }
-                    }
-                    else if (i < arguments.Length)
-                    {
-                        castArgument = CastArgument(parameters[i].ParameterType, arguments[i]);
-                    }
-                    else
-                    {
-                        if (!parameters[i].HasDefaultValue)
-                        {
-                            throw new ArgumentException($"Not enough arguments passed; expected at least {i + 1}, got {arguments.Length}");
-                        }
-                        castArgument = parameters[i].DefaultValue;
-                    }
-                    castArguments[i] = castArgument;
-                }
-                catch (Exception e)
-                {
-                    throw new ArgumentException($"Failed decoding parameter {i + 1} ({parameters[i]})", e);
-                }
-            }
+                var result = Method.Invoke(instance, arguments);
 
-            return castArguments;
-        }
-
-        public static object? CastArgument(Type parameterType, object? arg)
-        {
-            return arg != null && parameterType.IsAssignableFrom(arg.GetType())
-                ? arg
-                : arg is ArrayList arrayList && parameterType == typeof(object[])
-                    ? arrayList.Cast<object>().ToArray()
-                    : Convert.ChangeType(arg, parameterType, CultureInfo.InvariantCulture);
-        }
-
-        public static object?[] CastResult(Type resultType, object? result)
-        {
-            if (result == null)
-            {
-                return Array.Empty<object?>();
-            }
-            else
-            {
-                object?[] results;
-
-                if (result is ITuple tuple)
-                {
-                    results = new object?[tuple.Length];
-                    for (var i = 0 ; i < results.Length ; i++)
-                    {
-                        results[i] = tuple[i];
-                    }
-                }
-                else
-                {
-                    results = result is object?[] _results && resultType == typeof(object[]) ? _results : (new object?[] { result });
-                }
-
-                return results;
+                return await ProcessResult(serviceProvider, Method.ReturnType, result).ConfigureAwait(false);
             }
         }
 
-        public static async Task<object?[]> ProcessResult(IServiceProvider serviceProvider, Type resultType, object? result)
+        // TODO: Convert to decorator pattern (yayy genericss)
+        public static async Task<(Type, object?)> ProcessResult(IServiceProvider serviceProvider, Type resultType, object? result)
         {
             (resultType, result) = await ProcessAwaitable(serviceProvider, resultType, result).ConfigureAwait(false);
             (resultType, result) = await ProcessStream(serviceProvider, resultType, result).ConfigureAwait(false);
-            return CastResult(resultType, result);
+            return (resultType, result);
         }
 
         private static readonly MethodInfo WriteAsyncEnumerableMethod = typeof(MethodPerperHandler).GetMethod(nameof(WriteAsyncEnumerable))!;
-        public static async Task WriteAsyncEnumerable<T>(FabricService fabricService, FabricExecution fabricExecution, IAsyncEnumerable<T> values)
+        public static async Task WriteAsyncEnumerable<T>(IPerperStreams streams, PerperStream stream, IAsyncEnumerable<T> values)
         {
             await foreach (var value in values)
             {
-                await fabricService.WriteStreamItem(fabricExecution.Execution, value).ConfigureAwait(false);
+                await streams.WriteItemAsync(stream, value).ConfigureAwait(false);
             }
         }
 
         private static readonly MethodInfo WriteAsyncEnumerableWithKeysMethod = typeof(MethodPerperHandler).GetMethod(nameof(WriteAsyncEnumerableWithKeys))!;
-        public static async Task WriteAsyncEnumerableWithKeys<T>(FabricService fabricService, FabricExecution fabricExecution, IAsyncEnumerable<(long, T)> values)
+        public static async Task WriteAsyncEnumerableWithKeys<T>(IPerperStreams streams, PerperStream stream, IAsyncEnumerable<(long, T)> values)
         {
             await foreach (var (key, value) in values)
             {
-                await fabricService.WriteStreamItem(fabricExecution.Execution, key, value).ConfigureAwait(false);
+                await streams.WriteItemAsync(stream, key, value).ConfigureAwait(false);
             }
         }
 
@@ -182,8 +96,9 @@ namespace Perper.Application
             var asyncEnumerableInterface = GetGenericInterface(resultType, typeof(IAsyncEnumerable<>));
             if (asyncEnumerableInterface != null)
             {
-                var fabricService = serviceProvider.GetRequiredService<FabricService>();
-                var fabricExecution = serviceProvider.GetRequiredService<FabricExecution>();
+                var streams = serviceProvider.GetRequiredService<IPerperContext>().Streams;
+                var executionData = serviceProvider.GetRequiredService<PerperExecutionData>();
+                var stream = new PerperStream(executionData.Execution.Execution);
                 var itemType = asyncEnumerableInterface.GetGenericArguments()[0]!;
 
                 MethodInfo processMethod;
@@ -200,9 +115,9 @@ namespace Perper.Application
                     processMethod = WriteAsyncEnumerableMethod.MakeGenericMethod(itemType);
                 }
 
-                await fabricService.WaitListenerAttached(fabricExecution.Execution, fabricExecution.CancellationToken).ConfigureAwait(false);
+                await streams.WaitForListenerAsync(stream, executionData.CancellationToken).ConfigureAwait(false);
 
-                await ((Task)processMethod.Invoke(null, new[] { fabricService, fabricExecution, result })!).ConfigureAwait(false);
+                await ((Task)processMethod.Invoke(null, new[] { streams, stream, result })!).ConfigureAwait(false);
 
                 return (typeof(void), null);
             }

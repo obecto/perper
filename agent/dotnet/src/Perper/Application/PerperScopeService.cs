@@ -1,12 +1,15 @@
-using Perper.Protocol;
+using System.Diagnostics.CodeAnalysis;
+
+using Perper.Model;
 
 namespace Perper.Application
 {
-    public class PerperScopeService
+    [SuppressMessage("Performance", "CA1812: Avoid uninstantiated internal classes", Justification = "Instanciated via reflection")]
+    internal class PerperScopeService
     {
-        public FabricExecution? CurrentExecution { get; private set; }
+        public PerperExecutionData? CurrentExecution { get; private set; }
 
-        public void SetExecution(FabricExecution execution)
+        public void SetExecution(PerperExecutionData execution)
         {
             CurrentExecution = execution;
         }
