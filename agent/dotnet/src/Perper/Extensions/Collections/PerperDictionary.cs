@@ -103,7 +103,13 @@ namespace Perper.Extensions.Collections
             return Task.Run(() => DataCache.AsCacheQueryable().Count());
         }
 
-        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => GetEnumerator();
+        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+        {
+            foreach (var item in DataCache.AsCacheQueryable())
+            {
+                yield return new KeyValuePair<TKey, TValue>(item.Key, item.Value);
+            }
+        }
 
         public Task<ICollection<TKey>> GetKeysAsync() =>
             Task.Run(() =>
@@ -131,13 +137,7 @@ namespace Perper.Extensions.Collections
             return (result.Success, result.Value);
         }
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            foreach (var item in DataCache.AsCacheQueryable())
-            {
-                yield return item;
-            }
-        }
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public async Task<bool> SetIfNotExistingAsync(TKey key, TValue value)
             => await DataCache.PutIfAbsentAsync(key, value).ConfigureAwait(false);

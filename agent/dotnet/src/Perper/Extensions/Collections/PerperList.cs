@@ -113,7 +113,15 @@ namespace Perper.Extensions.Collections
             }
         }
 
-        public IEnumerator<T> GetEnumerator() => GetEnumerator();
+        public IEnumerator<T> GetEnumerator()
+        {
+            foreach (var value in DataCache
+                .AsCacheQueryable()
+                .Select(x => x.Value))
+            {
+                yield return value;
+            }
+        }
 
         public int IndexOf(T item)
         {
@@ -235,15 +243,7 @@ namespace Perper.Extensions.Collections
             }
         }
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            foreach (var value in DataCache
-                .AsCacheQueryable()
-                .Select(x => x.Value))
-            {
-                yield return value;
-            }
-        }
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         private async Task<int> GetNextIndexAsync(string index)
         {
