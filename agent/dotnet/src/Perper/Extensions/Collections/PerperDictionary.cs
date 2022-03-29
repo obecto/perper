@@ -140,7 +140,7 @@ namespace Perper.Extensions.Collections
         public async Task<bool> SetIfNotExisting(TKey key, TValue value)
             => await DataCache.PutIfAbsentAsync(key, value).ConfigureAwait(false);
 
-        public async Task<bool> SetIfNotChanged(TKey key, TValue oldValue, TValue newValue)
+        public async Task<bool> SetIfNotChangedAsync(TKey key, TValue oldValue, TValue newValue)
             => await DataCache.ReplaceAsync(key, oldValue, newValue).ConfigureAwait(false);
 
         private ICacheClient<TKey, TValue> DataCache
