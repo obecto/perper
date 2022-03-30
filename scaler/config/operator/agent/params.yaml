@@ -4,6 +4,9 @@ parameters:
     required: true
   - name: image
     required: true
+  - name: command
+    default: []
+    type: array
   - name: instances
     default: []
     type: array

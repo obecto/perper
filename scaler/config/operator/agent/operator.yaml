@@ -6,7 +6,7 @@ maintainers:
 - email: MyEmail@invalid
   name: My Name
 name: perper-agent
-operatorVersion: 0.1.4
+operatorVersion: 0.1.5
 plans:
   deploy:
     phases:

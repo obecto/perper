@@ -11,6 +11,7 @@ spec:
   containers:
   - name: agent
     image: {{ $.Params.image }}
+    command: {{ $.Params.command }}
     env:
     - name: X_PERPER_AGENT
       value: {{ $.Params.agent }}
