@@ -31,4 +31,5 @@ await new PerperStartup()
     .AddClassHandlers(typeof(GeneratorAgent))
     .AddClassHandlers(typeof(ProcessorAgent))
     .AddInitHandler("", Init)
+    .WithDeployInit()
     .RunAsync(default).ConfigureAwait(false);

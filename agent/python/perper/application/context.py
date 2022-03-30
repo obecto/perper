@@ -13,17 +13,25 @@ StartupContext = namedtuple("StartupContext", ["agent", "instance", "task_collec
 startup_context = ContextVar("startup_context")
 
 
-def run_init_delegate(function):
-    init_instance = startup_context.get().instance if startup_context.get().instance is not None else f"{startup_context.get().agent}-Init"
-    init_execution = FabricExecution(startup_context.get().agent, init_instance, "Init", f"{init_instance}-Init")
+def run_init_delegate(function, use_deploy_init=False):
+    if use_deploy_init:
+        init_instance = startup_context.get().instance if startup_context.get().instance is not None else f"{startup_context.get().agent}-Init"
+        init_execution = FabricExecution(startup_context.get().agent, init_instance, "Init", f"{init_instance}-Init")
+        startup_context.get().task_collection.add(process_execution(init_execution, function, is_init=True))
+    else:
+        register_delegate("Init", function, True)
 
-    startup_context.get().task_collection.add(process_execution(init_execution, function, is_init=True))
 
 
-def register_delegate(delegate, function):
+def register_delegate(delegate, function, is_init=False):
     async def helper():
-        async for execution in fabric_service.get().enumerate_executions(startup_context.get().agent, startup_context.get().instance, delegate):
-            startup_context.get().task_collection.add(process_execution(execution, function))
+        if is_init:
+            async for execution in fabric_service.get().enumerate_executions("Registry", startup_context.get().agent, "Run"):
+                if startup_context.get().instance is None or startup_context.get().instance == execution:
+                    startup_context.get().task_collection.add(process_execution(execution, function, is_init))
+        else:
+            async for execution in fabric_service.get().enumerate_executions(startup_context.get().agent, startup_context.get().instance, delegate):
+                startup_context.get().task_collection.add(process_execution(execution, function))
 
     startup_context.get().task_collection.add(helper())
 

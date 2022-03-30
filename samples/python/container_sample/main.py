@@ -8,7 +8,7 @@ async def main():
     agent = "container-sample"
     fabric_service = establish_connection()
     instance = configure_instance()
-    startup_execution = await fabric_service.wait_execution(agent, instance, "Startup")
+    startup_execution = await fabric_service.wait_execution(agent, instance, "Start")
     fabric_service.write_execution_finished(startup_execution.execution)
 
     r = uuid.uuid4()
