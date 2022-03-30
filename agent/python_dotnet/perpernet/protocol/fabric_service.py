@@ -9,10 +9,24 @@ from collections import defaultdict, namedtuple
 
 from pyignite.datatypes import ObjectArrayObject, prop_codes
 
-from .cache import InstanceData, ExecutionData, StreamListener
+# from .cache import InstanceData, StreamListener
 from .task_collection import TaskCollection
 from .proto import fabric_pb2, fabric_pb2_grpc
 from .ignite_extensions import put_if_absent_or_raise, optimistic_update
+
+from clr_loader import get_coreclr
+from pythonnet import set_runtime
+import sys
+sys.path.append("/home/nikola/RiderProjects/IgniteTest/IgniteTest/bin/Debug/net5.0/")
+
+rt = get_coreclr("/home/nikola/RiderProjects/IgniteTest/IgniteTest/bin/Debug/net5.0/IgniteTest.runtimeconfig.json")
+set_runtime(rt)
+import clr
+clr.AddReference("Apache.Ignite.Core")
+from Apache.Ignite.Core.Client.Cache import CacheClientConfiguration
+clr.AddReference("IgniteTest")
+from IgniteTest import Program
+from Perper.Protocol.Cache import ExecutionData, InstanceData, StreamListener
 
 
 FabricExecution = namedtuple("Execution", ["agent", "instance", "delegate", "execution"])
@@ -35,9 +49,9 @@ class FabricService:
         self.task_collection = TaskCollection()
 
         self.ignite = ignite
-        self.executions_cache = self.ignite.GetOrCreateCache("executions")
-        self.stream_listeners_cache = self.ignite.GetOrCreateCache("stream-listeners")
-        self.instances_cache = self.ignite.GetOrCreateCache("instances")
+        self.executions_cache = ignite.GetOrCreateCache[str, ExecutionData]("executions")
+        self.stream_listeners_cache = ignite.GetOrCreateCache[str, StreamListener]("stream-listeners")
+        self.instances_cache = ignite.GetOrCreateCache[str, InstanceData]("instances")
 
         self.item_caches = factorydict(self.ignite.GetCache)
         self.state_caches = factorydict(self.ignite.GetOrCreateCache)
@@ -83,36 +97,33 @@ class FabricService:
     # EXECUTIONS:
 
     def create_execution(self, execution, agent, instance, delegate, parameters):
-        execution_data = ExecutionData(
-            instance=instance,
-            agent=agent,
-            delegate=delegate,
-            parameters=(ObjectArrayObject.OBJECT, parameters),
-            finished=False,
-        )
+        execution_data = ExecutionData(agent, instance, delegate, parameters)
+        print(f"Parameters: {parameters} Executions data: {ExecutionData.Parameters}")
         return put_if_absent_or_raise(self.executions_cache, execution, execution_data)
 
     def remove_execution(self, execution):
-        self.executions_cache.remove_key(execution)
+        self.executions_cache.RemoveKey(execution)
 
     def write_execution_finished(self, execution):
-        return optimistic_update(self.executions_cache, execution, lambda data: attr.evolve(data, finished=True))
+        return optimistic_update(self.executions_cache, execution, {"Finished": True})
 
     def write_execution_result(self, execution, result):
-        return optimistic_update(self.executions_cache, execution, lambda data: attr.evolve(data, finished=True, result=(ObjectArrayObject.OBJECT, result)))
+        return optimistic_update(self.executions_cache, execution, {"Finished": True, "Result": (ObjectArrayObject.OBJECT, result)})
 
     def write_execution_error(self, execution, error):
-        return optimistic_update(self.executions_cache, execution, lambda data: attr.evolve(data, finished=True, error=error))
+        return optimistic_update(self.executions_cache, execution, {"Finished": True, "Error": error})
 
     def read_execution_parameters(self, execution):
-        return self.executions_cache.get(execution).parameters[1]
+        for par in self.executions_cache.Get(execution).Parameters:
+            print(f":{type(par)}")
+        return self.executions_cache.Get(execution).Parameters[1]
 
     def read_execution_error(self, execution):
-        return self.executions_cache.get(execution).error
+        return self.executions_cache.Get(execution).error
 
     def read_execution_error_and_result(self, execution):
-        execution_data = self.executions_cache.get(execution)
-        error = execution_data.error
+        execution_data = self.executions_cache.Get(execution)
+        error = execution_data.Error
         result = execution_data.result[1] if execution_data.result is not None else None
 
         return (error, result)
@@ -126,15 +137,16 @@ class FabricService:
         self.state_caches[instance].remove_key(key)
 
     def get_state_value(self, instance, key, default=None):
-        result = self.state_caches[instance].get(key)
+        result = self.state_caches[instance].Get(key)
         if result is None:
             return default
         return result
 
     # STREAMS:
 
-    def create_stream(self, stream, query_entities=[]):
-        self.ignite.CreateCache({prop_codes.PROP_NAME: stream, prop_codes.PROP_QUERY_ENTITIES: query_entities})
+    def create_stream(self, stream, query_entities=[], key_type=str, val_type=str):
+        config = CacheClientConfiguration(stream, *query_entities)
+        self.ignite.CreateCache[key_type, val_type](config)
 
     def remove_stream(self, stream):
         self.item_caches[instance].destroy()
@@ -144,7 +156,7 @@ class FabricService:
 
     def set_stream_listener_position(self, listener, stream, position):
         stream_listener = StreamListener(stream=stream, position=position)
-        self.stream_listeners_cache.put(listener, stream_listener)
+        self.stream_listeners_cache.Put(listener, stream_listener)
 
     def remove_stream_listener(self, listener):
         self.stream_listeners_cache.remove_key(listener)
@@ -153,7 +165,7 @@ class FabricService:
         put_if_absent_or_raise(self.item_caches[stream], key, item)
 
     def read_stream_item(self, stream, key):
-        return self.item_caches[stream].get(key)
+        return self.item_caches[stream].Get(key)
 
     def query_stream_sql(self, sql, sql_parameters):
         return self.ignite.sql(sql, page_size=1024, query_args=sql_parameters)

@@ -1,2 +1,2 @@
-from .startup import run, run_notebook
+from .startup import run
 from .context import register_delegate

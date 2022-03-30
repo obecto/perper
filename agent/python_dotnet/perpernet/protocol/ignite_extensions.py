@@ -1,19 +1,18 @@
-def optimistic_update(cache, key, update_func):
+def optimistic_update(cache, key, property_values):
     # while True:
     #     existing_value = cache.get(key)
     #     new_value = update_func(existing_value)
     #     if cache.replace_if_equals(key, existing_value, new_value):
     #         break
-
-    existing_value = cache.Get(key)
-    # print(existing_value)
-    new_value = update_func(existing_value)
-    # print(new_value)
-    cache.Replace(key, new_value)
+    obj = cache.Get(key)
+    for (k, v) in property_values.items():
+        property_info = obj.GetType().GetProperty(k)
+        property_info.SetValue(obj, v)
+    cache.Replace(key, obj)
 
 
 def put_if_absent_or_raise(cache, key, value):
-    result = cache.put_if_absent(key, value)
+    result = cache.PutIfAbsent(key, value)
     if result is None:
         raise KeyError("Duplicate cache item key! (key is {key})")
 

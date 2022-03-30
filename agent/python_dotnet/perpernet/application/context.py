@@ -38,6 +38,7 @@ async def process_execution(execution, function, is_init=False):
         fabric_execution.set(execution)
 
         parameters = [] if is_init else fabric_service.get().read_execution_parameters(fabric_execution.get().execution)
+        print("parameters: {}")
         result = function(*parameters)
 
         if isinstance(result, Awaitable):
