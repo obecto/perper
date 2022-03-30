@@ -17,13 +17,13 @@ def run_init_delegate(function):
     init_instance = startup_context.get().instance if startup_context.get().instance is not None else f"{startup_context.get().agent}-Init"
     init_execution = FabricExecution(startup_context.get().agent, init_instance, "Init", f"{init_instance}-Init")
 
-    startup_context.get().task_collection.add(process_execution(init_execution, function, is_init=True))
+    startup_context.get().task_collection.Add(process_execution(init_execution, function, is_init=True))
 
 
 def register_delegate(delegate, function):
     async def helper():
         async for execution in fabric_service.get().enumerate_executions(startup_context.get().agent, startup_context.get().instance, delegate):
-            startup_context.get().task_collection.add(process_execution(execution, function))
+            startup_context.get().task_collection.Add(process_execution(execution, function))
 
     startup_context.get().task_collection.add(helper())
 
