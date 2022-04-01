@@ -6,3 +6,7 @@ parameters:
   default: "perper-agent-0.8.0-0.1.5"
 - name: deployPerper
   default: true
+- name: perperImage
+  default: "obecto/perper-fabric:0.8.0"
+- name: perperScalerImage
+  default: "perper-scaler:1.0.0"
