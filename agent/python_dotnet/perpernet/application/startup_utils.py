@@ -4,14 +4,14 @@ from collections.abc import AsyncIterable, Awaitable
 from Perper.Application import PerperConnection, PerperStartup
 from Perper.Application import PerperStartupHandlerUtils as HandlerUtils
 from Perper.Extensions import AsyncLocals
-from Perper.Protocol import TaskCollection
+from Perper.Protocol import TaskCollection, FabricExecution
 from System import Func, Action
 from System.Threading.Tasks import Task, TaskCompletionSource, TaskStatus
 
 from ..extensions.context_vars import fabric_service, fabric_execution
 
 
-def wrapper_delegate(func, loop):
+def create_delegate_handler(func, loop):
     """Wraps a python function in an asyncio future, which in turn is wrapped in a C# Task.
     Returns a C# Func<Task>, returning the aforementioned Task, to be further handled by PerperFabric
 
@@ -21,19 +21,21 @@ def wrapper_delegate(func, loop):
             The function we want to embed
         loop :
             The asyncio loop to execute the funcion in (via an asyncio future)
+        fabric_executiton :
+            The execution data to be used by perper
 
         Returns
         -------
         Func<Task>
         """
-    async def wrap():
-        fabric_execution.get()
+    async def wrap(_execution):
+        AsyncLocals.SetExecution(_execution)
         arguments = await task_to_future(fabric_service.get().ReadExecutionParameters(AsyncLocals.Execution))
         result = func(*arguments)
-    return Func[Task](lambda: future_to_task(wrap(), loop))
+    return Func[Task](lambda: future_to_task(wrap(fabric_execution.get()), loop))
 
 
-def wrapper_init(func, loop):
+def create_init_handler(func, loop):
     """Wraps the python function to be used as Init function by perper in an asyncio future,
        which in turn is wrapped in a C# Task. Returns a C# Func<Task>, returning the aforementioned Task,
        to be further handled by PerperFabric.
@@ -44,16 +46,19 @@ def wrapper_init(func, loop):
             The perper init function
         loop :
             The asyncio loop to execute the funcion in (via an asyncio future)
-
+        fabric_executiton :
+            The execution data to be used by perper
         Returns
         -------
         Func<Task>
         """
-    async def wrap():
+    async def wrap(_execution):
+        AsyncLocals.SetExecution(_execution)
+        print(f"Executing wrap {AsyncLocals.Execution}")
         result = func()
         if isinstance(result, Awaitable):
             result = await result
-    return Func[Task](lambda: future_to_task(wrap(), loop))
+    return Func[Task](lambda: future_to_task(wrap(fabric_execution.get()), loop))
 
 
 def task_to_future(task):

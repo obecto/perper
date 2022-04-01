@@ -49,7 +49,6 @@ namespace Perper.Application
         public Task RunInServiceContext(CancellationToken cancellationToken = default)
         {
             var (instanceAgent, instance) = UseInstances ? PerperConnection.ConfigureInstance() : (null, null);
-
             var taskCollection = new TaskCollection();
 
             foreach (var (agent, handler) in initHandlers)
@@ -61,11 +60,17 @@ namespace Perper.Application
 
                 var initInstance = instance ?? $"{agent}-init";
                 var initExecution = new FabricExecution(agent, initInstance, "Init", $"{initInstance}-init", cancellationToken);
+                Console.WriteLine("Before Add");
                 taskCollection.Add(async () =>
                 {
+                    Console.WriteLine("Inside Task Factory 1");
                     AsyncLocals.SetExecution(initExecution);
+                    Console.WriteLine("Inside Task Factory 2");
+                    Console.WriteLine(AsyncLocals.Execution);
                     await handler().ConfigureAwait(false);
+                    Console.WriteLine("Inside Task Factory 3");
                 });
+                Console.WriteLine("After Add");
             }
 
             foreach (var (agent, agentExecutionHandlers) in executionHandlers)
