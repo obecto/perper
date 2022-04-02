@@ -1,6 +1,6 @@
 FROM golang:1.17-buster AS build
 RUN apt-get update && \
-    apt-get install --no-install-recommends --assume-yes protobuf-compiler
+    apt-get install --no-install-recommends --assume-yes protobuf-compiler libprotobuf-dev
 
 WORKDIR /app
 COPY go.mod ./
