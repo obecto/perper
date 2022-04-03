@@ -32,7 +32,7 @@ namespace Perper.Protocol
             );
         }
 
-        public (PerperAgent Instance, Func<Task> Create) CreateWithoutStarting(PerperAgent? parent, string agent)
+        private (PerperAgent Instance, Func<Task> Create) CreateWithoutStarting(PerperAgent? parent, string agent)
         {
             var (execution, start) = PerperExecutions.Create(new PerperAgent("Registry", agent), "Run", null);
             var instance = new PerperAgent(agent, execution.Execution);

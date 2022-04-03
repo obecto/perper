@@ -13,8 +13,8 @@ namespace Perper.Extensions
             State.SetAsync(key, value);
         public static Task RemoveAsync(string key) =>
             State.RemoveAsync(key);
-        public static Task<T> GetOrDefaultAsync<T>(string key, T @default = default!) =>
-            State.GetOrDefaultAsync(key, @default);
+        public static Task<T> GetOrDefaultAsync<T>(string key, T defaultValue = default!) =>
+            State.GetOrDefaultAsync(key, defaultValue);
         public static Task<T> GetOrNewAsync<T>(string key) where T : new() =>
             State.GetOrNewAsync<T>(key);
         public static Task<T> GetOrNewAsync<T>(string key, Func<T> createFunc) =>

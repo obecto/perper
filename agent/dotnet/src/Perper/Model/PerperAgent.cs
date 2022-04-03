@@ -3,6 +3,8 @@ using System.Diagnostics.CodeAnalysis;
 namespace Perper.Model
 {
     [SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
+    [SuppressMessage("ReSharper", "ConvertToAutoProperty")]
     public class PerperAgent
     {
         private readonly string agent;

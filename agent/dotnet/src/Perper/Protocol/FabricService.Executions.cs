@@ -31,13 +31,11 @@ namespace Perper.Protocol
             );
         }
 
-        async Task IPerperExecutions.WriteResultAsync(PerperExecution execution)
-        {
+        async Task IPerperExecutions.WriteResultAsync(PerperExecution execution) =>
             await ExecutionsCache.OptimisticUpdateAsync(execution.Execution, IgniteBinary, value =>
             {
                 value.Finished = true;
             }).ConfigureAwait(false);
-        }
 
         async Task IPerperExecutions.WriteResultAsync<TResult>(PerperExecution execution, TResult result)
         {
@@ -89,39 +87,34 @@ namespace Perper.Protocol
             return FabricCaster.UnpackResult<TResult>(executionData.Result);
         }
 
-        private async Task WaitExecutionFinished(PerperExecution execution, CancellationToken cancellationToken = default)
-        {
+        private async Task WaitExecutionFinished(PerperExecution execution, CancellationToken cancellationToken = default) =>
             await FabricClient.ExecutionFinishedAsync(new ExecutionFinishedRequest
             {
                 Execution = execution.Execution
             }, CallOptions.WithCancellationToken(cancellationToken));
-        }
 
-        async Task IPerperExecutions.DestroyAsync(PerperExecution execution)
-        {
-            await ExecutionsCache.RemoveAsync(execution.Execution).ConfigureAwait(false);
-        }
+        async Task IPerperExecutions.DestroyAsync(PerperExecution execution) => await ExecutionsCache.RemoveAsync(execution.Execution).ConfigureAwait(false);
 
-        private readonly ConcurrentDictionary<(string, string?), bool> RunningExecutionListeners = new();
-        private readonly ConcurrentDictionary<PerperExecutionFilter, Channel<PerperExecutionData>> ExecutionChannels = new();
+        private readonly ConcurrentDictionary<(string, string?), bool> _runningExecutionListeners = new();
+        private readonly ConcurrentDictionary<PerperExecutionFilter, Channel<PerperExecutionData>> _executionChannels = new();
 
         IAsyncEnumerable<PerperExecutionData> IPerperExecutions.ListenAsync(PerperExecutionFilter filter, CancellationToken cancellationToken)
         {
             if (filter.Delegate != null)
             {
-                if (RunningExecutionListeners.TryAdd((filter.Agent, filter.Instance), true))
+                if (_runningExecutionListeners.TryAdd((filter.Agent, filter.Instance), true))
                 {
                     TaskCollection.Add(async () =>
                     {
                         await foreach (var data in ListenAsyncHelper(filter.Agent, filter.Instance, CancellationTokenSource.Token))
                         {
-                            var channel = ExecutionChannels.GetOrAdd(filter with { Delegate = data.Delegate }, _ => Channel.CreateUnbounded<PerperExecutionData>());
-                            await channel.Writer.WriteAsync(data).ConfigureAwait(false);
+                            var channel = _executionChannels.GetOrAdd(filter with { Delegate = data.Delegate }, _ => Channel.CreateUnbounded<PerperExecutionData>());
+                            await channel.Writer.WriteAsync(data, cancellationToken).ConfigureAwait(false);
                         }
                     });
                 }
 
-                var resultChannel = ExecutionChannels.GetOrAdd(filter, _ => Channel.CreateUnbounded<PerperExecutionData>());
+                var resultChannel = _executionChannels.GetOrAdd(filter, _ => Channel.CreateUnbounded<PerperExecutionData>());
                 return resultChannel.Reader.ReadAllAsync(cancellationToken);
             }
             else

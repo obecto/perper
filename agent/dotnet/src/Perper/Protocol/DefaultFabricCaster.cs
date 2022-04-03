@@ -13,10 +13,7 @@ namespace Perper.Protocol
 {
     public class DefaultFabricCaster : IFabricCaster
     {
-        public object?[] PackArguments(ParameterInfo[]? parameters, object?[] arguments)
-        {
-            return arguments;
-        }
+        public object?[] PackArguments(ParameterInfo[]? parameters, object?[] arguments) => arguments;
 
         public object?[] UnpackArguments(ParameterInfo[]? parameters, object?[] packedArguments)
         {
@@ -71,14 +68,12 @@ namespace Perper.Protocol
             return arguments;
         }
 
-        public static object? UnpackArgument(Type parameterType, object? arg)
-        {
-            return arg != null && parameterType.IsAssignableFrom(arg.GetType())
+        private static object? UnpackArgument(Type parameterType, object? arg) =>
+            arg != null && parameterType.IsInstanceOfType(arg)
                 ? arg
                 : arg is ArrayList arrayList && parameterType == typeof(object[])
                     ? arrayList.Cast<object>().ToArray()
                     : Convert.ChangeType(arg, parameterType, CultureInfo.InvariantCulture);
-        }
 
 
         public object?[]? PackResult<TResult>(TResult result)
@@ -87,25 +82,23 @@ namespace Perper.Protocol
             {
                 return null;
             }
+
+            object?[] packedResult;
+
+            if (result is ITuple tuple)
+            {
+                packedResult = new object?[tuple.Length];
+                for (var i = 0 ; i < packedResult.Length ; i++)
+                {
+                    packedResult[i] = tuple[i];
+                }
+            }
             else
             {
-                object?[] packedResult;
-
-                if (result is ITuple tuple)
-                {
-                    packedResult = new object?[tuple.Length];
-                    for (var i = 0 ; i < packedResult.Length ; i++)
-                    {
-                        packedResult[i] = tuple[i];
-                    }
-                }
-                else
-                {
-                    packedResult = result is object?[] _results && typeof(TResult) == typeof(object[]) ? _results : (new object?[] { result });
-                }
-
-                return packedResult;
+                packedResult = result is object?[] results && typeof(TResult) == typeof(object[]) ? results : (new object?[] { result });
             }
+
+            return packedResult;
         }
 
         public TResult UnpackResult<TResult>(object?[]? packedResult)
@@ -132,25 +125,13 @@ namespace Perper.Protocol
             }
         }
 
-        public string PackException(Exception exception)
-        {
-            return exception.Message;
-        }
+        public string PackException(Exception exception) => exception.Message;
 
-        public Exception UnpackException(string packedException)
-        {
-            return new InvalidOperationException($"Execution failed with error: {packedException}"); // TODO: Fix exception type
-        }
+        public Exception UnpackException(string packedException) => new InvalidOperationException($"Execution failed with error: {packedException}"); // TODO: Fix exception type
 
-        public object PackItem<TItem>(TItem item)
-        {
-            return item!;
-        }
+        public object PackItem<TItem>(TItem item) => item!;
 
-        public TItem UnpackItem<TItem>(object packedItem)
-        {
-            return (TItem)packedItem!;
-        }
+        public TItem UnpackItem<TItem>(object packedItem) => (TItem)packedItem!;
 
         public IEnumerable<QueryEntity> TypeToQueryEntities(Type type)
         {
@@ -162,9 +143,6 @@ namespace Perper.Protocol
             yield return queryEntity;
         }
 
-        public bool TypeShouldKeepBinary(Type type)
-        {
-            return type == typeof(IBinaryObject);
-        }
+        public bool TypeShouldKeepBinary(Type type) => type == typeof(IBinaryObject);
     }
 }

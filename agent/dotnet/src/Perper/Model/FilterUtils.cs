@@ -24,14 +24,12 @@ namespace Perper.Model
             }
         }
 
-        private static object? ParseFieldValue(Expression subexpression)
-        {
-            return subexpression switch
+        private static object? ParseFieldValue(Expression subexpression) =>
+            subexpression switch
             {
                 ConstantExpression constant => constant.Value,
                 _ => Expression.Lambda(subexpression).Compile().DynamicInvoke(),// Ugly way to read FieldExpression-s (used by e.g. local variables)
             };
-        }
 
         private static void AddToFilter(Hashtable filter, Expression subexpression)
         {

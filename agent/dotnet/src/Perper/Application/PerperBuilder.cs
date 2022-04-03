@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
@@ -20,6 +21,7 @@ using Polly;
 
 namespace Perper.Application
 {
+    [SuppressMessage("Performance", "CA1848:Use the LoggerMessage delegates")]
     public class PerperBuilder : IPerperBuilder
     {
         private readonly IHostBuilder Builder;
@@ -46,10 +48,10 @@ namespace Perper.Application
                     configuration.Agent = Environment.GetEnvironmentVariable("X_PERPER_AGENT") ?? null;
                     configuration.Instance = Environment.GetEnvironmentVariable("X_PERPER_INSTANCE") ?? null;
 
-                    logger.LogInformation($"APACHE_IGNITE_ENDPOINT: {configuration.IgniteEndpoint}");
-                    logger.LogInformation($"PERPER_FABRIC_ENDPOINT: {configuration.FabricEndpoint}");
-                    logger.LogInformation($"X_PERPER_AGENT: {configuration.Agent}");
-                    logger.LogInformation($"X_PERPER_INSTANCE: {configuration.Instance}");
+                    logger.LogInformation("APACHE_IGNITE_ENDPOINT: {IgniteEndpoint}", configuration.IgniteEndpoint);
+                    logger.LogInformation("PERPER_FABRIC_ENDPOINT: {FabricEndpoint}", configuration.FabricEndpoint);
+                    logger.LogInformation("X_PERPER_AGENT: {Agent}", configuration.Agent);
+                    logger.LogInformation("X_PERPER_INSTANCE: {Instance}", configuration.Instance);
                 });
                 services.AddOptions<IgniteClientConfiguration>().Configure(configuration =>
                 {

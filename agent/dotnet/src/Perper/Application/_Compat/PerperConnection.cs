@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 
 using Perper.Protocol;
 
+// ReSharper disable once CheckNamespace
 namespace Perper.Application
 {
     [Obsolete("Use `Host.CreateDefaultBuilder().ConfigurePerper(...).Build()` instead")]
@@ -14,10 +15,7 @@ namespace Perper.Application
     {
         private static readonly IHost ConfiguredHost = Host.CreateDefaultBuilder().ConfigurePerper(_ => { }).Build();
 
-        public static Task<FabricService> EstablishConnection()
-        {
-            return Task.FromResult(ConfiguredHost.Services.GetRequiredService<FabricService>());
-        }
+        public static Task<FabricService> EstablishConnection() => Task.FromResult(ConfiguredHost.Services.GetRequiredService<FabricService>());
 
         public static (string, string) ConfigureInstance()
         {

@@ -130,14 +130,8 @@ namespace Perper.Application
         private static string StripSuffix(string @string, string suffix) =>
             @string.EndsWith(suffix, false, CultureInfo.InvariantCulture) ? @string[..^suffix.Length] : @string;
 
-        private static MethodInfo? GetRunMethod(Type type)
-        {
-            return type.GetMethod(RunMethodName + AsyncMethodSuffix) ?? type.GetMethod(RunMethodName);
-        }
+        private static MethodInfo? GetRunMethod(Type type) => type.GetMethod(RunMethodName + AsyncMethodSuffix) ?? type.GetMethod(RunMethodName);
 
-        private static MethodInfo GetRunMethodOrThrow(Type type)
-        {
-            return GetRunMethod(type) ?? throw new ArgumentOutOfRangeException($"Type {type} does not contain a definition for {RunMethodName + AsyncMethodSuffix} or {RunMethodName}");
-        }
+        private static MethodInfo GetRunMethodOrThrow(Type type) => GetRunMethod(type) ?? throw new ArgumentOutOfRangeException($"Type {type} does not contain a definition for {RunMethodName + AsyncMethodSuffix} or {RunMethodName}");
     }
 }

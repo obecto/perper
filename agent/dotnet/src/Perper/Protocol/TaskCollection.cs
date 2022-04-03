@@ -37,20 +37,14 @@ namespace Perper.Protocol
             return _completionSource.Task;
         }
 
-        public void Add(Func<Task> taskFactory) // Sugar
-        {
+        public void Add(Func<Task> taskFactory) => // Sugar
             Add(taskFactory());
-        }
 
-        public void AddRange(IAsyncEnumerable<Task> tasks)
-        {
+        public void AddRange(IAsyncEnumerable<Task> tasks) =>
             Add(tasks.ForEachAsync(Add));
-        }
 
-        public void AddRange<T>(IAsyncEnumerable<T> tasks, Func<T, Task> taskFactory)
-        {
+        public void AddRange<T>(IAsyncEnumerable<T> tasks, Func<T, Task> taskFactory) =>
             Add(tasks.Select(taskFactory).ForEachAsync(Add));
-        }
 
         public void AddRange(IEnumerable<Task> tasks)
         {

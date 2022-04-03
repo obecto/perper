@@ -14,6 +14,7 @@ using Perper.Model;
 
 namespace Perper.Application.Listeners
 {
+    [SuppressMessage("Performance", "CA1848:Use the LoggerMessage delegates")]
     public class DeployPerperListener : BackgroundService, IPerperListener
     {
         private readonly string Agent;

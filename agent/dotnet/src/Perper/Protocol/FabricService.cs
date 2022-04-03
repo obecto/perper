@@ -48,9 +48,9 @@ namespace Perper.Protocol
         private readonly CancellationTokenSource CancellationTokenSource = new();
         private readonly TaskCollection TaskCollection = new();
 
-        public static long CurrentTicks => DateTime.UtcNow.Ticks - DateTime.UnixEpoch.Ticks;
+        private static long CurrentTicks => DateTime.UtcNow.Ticks - DateTime.UnixEpoch.Ticks;
 
-        public static string GenerateName(string? baseName = null) => $"{baseName}-{Guid.NewGuid()}";
+        private static string GenerateName(string? baseName = null) => $"{baseName}-{Guid.NewGuid()}";
 
         public async ValueTask DisposeAsync()
         {
@@ -76,9 +76,6 @@ namespace Perper.Protocol
             GC.SuppressFinalize(this);
         }
 
-        ~FabricService()
-        {
-            Dispose(false);
-        }
+        ~FabricService() => Dispose(false);
     }
 }

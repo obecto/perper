@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -9,14 +10,13 @@ using Apache.Ignite.Core.Cache.Query;
 using Apache.Ignite.Core.Client.Cache;
 using Apache.Ignite.Linq;
 
-using Grpc.Core;
-
 using Perper.Model;
 using Perper.Protocol.Cache;
 using Perper.Protocol.Protobuf;
 
 namespace Perper.Protocol
 {
+    [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
     public partial class FabricService : IPerperStreams
     {
         public const long ListenerPersistAll = long.MinValue;
@@ -54,21 +54,16 @@ namespace Perper.Protocol
             );
         }
 
-        async Task IPerperStreams.WaitForListenerAsync(PerperStream stream, CancellationToken cancellationToken)
-        {
+        async Task IPerperStreams.WaitForListenerAsync(PerperStream stream, CancellationToken cancellationToken) =>
             await FabricClient.ListenerAttachedAsync(new ListenerAttachedRequest
             {
                 Stream = stream.Stream
             }, CallOptions.WithCancellationToken(cancellationToken));
-        }
 
         Task IPerperStreams.WriteItemAsync<TItem>(PerperStream stream, TItem item) =>
             ((IPerperStreams)this).WriteItemAsync(stream, CurrentTicks, item);
 
-        async Task IPerperStreams.WriteItemAsync<TItem>(PerperStream stream, long key, TItem item)
-        {
-            await GetItemCache<TItem>(stream).PutIfAbsentOrThrowAsync(key, FabricCaster.PackItem(item)).ConfigureAwait(false);
-        }
+        async Task IPerperStreams.WriteItemAsync<TItem>(PerperStream stream, long key, TItem item) => await GetItemCache<TItem>(stream).PutIfAbsentOrThrowAsync(key, FabricCaster.PackItem(item)).ConfigureAwait(false);
 
         async IAsyncEnumerable<(long, TItem)> IPerperStreams.EnumerateItemsAsync<TItem>(PerperStream stream, string? listenerName, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
@@ -151,10 +146,7 @@ namespace Perper.Protocol
             return Ignite.GetCache<long, TItem>(stream.Stream).AsCacheQueryable().Select(pair => pair.Value);
         }
 
-        IAsyncEnumerable<TItem> IPerperStreams.QuerySqlAsync<TItem>(PerperStream stream, string sqlCondition, params object[] sqlParameters)
-        {
-            return QuerySqlAsync<TItem>(stream, sqlCondition, sqlParameters);
-        }
+        IAsyncEnumerable<TItem> IPerperStreams.QuerySqlAsync<TItem>(PerperStream stream, string sqlCondition, params object[] sqlParameters) => QuerySqlAsync<TItem>(stream, sqlCondition, sqlParameters);
 
         public async IAsyncEnumerable<TItem> QuerySqlAsync<TItem>(PerperStream stream, string sqlCondition, object[] sqlParameters, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
@@ -178,9 +170,6 @@ namespace Perper.Protocol
             await Task.Run(() => Ignite.DestroyCache(stream.Stream)).ConfigureAwait(false);
         }
 
-        private ICacheClient<long, object> GetItemCache<TItem>(PerperStream stream)
-        {
-            return Ignite.GetCache<long, object>(stream.Stream).WithKeepBinary(FabricCaster.TypeShouldKeepBinary(typeof(TItem)));
-        }
+        private ICacheClient<long, object> GetItemCache<TItem>(PerperStream stream) => Ignite.GetCache<long, object>(stream.Stream).WithKeepBinary(FabricCaster.TypeShouldKeepBinary(typeof(TItem)));
     }
 }

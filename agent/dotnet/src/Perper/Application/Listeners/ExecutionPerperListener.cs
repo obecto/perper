@@ -15,6 +15,9 @@ using Perper.Protocol;
 
 namespace Perper.Application.Listeners
 {
+    [SuppressMessage("Performance", "CA1848:Use the LoggerMessage delegates")]
+    [SuppressMessage("Usage", "CA2254:Template should be a static expression")]
+    [SuppressMessage("ReSharper", "TemplateIsNotCompileTimeConstantProblem")]
     public class ExecutionPerperListener : BackgroundService, IPerperListener
     {
         public string Agent { get; }

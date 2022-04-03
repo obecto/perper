@@ -4,6 +4,7 @@ namespace Perper.Protocol.Cache
 {
     [SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
     [SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "This is a DTO class")]
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
     public class ExecutionData
     {
         private readonly string agent;

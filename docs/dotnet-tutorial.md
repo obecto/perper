@@ -23,7 +23,7 @@ In this usage tutorial, we are going to build a small demo app that streams a "H
 ## Prerequisites
 
 * A cursory understanding of the [Concepts](./concepts.md)
-* A [.NET Runtime and SDK](https://dotnet.microsoft.com/en-us/download) (at least version 5.0)
+* A [.NET Runtime and SDK](https://dotnet.microsoft.com/en-us/download) (version 6.0)
 * Either [Docker](https://docs.docker.com/get-docker/) (/[Podman](https://podman.io/getting-started/installation)) or [Java JDK 11 or higher](https://openjdk.java.net/install/)
 
 ## Starting Perper Fabric
