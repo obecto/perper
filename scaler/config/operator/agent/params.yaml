@@ -11,5 +11,5 @@ parameters:
     default: []
     type: array
   - name: env
-    default: {}
-    type: map
+    default: []
+    type: array

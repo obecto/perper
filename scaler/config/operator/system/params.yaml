@@ -1,11 +1,5 @@
 apiVersion: kudo.dev/v1beta1
 parameters:
-- name: agents
-  type: map
-- name: perperAgentOperatorVersion
-  default: "perper-agent-0.8.0-0.1.6"
-- name: deployPerper
-  default: true
 - name: perperImage
   default: "obecto/perper-fabric:0.8.0"
 - name: perperScalerImage
