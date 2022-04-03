@@ -21,13 +21,13 @@ namespace Perper.Application
 {
     public class PerperBuilder : IPerperBuilder
     {
-        private readonly IHostBuilder Builder;
+        private readonly IHostBuilder _builder;
 
         public PerperBuilder(IHostBuilder builder)
         {
-            Builder = builder;
+            _builder = builder;
 
-            Builder.ConfigureServices(services =>
+            _builder.ConfigureServices(services =>
             {
                 services.AddHostedService<PerperHandlerService>();
                 services.AddSingleton<IFabricCaster, DefaultFabricCaster>();
@@ -45,10 +45,16 @@ namespace Perper.Application
                     configuration.Agent = Environment.GetEnvironmentVariable("X_PERPER_AGENT") ?? null;
                     configuration.Instance = Environment.GetEnvironmentVariable("X_PERPER_INSTANCE") ?? null;
 
+                    // ReSharper disable TemplateIsNotCompileTimeConstantProblem
+#pragma warning disable CA1848
+#pragma warning disable CA2254
                     logger.LogInformation($"APACHE_IGNITE_ENDPOINT: {configuration.IgniteEndpoint}");
                     logger.LogInformation($"PERPER_FABRIC_ENDPOINT: {configuration.FabricEndpoint}");
                     logger.LogInformation($"X_PERPER_AGENT: {configuration.Agent}");
                     logger.LogInformation($"X_PERPER_INSTANCE: {configuration.Instance}");
+#pragma warning restore CA2254
+#pragma warning restore CA1848
+                    // ReSharper restore TemplateIsNotCompileTimeConstantProblem
                 });
                 services.AddOptions<IgniteClientConfiguration>().Configure(configuration =>
                 {
@@ -90,13 +96,13 @@ namespace Perper.Application
 
         public IPerperBuilder AddHandler(IPerperHandler handler)
         {
-            Builder.ConfigureServices(services => services.AddSingleton(handler));
+            _builder.ConfigureServices(services => services.AddSingleton(handler));
             return this;
         }
 
         public IPerperBuilder AddHandler(Func<IServiceProvider, IPerperHandler> handlerFactory)
         {
-            Builder.ConfigureServices(services => services.AddSingleton(handlerFactory));
+            _builder.ConfigureServices(services => services.AddSingleton(handlerFactory));
             return this;
         }
     }

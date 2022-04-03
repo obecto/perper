@@ -4,9 +4,6 @@ namespace BasicSample.Calls
 {
     public static class DoSomething
     {
-        public static void RunAsync(string message)
-        {
-            Console.WriteLine("DoSomething called: " + message);
-        }
+        public static void RunAsync(string message) => Console.WriteLine("DoSomething called: " + message);
     }
 }

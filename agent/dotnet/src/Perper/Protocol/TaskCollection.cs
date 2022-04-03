@@ -21,7 +21,8 @@ namespace Perper.Protocol
 
         public TaskCollection() { }
         public TaskCollection(params Task[] tasks) : this((IEnumerable<Task>)tasks) { }
-        public TaskCollection(IEnumerable<Task> tasks)
+
+        private TaskCollection(IEnumerable<Task> tasks)
         {
             foreach (var task in tasks)
             {
@@ -42,9 +43,8 @@ namespace Perper.Protocol
         }
 
         public void Add(Func<Task> taskFactory) // Sugar
-        {
-            Add(taskFactory());
-        }
+            =>
+                Add(taskFactory());
 
         public void Add(Task item)
         {

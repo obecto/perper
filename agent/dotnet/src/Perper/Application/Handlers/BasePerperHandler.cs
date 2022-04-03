@@ -8,8 +8,11 @@ using Microsoft.Extensions.Logging;
 
 using Perper.Model;
 
-namespace Perper.Application
+namespace Perper.Application.Handlers
 {
+    [SuppressMessage("Performance", "CA1848:Use the LoggerMessage delegates")]
+    [SuppressMessage("Usage", "CA2254:Template should be a static expression")]
+    [SuppressMessage("ReSharper", "TemplateIsNotCompileTimeConstantProblem")]
     public abstract class BasePerperHandler : IPerperHandler
     {
         public string Agent { get; }

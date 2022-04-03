@@ -3,6 +3,8 @@ using System.Threading.Tasks;
 
 namespace Perper.Extensions
 {
+#pragma warning disable CA1716
+
     public static class PerperState
     {
         public static Perper.Model.PerperState State => AsyncLocalContext.PerperContext.CurrentState;

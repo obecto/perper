@@ -11,12 +11,12 @@ namespace Perper.Extensions
         public string? Delegate { get; }
 
         public bool IsBlank => Delegate == null;
-        public PerperStream Stream => StreamCreationLazy.Value.stream;
+        public PerperStream Stream => _streamCreationLazy.Value.stream;
 
-        private readonly PerperStreamOptions Options = new();
-        private readonly DelayedCreateFunc? LinkedExecutionCreation = null;
+        private readonly PerperStreamOptions _options = new();
+        private readonly DelayedCreateFunc? _linkedExecutionCreation = null;
 
-        private readonly Lazy<(PerperStream stream, Func<Task> create)> StreamCreationLazy;
+        private readonly Lazy<(PerperStream stream, Func<Task> create)> _streamCreationLazy;
 
         public PerperStreamBuilder(string? @delegate)
         {
@@ -24,29 +24,29 @@ namespace Perper.Extensions
             if (Delegate != null)
             {
                 var (linkedExecution, linkedExecutionCreation) = AsyncLocalContext.PerperContext.Executions.Create(AsyncLocalContext.PerperContext.CurrentAgent, Delegate);
-                LinkedExecutionCreation = linkedExecutionCreation;
-                StreamCreationLazy = new(() => AsyncLocalContext.PerperContext.Streams.Create(Options, linkedExecution));
+                _linkedExecutionCreation = linkedExecutionCreation;
+                _streamCreationLazy = new(() => AsyncLocalContext.PerperContext.Streams.Create(_options, linkedExecution));
             }
             else
             {
-                StreamCreationLazy = new(() => AsyncLocalContext.PerperContext.Streams.Create(Options));
+                _streamCreationLazy = new(() => AsyncLocalContext.PerperContext.Streams.Create(_options));
             }
         }
 
         public async Task<PerperStream> StartAsync(params object[] parameters)
         {
-            await StreamCreationLazy.Value.create().ConfigureAwait(false);
+            await _streamCreationLazy.Value.create().ConfigureAwait(false);
 
-            if (LinkedExecutionCreation != null)
+            if (_linkedExecutionCreation != null)
             {
-                await LinkedExecutionCreation(parameters).ConfigureAwait(false);
+                await _linkedExecutionCreation(parameters).ConfigureAwait(false);
             }
             else if (parameters.Length > 0)
             {
                 throw new InvalidOperationException("PerperStreamBuilder.StartAsync() does not take parameters for blank streams");
             }
 
-            return StreamCreationLazy.Value.stream;
+            return _streamCreationLazy.Value.stream;
         }
 
         public PerperStreamBuilder Persistent() => Configure(options => options.Persistent = true);
@@ -58,11 +58,11 @@ namespace Perper.Extensions
 
         public PerperStreamBuilder Configure(Action<PerperStreamOptions> change)
         {
-            if (StreamCreationLazy.IsValueCreated)
+            if (_streamCreationLazy.IsValueCreated)
             {
                 throw new InvalidOperationException("PerperStreamBuilder has already been initialized.");
             }
-            change(Options);
+            change(_options);
             return this;
         }
     }

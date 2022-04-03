@@ -4,6 +4,7 @@ namespace Perper.Model
 {
     [SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
     [SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "All that is *Stream is not made of Byte-s")]
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
     public class PerperStream
     {
         private readonly string stream;

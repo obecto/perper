@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 
 using Microsoft.Extensions.Hosting;
 
+// ReSharper disable once CheckNamespace
 namespace Perper.Application
 {
     [Obsolete("Use `Host.CreateDefaultBuilder().ConfigurePerper(...).Build().RunAsync()` instead")]
@@ -18,9 +19,6 @@ namespace Perper.Application
         }
 
         [Obsolete("Use `Host.CreateDefaultBuilder().ConfigurePerper(perper => perper.AddAssemblyHandlers(...)).RunAsync()` instead")]
-        public static Task RunAsync(string agent, CancellationToken cancellationToken = default)
-        {
-            return new PerperStartup().AddAssemblyHandlers(agent).RunAsync(cancellationToken);
-        }
+        public static Task RunAsync(string agent, CancellationToken cancellationToken = default) => new PerperStartup().AddAssemblyHandlers(agent).RunAsync(cancellationToken);
     }
 }

@@ -34,19 +34,10 @@ namespace Perper.Protocol
             }
         }
 
-        async Task IPerperStates.RemoveAsync(PerperState state, string key)
-        {
-            await GetStateCache<string, object>(state).RemoveAsync(key).ConfigureAwait(false);
-        }
+        async Task IPerperStates.RemoveAsync(PerperState state, string key) => await GetStateCache<string, object>(state).RemoveAsync(key).ConfigureAwait(false);
 
-        async Task IPerperStates.DestroyAsync(PerperState state)
-        {
-            await Task.Run(() => Ignite.DestroyCache(state.Name)).ConfigureAwait(false);
-        }
+        async Task IPerperStates.DestroyAsync(PerperState state) => await Task.Run(() => Ignite.DestroyCache(state.Name)).ConfigureAwait(false);
 
-        public ICacheClient<TK, TV> GetStateCache<TK, TV>(PerperState state)
-        {
-            return Ignite.GetOrCreateCache<TK, TV>(state.Name);
-        }
+        private ICacheClient<TK, TV> GetStateCache<TK, TV>(PerperState state) => Ignite.GetOrCreateCache<TK, TV>(state.Name);
     }
 }

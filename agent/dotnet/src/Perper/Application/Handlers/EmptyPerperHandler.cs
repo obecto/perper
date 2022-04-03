@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Perper.Application
+namespace Perper.Application.Handlers
 {
     public class EmptyPerperHandler : BasePerperHandler
     {
@@ -10,9 +10,6 @@ namespace Perper.Application
         {
         }
 
-        protected override Task<(Type, object?)> Handle(IServiceProvider serviceProvider, object?[] arguments)
-        {
-            return Task.FromResult((typeof(void), (object?)null));
-        }
+        protected override Task<(Type, object?)> Handle(IServiceProvider serviceProvider, object?[] arguments) => Task.FromResult((typeof(void), (object?)null));
     }
 }

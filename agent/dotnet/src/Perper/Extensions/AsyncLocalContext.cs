@@ -10,16 +10,16 @@ namespace Perper.Extensions
         private static readonly AsyncLocal<IPerperContext> AsyncLocal = new();
         public static IPerperContext PerperContext => AsyncLocal.Value!;
 
-        private readonly IPerperContext OldValue;
+        private readonly IPerperContext _oldValue;
         public AsyncLocalContext(IPerperContext newValue)
         {
-            OldValue = AsyncLocal.Value!;
+            _oldValue = AsyncLocal.Value!;
             AsyncLocal.Value = newValue;
         }
 
         public void Dispose()
         {
-            AsyncLocal.Value = OldValue!;
+            AsyncLocal.Value = _oldValue!;
             GC.SuppressFinalize(this);
         }
     }

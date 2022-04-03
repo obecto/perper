@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
+using Perper.Application.Handlers;
 using Perper.Model;
 using Perper.Protocol;
 
@@ -16,17 +17,17 @@ namespace Perper.Application
     {
         public static string InitFunctionName { get; } = "Init";
 
-        private readonly IEnumerable<IPerperHandler> Handlers;
-        private readonly IPerper Perper;
-        private readonly IServiceProvider ServiceProvider;
-        private readonly PerperConfiguration PerperConfiguration;
+        private readonly IEnumerable<IPerperHandler> _handlers;
+        private readonly IPerper _perper;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly PerperConfiguration _perperConfiguration;
 
         public PerperHandlerService(IEnumerable<IPerperHandler> handlers, IPerper perper, IServiceProvider serviceProvider, IOptions<PerperConfiguration> perperOptions)
         {
-            Handlers = handlers;
-            Perper = perper;
-            ServiceProvider = serviceProvider;
-            PerperConfiguration = perperOptions.Value;
+            _handlers = handlers;
+            _perper = perper;
+            _serviceProvider = serviceProvider;
+            _perperConfiguration = perperOptions.Value;
         }
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)
@@ -35,9 +36,9 @@ namespace Perper.Application
 
             var agentHasStartup = new Dictionary<string, bool>();
 
-            foreach (var handler in Handlers)
+            foreach (var handler in _handlers)
             {
-                if (PerperConfiguration.Agent != null && PerperConfiguration.Agent != handler.Agent)
+                if (_perperConfiguration.Agent != null && _perperConfiguration.Agent != handler.Agent)
                 {
                     continue;
                 }
@@ -45,7 +46,7 @@ namespace Perper.Application
                 if (handler.Delegate == InitFunctionName)
                 {
                     var initInstance = $"{handler.Agent}-init";
-                    if (PerperConfiguration.Instance != null && PerperConfiguration.Instance != initInstance)
+                    if (_perperConfiguration.Instance != null && _perperConfiguration.Instance != initInstance)
                     {
                         continue;
                     }
@@ -54,7 +55,7 @@ namespace Perper.Application
                     taskCollection.Add(async () =>
                     {
                         //await using (ServiceProvider.CreateAsyncScope()) // TODO: #if NET6_0 ?
-                        using var scope = ServiceProvider.CreateScope();
+                        using var scope = _serviceProvider.CreateScope();
                         scope.ServiceProvider.GetRequiredService<PerperScopeService>().SetExecution(initExecution);
                         Console.WriteLine($"hi! {handler.Agent} {handler.Delegate}");
                         await handler.Handle(scope.ServiceProvider).ConfigureAwait(false);
@@ -88,19 +89,18 @@ namespace Perper.Application
             return taskCollection.GetTask();
         }
 
-        private void ListenExecutions(TaskCollection taskCollection, IPerperHandler handler, CancellationToken stoppingToken)
-        {
+        private void ListenExecutions(TaskCollection taskCollection, IPerperHandler handler, CancellationToken stoppingToken) =>
             taskCollection.Add(async () =>
             {
-                var filter = new PerperExecutionFilter(handler.Agent, PerperConfiguration.Instance, handler.Delegate);
-                await foreach (var execution in Perper.Executions.ListenAsync(filter, stoppingToken))
+                var filter = new PerperExecutionFilter(handler.Agent, _perperConfiguration.Instance, handler.Delegate);
+                await foreach (var execution in _perper.Executions.ListenAsync(filter, stoppingToken))
                 {
                     taskCollection.Add(async () =>
                     {
                         try
                         {
                             //await using (ServiceProvider.CreateAsyncScope()) // TODO: #if NET6_0 ?
-                            using var scope = ServiceProvider.CreateScope();
+                            using var scope = _serviceProvider.CreateScope();
                             scope.ServiceProvider.GetRequiredService<PerperScopeService>().SetExecution(execution);
                             await handler.Handle(scope.ServiceProvider).ConfigureAwait(false);
                         }
@@ -112,6 +112,5 @@ namespace Perper.Application
                     });
                 }
             });
-        }
     }
 }

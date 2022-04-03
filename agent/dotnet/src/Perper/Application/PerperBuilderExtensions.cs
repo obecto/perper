@@ -94,15 +94,10 @@ namespace Perper.Application
         #endregion AddHandler
 
         #region Utils
-        private static MethodInfo? GetRunMethod(Type type)
-        {
-            return type.GetMethod(RunMethodName + AsyncMethodSuffix) ?? type.GetMethod(RunMethodName);
-        }
+        private static MethodInfo? GetRunMethod(Type type) => type.GetMethod(RunMethodName + AsyncMethodSuffix) ?? type.GetMethod(RunMethodName);
 
-        private static MethodInfo GetRunMethodOrThrow(Type type)
-        {
-            return GetRunMethod(type) ?? throw new ArgumentOutOfRangeException($"Type {type} does not contain a definition for {RunMethodName + AsyncMethodSuffix} or {RunMethodName}");
-        }
+        private static MethodInfo GetRunMethodOrThrow(Type type) => GetRunMethod(type) ?? throw new ArgumentOutOfRangeException($"Type {type} does not contain a definition for {RunMethodName + AsyncMethodSuffix} or {RunMethodName}");
+
         #endregion Utils
     }
 }

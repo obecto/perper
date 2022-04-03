@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Perper.Application.Handlers;
 using Perper.Extensions;
 using Perper.Model;
 

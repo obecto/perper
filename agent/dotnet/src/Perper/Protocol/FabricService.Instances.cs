@@ -32,19 +32,16 @@ namespace Perper.Protocol
             );
         }
 
-        public (PerperAgent Instance, Func<Task> Create) CreateWithoutStarting(string agent)
+        private (PerperAgent Instance, Func<Task> Create) CreateWithoutStarting(string agent)
         {
             var instance = new PerperAgent(agent, GenerateName(agent));
             return (instance, async () =>
             {
-                await InstancesCache.PutIfAbsentOrThrowAsync(instance.Instance, new InstanceData(instance.Agent)).ConfigureAwait(false);
+                await _instancesCache.PutIfAbsentOrThrowAsync(instance.Instance, new InstanceData(instance.Agent)).ConfigureAwait(false);
             }
             );
         }
 
-        async Task IPerperAgents.DestroyAsync(PerperAgent agent)
-        {
-            await InstancesCache.RemoveAsync(agent.Instance).ConfigureAwait(false);
-        }
+        async Task IPerperAgents.DestroyAsync(PerperAgent agent) => await _instancesCache.RemoveAsync(agent.Instance).ConfigureAwait(false);
     }
 }

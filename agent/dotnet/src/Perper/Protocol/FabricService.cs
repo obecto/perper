@@ -20,13 +20,13 @@ namespace Perper.Protocol
         public FabricService(IIgniteClient ignite, GrpcChannel grpcChannel, IFabricCaster fabricCaster)
         {
             Ignite = ignite;
-            FabricClient = new Fabric.FabricClient(grpcChannel);
+            _fabricClient = new Fabric.FabricClient(grpcChannel);
             FabricCaster = fabricCaster;
 
-            IgniteBinary = ignite.GetBinary();
-            ExecutionsCache = ignite.GetOrCreateCache<string, ExecutionData>("executions");
-            StreamListenersCache = ignite.GetOrCreateCache<string, StreamListener>("stream-listeners");
-            InstancesCache = ignite.GetOrCreateCache<string, InstanceData>("instances");
+            _igniteBinary = ignite.GetBinary();
+            _executionsCache = ignite.GetOrCreateCache<string, ExecutionData>("executions");
+            _streamListenersCache = ignite.GetOrCreateCache<string, StreamListener>("stream-listeners");
+            _instancesCache = ignite.GetOrCreateCache<string, InstanceData>("instances");
         }
 
         IPerperExecutions IPerper.Executions => this;
@@ -37,25 +37,25 @@ namespace Perper.Protocol
         public IIgniteClient Ignite { get; }
         public IFabricCaster FabricCaster { get; }
 
-        private readonly IBinary IgniteBinary;
-        private readonly ICacheClient<string, ExecutionData> ExecutionsCache;
-        private readonly ICacheClient<string, StreamListener> StreamListenersCache;
-        private readonly ICacheClient<string, InstanceData> InstancesCache;
+        private readonly IBinary _igniteBinary;
+        private readonly ICacheClient<string, ExecutionData> _executionsCache;
+        private readonly ICacheClient<string, StreamListener> _streamListenersCache;
+        private readonly ICacheClient<string, InstanceData> _instancesCache;
 
-        private readonly Fabric.FabricClient FabricClient;
-        private readonly CallOptions CallOptions = new CallOptions().WithWaitForReady();
+        private readonly Fabric.FabricClient _fabricClient;
+        private CallOptions _callOptions = new CallOptions().WithWaitForReady();
 
-        private readonly CancellationTokenSource CancellationTokenSource = new();
-        private readonly TaskCollection TaskCollection = new();
+        private readonly CancellationTokenSource _cancellationTokenSource = new();
+        private readonly TaskCollection _taskCollection = new();
 
-        public static long CurrentTicks => DateTime.UtcNow.Ticks - DateTime.UnixEpoch.Ticks;
+        private static long CurrentTicks => DateTime.UtcNow.Ticks - DateTime.UnixEpoch.Ticks;
 
-        public static string GenerateName(string? baseName = null) => $"{baseName}-{Guid.NewGuid()}";
+        private static string GenerateName(string? baseName = null) => $"{baseName}-{Guid.NewGuid()}";
 
         public async ValueTask DisposeAsync()
         {
-            CancellationTokenSource.Cancel();
-            await TaskCollection.GetTask().ConfigureAwait(false);
+            _cancellationTokenSource.Cancel();
+            await _taskCollection.GetTask().ConfigureAwait(false);
             Dispose(true);
 #pragma warning disable CA1816
             GC.SuppressFinalize(this);
@@ -66,7 +66,7 @@ namespace Perper.Protocol
         {
             if (disposing)
             {
-                CancellationTokenSource.Dispose();
+                _cancellationTokenSource.Dispose();
             }
         }
 
@@ -76,9 +76,6 @@ namespace Perper.Protocol
             GC.SuppressFinalize(this);
         }
 
-        ~FabricService()
-        {
-            Dispose(false);
-        }
+        ~FabricService() => Dispose(false);
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -9,14 +10,13 @@ using Apache.Ignite.Core.Cache.Query;
 using Apache.Ignite.Core.Client.Cache;
 using Apache.Ignite.Linq;
 
-using Grpc.Core;
-
 using Perper.Model;
 using Perper.Protocol.Cache;
 using Perper.Protocol.Protobuf;
 
 namespace Perper.Protocol
 {
+    [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
     public partial class FabricService : IPerperStreams
     {
         public const long ListenerPersistAll = long.MinValue;
@@ -43,38 +43,33 @@ namespace Perper.Protocol
 
                 if (options.Persistent)
                 {
-                    await StreamListenersCache.PutAsync($"-{stream.Stream}-persist", new StreamListener(stream.Stream, ListenerPersistAll)).ConfigureAwait(false);
+                    await _streamListenersCache.PutAsync($"-{stream.Stream}-persist", new StreamListener(stream.Stream, ListenerPersistAll)).ConfigureAwait(false);
                 }
                 else if (options.Action)
                 {
-                    await StreamListenersCache.PutAsync($"-{stream.Stream}-trigger", new StreamListener(stream.Stream, ListenerJustTrigger)).ConfigureAwait(false);
+                    await _streamListenersCache.PutAsync($"-{stream.Stream}-trigger", new StreamListener(stream.Stream, ListenerJustTrigger)).ConfigureAwait(false);
                 }
             }
             );
         }
 
-        async Task IPerperStreams.WaitForListenerAsync(PerperStream stream, CancellationToken cancellationToken)
-        {
-            await FabricClient.ListenerAttachedAsync(new ListenerAttachedRequest
+        async Task IPerperStreams.WaitForListenerAsync(PerperStream stream, CancellationToken cancellationToken) =>
+            await _fabricClient.ListenerAttachedAsync(new ListenerAttachedRequest
             {
                 Stream = stream.Stream
-            }, CallOptions.WithCancellationToken(cancellationToken));
-        }
+            }, _callOptions.WithCancellationToken(cancellationToken));
 
         Task IPerperStreams.WriteItemAsync<TItem>(PerperStream stream, TItem item) =>
             ((IPerperStreams)this).WriteItemAsync<TItem>(stream, CurrentTicks, item);
 
-        async Task IPerperStreams.WriteItemAsync<TItem>(PerperStream stream, long key, TItem item)
-        {
-            await GetItemCache<TItem>(stream).PutIfAbsentOrThrowAsync(key, FabricCaster.PackItem(item)).ConfigureAwait(false);
-        }
+        async Task IPerperStreams.WriteItemAsync<TItem>(PerperStream stream, long key, TItem item) => await GetItemCache<TItem>(stream).PutIfAbsentOrThrowAsync(key, FabricCaster.PackItem(item)).ConfigureAwait(false);
 
         async IAsyncEnumerable<(long, TItem)> IPerperStreams.EnumerateItemsAsync<TItem>(PerperStream stream, string? listenerName, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             // Ideally should include e.g. the execution in the listener name
             var listener = listenerName == null ? GenerateName($"{stream.Stream}") : $"{stream.Stream}-{listenerName}";
 
-            var existing = await StreamListenersCache.GetAndPutIfAbsentAsync(listener, new StreamListener(stream.Stream, ListenerPersistAll)).ConfigureAwait(false);
+            var existing = await _streamListenersCache.GetAndPutIfAbsentAsync(listener, new StreamListener(stream.Stream, ListenerPersistAll)).ConfigureAwait(false);
             if (existing.Success)
             {
                 stream = new PerperStream(stream.Stream, existing.Value.Position, stream.Stride, stream.LocalToData); // stream.Replay();
@@ -84,14 +79,14 @@ namespace Perper.Protocol
             {
                 await foreach (var (key, value) in EnumerateItemsWithoutListenerAsync<TItem>(stream, cancellationToken))
                 {
-                    await StreamListenersCache.PutAsync(listener, new StreamListener(stream.Stream, key)).ConfigureAwait(false); // Can be optimized by updating in batches
+                    await _streamListenersCache.PutAsync(listener, new StreamListener(stream.Stream, key)).ConfigureAwait(false); // Can be optimized by updating in batches
 
                     yield return (key, value);
                 }
             }
             finally
             {
-                await StreamListenersCache.RemoveAsync(listener).ConfigureAwait(false);
+                await _streamListenersCache.RemoveAsync(listener).ConfigureAwait(false);
             }
         }
 
@@ -123,13 +118,13 @@ namespace Perper.Protocol
 
         private async IAsyncEnumerable<long> EnumerateKeysWithoutListenerAsync(PerperStream stream, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var streamItems = FabricClient.StreamItems(new StreamItemsRequest
+            var streamItems = _fabricClient.StreamItems(new StreamItemsRequest
             {
                 Stream = stream.Stream,
                 StartKey = stream.StartIndex,
                 Stride = stream.Stride,
                 LocalToData = stream.LocalToData
-            }, CallOptions.WithCancellationToken(cancellationToken));
+            }, _callOptions.WithCancellationToken(cancellationToken));
 
             await streamItems.ResponseHeadersAsync.ConfigureAwait(false);
 
@@ -150,10 +145,7 @@ namespace Perper.Protocol
             return Ignite.GetCache<long, TItem>(stream.Stream).AsCacheQueryable().Select(pair => pair.Value);
         }
 
-        IAsyncEnumerable<TItem> IPerperStreams.QuerySqlAsync<TItem>(PerperStream stream, string sqlCondition, params object[] sqlParameters)
-        {
-            return QuerySqlAsync<TItem>(stream, sqlCondition, sqlParameters);
-        }
+        IAsyncEnumerable<TItem> IPerperStreams.QuerySqlAsync<TItem>(PerperStream stream, string sqlCondition, params object[] sqlParameters) => QuerySqlAsync<TItem>(stream, sqlCondition, sqlParameters);
 
         public async IAsyncEnumerable<TItem> QuerySqlAsync<TItem>(PerperStream stream, string sqlCondition, object[] sqlParameters, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
@@ -177,9 +169,6 @@ namespace Perper.Protocol
             await Task.Run(() => Ignite.DestroyCache(stream.Stream)).ConfigureAwait(false);
         }
 
-        private ICacheClient<long, object> GetItemCache<TItem>(PerperStream stream)
-        {
-            return Ignite.GetCache<long, object>(stream.Stream).WithKeepBinary(FabricCaster.TypeShouldKeepBinary(typeof(TItem)));
-        }
+        private ICacheClient<long, object> GetItemCache<TItem>(PerperStream stream) => Ignite.GetCache<long, object>(stream.Stream).WithKeepBinary(FabricCaster.TypeShouldKeepBinary(typeof(TItem)));
     }
 }
