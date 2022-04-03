@@ -22,8 +22,8 @@ spec:
     - name: PERPER_FABRIC_ENDPOINT
       value: http://perper-fabric:40400
     {{ range $key, $value := $.Params.env }}
-    - name: $key
-      value: $value
+    - name: {{ $key }}
+      value: {{ $value }}
     {{ end }}
   restartPolicy: Never
 {{ end }}

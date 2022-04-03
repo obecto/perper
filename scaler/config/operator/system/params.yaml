@@ -3,7 +3,7 @@ parameters:
 - name: agents
   type: map
 - name: perperAgentOperatorVersion
-  default: "perper-agent-0.8.0-0.1.5"
+  default: "perper-agent-0.8.0-0.1.6"
 - name: deployPerper
   default: true
 - name: perperImage
