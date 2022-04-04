@@ -1,8 +1,6 @@
-import clr
 import asyncio
 from collections.abc import AsyncIterable, Awaitable
 
-clr.AddReference("Perper")
 from Perper.Application import PerperConnection, PerperStartup
 from Perper.Application import PerperStartupHandlerUtils as HandlerUtils
 from Perper.Extensions import AsyncLocals

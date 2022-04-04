@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import AsyncIterable, Awaitable
+import ast
 
 from Perper.Extensions import AsyncLocals
 from System import Func, Action
@@ -24,11 +25,35 @@ def create_delegate_handler(func, loop):
         Func<Task>
         """
     async def wrap(_execution):
-        print(f"Execution {_execution}")
         AsyncLocals.SetExecution(_execution)
         arguments = await task_to_future(fabric_service.get().ReadExecutionParameters(AsyncLocals.Execution))
         result = func(*arguments)
-    return Func[Task](lambda: future_to_task(wrap(AsyncLocals.FabricExecution), loop))
+
+        if isinstance(result, Awaitable):
+            result = await result
+        if result is None:
+            await task_to_future(fabric_service.get().WriteExecutionFinished(AsyncLocals.Execution))
+        elif isinstance(result, AsyncIterable):
+            await task_to_future(fabric_service.get().WaitListenerAttached(AsyncLocals.Execution))
+            async for data in result:
+                if isinstance(data, tuple) and len(data) == 2 and isinstance(data[0], int):
+                    (key, data) = data
+                    fabric_service.get().WriteStreamItem(AsyncLocals.Execution, key, data)
+                else:
+                    fabric_service.get().WriteStreamItem(AsyncLocals.Execution, data)
+            fabric_service.get().WriteExecutionFinished(fabric_execution.get().execution)
+        elif isinstance(result, tuple) and not is_hinted(result):
+            fabric_service.get().WriteExecutionResult(AsyncLocals.Execution, list(result))
+        else:
+            fabric_service.get().WriteExecutionResult(fabric_execution.get().execution, [result])
+
+        return result
+    # TODO: Keep return types in a context var to simplify user calls?
+    if "return" in func.__annotations__:  # TODO: Works only with basic types, expand
+        return Func[Task](lambda: future_to_task(wrap(AsyncLocals.FabricExecution), loop,
+                                                 return_type=func.__annotations__["return"]))
+    else:
+        return Func[Task](lambda: future_to_task(wrap(AsyncLocals.FabricExecution), loop))
 
 
 def create_init_handler(init_func, loop):
@@ -52,6 +77,7 @@ def create_init_handler(init_func, loop):
         result = init_func()
         if isinstance(result, Awaitable):
             result = await result
+        return result
     return Func[Task](lambda: future_to_task(wrap(AsyncLocals.FabricExecution), loop))
 
 
@@ -66,17 +92,21 @@ def task_to_future(task):
             loop.call_soon_threadsafe(future.cancel)
         else:
             loop.call_soon_threadsafe(future.set_exception, task.Exception)
+
     task.ContinueWith(Action[Task](cont))
     return future
 
 
-def future_to_task(future, loop):
-    task_c = TaskCompletionSource()
+def future_to_task(future, loop, return_type=None):
+    task_c = TaskCompletionSource() if not return_type else TaskCompletionSource[return_type]()
 
     def f(fut, _fabric_service):
         fabric_service.set(_fabric_service)
         fut = asyncio.ensure_future(fut)
-        fut.add_done_callback(lambda fut: task_c.SetResult())
+        if not return_type:
+            fut.add_done_callback(lambda _future: task_c.SetResult())
+        else:
+            fut.add_done_callback(lambda _future: task_c.SetResult(_future.result()))
     loop.call_soon_threadsafe(f, future, AsyncLocals.FabricService)
     return task_c.Task
 

@@ -12,6 +12,9 @@ runtime_path = os.path.abspath(os.path.join(ROOT_DIR, "../runtimeconfig.json"))
 rt = get_coreclr(runtime_path)
 set_runtime(rt)
 
+import clr
+clr.AddReference("Perper")
+
 # from .model import *
 from .extensions import *
 from .application import *
