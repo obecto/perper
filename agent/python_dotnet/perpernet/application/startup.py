@@ -18,18 +18,14 @@ from ..extensions.context_vars import fabric_service, fabric_execution
 async def run(agent, delegates={}, *, use_instances=False):
     loop = asyncio.get_event_loop()
     perper_startup = PerperStartup()
-    source = CancellationTokenSource()
-    token = source.Token
     if "Init" in delegates:
         init_func = delegates.pop("Init")
         init_instance = f"{agent}-init"
-        fabric_execution.set(FabricExecution(agent, init_instance, "Init", f"{init_instance}-init", token))
         perper_startup = perper_startup.AddInitHandler. \
             Overloads[str, Func[Task]](agent, HandlerUtils.
                                        WrapHandler(create_init_handler(init_func, loop)))
 
     for (delegate, function) in delegates.items():
-        # fabric_execution.set(FabricExecution(agent, initInstance, "Init", f"{initInstance}-init", cancellationToken))
         perper_startup = perper_startup.AddHandler. \
             Overloads[str, str, Func[Task]](agent, delegate, HandlerUtils.
                                             WrapHandler(create_delegate_handler(function, loop)))

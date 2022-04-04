@@ -1,16 +1,19 @@
 import asyncio
-from .context_vars import fabric_execution, fabric_service
-from ..model import PerperAgent
+# from .context_vars import fabric_execution, fabric_service
+# from ..model import PerperAgent
+from ..application.startup_utils import task_to_future
 
 startup_function_name = "Startup"
+from Perper.Extensions import PerperContext
 
 
 def get_agent():
     return PerperAgent(fabric_execution.get().agent, fabric_execution.get().instance)
 
 
-def call(delegate, *parameters):
-    return call_agent(get_agent(), delegate, *parameters)
+async def call(delegate, *parameters):
+    print(PerperContext.Agent)
+    return await task_to_future(PerperContext.CallAsync(delegate, *parameters))
 
 
 async def start_agent(agent, *parameters):

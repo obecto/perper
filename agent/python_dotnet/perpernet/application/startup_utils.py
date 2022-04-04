@@ -24,11 +24,11 @@ def create_delegate_handler(func, loop):
         Func<Task>
         """
     async def wrap(_execution):
+        print(f"Execution {_execution}")
         AsyncLocals.SetExecution(_execution)
         arguments = await task_to_future(fabric_service.get().ReadExecutionParameters(AsyncLocals.Execution))
         result = func(*arguments)
-    _execution = fabric_execution.get()
-    return Func[Task](lambda: future_to_task(wrap(_execution), loop))
+    return Func[Task](lambda: future_to_task(wrap(AsyncLocals.FabricExecution), loop))
 
 
 def create_init_handler(init_func, loop):
@@ -52,8 +52,7 @@ def create_init_handler(init_func, loop):
         result = init_func()
         if isinstance(result, Awaitable):
             result = await result
-    _execution = fabric_execution.get()
-    return Func[Task](lambda: future_to_task(wrap(_execution), loop))
+    return Func[Task](lambda: future_to_task(wrap(AsyncLocals.FabricExecution), loop))
 
 
 def task_to_future(task):
