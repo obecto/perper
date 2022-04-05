@@ -6,7 +6,7 @@ maintainers:
 - email: MyEmail@invalid
   name: My Name
 name: perper-system
-operatorVersion: 0.1.4
+operatorVersion: 0.1.8
 plans:
   deploy:
     phases:
@@ -14,19 +14,12 @@ plans:
       steps:
       - name: deploy
         tasks:
-        - perper
-        - agents
+        - deploy
       strategy: serial
     strategy: serial
 tasks:
 - kind: Apply
-  name: agents
+  name: deploy
   spec:
     resources:
-      - agent.yaml
-- kind: Toggle
-  name: perper
-  spec:
-    parameter: deployPerper
-    resources:
-      - perper-deployment.yaml
+      - deployment-template.yaml

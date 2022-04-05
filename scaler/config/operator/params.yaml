@@ -1,3 +1,0 @@
-agents:
-  container-sample:
-    image: perper-agent:1.0.0

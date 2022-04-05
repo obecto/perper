@@ -11,6 +11,7 @@ spec:
   containers:
   - name: agent
     image: {{ $.Params.image }}
+    command: {{ $.Params.command }}
     env:
     - name: X_PERPER_AGENT
       value: {{ $.Params.agent }}
@@ -20,9 +21,9 @@ spec:
       value: perper-fabric:10800
     - name: PERPER_FABRIC_ENDPOINT
       value: http://perper-fabric:40400
-    {{ range $key, $value := $.Params.env }}
-    - name: $key
-      value: $value
+    {{ range $envParam := $.Params.env }}
+    - name: {{ $envParam.name }}
+      value: {{ $envParam.value }}
     {{ end }}
   restartPolicy: Never
 {{ end }}
