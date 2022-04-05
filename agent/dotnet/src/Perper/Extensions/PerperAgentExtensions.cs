@@ -67,7 +67,9 @@ namespace Perper.Extensions
 
         public static async Task DestroyAsync(this PerperAgent agent)
         {
-            await foreach (var child in agent.GetChildren())
+            await CallAsync(agent, PerperContext.StopFunctionName).ConfigureAwait(false);
+
+            await foreach (var child in agent.GetChildren()) // TODO: Move to the implementation for Stop() instead of managing the agent's children directly
             {
                 await new PerperAgent(child.Value, child.Key).DestroyAsync().ConfigureAwait(false);
             }

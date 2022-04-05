@@ -1,6 +1,4 @@
 using System.Threading.Tasks;
-
-using Perper.Protocol.Cache;
 using System;
 
 namespace Perper.Protocol
