@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: perper-fabric
-        image: obecto/perper-fabric:0.8.0
+        image: {{$.Params.perperImage}}
         command: ['perper-fabric/bin/perper-fabric', '-d', 'perper-fabric/config/example.xml']
         ports:
             - containerPort: 10800
@@ -51,9 +51,9 @@ spec:
     spec:
       containers:
       - name: perper-scaler
-        image: perper-scaler:1.0.0
+        image: {{$.Params.perperScalerImage}}
 ---
-kind: ClusterRole
+kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: perper-scaler-role
@@ -66,14 +66,13 @@ rules:
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
   name: perper-scaler-role-binding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
+  kind: Role
   name: perper-scaler-role
 subjects:
   - kind: ServiceAccount
     name: default
-    namespace: default
