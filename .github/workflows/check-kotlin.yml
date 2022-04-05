@@ -13,4 +13,5 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Build Kotlin code
+      working-directory: ./fabric
       run: ./gradlew build --no-deamon

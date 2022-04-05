@@ -14,13 +14,13 @@ jobs:
       - uses: actions/setup-dotnet@v1
         with:
           dotnet-version: '5.0.x'
+
       - run: dotnet tool install --global dotnet-format --version 5.0
 
       - uses: actions/checkout@v1
 
       - name: Build dotnet
-        working-directory: .
-        run: dotnet buil
+        run: dotnet build
 
       - name: Format dotnet
         run: ~/.dotnet/tools/dotnet-format --fix-style warn --fix-whitespace --check
