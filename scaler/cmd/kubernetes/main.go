@@ -36,8 +36,10 @@ import (
 func run(ctx context.Context) error {
 	addr := "perper-fabric:40400" // TODO: accept flags
 
-	namespace := "default" // TODO: accept flags
-
+	content, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace") 
+	namespace := string(content)
+	fmt.Fprintf(os.Stdout, "Scaler will start in %s namespace. \n", namespace)
+							
 	fabricOptions := fabric.DefaultFabricOptions() // TODO: accept flags
 
 	kubernetesScalerOptions := kubernetesscaler.KubernetesScalerOptions{

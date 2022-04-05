@@ -3,6 +3,7 @@ using System.Linq;
 
 using Apache.Ignite.Core.Binary;
 
+using Perper.Extensions.Collections;
 using Perper.Model;
 using Perper.Protocol.Cache;
 
@@ -22,7 +23,8 @@ namespace Perper.Protocol
         public static ICollection<BinaryTypeConfiguration> StandardTypeConfigurations { get; } = new[]
         {
             new BinaryTypeConfiguration(typeof(PerperStream)),
-            new BinaryTypeConfiguration(typeof(PerperAgent))
+            new BinaryTypeConfiguration(typeof(PerperAgent)),
+            new BinaryTypeConfiguration(typeof(PerperDictionary<string,string>)),
         };
 
         public static ICollection<BinaryTypeConfiguration> TypeConfigurations { get; } =
