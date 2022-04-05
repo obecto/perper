@@ -9,7 +9,7 @@ namespace Perper.Protocol
         {
             var queryEntity = new QueryEntity(typeof(int), typeof(T));
 
-            return Ignite.GetOrCreateCache<int, T>(new CacheClientConfiguration( $"{instance}-list-{name}", queryEntity));
+            return Ignite.GetOrCreateCache<int, T>(new CacheClientConfiguration($"{instance}-list-{name}", queryEntity));
         }
 
         public ICacheClient<string, T> GetListMetaCache<T>(string instance, string name)

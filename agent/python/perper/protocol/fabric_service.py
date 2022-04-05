@@ -75,12 +75,12 @@ class FabricService:
 
     def create_instance(self, instance, agent):
         return self.create_execution(instance, "Registry", agent, "Run", [])
-        #instance_data = InstanceData(agent=agent)
-        #return put_if_absent_or_raise(self.instances_cache, instance, instance_data)
+        # instance_data = InstanceData(agent=agent)
+        # return put_if_absent_or_raise(self.instances_cache, instance, instance_data)
 
     def remove_instance(self, instance):
         return self.remove_execution(instance)
-        #return self.instances_cache.remove_key(instance)
+        # return self.instances_cache.remove_key(instance)
 
     # EXECUTIONS:
 

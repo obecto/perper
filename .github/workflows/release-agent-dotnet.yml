@@ -1,11 +1,8 @@
-name: Perper Dotnet Agent
+name: Release .NET Agent
 
 on:
-  push:
-    paths:
-      - 'agent/dotnet/src/Perper/**'
-    branches:
-      - master
+  release:
+    types: [created]
 
 jobs:
   build:

@@ -25,6 +25,6 @@ namespace Perper.Extensions.Collections
 
         public Task<T> PopAsync();
 
-        public Task<T> DequeueAsync();   
+        public Task<T> DequeueAsync();
     }
 }

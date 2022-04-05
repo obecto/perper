@@ -47,12 +47,12 @@ namespace Perper.Application
         public async Task RunAsync(CancellationToken cancellationToken = default)
         {
             var fabricService = await PerperConnection.EstablishConnection().ConfigureAwait(false);
-            await using(fabricService.ConfigureAwait(false))
+            await using (fabricService.ConfigureAwait(false))
             {
                 AsyncLocals.SetConnection(fabricService);
 
-                await RunInServiceContext(cancellationToken).ConfigureAwait(false); 
-            }            
+                await RunInServiceContext(cancellationToken).ConfigureAwait(false);
+            }
         }
 
         public Task RunInServiceContext(CancellationToken cancellationToken = default)

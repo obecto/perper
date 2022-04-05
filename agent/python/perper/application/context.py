@@ -22,7 +22,6 @@ def run_init_delegate(function, use_deploy_init=False):
         register_delegate("Init", function, True)
 
 
-
 def register_delegate(delegate, function, is_init=False):
     async def helper():
         if is_init:

@@ -4,10 +4,10 @@ import com.obecto.perper.fabric.cache.AgentType
 import com.obecto.perper.fabric.cache.ExecutionData
 import com.obecto.perper.fabric.cache.InstanceData
 import com.obecto.perper.fabric.cache.StreamListener
+import com.obecto.perper.protobuf.AllExecutionsResponse
 import com.obecto.perper.protobuf.ExecutionFinishedRequest
 import com.obecto.perper.protobuf.ExecutionsRequest
 import com.obecto.perper.protobuf.ExecutionsResponse
-import com.obecto.perper.protobuf.AllExecutionsResponse
 import com.obecto.perper.protobuf.FabricGrpcKt
 import com.obecto.perper.protobuf.ListenerAttachedRequest
 import com.obecto.perper.protobuf.StreamItemsRequest
@@ -228,13 +228,15 @@ class FabricService(var port: Int = 40400) : Service {
 
             try {
                 return AllExecutionsResponse.newBuilder().also {
-                    it.addAllExecutions(queryCursor.map({ entry ->
-                        ExecutionsResponse.newBuilder().also {
-                            it.instance = entry.value.instance
-                            it.delegate = entry.value.delegate
-                            it.execution = entry.key
-                        }.build()
-                    }))
+                    it.addAllExecutions(
+                        queryCursor.map({ entry ->
+                            ExecutionsResponse.newBuilder().also {
+                                it.instance = entry.value.instance
+                                it.delegate = entry.value.delegate
+                                it.execution = entry.key
+                            }.build()
+                        })
+                    )
                 }.build()
             } catch (e: CancellationException) {
                 throw e
