@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Perper.Extensions.Collections;
 using Perper.Model;
 using Perper.Protocol;
 
@@ -66,7 +67,15 @@ namespace Perper.Extensions
 
         public static async Task DestroyAsync(this PerperAgent agent)
         {
+            await foreach (var child in agent.GetChildren())
+            {
+                await new PerperAgent(child.Value, child.Key).DestroyAsync().ConfigureAwait(false);
+            }
+
             await AsyncLocals.FabricService.RemoveInstance(agent.Instance).ConfigureAwait(false);
         }
+
+        public static PerperDictionary<string, string> GetChildren(this PerperAgent agent) =>
+            new(agent.Instance, "children");
     }
 }
