@@ -28,4 +28,4 @@ async def run(agent, delegates={}, *, use_instances=False):
             Overloads[str, str, Func[Task]](agent, delegate, HandlerUtils.
                                             WrapHandler(create_delegate_handler(function, loop)))
 
-    await task_to_future(perper_startup.RunAsync())
+    await task_to_future(lambda ct: perper_startup.RunAsync(ct))
