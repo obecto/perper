@@ -5,18 +5,22 @@ from ..application.startup_utils import task_to_future
 
 startup_function_name = "Startup"
 from Perper.Extensions import PerperContext, AsyncLocals
+from System import Action, Array, Object, Type
+import clr
 #
 #
 # def get_agent():
 #     return PerperAgent(fabric_execution.get().agent, fabric_execution.get().instance)
 
 
-async def call(delegate, *parameters, return_type=None):
+async def call(delegate, *parameters, void=True):
     AsyncLocals.SetConnection(fabric_service.get())
-    if not return_type:
+    if void:
         return await task_to_future(PerperContext.CallAsync(delegate, *parameters))
     else:
-        return await task_to_future(PerperContext.CallAsync[return_type](delegate, *parameters))
+        # Object array is passed to perper as return type to avoid conversion issues
+        t = Array.CreateInstance(clr.GetClrType(Object), 3).GetType()
+        return await task_to_future(PerperContext.CallAsync[t](delegate, *parameters))
 #
 #
 # async def start_agent(agent, *parameters):
