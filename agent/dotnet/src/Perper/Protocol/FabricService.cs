@@ -50,7 +50,9 @@ namespace Perper.Protocol
         {
             CancellationTokenSource.Cancel();
             await TaskCollection.GetTask().ConfigureAwait(false);
+            #if NET60
             GC.SuppressFinalize(this);
+            #endif
         }
 
         protected virtual void Dispose(bool disposing)
