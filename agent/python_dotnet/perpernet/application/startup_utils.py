@@ -35,21 +35,19 @@ def create_delegate_handler(func, loop):
         fabric_execution.set(_execution)
         arguments = await task_to_future(fabric_service.get().ReadExecutionParameters(_execution.Execution))
         result = func(*arguments)
-        print(result)
 
         if isinstance(result, Awaitable):
             result = await result
         if result is None:
             await task_to_future(fabric_service.get().WriteExecutionFinished(_execution.Execution))
         elif isinstance(result, AsyncIterable):
-            print("execution", _execution.Execution)
             await task_to_future(fabric_service.get().WaitListenerAttached(_execution.Execution))
             async for data in result:
                 if isinstance(data, tuple) and len(data) == 2 and isinstance(data[0], int):
                     (key, data) = data
                     await task_to_future(fabric_service.get().WriteStreamItem[return_type](_execution.Execution, key, data))
                 else:
-                    # Generic Overloads are not supported by pythonnet
+                    # Generic Overloads are not supported by pythonnet, therefore the CurrentTicks arg
                     await task_to_future(fabric_service.get().WriteStreamItem[return_type](_execution.Execution,
                                          fabric_service.get().CurrentTicks, data))
             await task_to_future(fabric_service.get().WriteExecutionFinished(_execution.Execution))

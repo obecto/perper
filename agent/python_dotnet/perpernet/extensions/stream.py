@@ -56,7 +56,6 @@ def _index_to_query_entities(index):
 
 
 def _start_stream(delegate, action, ephemeral, packed, query_entities):
-    print(delegate, action, ephemeral, packed, query_entities)
     stream_builder = PerperContext.Stream(delegate)
     if not ephemeral:
         stream_builder = stream_builder.Persistent()
@@ -87,23 +86,6 @@ async def enumerate_stream(stream, return_type=Object):
         if not await task_to_future(stream_enum.MoveNextAsync(), value_task=True):
             break
         yield stream_enum.Current
-    # finally:
-    #     if stream_enum is not None:
-    #         await task_to_future(stream_enum.DisposeAsync().AsTask())
-
-
-async def enumerate_stream_with_keys(stream):
-    listener = fabric_service.get().generate_name(stream.stream)  # TODO: keep state while iterating
-
-    keys = await fabric_service.get().enumerate_stream_item_keys(stream.stream, stream.startIndex, stream.stride, stream.localToData)
-    fabric_service.get().set_stream_listener_position(listener, stream.stream, fabric_service.get().LISTENER_PERSIST_ALL)
-
-    try:
-        async for key in keys:
-            fabric_service.get().set_stream_listener_position(listener, stream.stream, key)
-            yield (key, fabric_service.get().read_stream_item(stream.stream, key))
-    finally:
-        fabric_service.get().remove_stream_listener(listener)
 
 
 async def query_stream(stream, type_name, sql_condition, *sql_parameters):

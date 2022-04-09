@@ -18,7 +18,6 @@ async def run(agent, delegates={}, *, use_instances=False):
     perper_startup = PerperStartup()
     if "Init" in delegates:
         init_func = delegates.pop("Init")
-        init_instance = f"{agent}-init"
         perper_startup = perper_startup.AddInitHandler. \
             Overloads[str, Func[Task]](agent, HandlerUtils.
                                        WrapHandler(create_init_handler(init_func, loop)))
@@ -28,4 +27,4 @@ async def run(agent, delegates={}, *, use_instances=False):
             Overloads[str, str, Func[Task]](agent, delegate, HandlerUtils.
                                             WrapHandler(create_delegate_handler(function, loop)))
 
-    await task_to_future(lambda ct: perper_startup.RunAsync(ct))
+    await task_to_future(perper_startup.RunAsync())
