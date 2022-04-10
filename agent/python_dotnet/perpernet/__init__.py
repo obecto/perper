@@ -5,7 +5,7 @@ import sys
 import os.path
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-dotnetAgentDllFolder = os.path.abspath(os.path.join(ROOT_DIR, '../../..', "samples/dotnet/BasicSample/bin/Debug/net5.0/"))
+dotnetAgentDllFolder = os.path.abspath(os.path.join(ROOT_DIR, 'PerperDlls/bin/Debug/net5.0/'))
 sys.path.append(dotnetAgentDllFolder)
 
 runtime_path = os.path.abspath(os.path.join(ROOT_DIR, "../runtimeconfig.json"))
@@ -15,7 +15,6 @@ set_runtime(rt)
 import clr
 clr.AddReference("Perper")
 
-# from .model import *
 from .extensions import *
 from .application import *
 

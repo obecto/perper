@@ -1,7 +1,5 @@
-import asyncio
 from .context_vars import fabric_execution, fabric_service
-# from ..model import PerperAgent
-from ..application.startup_utils import task_to_future
+from ..application import task_to_future
 
 startup_function_name = "Startup"
 from Perper.Extensions import PerperContext, AsyncLocals

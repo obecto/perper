@@ -1,17 +1,11 @@
-import random
-import sys
 import asyncio
-import attr
-from ..model import PerperStream
-from ..protocol.ignite_extensions import create_query_entity, create_query_field
-from .context_vars import fabric_service, fabric_execution
-from ..application.startup_utils import task_to_future
 
-from Perper.Extensions import PerperContext, PerperStreamBuilder, AsyncLocals, PerperStreamExtensions
-from System.Runtime.CompilerServices import ValueTaskAwaiter
-from System.Threading.Tasks import ValueTask
+from Perper.Extensions import PerperContext, AsyncLocals, PerperStreamExtensions
 from System import Boolean, Object
-import clr
+
+from .context_vars import fabric_service, fabric_execution
+from ..protocol.ignite_extensions import create_query_entity, create_query_field
+from ..application import task_to_future
 
 
 async def start_stream(delegate, *parameters, action=False, ephemeral=True, packed=False, index=None):
@@ -66,17 +60,13 @@ def _start_stream(delegate, action, ephemeral, packed, query_entities):
 
     return stream_builder
 
-
-def replay_stream(stream, replay=True, replay_from=0):
-    return attr.evolve(stream, startIndex=-1 if not replay else replay_from)
-
-
-def local_stream(stream, local_to_data=True):
-    return attr.evolve(stream, localToData=local_to_data)
-
-
-# def filter_stream(stream, filter):
-#    return attr.evolve(stream, filter = filter)
+#
+# def replay_stream(stream, replay=True, replay_from=0):
+#     return attr.evolve(stream, startIndex=-1 if not replay else replay_from)
+#
+#
+# def local_stream(stream, local_to_data=True):
+#     return attr.evolve(stream, localToData=local_to_data)
 
 
 async def enumerate_stream(stream, return_type=Object):
@@ -113,5 +103,5 @@ def query_stream_sync(stream, type_name, sql_condition, *sql_parameters):
 
 
 def destroy_stream(stream):
-    fabric_service.get().remove_execution(stream.stream)
-    fabric_service.get().remove_stream(stream.stream)
+    fabric_service.get().RemoveExecution(stream.Stream)
+    fabric_service.get().RemoveStream(stream.Stream)
