@@ -30,34 +30,34 @@ def create_delegate_handler(func, loop):
     async def wrap(_fabric, _execution):
         fabric_service.set(_fabric)
         fabric_execution.set(_execution)
-        arguments = await task_to_future(fabric_service.get().ReadExecutionParameters(_execution.Execution))
+        arguments = await task_to_future(lambda _: fabric_service.get().ReadExecutionParameters(_execution.Execution))
         result = func(*arguments)
 
         if isinstance(result, Awaitable):
             result = await result
 
         if result is None:
-            await task_to_future(fabric_service.get().WriteExecutionFinished(_execution.Execution))
+            await task_to_future(lambda _: fabric_service.get().WriteExecutionFinished(_execution.Execution))
 
         elif isinstance(result, AsyncIterable):
-            await task_to_future(fabric_service.get().WaitListenerAttached(_execution.Execution))
+            await task_to_future(lambda ct: fabric_service.get().WaitListenerAttached(_execution.Execution, cancellationToken=ct))
 
             async for data in result:
                 if isinstance(data, tuple) and len(data) == 2 and isinstance(data[0], int):
                     (key, data) = data
-                    await task_to_future(fabric_service.get().WriteStreamItem[return_type](_execution.Execution, key, data))
+                    await task_to_future(lambda _: fabric_service.get().WriteStreamItem[return_type](_execution.Execution, key, data))
 
                 else:
                     # Generic Overloads are not supported by pythonnet, therefore the CurrentTicks arg
-                    await task_to_future(fabric_service.get().WriteStreamItem[return_type](_execution.Execution,
+                    await task_to_future(lambda _: fabric_service.get().WriteStreamItem[return_type](_execution.Execution,
                                          fabric_service.get().CurrentTicks, data))
-            await task_to_future(fabric_service.get().WriteExecutionFinished(_execution.Execution))
+            await task_to_future(lambda _: fabric_service.get().WriteExecutionFinished(_execution.Execution))
 
         elif isinstance(result, tuple):
-            await task_to_future(fabric_service.get().WriteExecutionResult(_execution.Execution, result))
+            await task_to_future(lambda _: fabric_service.get().WriteExecutionResult(_execution.Execution, result))
 
         else:
-            await task_to_future(fabric_service.get().WriteExecutionResult(_execution.Execution, [result]))
+            await task_to_future(lambda _: fabric_service.get().WriteExecutionResult(_execution.Execution, [result]))
 
     return Func[Task](lambda: future_to_task(wrap(AsyncLocals.FabricService, AsyncLocals.FabricExecution), loop))
 

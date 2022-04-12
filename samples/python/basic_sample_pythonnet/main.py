@@ -41,7 +41,6 @@ async def processor(generator, batch_size):
             batch = []
 
 
-
 async def consumer(processor):
     async for batch in perpernet.enumerate_stream(processor):
         print(f"Received batch of {len(batch)} messages.")

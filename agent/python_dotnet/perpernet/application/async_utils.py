@@ -1,14 +1,26 @@
 import asyncio
+from asyncio import CancelledError
 
 from System import Action
+from System.Threading import CancellationTokenSource
 from System.Threading.Tasks import TaskCompletionSource
 
 
 def task_to_future(task, value_task=False):
+    token_source = CancellationTokenSource()
+    token = token_source.Token
+    task = task(token)
+
     if value_task:
         task = task.AsTask()
     loop = asyncio.get_running_loop()
     future = loop.create_future()
+
+    def cancelled_callback(fut):
+        if fut.cancelled():
+            token_source.Cancel()
+
+    future.add_done_callback(cancelled_callback)
 
     def cont():
         try:
@@ -33,3 +45,10 @@ def future_to_task(future, loop, return_type=None):
 
     loop.call_soon_threadsafe(f, future)
     return task_c.Task
+
+
+async def convert_async_iterable(async_iterable):
+    while True:
+        if not await task_to_future(lambda _: async_iterable.MoveNextAsync(), value_task=True):
+            break
+        yield async_iterable.Current
