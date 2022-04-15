@@ -2,7 +2,6 @@ using System;
 using System.Threading.Tasks;
 
 using Perper.Extensions;
-using Perper.Model;
 namespace MyFirstAgent
 {
     public static class Init
