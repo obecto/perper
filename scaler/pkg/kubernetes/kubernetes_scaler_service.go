@@ -89,6 +89,7 @@ func (c *kubernetesScalerService) Start(ctx context.Context) error {
 								for _, currentInstance := range currentInstances {
 									found := false
 									for _, newInstance := range instances {
+										fmt.Fprintf(os.Stdout, "Compare: %s to with %s\n", currentInstance, string(newInstance))
 										if currentInstance == string(newInstance) {
 											found = true
 											break
