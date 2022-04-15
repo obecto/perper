@@ -14,4 +14,4 @@ jobs:
 
     - name: Build Kotlin code
       working-directory: ./fabric
-      run: ./gradlew build --no-deamon
+      run: ./gradlew build --no-daemon
