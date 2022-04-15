@@ -8,7 +8,7 @@ Perper consists of two main building blocks: Perper Fabric and Perper Agents, ar
 
 Perper Fabric is built on top of Ignite, utilising its data grid, compute grid and clustering capabilities to provide orchestration layer for agents.
 
-Fabric exposes a GRPC interface that complements Ignite's default thin client interface by adding the ability to listen for executions and streams.
+Fabric exposes a GRPC interface that complements Ignite's default thin client interface by adding the ability to listen for executions and streams. More details about that are available in the [Fabric Protocol](./protocol.md).
 
 Additionally, Fabric keeps track of stream listeners and ephemeral streams
 
@@ -31,7 +31,7 @@ Agent processes are typically implemented using one of the available agent libra
 ### .NET agent library architecture
 
 The .NET agent library is split into 3 layers:
-* The Protocol layer: Implements the [Fabric Protocol](./protocol.md), as a FabricService singleton which encapsulates the connection to Perper Fabric.
+* The Protocol layer: Encapsulates a Perper Fabric connection through the `FabricService` class.
   * The Model layer: contains definitions of standard objects from the protocol, that are not required for using Fabric but are basic to working with libraries in other languages.
 * The Extensions layer: Contains extension methods that allow using objects from the Model layer without needing to refer to the Protocol layer directly. (It achieves that by using [`AsyncLocal`](https://docs.microsoft.com/en-us/dotnet/api/system.threading.asynclocal-1)-s to pass the Perper connection and execution metadata through the C# async context.)
 * The Application layer: contains classes for starting up a Perper Agent Process and hooking up methods to handle Executions.

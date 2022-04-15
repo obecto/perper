@@ -6,33 +6,39 @@ In addition, Perper makes use of Object Capabilities. The only way for one Agent
 
 ## Agent
 
-Agents are similar to classes in conventinal OOP programming. They can be instanciated, producing an Agent Instance (confusingly often also named an "Agent"); they can have state; they can expose methods to be called through executions; and they can interact with streams. As such, agents are the basic unit of encapsulation in a Perper system.
-
-### Agent Type
-
-"Agent Type" is used for disambiguation in cases when "Agent" might be misinterpreted to mean "Agent Instance".
+Agents are similar to classes in conventinal OOP programming. They can be instanciated, producing an Agent Instance (confusingly often also called an "Agent"); they can hold State; they can expose methods to be called via Executions; and they can interact with Streams. As such, agents are the basic unit of encapsulation within a Perper application.
 
 ### Agent Instance
 
 An Agent Instance is an individual instance of an Agent.
 
+### Agent Type
+
+"Agent Type" is a term used for disambiguation in cases when "Agent" might be misinterpreted to mean "Agent Instance".
+
 ## Execution
 
-Executions are used to model anything that needs to run, is currently running, or has just finished running. Every Execution is associated with an Agent Instance, a "delegate" specifying the method to be called, arbitrary parameters passed from the caller, and, if the Execution has finished, a result or error value to be passed back to the caller.
+Executions are used to model anything that needs to run, is currently running, or has just finished running. Every Execution is associated with an Agent Instance, and may contain arbitrary parameters from the caller, or, once it has finished, a result or error value to be passed back to the caller.
 
-Keeping in our analogy with typical OOP programming, executions take on roughly the role of stack frames, though without storing intermediate state.
+Keeping in our analogy with typical OOP programming, executions take on roughly the role of stack frames.
+
+### Delegate
+
+The Delegate of an Execution is just the method name that should be called on the target Agent Instance.
 
 ## State
 
 In its essence, State is a distributed key-value store that can be accessed by executions in order to persist data. It ensures that even if a machine or a process dies, we can resume execution when the affected processes are restarted elsewhere.
 
-A State can be linked to an Agent Instance or to an Execution; and an Instance or Execution can have multiple states that it can refer to by name. In later versons, there would also be the option for a State to be free-standing and freely shared between Agent Instances, akin to shared memory.
+While an Agent Instance can have multiple States, a State is always linked to just one Agent Instance.
+
+<!--In later versons, there would also be the option for a State to be free-standing and shared between Agent Instances, akin to shared memory.-->
 
 ## Stream
 
 Streams are similar to states in that they allow for data to be persisted. However, unlike states, they also allow for listeners to wait until there is new data available for reading. Perper allows for the construction of arbitrary stream graphs between agents (including cyclic graphs), allowing for complex streaming calculations to be expressed simply.
 
-Streams can have multiple writers and multiple listeners -- where both writers and listeners are executions. Every listener receives the whole of the Stream.
+Streams can have multiple Executions writing to them and multiple Executions listening. Every listener receives the whole of the Stream.
 
 ### Ephemeral Stream
 
