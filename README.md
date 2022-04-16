@@ -24,8 +24,8 @@ Built by [Obecto](https://www.obecto.com/) on top of [Apache Ignite](https://ign
 
 User documentation:
 
-* [Concepts](./concepts.md)
-* [C# Usage Tutorial](./dotnet-tutorial.md)
+* [Concepts](./docs/concepts.md)
+* [C# Usage Tutorial](./docs/dotnet-tutorial.md)
 <!--TODO: * [Python Usage Tutorial](./python-tutorial.md)-->
 
 ## Contributing
@@ -37,8 +37,8 @@ Please make sure to update tests as appropriate.
 
 Contributor documentation:
 
-* [Architecture](./architecture.md)
-* [Fabric Protocol](./protocol.md)
+* [Architecture](./docs/architecture.md)
+* [Fabric Protocol](./docs/protocol.md)
 
 ## License
 
