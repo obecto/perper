@@ -83,5 +83,7 @@ A [Stream](#stream) can be indexed, and later queried, allowing for the fast ret
 
 Perper makes use of Object Capabilities for security. The only way for user code to access an object (be it an Agent, or a Stream, or something else) in a Perper system is through a reference to it. Such a reference can be obtained only by either directly creating the object or receiving a reference to it.
 
+Object references can be passed between [Executions](#execution) as parameters or return values, stored inside [States](#state), or sent along [Streams](#stream).
+
 You can read more about the Object-Capability Model on [Wikipedia](https://en.wikipedia.org/wiki/Object-capability_model).
 
