@@ -78,7 +78,7 @@ using Perper.Application;
 await new PerperStartup().AddAssemblyHandlers("MyFirstAgent").WithDeployInit().RunAsync(default).ConfigureAwait(false);
 ```
 
-Congratulations, you now have a Perper agent! An empty one, but an agent nontheless.
+Congratulations, you now have a Perper agent! An empty one, but an agent nonetheless.
 
 If you were to run the project right now, it would print something like the following before exiting:
 
@@ -95,7 +95,7 @@ PERPER_FABRIC_ENDPOINT: http://127.0.0.1:40400
   * `AddAssemblyHandlers` can also use another assembly or look for classes filtered by another namespace. Alternatively, there is `AddClassHandlers` which would add all of a class's methods as handlers. Or, one could also use `AddHandler`/`AddInitHandler` to specify handlers manually. For now, we will stick to `AddAssemblyHandlers`, as it allows us to split our code more easily.
 * Then it used `WithDeployInit` to signal that the init handlers should run when we run the agent _process_, as opposed to when we create an instance" of the agent; this function should go away by the time `0.8.0` is released, but for now it is the primary way for us to get some code executing initially.
 * Finally, `PerperStartup`'s `RunAsync` method is called, and it printed some debug information before connecting to Fabric.
-* At this point, we still haven't defined any non-init handlers, so our agent process had nothing to do and promptly exited... but we are going to fix in a monment.
+* At this point, we still haven't defined any non-init handlers, so our agent process had nothing to do and promptly exited... but we are going to fix in a moment.
 
 ### Writing the Launcher
 
@@ -188,7 +188,7 @@ Hello world from StreamPrinter!
 * `PerperStartup` called our `Init` handler. In parallel, it started listening for executions for `StreamPrinter`.
 * Our `Init` handler used `PerperContext.CallAsync` to create a new execution for `StreamPrinter`.
 * `PerperStartup` picked up the execution for `StreamPrinter` and called our handler.
-* Our `StreamPrinter` handler printed a hello world message. Except... it's still not comming from a stream.
+* Our `StreamPrinter` handler printed a hello world message. Except... it's still not coming from a stream.
 
 ### Adding a stream
 
@@ -287,7 +287,7 @@ Note: This is the first time you might need to restart Fabric between runs. Sinc
 
 ### Adding another agent
 
-Our code so far achieves the stated goal of streaming a hello world text through Perper. However, to demonstrate more of Perper's functionallity and to, uh, to promote code reusability, we can move `StreamPrinter` to it's own seperate agent.
+Our code so far achieves the stated goal of streaming a hello world text through Perper. However, to demonstrate more of Perper's functionality and to, uh, to promote code reusability, we can move `StreamPrinter` to it's own separate agent.
 
 To this end, make another agent project called `StreamPrinterAgent`, adding a reference to Perper like [before](#creating-an-agent).
 
@@ -347,7 +347,7 @@ namespace MyFirstAgent
 }
 ```
 
-Now, if you run both projects, in seperate terminals, you should see that `Init` and `HelloWorldGenerator` run in the first agent, while `StreamPrinter` runs in the other agent.
+Now, if you run both projects, in separate terminals, you should see that `Init` and `HelloWorldGenerator` run in the first agent, while `StreamPrinter` runs in the other agent.
 
 ```
 ... (first terminal)
@@ -362,7 +362,7 @@ Hello World through stream!
 
 * The first agent's `PerperStartup` called our `Init` handler.
 * As before, our `Init` handler used `PerperContext.Stream` to get a `PerperStream` for the `HelloWorldGenerator` stream.
-* Our `Init` handler used `PerperContext.StartAgent` to create a new insance of the for `StreamPrinterAgent` agent.
+* Our `Init` handler used `PerperContext.StartAgent` to create a new instance of the for `StreamPrinterAgent` agent.
 * The stream printer's `PerperStartup` then would have called our `Start` handler, had we provided one.
 * Our `Init` handler used `PerperContext.CallAsync` to create a new execution for `StreamPrinter`, and passed it the `PerperStream` object.
 * The stream printer's `PerperStartup` picked the execution up, and started the `StreamPrinter` handler.

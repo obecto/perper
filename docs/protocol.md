@@ -15,7 +15,7 @@
 
 </details>
 
-The Perper Fabric Protocol is built on top of [Ignite's thin client protocol](https://ignite.apache.org/docs/2.12.0/thin-clients/getting-started-with-thin-clients) and [GRPC](https://grpc.io/). It uses specally-named caches to ensure different agents implementations can communicate with each other.
+The Perper Fabric Protocol is built on top of [Ignite's thin client protocol](https://ignite.apache.org/docs/2.12.0/thin-clients/getting-started-with-thin-clients) and [GRPC](https://grpc.io/). It uses specially-named caches to ensure different agents implementations can communicate with each other.
 
 ## Versioning
 
@@ -33,10 +33,10 @@ The "executions" cache is a special cache of `ExecutionData` objects containing 
 * `finished`, boolean: set to true to signal that the Execution has completed execution.
 * `parameters`, object array, optional: arbitrary parameters passed to the call.
 * `results`, object array, optional: arbitrary results returned by the call. Note that "null", an empty array, and an array of one "null" element can all be used to describe a null return value.
-* `error`, string, optional: arbitrary error string of the call. Typically expected to be a short form of the exception that occured as exception-supporting languages would typically raise an exception containing this string.
+* `error`, string, optional: arbitrary error string of the call. Typically expected to be a short form of the exception that occurred as exception-supporting languages would typically raise an exception containing this string.
   * If both `result` and `error` are set, implementations may opt to ignore the result and directly raise an error.
 
-Since this cache has high read traffic, writing extra metadata to the ExecutionData object is discouraged.
+Since this cache has high read traffic, writing extra metadata to the `ExecutionData` object is discouraged.
 
 ### Stream listeners cache
 
@@ -66,14 +66,14 @@ Usage of the standard objects types is currently not enforced; however, later ve
 
 `PerperAgent` objects describe a Perper agent instance and consist of the following fields:
 * `agent`: The agent type in question.
-* `instance`: The agent insance ID.
+* `instance`: The agent instance ID.
 
 #### PerperStream
 
 `PerperStream` objects describe a Perper stream and consist of the following fields:
 * `stream`: The stream ID. (Hence, doubling as the name of the cache containing the stream's items)
-* `startIndex`: The starting index for items in this stream. `-1` signifies "autodetect".
-* `stride`: The stride (interger difference between keys) of this "packed" stream. `0` signifies a stream that is not packed.
+* `startIndex`: The starting index for items in this stream. `-1` signifies "auto-detect".
+* `stride`: The stride (integer difference between keys) of this "packed" stream. `0` signifies a stream that is not packed.
 * `localToData`: Whether the stream should be processed in a local-to-data manner.
 
 Receivers of `PerperStream` objects may freely change the start index, stride or local to data values, so those should not be used for the purposes of security.
@@ -86,7 +86,7 @@ The GRPC protocol is described in [`fabric.proto`](../proto/fabric.proto).
 
 * Executions
   * Create an Execution: Put a new `ExecutionData` in the `"executions"` cache with the respective values set and a newly-generated ID.
-  * Cancel an Execution: Delete the `ExecutionData` with the respeciive ID from the `"executions"` cache.
+  * Cancel an Execution: Delete the `ExecutionData` with the respective ID from the `"executions"` cache.
   * Wait for an Execution to complete: Make an `ExecutionFinished` GRPC call -- it will complete when the Execution is finished.
   * Listen for Executions: Make an `Executions` GRPC call -- it will return a list of active executions, followed by an item with `startOfStream` set, followed by any changes to the list of active executions -- with `canceled` marking executions that are either finished or canceled, and thus no longer active.
   * Complete an Execution: Update the `ExecutionData` in the `"executions"`, setting `finished` to `true` and `result` and `error` to their respective values.
@@ -96,8 +96,8 @@ The GRPC protocol is described in [`fabric.proto`](../proto/fabric.proto).
     1. Create an Execution with ID set to the ID of the new Instance, `instance` set to the Agent Type, and `agent` set to `"Registry"`.
     2. Create an Execution calling `Start` on the new Instance, and wait for it to complete.
   * Stop an Agent Instance:
-    1. Create an Execution calling `Stop` on the Instance to destoy, and wait for it to complete.
-    2. Cancel the Execution with the ID set to the ID of the Instance to destoy.
+    1. Create an Execution calling `Stop` on the Instance to destroy, and wait for it to complete.
+    2. Cancel the Execution with the ID set to the ID of the Instance to destroy.
 * Streams
   * Create a Stream:
     1. If there is a linked Execution to the stream, create an Execution with ID set to the stream's ID.
@@ -105,7 +105,7 @@ The GRPC protocol is described in [`fabric.proto`](../proto/fabric.proto).
     3. If the stream is persistent, put a `StreamListener` in the `"stream-listeners"` cache for the stream with ID `"{stream}-persist"` and position set to `-(2**63)`.
     4. If the linked Execution needs an initial listener to start, put a `StreamListener` in the `"stream-listeners"` cache for the stream with ID `"{stream}-trigger"` and position set to `(2**63)-1`.
   * Wait for listeners for a Stream: Make a `ListenerAttached` GRPC call -- it will complete when the there is a listener for that stream.
-  * Write an Stream Item: Write the new value in the stream's cache, with either a consequitive key (for a packed stream) or a key equal to the amount of 100-nanosecond ticks since Unix Epoch (for an unpacked stream).
+  * Write an Stream Item: Write the new value in the stream's cache, with either a consecutive key (for a packed stream) or a key equal to the amount of 100-nanosecond ticks since Unix Epoch (for an unpacked stream).
   * Listen for Stream Items:
     1. Put a `StreamListener` in the `"stream-listeners"` cache with position set to `(2**63)-1`.
     2. Make a `StreamItems` GRPC call to receive an ordered list of the keys available in the stream's cache.

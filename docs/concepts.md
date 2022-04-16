@@ -26,7 +26,7 @@ A Perper application is composed of many [Agents](#agent) -- encapsulated distri
 
 ## Agent
 
-Agents are similar to classes in conventinal OOP programming. They can be instanciated, producing an [Agent Instance](#agent-instance) (confusingly often also called an "Agent"); they can hold State; they can expose [Delegates](#delegate) to be called via [Executions](#execution); and they can interact with [Streams](#stream). As such, agents are the basic unit of encapsulation within a Perper application.
+Agents are similar to classes in conventional OOP programming. They can be instantiated, producing an [Agent Instance](#agent-instance) (confusingly often also called an "Agent"); they can hold State; they can expose [Delegates](#delegate) to be called via [Executions](#execution); and they can interact with [Streams](#stream). As such, agents are the basic unit of encapsulation within a Perper application.
 
 ### Agent Instance
 
@@ -34,7 +34,7 @@ An Agent Instance is an individual instance of an [Agent](#agent).
 
 ### Agent Type
 
-"Agent Type" is a term used for disambiguating in cases when "[Agent](#agent)" might be misinterpreted to mean "[Agent Instance](#agent-instance)".
+"Agent Type" is a term used for disambiguation in cases when "[Agent](#agent)" might be misinterpreted to mean "[Agent Instance](#agent-instance)".
 
 ## Execution
 
@@ -68,7 +68,7 @@ A Stream Item is a value inside a [Stream](#stream). Every Stream Item needs a m
 
 ### Packed Stream
 
-[Streams](#stream) marked as "packed" allow for items to be written out of order, as long as writers use consequitive keys -- those are, for example, useful for modelling time series data.
+[Streams](#stream) marked as "packed" allow for items to be written out of order, as long as writers use consecutive keys -- those are, for example, useful for modeling time series data.
 
 ### Ephemeral Stream
 

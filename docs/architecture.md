@@ -16,7 +16,7 @@ Perper consists of two main building blocks: Perper Fabric and Perper Agents, ar
 
 ## Perper Fabric
 
-Perper Fabric is built on top of [Apache Ignite](https://ignite.apache.org/), utilising its data grid, compute grid and clustering capabilities to provide an orchestration layer for agents.
+Perper Fabric is built on top of [Apache Ignite](https://ignite.apache.org/), utilizing its data grid, compute grid and clustering capabilities to provide an orchestration layer for agents.
 
 Fabric exposes a GRPC interface that complements Ignite's default thin client interface by adding the ability to listen for executions and streams. More details about that are available on the [Fabric Protocol](./protocol.md) page.
 
@@ -28,7 +28,7 @@ Perper Fabric is available as a [docker image](https://hub.docker.com/r/obecto/p
 
 ## Scaler
 
-The Scaler is a service component that dictates how agents instances are started, run, and stopped. It may allow for different agents' instances to run in seperate processes, to be scaled on demand, or to run local to data, based on scaler-specific configuration.
+The Scaler is a service component that dictates how agents instances are started, run, and stopped. It may allow for different agents' instances to run in separate processes, to be scaled on demand, or to run local to data, based on scaler-specific configuration.
 
 To interact with Perper agents, the scaler exposes an Agent interface whose every Execution represents an Agent Instance.
 
@@ -36,7 +36,7 @@ Currently, there are two implementations of the Scaler: one using Kubernetes to 
 
 ## Agent processes
 
-Agent processes implement the business logic of a Perper application. They are orchestrated by the Scaler and connect to Perper Fabric. A single Agent process can handle Executions linked to one or more Agent Insances, and, in exotic cases, can handle executions related to multiple Agents.
+Agent processes implement the business logic of a Perper application. They are orchestrated by the Scaler and connect to Perper Fabric. A single Agent process can handle Executions linked to one or more Agent Instances, and, in exotic cases, can handle executions related to multiple Agents.
 
 Agent processes are typically implemented using one of the available agent libraries:
 
