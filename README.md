@@ -2,9 +2,9 @@
 
 <div align="center">
 
-![Perper Logo](https://user-images.githubusercontent.com/5276727/163676997-c35a7e26-7ac9-45de-918e-0bd43b63ae2d.svg#gh-dark-mode-only)
+![Perper Logo](https://user-images.githubusercontent.com/5276727/163676998-0a5fcb2c-0f31-4e71-818e-a29d1a627eb1.svg#gh-dark-mode-only)
 
-![Perper Logo](https://user-images.githubusercontent.com/5276727/163676998-0a5fcb2c-0f31-4e71-818e-a29d1a627eb1.svg#gh-light-mode-only)
+![Perper Logo](https://user-images.githubusercontent.com/5276727/163676997-c35a7e26-7ac9-45de-918e-0bd43b63ae2d.svg#gh-light-mode-only)
 
 # Perper
 
