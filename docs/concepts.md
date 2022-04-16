@@ -1,53 +1,87 @@
 # Concepts
 
-Perper's programming model is based on "Agents" -- encapsulated distributed objects that can hold State, processes calls, and receive or produce streams.
+<details> <summary> Table of Contents </summary>
 
-In addition, Perper makes use of Object Capabilities. The only way for one Agent to be able to use another Agent or a Stream is if it has a reference to it -- either by virtue of creating a new Agent or by having been passed a reference earlier.
+* [Perper application](#perper-application)
+* [Agent](#agent)
+  * [Agent Instance](#agent-instance)
+  * [Agent Type](#agent-type)
+* [Execution](#execution)
+  * [Delegate](#delegate)
+* [State](#state)
+* [Stream](#stream)
+  * [Stream Item](#stream-item)
+  * [Packed Stream](#packed-stream)
+  * [Ephemeral Stream](#ephemeral-stream)
+  * [Indexed Stream](#indexed-stream)
+* [Object Capabilities](#object-capabilities)
+
+</details>
+
+![Visual concept map](./images/concepts.drawio.png)
+
+## Perper application
+
+A Perper application is composed of many [Agents](#agent) -- encapsulated distributed objects that can hold [State](#state), processes [Executions](#execution), and produce or consume [Streams](#stream). All of those are made available through [Object Capabilities](#object-capabilities), meaning that the only way to be able to use an Agent, State, Execution, or Stream is through a reference to it.
 
 ## Agent
 
-Agents are similar to classes in conventinal OOP programming. They can be instanciated, producing an Agent Instance (confusingly often also called an "Agent"); they can hold State; they can expose methods to be called via Executions; and they can interact with Streams. As such, agents are the basic unit of encapsulation within a Perper application.
+Agents are similar to classes in conventinal OOP programming. They can be instanciated, producing an [Agent Instance](#agent-instance) (confusingly often also called an "Agent"); they can hold State; they can expose [Delegates](#delegate) to be called via [Executions](#execution); and they can interact with [Streams](#stream). As such, agents are the basic unit of encapsulation within a Perper application.
 
 ### Agent Instance
 
-An Agent Instance is an individual instance of an Agent.
+An Agent Instance is an individual instance of an [Agent](#agent).
 
 ### Agent Type
 
-"Agent Type" is a term used for disambiguation in cases when "Agent" might be misinterpreted to mean "Agent Instance".
+"Agent Type" is a term used for disambiguating in cases when "[Agent](#agent)" might be misinterpreted to mean "[Agent Instance](#agent-instance)".
 
 ## Execution
 
-Executions are used to model anything that needs to run, is currently running, or has just finished running. Every Execution is associated with an Agent Instance, and may contain arbitrary parameters from the caller, or, once it has finished, a result or error value to be passed back to the caller.
+In Perper, Executions are used to model anything that needs to run, is currently running, or has just finished running. Every Execution is associated with an [Agent Instance](#agent-instance) and may contain arbitrary parameters from the caller, or, once it's finished, a result or error value.
 
-Keeping in our analogy with typical OOP programming, executions take on roughly the role of stack frames.
+Keeping in our analogy with typical OOP programming, Executions take on roughly the role of stack frames.
 
 ### Delegate
 
-The Delegate of an Execution is just the method name that should be called on the target Agent Instance.
+The Delegate of an [Executions](#execution) corresponds to the method name that is being called on the [Agent Instance](#agent-instance).
 
 ## State
 
-In its essence, State is a distributed key-value store that can be accessed by executions in order to persist data. It ensures that even if a machine or a process dies, we can resume execution when the affected processes are restarted elsewhere.
+States are a distributed key-value stores that can be accessed by [Executions](#execution) in order to persist data. They ensure that even if a machine or a process dies, execution can continue when the affected processes are restarted elsewhere.
 
-While an Agent Instance can have multiple States, a State is always linked to just one Agent Instance.
+An [Agent Instance](#agent-instance) can own multiple States.
 
 <!--In later versons, there would also be the option for a State to be free-standing and shared between Agent Instances, akin to shared memory.-->
 
 ## Stream
 
-Streams are similar to states in that they allow for data to be persisted. However, unlike states, they also allow for listeners to wait until there is new data available for reading. Perper allows for the construction of arbitrary stream graphs between agents (including cyclic graphs), allowing for complex streaming calculations to be expressed simply.
+Streams are similar to [States](#state) in that they allow for data to be persisted. However, unlike States, they also allow for listeners to wait until there is new data available for reading.
 
-Streams can have multiple Executions writing to them and multiple Executions listening. Every listener receives the whole of the Stream.
+Perper allows for the construction of arbitrary stream graphs between [Executions](#execution) at runtime, including cyclic graphs.
 
-### Ephemeral Stream
-
-A Stream can be marked as "ephemeral", which would cause items to be deleted after the all listeners have finished processing them.
-
-### Indexed Stream
-
-A Stream can be indexed and later queried, allowing for the fast retrieval of items from the Stream without needing to process all of it.
+Every Stream can have multiple [Executions](#execution) writing to it and multiple [Executions](#execution) listening for new items. Every listener receives the whole contents of the Stream.
 
 ### Stream Item
 
-A Stream Item is just an value inside the Stream. Every Stream Item needs a monotonically increasing integer key, to allow all listeners to end up with the same view of the order of the items of the Stream. Streams marked as "packed" allow for items to be written out of order, as long as writers use consequitive keys -- those are, for example, useful for modelling time series data.
+A Stream Item is a value inside a [Stream](#stream). Every Stream Item needs a monotonically increasing integer key, which allows all listeners to end up with the same order of Items inside the Stream.
+
+### Packed Stream
+
+[Streams](#stream) marked as "packed" allow for items to be written out of order, as long as writers use consequitive keys -- those are, for example, useful for modelling time series data.
+
+### Ephemeral Stream
+
+[Streams](#stream) marked as "ephemeral" delete their [Items](#stream-item) after the all listeners have finished processing them.
+In contrast, "persistent" Streams do not delete its items automatically.
+
+### Indexed Stream
+
+A [Stream](#stream) can be indexed, and later queried, allowing for the fast retrieval of items from the Stream without needing to iterate all of it.
+
+## Object Capabilities
+
+Perper makes use of Object Capabilities for security. The only way for user code to access an object (be it an Agent, or a Stream, or something else) in a Perper system is through a reference to it. Such a reference can be obtained only by either directly creating the object or receiving a reference to it.
+
+You can read more about the Object-Capability Model on [Wikipedia](https://en.wikipedia.org/wiki/Object-capability_model).
+

@@ -1,6 +1,23 @@
 # Perper Fabric Protocol
 
+<details> <summary> Table of Contents </summary>
+
+* [Versioning](#versioning)
+* [Ignite caches](#ignite-caches)
+  * [Executions cache](#executions-cache)
+  * [Stream listeners cache](#stream-listeners-cache)
+  * [Stream caches](#stream-caches)
+  * [State caches](#state-caches)
+  * [Standard objects](#standard-objects)
+* [GRPC protocol](#grpc-protocol)
+* [Operations](#operations)
+  * [IDs](#ids)
+
+</details>
+
 The Perper Fabric Protocol is built on top of [Ignite's thin client protocol](https://ignite.apache.org/docs/2.12.0/thin-clients/getting-started-with-thin-clients) and [GRPC](https://grpc.io/). It uses specally-named caches to ensure different agents implementations can communicate with each other.
+
+## Versioning
 
 Versioning of the the Perper Fabric Protocol follows the [SemVer](https://semver.org/) version of Perper Fabric.
 

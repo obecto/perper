@@ -1,10 +1,6 @@
 # .NET Usage Tutorial
 
-In this usage tutorial, we are going to build a small demo app that streams a "Hello World" message. To this end, we are going to create 3 functions: a `Launcher` that starts a `HelloWorldGenerator` and passes the resulting stream to a `StreamPrinter`.
-
-![Usage sample architecture](./images/usage-sample-app.drawio.png)
-
-## Table of Contents
+<details> <summary> Table of Contents </summary>
 
 * [Prerequisites](#prerequisites)
 * [Starting Perper Fabric](#starting-perper-fabric)
@@ -17,6 +13,12 @@ In this usage tutorial, we are going to build a small demo app that streams a "H
 * [Usage sample code](#usage-sample-code)
   * [Exploration ideas](#exploration-ideas)
 * [Closing note](#closing-note)
+
+</details>
+
+In this usage tutorial, we are going to build a small demo app that streams a "Hello World" message. To this end, we are going to create 3 functions: a `Launcher` that starts a `HelloWorldGenerator` and passes the resulting stream to a `StreamPrinter`.
+
+![Usage sample architecture](./images/usage-sample-app.drawio.png)
 
 ## Prerequisites
 
