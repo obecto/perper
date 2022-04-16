@@ -8,6 +8,8 @@ async def establish_connection():
 
 
 def configure_instance() -> (str, str):
-    agent, instance = PerperConnection.ConfigureInstance()
+    tuple = PerperConnection.ConfigureInstance()
+    agent = tuple.Item1
+    instance = tuple.Item2
     return agent, instance
 

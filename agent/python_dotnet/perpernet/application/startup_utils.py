@@ -24,7 +24,7 @@ def create_delegate_handler(func, loop):
         Func<Task>
         """
     return_type = Object
-    if 'return' in func.__annotations__:  # TODO: Works only with basic types and tuples, expand
+    if 'return' in func.__annotations__:
         return_type = func.__annotations__['return']
 
     async def wrap(_fabric, _execution):

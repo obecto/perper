@@ -5,6 +5,7 @@ from Perper.Application import PerperConnection, PerperStartup
 from Perper.Application import PerperStartupHandlerUtils as HandlerUtils
 from Perper.Protocol import FabricExecution, TaskCollection
 from System import Func, Action
+from System.Threading import CancellationToken
 from System.Threading.Tasks import Task, TaskCompletionSource, TaskStatus
 
 from .startup_utils import *
@@ -15,14 +16,16 @@ from ..extensions.context_vars import fabric_service, fabric_execution
 def run_notebook(*, agent="notebook", instance="notebook-Main"):
     fabric_service.set(PerperConnection.EstablishConnection().Result)
     startup_context.set(StartupContext(agent, instance, TaskCollection()))
-    fabric_execution.set(FabricExecution(agent, instance, "Init", f"{instance}-init", None))
+    fabric_execution.set(FabricExecution(agent, instance, "Init", f"{instance}-init", getattr(CancellationToken, 'None')))
 
 
 async def run(agent, delegates=None, *, use_instances=False):
     if delegates is None:
         delegates = {}
+
     loop = asyncio.get_event_loop()
     perper_startup = PerperStartup()
+
     if use_instances:
         perper_startup = perper_startup.WithInstances()
 

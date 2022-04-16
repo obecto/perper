@@ -59,6 +59,12 @@ def enumerate_stream(stream, return_type=Object):
     return convert_async_iterable(stream_enum)
 
 
+def enumerate_stream_with_keys(stream, return_type=Object):
+    AsyncLocals.SetConnection(fabric_service.get())
+    stream_enum = PerperStreamExtensions.EnumerateWithKeysAsync[return_type](stream).GetAsyncEnumerator()
+    return convert_async_iterable(stream_enum)
+
+
 async def query_stream(stream, type_name, sql_condition, *sql_parameters):
     stream_query = PerperStreamExtensions.Query[Object](stream, type_name, sql_condition, sql_parameters).GetAsyncEnumerator()
     return convert_async_iterable(stream_query)

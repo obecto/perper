@@ -7,9 +7,9 @@ import perpernet
 from System import Int32
 
 
-async def node1(other) -> int:
+async def node1(other):
     yield 1
-    async for number in perpernet.enumerate_stream(other, int):
+    async for number in perpernet.enumerate_stream(other):
         print(f"Node 1 received {number}.")
         if number > 10:
             break
@@ -17,8 +17,8 @@ async def node1(other) -> int:
         yield number - 1
 
 
-async def node2(other) -> int:
-    async for number in perpernet.enumerate_stream(other, int):
+async def node2(other):
+    async for number in perpernet.enumerate_stream(other):
         print(f"Node 2 received {number}.")
         if number > 10:
             break
@@ -34,7 +34,7 @@ async def generator(count):
 
 async def processor(generator, batch_size):
     batch = []
-    async for message in perpernet.enumerate_stream(generator, str):
+    async for message in perpernet.enumerate_stream(generator):
         batch += [message + "_processed"]
         if len(batch) == batch_size:
             yield batch
@@ -55,24 +55,25 @@ async def do_something_async(message):
     print("DoSomethingAsync called:", message)
 
 
-def get_random_number(a, b) -> int:
+def get_random_number(a, b):
     return random.randint(a, b)
 
 
-async def get_random_number_async(a, b) -> int:
+async def get_random_number_async(a, b):
     return random.randint(a, b)
 
 
-def get_two_random_numbers(a, b) -> Tuple[int, int]:
+def get_two_random_numbers(a, b):
     return random.randint(a, b), random.randint(a, b)
 
 
-def count_params(a, *args) -> int:
+def count_params(a, *args):
     return a + len(args)
 
 
 async def init():
     # Streams
+    # The first time goes through without Int32, seg fault second time
     message_count = Int32(28)
     batch_count = Int32(10)
 

@@ -10,7 +10,6 @@ def task_to_future(task, value_task=False):
     token_source = CancellationTokenSource()
     token = token_source.Token
     task = task(token)
-
     if value_task:
         task = task.AsTask()
     loop = asyncio.get_running_loop()
