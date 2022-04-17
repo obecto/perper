@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	"golang.org/x/sync/errgroup"
-	"k8s.io/client-go/util/retry"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -52,8 +49,6 @@ func (c *kubernetesScalerService) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case allInstances := <-c.fabric.Instances():
-			group, updateCtx := errgroup.WithContext(ctx)
-
 			for agent, instances := range allInstances {
 				agentCopy := string(agent)
 				fmt.Fprintf(os.Stdout, "Got agent: %s\n", agentCopy)
@@ -63,74 +58,64 @@ func (c *kubernetesScalerService) Start(ctx context.Context) error {
 					return err
 				}
 
-				group.Go(func() error {
-					return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-						resourceIntreface := c.client.Resource(agentGRV).Namespace(c.options.Namespace)
-						labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{agentLabel: agentCopy}}
-						
-						result, err := resourceIntreface.List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&labelSelector), Limit: 1})
-						if err != nil {
+				resourceIntreface := c.client.Resource(agentGRV).Namespace(c.options.Namespace)
+				labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{agentLabel: agentCopy}}
+				
+				result, err := resourceIntreface.List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&labelSelector), Limit: 1})
+				if err != nil {
+					return err
+				}
+				if len(result.Items) == 0 {
+					fmt.Fprintf(os.Stderr, "Unable to locate agent %s\n", agentCopy)
+					return nil
+				}
+				
+				for _, item := range result.Items {
+					currentInstancesStr, _, err := unstructured.NestedString(item.Object, agentInstancesField...)
+					fmt.Fprintf(os.Stdout, "Agent instance: %s with instances: %s to be updated with %s\n", agentCopy, currentInstancesStr, string(instancesCopy))
+					
+					if len(currentInstancesStr) > 0 {
+						var currentInstances []string
+						if err := json.Unmarshal([]byte(currentInstancesStr), &currentInstances); err != nil {
 							return err
 						}
-						if len(result.Items) == 0 {
-							fmt.Fprintf(os.Stderr, "Unable to locate agent %s\n", agentCopy)
-							return nil
-						}
-						
-						for _, item := range result.Items {
-							currentInstancesStr, _, err := unstructured.NestedString(item.Object, agentInstancesField...)
-							fmt.Fprintf(os.Stdout, "Agent instance: %s with instances: %s to be updated with %s\n", agentCopy, currentInstancesStr, string(instancesCopy))
-							
-							if len(currentInstancesStr) > 0 {
-								var currentInstances []string
-								if err := json.Unmarshal([]byte(currentInstancesStr), &currentInstances); err != nil {
+						for _, currentInstance := range currentInstances {
+							found := false
+							for _, newInstance := range instances {
+								fmt.Fprintf(os.Stdout, "Compare: %s to with %s\n", currentInstance, string(newInstance))
+								if currentInstance == string(newInstance) {
+									found = true
+									break
+								}
+							}
+							if !found {
+								podIntreface := c.client.Resource(podGRV).Namespace(c.options.Namespace)
+								podSelector := metav1.LabelSelector{MatchLabels: map[string]string{instanceLabel: currentInstance}}
+								fmt.Fprintf(os.Stdout, "Query pods with label %s: %s...\n", instanceLabel, currentInstance)
+								pods, err := podIntreface.List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&podSelector), Limit: 1})
+								if err != nil {
+									fmt.Fprintf(os.Stdout, "No pods found - %s", currentInstance)
 									return err
 								}
-								for _, currentInstance := range currentInstances {
-									found := false
-									for _, newInstance := range instances {
-										fmt.Fprintf(os.Stdout, "Compare: %s to with %s\n", currentInstance, string(newInstance))
-										if currentInstance == string(newInstance) {
-											found = true
-											break
-										}
-									}
-									if !found {
-										podIntreface := c.client.Resource(podGRV).Namespace(c.options.Namespace)
-										podSelector := metav1.LabelSelector{MatchLabels: map[string]string{instanceLabel: currentInstance}}
-										fmt.Fprintf(os.Stdout, "Query pods with label %s: %s...\n", instanceLabel, currentInstance)
-										pods, err := podIntreface.List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&podSelector), Limit: 1})
-										if err != nil {
-											fmt.Fprintf(os.Stdout, "No pods found - %s", currentInstance)
-											return err
-										}
-										for _, pod := range pods.Items {
-											fmt.Fprintf(os.Stdout, "Attempt to delete pod %s...\n", pod.GetName())
-											err = podIntreface.Delete(updateCtx, pod.GetName(), metav1.DeleteOptions{})
-											if err != nil {
-												return err
-											}
-										}
+								for _, pod := range pods.Items {
+									fmt.Fprintf(os.Stdout, "Attempt to delete pod %s...\n", pod.GetName())
+									err = podIntreface.Delete(ctx, pod.GetName(), metav1.DeleteOptions{})
+									if err != nil {
+										return err
 									}
 								}
 							}
-
-							err = unstructured.SetNestedField(item.Object, string(instancesCopy), agentInstancesField...)
-							if err != nil {
-								return err
-							}
-
-							_, err = resourceIntreface.Update(updateCtx, &item, metav1.UpdateOptions{})
-							return err
 						}
-						return nil
-					})
-				})
-			}
+					}
 
-			err := group.Wait()
-			if err != nil {
-				return err
+					err = unstructured.SetNestedField(item.Object, string(instancesCopy), agentInstancesField...)
+					if err != nil {
+						return err
+					}
+
+					_, err = resourceIntreface.Update(ctx, &item, metav1.UpdateOptions{})
+					return err
+				}	
 			}
 		}
 	}
