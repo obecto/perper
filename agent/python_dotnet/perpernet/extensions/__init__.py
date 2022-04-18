@@ -1,4 +1,4 @@
-from .agent import call, start_agent, destroy_agent
+from .agent import call, call_agent, start_agent, destroy_agent
 from .stream import (
     declare_stream,
     enumerate_stream,

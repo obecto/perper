@@ -6,12 +6,23 @@ from System.Threading import CancellationTokenSource
 from System.Threading.Tasks import TaskCompletionSource
 
 
-def task_to_future(task, value_task=False):
+def task_to_future(task):
+    """Converts a dotnet Task to python future, passes the result, errors and cancellations
+
+        Parameters
+        ----------
+        task : function
+            function accepting a cancellation token and passing it on to the task to be converted
+
+        Returns
+        -------
+        asyncio.future
+
+    """
     token_source = CancellationTokenSource()
     token = token_source.Token
     task = task(token)
-    if value_task:
-        task = task.AsTask()
+
     loop = asyncio.get_running_loop()
     future = loop.create_future()
 
@@ -32,6 +43,23 @@ def task_to_future(task, value_task=False):
 
 
 def future_to_task(future, loop, return_type=None):
+    """Converts a python future to a dotnet Task, passes the result, errors and cancellations
+
+            Parameters
+            ----------
+            future :
+                The python future we want to convert to a dotnet Task
+
+            loop :
+                The asyncio loop we want to execute the future in
+
+            return_type :
+                The return type of the future, needed for the Task in dotnet
+            Returns
+            -------
+            Task
+
+        """
     _return_type = return_type
     task_c = TaskCompletionSource() if not _return_type else TaskCompletionSource[_return_type]()
 
@@ -48,6 +76,6 @@ def future_to_task(future, loop, return_type=None):
 
 async def convert_async_iterable(async_iterable):
     while True:
-        if not await task_to_future(lambda _: async_iterable.MoveNextAsync(), value_task=True):
+        if not await task_to_future(lambda _: async_iterable.MoveNextAsync().AsTask()):
             break
         yield async_iterable.Current
