@@ -114,7 +114,9 @@ func (c *kubernetesScalerService) Start(ctx context.Context) error {
 					}
 
 					_, err = resourceIntreface.Update(ctx, &item, metav1.UpdateOptions{})
-					return err
+					if err != nil {
+						return err
+					}
 				}	
 			}
 		}
