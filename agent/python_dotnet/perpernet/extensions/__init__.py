@@ -6,3 +6,4 @@ from .stream import (
     create_blank_stream,
     destroy_stream
 )
+from .state import get_state, set_state

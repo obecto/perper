@@ -21,7 +21,7 @@ async def main():
 
     async for test_execution in convert_async_iterable(
                     fabric_service.GetExecutionsReader(agent, instance, "Test").ReadAllAsync().GetAsyncEnumerator()):
-        await task_to_future(lambda _: fabric_service.WriteExecutionResult(test_execution.Execution, [Object(r)]))
+        await task_to_future(lambda _: fabric_service.WriteExecutionResult(test_execution.Execution, [r]))
 
 
 asyncio.run(main())
