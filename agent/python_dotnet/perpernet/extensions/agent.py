@@ -32,19 +32,29 @@ async def call_agent(agent, delegate, *parameters, void=True):
 
 
 def _handle_result(result):
-    if result is None:
-        return None
-    elif len(result) == 1:
-        return result[0]
-    else:
-        return tuple(result)
+    try:
+        if result is None:
+            return None
+        elif len(result) == 1:
+            return result[0]
+        else:
+            return tuple(result)
+
+    except Exception as e:
+        print("Result type cannot be handled ", e)
 
 
-async def start_agent(agent_name, *parameters):
+async def start_agent(agent_name, *parameters, void=True):
     AsyncLocals.SetConnection(fabric_service.get())
     AsyncLocals.SetExecution(fabric_execution.get())
-    agent = await task_to_future(lambda _: PerperContext.StartAgentAsync(agent_name, *parameters))
-    return agent
+    if void:
+        agent = await task_to_future(lambda _: PerperContext.StartAgentAsync(agent_name, *parameters))
+        return agent
+    else:
+        result = await task_to_future(lambda _: PerperContext.StartAgentAsync[Object](agent_name, *parameters))
+        agent = result.Item1
+        result = result.Item2
+        return agent, result
 
 
 async def destroy_agent(agent):

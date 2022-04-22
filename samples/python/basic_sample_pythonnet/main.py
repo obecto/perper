@@ -8,25 +8,26 @@ from System import Int32
 
 
 async def node1(other):
-    yield 1
-    async for number in perpernet.enumerate_stream(other):
-        print(f"Node 1 received {number}.")
-        if number > 10:
+    yield {"test": 1}
+    async for dict in perpernet.enumerate_stream_with_keys(other):
+        print(f"Node 1 received key: {dict.Item1}, value: {dict.Item2}.")
+        if dict.Item2["test"] > 10:
             break
         await asyncio.sleep(0.1)
-        yield number - 1
+        yield {"test": dict.Item2["test"]-1}
 
 
 async def node2(other):
-    async for number in perpernet.enumerate_stream(other):
-        print(f"Node 2 received {number}.")
-        if number > 10:
+    async for dict in perpernet.enumerate_stream_with_keys(other):
+        print(f"Node 2 received {dict.Item1}, {dict.Item2}.")
+        if dict.Item2["test"] > 10:
             break
         await asyncio.sleep(0.1)
-        yield number + 2
+        yield {'test': dict.Item2['test']+2}
 
 
 async def generator(count):
+    count = count['count']
     for i in range(count):
         await asyncio.sleep(0.1)
         yield f"{i}. Message"
@@ -74,7 +75,7 @@ def count_params(a, *args):
 async def init():
     # Streams
     # The first time goes through without Int32, seg fault second time
-    message_count = Int32(28)
+    message_count = {"count": 28}
     batch_count = Int32(10)
 
     generator = await perpernet.start_stream("Generator", message_count)
