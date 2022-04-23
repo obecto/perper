@@ -62,11 +62,12 @@ func (c *kubernetesScalerService) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case allInstances := <-c.fabric.Instances():
-			for agent, instances := range allInstances {
+			for agent, orgInstances := range allInstances {
 				agentCopy := string(agent)
 				fmt.Fprintf(os.Stdout, "Got agent: %s\n", agentCopy)
 				
-				instancesCopy, err := json.Marshal(HashValues(instances))
+				instances := HashValues(orgInstances)
+				instancesCopy, err := json.Marshal(instances)
 				if err != nil {
 					return err
 				}
