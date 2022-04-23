@@ -32,6 +32,7 @@ type kubernetesScalerService struct {
 
 var agentGRV = schema.GroupVersionResource{Group: "kudo.dev", Version: "v1beta1", Resource: "instances"}
 var agentInstancesField = []string{"spec", "parameters", "instances"}
+var agentOrigInstancesField = []string{"spec", "parameters", "origInstances"}
 var agentLabel = "perper.obecto.com/agent"
 var instanceLabel = "perper.obecto.com/instance"
 var podGRV = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
@@ -66,6 +67,11 @@ func (c *kubernetesScalerService) Start(ctx context.Context) error {
 				agentCopy := string(agent)
 				fmt.Fprintf(os.Stdout, "Got agent: %s\n", agentCopy)
 				
+				orgInstancesCopy, err := json.Marshal(orgInstances)
+				if err != nil {
+					return err
+				}
+
 				instances := HashValues(orgInstances)
 				instancesCopy, err := json.Marshal(instances)
 				if err != nil {
@@ -123,6 +129,11 @@ func (c *kubernetesScalerService) Start(ctx context.Context) error {
 					}
 
 					err = unstructured.SetNestedField(item.Object, string(instancesCopy), agentInstancesField...)
+					if err != nil {
+						return err
+					}
+
+					err = unstructured.SetNestedField(item.Object, string(orgInstancesCopy), agentOrigInstancesField...)
 					if err != nil {
 						return err
 					}

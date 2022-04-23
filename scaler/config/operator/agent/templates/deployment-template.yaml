@@ -1,4 +1,4 @@
-{{ range $instance := $.Params.instances }}
+{{ range $index, $instance := $.Params.instances }}
 ---
 apiVersion: v1
 kind: Pod
@@ -16,7 +16,7 @@ spec:
     - name: X_PERPER_AGENT
       value: {{ $.Params.agent }}
     - name: X_PERPER_INSTANCE
-      value: {{ $instance }}
+      value: {{ $.Params.origInstances[$index] }}
     - name: APACHE_IGNITE_ENDPOINT
       value: perper-fabric:10800
     - name: PERPER_FABRIC_ENDPOINT
