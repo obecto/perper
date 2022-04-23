@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"crypto/sha1"
+    "encoding/hex"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -42,6 +44,17 @@ func NewKubernetesScalerService(kubernetesClient dynamic.Interface, fabricServic
 	}
 }
 
+func HashValues(values []fabric.Instance) []string {
+	var r []string
+	for _, v := range values {
+		h := sha1.New()
+    	h.Write([]byte(v))
+		s := hex.EncodeToString(h.Sum(nil))
+		r = append(r, s)
+	}
+	return r
+}
+
 func (c *kubernetesScalerService) Start(ctx context.Context) error {
 	fmt.Fprintf(os.Stdout, "Starting scaler\n")
 	for {
@@ -52,8 +65,8 @@ func (c *kubernetesScalerService) Start(ctx context.Context) error {
 			for agent, instances := range allInstances {
 				agentCopy := string(agent)
 				fmt.Fprintf(os.Stdout, "Got agent: %s\n", agentCopy)
-
-				instancesCopy, err := json.Marshal(instances)
+				
+				instancesCopy, err := json.Marshal(HashValues(instances))
 				if err != nil {
 					return err
 				}
