@@ -3,6 +3,8 @@ from .stream import (
     declare_stream,
     enumerate_stream,
     enumerate_stream_with_keys,
+    replay_stream,
+    local_stream,
     start_stream,
     create_blank_stream,
     destroy_stream

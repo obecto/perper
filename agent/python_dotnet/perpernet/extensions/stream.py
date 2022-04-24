@@ -15,8 +15,11 @@ async def start_stream(delegate, *parameters, action=False, ephemeral=True, pack
     return await task_to_future(lambda _: builder.StartAsync(parameters))
 
 
-def create_blank_stream(*, ephemeral=True, packed=False, index=None):
-    return _start_stream("", False, ephemeral, packed, index)
+async def create_blank_stream(*, ephemeral=True, packed=False, index=None):
+    AsyncLocals.SetConnection(fabric_service.get())
+    AsyncLocals.SetExecution(fabric_execution.get())
+    builder = _start_stream("", False, ephemeral, packed, index)
+    return await task_to_future(lambda _: builder.StartAsync())
 
 
 def declare_stream(delegate, *, action=False, ephemeral=True, packed=False, index=None):

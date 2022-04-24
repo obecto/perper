@@ -11,11 +11,12 @@ namespace PerperUtils
    public class ClassBuilder
     {
        AssemblyName asemblyName;
+       private Type type;
        public ClassBuilder(string ClassName)
        {
            this.asemblyName = new AssemblyName(ClassName);
        }
-       public object CreateObject(string[] PropertyNames,Type[]Types)
+       public object CreateType(string[] PropertyNames,Type[]Types)
        {
            if(PropertyNames.Length!=Types.Length)
            {
@@ -26,9 +27,22 @@ namespace PerperUtils
            CreateConstructor(DynamicClass);
            for(int ind=0;ind< PropertyNames.Length ; ind++)
                CreateProperty(DynamicClass, PropertyNames[ind],Types[ind]);
-           Type type = DynamicClass.CreateType();
+           this.type = DynamicClass.CreateType();
 
-           return Activator.CreateInstance(type);
+           return this.type;
+       }
+
+       public object CreateObject()
+       {
+           try
+           {
+               return Activator.CreateInstance(this.type);
+           }
+           catch (ArgumentNullException e)
+           {
+               System.Console.WriteLine("Type not created yet");
+               throw;
+           }
        }
        private TypeBuilder CreateClass()
        {

@@ -17,8 +17,8 @@ rt = get_coreclr(runtime_path)
 set_runtime(rt)
 
 import clr
-clr.AddReference("PerperUtils")
 clr.AddReference("Perper")
+clr.AddReference("PerperUtils")
 
 from .extensions import *
 from .application import *
