@@ -46,5 +46,5 @@ async def call_agent(agent, delegate, *parameters):
 
 
 async def destroy_agent(agent):
-    await call_agent(model, stop_function_name)
+    await call_agent(agent, stop_function_name)
     fabric_service.get().remove_instance(agent.instance)
