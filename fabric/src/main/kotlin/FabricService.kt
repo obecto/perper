@@ -4,6 +4,7 @@ import com.obecto.perper.fabric.cache.AgentType
 import com.obecto.perper.fabric.cache.ExecutionData
 import com.obecto.perper.fabric.cache.InstanceData
 import com.obecto.perper.fabric.cache.StreamListener
+import com.obecto.perper.protobuf.AllExecutionsResponse
 import com.obecto.perper.protobuf.ExecutionFinishedRequest
 import com.obecto.perper.protobuf.ExecutionsRequest
 import com.obecto.perper.protobuf.ExecutionsResponse
@@ -148,7 +149,7 @@ class FabricService(var port: Int = 40400) : Service {
 
             query.remoteFilterFactory = Factory {
                 CacheEntryEventFilter { event ->
-                    if (event.isOldValueAvailable && !event.oldValue.finished)
+                    if (event.isOldValueAvailable && !event.oldValue.finished && !event.eventType.isRemoval)
                         false
                     else // NOTE: Can probably use a single query for all executions
                         event.value.agent == agent && (instance == null || event.value.instance == instance) && !event.value.finished
@@ -185,6 +186,8 @@ class FabricService(var port: Int = 40400) : Service {
                     output(entry.key, entry.value, false)
                 }
 
+                emit(ExecutionsResponse.newBuilder().also { it.startOfStream = true }.build())
+
                 for (pair in queryChannel) {
                     output(pair.first, pair.second.second, pair.second.first)
                 }
@@ -201,6 +204,51 @@ class FabricService(var port: Int = 40400) : Service {
                 }
                 queryCursor.close()
                 queryChannel.close()
+            }
+        }
+
+        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+        override suspend fun allExecutions(request: ExecutionsRequest): AllExecutionsResponse {
+            val agent = request.agent
+            val instance = if (request.instance != "") request.instance else null
+            val localToData = request.localToData
+
+            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
+
+            val query = ScanQuery<String, ExecutionData>().also {
+                it.setLocal(localToData)
+                it.filter = IgniteBiPredicate<String, ExecutionData> { _, value ->
+                    value.agent == agent && (instance == null || value.instance == instance) && !value.finished
+                }
+            }
+
+            log.trace({ "All executions listener requested for '$agent'-'$instance'!" })
+
+            val queryCursor = executionsCache.query(query)
+
+            try {
+                return AllExecutionsResponse.newBuilder().also {
+                    it.addAllExecutions(
+                        queryCursor.map({ entry ->
+                            ExecutionsResponse.newBuilder().also {
+                                it.instance = entry.value.instance
+                                it.delegate = entry.value.delegate
+                                it.execution = entry.key
+                            }.build()
+                        })
+                    )
+                }.build()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.error(e.toString())
+                e.printStackTrace()
+                throw e
+            } finally {
+                if (instance != null) {
+                    InstanceService.setInstanceRunning(ignite, instance, false)
+                }
+                queryCursor.close()
             }
         }
 

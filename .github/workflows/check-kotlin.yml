@@ -1,0 +1,17 @@
+name: Check Kotlin
+
+on:
+  push:
+    paths:
+      - 'fabric/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build Kotlin code
+      working-directory: ./fabric
+      run: ./gradlew build --no-daemon

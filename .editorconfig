@@ -11,6 +11,11 @@ indent_style = space
 indent_size = 4
 insert_final_newline = true
 
+[{go.mod,go.sum,*.go}]
+indent_style = tab
+indent_size = 4
+insert_final_newline = true
+
 [*.xml]
 indent_style = space
 indent_size = 4
@@ -381,6 +386,7 @@ dotnet_diagnostic.CA2002.severity = error
 
 # CA2007: Do not directly await a Task
 dotnet_diagnostic.CA2007.severity = error
+dotnet_code_quality.CA2007.output_kind = DynamicallyLinkedLibrary
 
 # CA2008: Do not create tasks without passing a TaskScheduler
 dotnet_diagnostic.CA2008.severity = warning

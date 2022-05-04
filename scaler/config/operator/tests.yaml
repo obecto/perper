@@ -1,0 +1,36 @@
+apiVersion: kudo.dev/v1beta1
+kind: Instance
+metadata:
+  name: perper-instance
+spec:
+  operatorVersion:
+    name: perper-system-0.8.0-0.1.8
+---
+apiVersion: kudo.dev/v1beta1
+kind: Instance
+metadata:
+  name: container-sample-instance
+  labels:
+    perper.obecto.com/agent: container-sample
+spec:
+  operatorVersion:
+    name: perper-agent-0.8.0-0.1.8
+  parameters:
+    agent: container-sample
+    image: perper-agent:1.0.0
+---
+apiVersion: kudo.dev/v1beta1
+kind: Instance
+metadata:
+  name: container-sample-root-instance
+  labels:
+    perper.obecto.com/agent: container-sample-root
+spec:
+  operatorVersion:
+    name: perper-agent-0.8.0-0.1.8
+  parameters:
+    agent: container-sample-root
+    image: perper-root-agent:1.0.0
+    instances: '["singleton"]'
+    env: '[{"name": "HELLO", "value": "world"}]'
+
