@@ -1,39 +1,31 @@
 import asyncio
 
-from Perper.Extensions import PerperContext, AsyncLocals, PerperStreamExtensions
-from System import Boolean, Object
+from ..bindings import task_to_future, convert_async_iterable, with_async_locals, restore_async_locals
 
-from .context_vars import fabric_service, fabric_execution
-from ..protocol.ignite_extensions import create_query_entity, create_query_field
-from ..application import task_to_future, convert_async_iterable
+from System import Object
+from Perper.Extensions import PerperContext, PerperStreamExtensions
 
 
 async def start_stream(delegate, *parameters, action=False, ephemeral=True, packed=False, index=None):
-    AsyncLocals.SetConnection(fabric_service.get())
-    AsyncLocals.SetExecution(fabric_execution.get())
-    builder = _start_stream(delegate, action, ephemeral, packed, index)
-    return await task_to_future(lambda _: builder.StartAsync(parameters))
+    builder = _create_stream_builder(delegate, action, ephemeral, packed, index)
+    return await task_to_future(with_async_locals(lambda _: builder.StartAsync(parameters)))
 
 
 async def create_blank_stream(*, ephemeral=True, packed=False, index=None):
-    AsyncLocals.SetConnection(fabric_service.get())
-    AsyncLocals.SetExecution(fabric_execution.get())
-    builder = _start_stream("", False, ephemeral, packed, index)
-    return await task_to_future(lambda _: builder.StartAsync())
+    builder = _create_stream_builder("", False, ephemeral, packed, index)
+    return await task_to_future(with_async_locals(lambda _: builder.StartAsync()))
 
 
 def declare_stream(delegate, *, action=False, ephemeral=True, packed=False, index=None):
-    stream = _start_stream(delegate, action, ephemeral, packed, index)
+    stream = _create_stream_builder(delegate, action, ephemeral, packed, index)
 
     async def start(*parameters):
-        AsyncLocals.SetConnection(fabric_service.get())
-        AsyncLocals.SetExecution(fabric_execution.get())
-        await task_to_future(lambda _: stream.StartAsync(parameters))
+        await task_to_future(with_async_locals(lambda _: stream.StartAsync(parameters)))
 
     return stream.Stream, start
 
 
-def _start_stream(delegate, action, ephemeral, packed, index):
+def _create_stream_builder(delegate, action, ephemeral, packed, index):
     stream_builder = PerperContext.Stream(delegate)
     if not ephemeral:
         stream_builder = stream_builder.Persistent()
@@ -57,22 +49,22 @@ def local_stream(stream, local_to_data=True):
 
 
 def enumerate_stream(stream, return_type=Object):
-    AsyncLocals.SetConnection(fabric_service.get())
+    restore_async_locals()
     stream_enum = PerperStreamExtensions.EnumerateAsync[return_type](stream).GetAsyncEnumerator()
     return convert_async_iterable(stream_enum)
 
 
 def enumerate_stream_with_keys(stream, return_type=Object):
-    AsyncLocals.SetConnection(fabric_service.get())
+    restore_async_locals()
     stream_enum = PerperStreamExtensions.EnumerateWithKeysAsync[return_type](stream).GetAsyncEnumerator()
     return convert_async_iterable(stream_enum)
 
 
 async def query_stream(stream, type_name, sql_condition, *sql_parameters):
+    restore_async_locals()
     stream_query = PerperStreamExtensions.Query[Object](stream, type_name, sql_condition, sql_parameters).GetAsyncEnumerator()
     return convert_async_iterable(stream_query)
 
 
-def destroy_stream(stream):
-    fabric_service.get().RemoveExecution(stream.Stream)
-    fabric_service.get().RemoveStream(stream.Stream)
+async def destroy_stream(stream):
+    return await task_to_future(with_async_locals(lambda _: PerperStreamExtensions.DestroyAsync(stream)))

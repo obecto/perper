@@ -1,4 +1,5 @@
-from .async_utils import task_to_future
+from ..bindings import task_to_future
+
 from Perper.Application import PerperConnection
 
 

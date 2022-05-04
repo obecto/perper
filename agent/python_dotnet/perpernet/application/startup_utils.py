@@ -1,11 +1,10 @@
 from collections.abc import AsyncIterable, Awaitable
 
+from ..bindings import future_to_task, task_to_future, with_store_async_locals, with_async_locals
+
 from Perper.Extensions import AsyncLocals
 from System import Func, Object
 from System.Threading.Tasks import Task, TaskCompletionSource, TaskStatus, ValueTask
-
-from .async_utils import future_to_task, task_to_future
-from ..extensions.context_vars import fabric_service, fabric_execution
 
 
 def create_delegate_handler(func, loop):
@@ -27,40 +26,42 @@ def create_delegate_handler(func, loop):
     if "return" in func.__annotations__:
         return_type = func.__annotations__["return"]
 
-    async def wrap(_fabric, _execution):
-        fabric_service.set(_fabric)
-        fabric_execution.set(_execution)
-        arguments = await task_to_future(lambda _: fabric_service.get().ReadExecutionParameters(_execution.Execution))
+    async def handler():
+        arguments = await task_to_future(with_async_locals(lambda _: AsyncLocals.FabricService.ReadExecutionParameters(AsyncLocals.Execution)))
         result = func(*arguments)
 
         if isinstance(result, Awaitable):
             result = await result
 
         if result is None:
-            await task_to_future(lambda _: fabric_service.get().WriteExecutionFinished(_execution.Execution))
+            await task_to_future(with_async_locals(lambda _: AsyncLocals.FabricService.WriteExecutionFinished(AsyncLocals.Execution)))
 
         elif isinstance(result, AsyncIterable):
-            await task_to_future(lambda ct: fabric_service.get().WaitListenerAttached(_execution.Execution, cancellationToken=ct))
+            await task_to_future(with_async_locals(lambda ct: AsyncLocals.FabricService.WaitListenerAttached(AsyncLocals.Execution, cancellationToken=ct)))
 
             async for data in result:
                 if isinstance(data, tuple) and len(data) == 2 and isinstance(data[0], int):
                     (key, data) = data
-                    await task_to_future(lambda _: fabric_service.get().WriteStreamItem[return_type](_execution.Execution, key, data))
+                    await task_to_future(with_async_locals(lambda _: AsyncLocals.FabricService.WriteStreamItem[return_type](AsyncLocals.Execution, key, data)))
 
                 else:
                     # Generic Overloads are not supported by pythonnet, therefore the CurrentTicks arg
                     await task_to_future(
-                        lambda _: fabric_service.get().WriteStreamItem[return_type](_execution.Execution, fabric_service.get().CurrentTicks, data)
+                        with_async_locals(
+                            lambda _: AsyncLocals.FabricService.WriteStreamItem[return_type](
+                                AsyncLocals.Execution, AsyncLocals.FabricService.CurrentTicks, data
+                            )
+                        )
                     )
-            await task_to_future(lambda _: fabric_service.get().WriteExecutionFinished(_execution.Execution))
+            await task_to_future(with_async_locals(lambda _: AsyncLocals.FabricService.WriteExecutionFinished(AsyncLocals.Execution)))
 
         elif isinstance(result, tuple):
-            await task_to_future(lambda _: fabric_service.get().WriteExecutionResult(_execution.Execution, result))
+            await task_to_future(with_async_locals(lambda _: AsyncLocals.FabricService.WriteExecutionResult(AsyncLocals.Execution, result)))
 
         else:
-            await task_to_future(lambda _: fabric_service.get().WriteExecutionResult(_execution.Execution, [result]))
+            await task_to_future(with_async_locals(lambda _: AsyncLocals.FabricService.WriteExecutionResult(AsyncLocals.Execution, [result])))
 
-    return Func[Task](lambda: future_to_task(wrap(AsyncLocals.FabricService, AsyncLocals.FabricExecution), loop))
+    return Func[Task](lambda: future_to_task(with_store_async_locals(handler), loop))
 
 
 def create_init_handler(init_func, loop):
@@ -79,12 +80,10 @@ def create_init_handler(init_func, loop):
         Func<Task>
     """
 
-    async def wrap(_fabric, _execution):
-        fabric_service.set(_fabric)
-        fabric_execution.set(_execution)
+    async def handler():
         result = init_func()
         if isinstance(result, Awaitable):
             result = await result
         return result
 
-    return Func[Task](lambda: future_to_task(wrap(AsyncLocals.FabricService, AsyncLocals.FabricExecution), loop))
+    return Func[Task](lambda: future_to_task(with_store_async_locals(handler), loop))
