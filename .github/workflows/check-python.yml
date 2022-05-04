@@ -4,7 +4,9 @@ on:
   push:
     paths:
       - 'agent/python/**'
+      - 'agent/pythonnet/**'
       - 'samples/python/**'
+      - 'samples/pythonnet/**'
 
 jobs:
   check-format:
