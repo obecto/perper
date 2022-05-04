@@ -45,7 +45,7 @@ def replay_stream(stream, replay=True, replay_from=0):
 
 
 def local_stream(stream, local_to_data=True):
-    return PerperStreamExtensions(stream, local_to_data)
+    return PerperStreamExtensions.LocalToData(stream, local_to_data)
 
 
 def enumerate_stream(stream, return_type=Object):
