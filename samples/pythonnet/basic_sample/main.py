@@ -122,5 +122,6 @@ asyncio.run(
             "Node1": node1,
             "Node2": node2,
         },
+        use_deploy_init=True,
     )
 )

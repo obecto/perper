@@ -36,7 +36,7 @@ def register_delegate(delegate, function):
     )
 
 
-async def run(agent, delegates=None, *, use_instances=False):
+async def run(agent, delegates=None, *, use_instances=False, use_deploy_init=False):
     if delegates is None:
         delegates = {}
 
@@ -45,6 +45,9 @@ async def run(agent, delegates=None, *, use_instances=False):
 
     if use_instances:
         perper_startup = perper_startup.WithInstances()
+
+    if use_deploy_init:
+        perper_startup = perper_startup.WithDeployInit()
 
     if "Init" in delegates:
         init_func = delegates.pop("Init")

@@ -34,4 +34,4 @@ async def init():
     print("Both agents destroyed!")
 
 
-asyncio.run(perpernet.run("container-usage-sample", {"Init": init}))
+asyncio.run(perpernet.run("container-usage-sample", {"Init": init}, use_deploy_init=True))

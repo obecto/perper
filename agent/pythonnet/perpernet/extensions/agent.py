@@ -6,6 +6,7 @@ from System import Array, Object
 from Perper.Extensions import PerperContext, PerperAgentExtensions
 
 startup_function_name = PerperContext.StartupFunctionName
+stop_function_name = PerperContext.StopFunctionName
 
 
 async def call(delegate, *parameters, void=True):
