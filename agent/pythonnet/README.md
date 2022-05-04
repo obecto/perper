@@ -9,7 +9,7 @@ and [Azure Functions Host](https://github.com/Azure/azure-functions-host).
 Dump the dlls needed and build the dotnet utils in the DotnetUtils folder with ``dotnet build``.
 
 
-2) To install the perpernet package use the following command from the main directory *(python_dotnet)*
+2) To install the perpernet package use the following command from the main directory *(pythonnet)*
 ```
     pip install -e .
 ```

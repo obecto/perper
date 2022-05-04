@@ -23,13 +23,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perper", "agent\dotnet\src\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiAgentSample", "samples\dotnet\MultiAgentSample\MultiAgentSample.csproj", "{0025B7C6-CA97-41BF-B57E-EFC3D5647013}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "python_dotnet", "python_dotnet", "{97434AAB-9302-4FD7-BF2B-0453C5006C3C}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "pythonnet", "pythonnet", "{97434AAB-9302-4FD7-BF2B-0453C5006C3C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DotnetUtils", "DotnetUtils", "{5AAA075F-771E-4EE7-B464-0B7E5B7F32F8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DllDump", "agent\python_dotnet\DotnetUtils\DllDump\DllDump.csproj", "{84FB0E15-A5FE-4A34-8A9F-95D06601BE3B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DllDump", "agent\pythonnet\DotnetUtils\DllDump\DllDump.csproj", "{84FB0E15-A5FE-4A34-8A9F-95D06601BE3B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PerperUtils", "agent\python_dotnet\DotnetUtils\PerperUtils\PerperUtils.csproj", "{2BF18854-2354-4B3B-B154-B697CE73EDD6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PerperUtils", "agent\pythonnet\DotnetUtils\PerperUtils\PerperUtils.csproj", "{2BF18854-2354-4B3B-B154-B697CE73EDD6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
