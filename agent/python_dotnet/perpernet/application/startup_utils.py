@@ -22,10 +22,10 @@ def create_delegate_handler(func, loop):
         Returns
         -------
         Func<Task>
-        """
+    """
     return_type = Object
-    if 'return' in func.__annotations__:
-        return_type = func.__annotations__['return']
+    if "return" in func.__annotations__:
+        return_type = func.__annotations__["return"]
 
     async def wrap(_fabric, _execution):
         fabric_service.set(_fabric)
@@ -49,8 +49,9 @@ def create_delegate_handler(func, loop):
 
                 else:
                     # Generic Overloads are not supported by pythonnet, therefore the CurrentTicks arg
-                    await task_to_future(lambda _: fabric_service.get().WriteStreamItem[return_type](_execution.Execution,
-                                         fabric_service.get().CurrentTicks, data))
+                    await task_to_future(
+                        lambda _: fabric_service.get().WriteStreamItem[return_type](_execution.Execution, fabric_service.get().CurrentTicks, data)
+                    )
             await task_to_future(lambda _: fabric_service.get().WriteExecutionFinished(_execution.Execution))
 
         elif isinstance(result, tuple):
@@ -76,7 +77,7 @@ def create_init_handler(init_func, loop):
         Returns
         -------
         Func<Task>
-        """
+    """
 
     async def wrap(_fabric, _execution):
         fabric_service.set(_fabric)
@@ -87,5 +88,3 @@ def create_init_handler(init_func, loop):
         return result
 
     return Func[Task](lambda: future_to_task(wrap(AsyncLocals.FabricService, AsyncLocals.FabricExecution), loop))
-
-

@@ -23,12 +23,13 @@ async def try_set_state(key, func, *lazyawaitargs):
         extra = None
         if isinstance(result, tuple):
             (result, extra) = result
-        print('Started instance for', key, ':', result, '|', extra)
+        print("Started instance for", key, ":", result, "|", extra)
         await perpernet.set_state(key, result)
         if extra is not None:
-            await perpernet.set_state(key + '_', extra)
+            await perpernet.set_state(key + "_", extra)
     else:
-        print('Already have instance for', key, ':', result)
+        print("Already have instance for", key, ":", result)
+
 
 key_epoch = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
 key_delta = datetime.timedelta(milliseconds=1)
@@ -42,7 +43,7 @@ def to_key(x):
 
 
 def to_datetime(x):
-    if isinstance(x, int): # key
+    if isinstance(x, int):  # key
         return key_epoch + x * key_delta
     else:
         return x
@@ -52,7 +53,7 @@ async def to_stream(x, from_key=-1):
     if type(x).__name__ == "PerperStream":
         return x
     elif type(x).__name__ == "PerperAgent":
-        return await perpernet.call_agent(x, 'GetStream', to_key(from_key), void=False)
+        return await perpernet.call_agent(x, "GetStream", to_key(from_key), void=False)
 
 
 async def enumerate_stream_with_times(stream, start_key=-1, end_key=-1, *, show_progress=False):
@@ -61,6 +62,7 @@ async def enumerate_stream_with_times(stream, start_key=-1, end_key=-1, *, show_
     stream = await to_stream(stream, start_key)
     if show_progress and end_key != -1 and start_key != -1:
         from tqdm.auto import tqdm
+
         progress_bar = tqdm(total=(end_key - start_key) // stream.stride)
     async for res in perpernet.enumerate_stream_with_keys(stream):
         key = res.Item1
@@ -73,11 +75,11 @@ async def enumerate_stream_with_times(stream, start_key=-1, end_key=-1, *, show_
     if show_progress:
         progress_bar.close()
 
-        
-def dict_to_data_object(dict_, class_ = None):
+
+def dict_to_data_object(dict_, class_=None):
     if class_ is None:
         class_ = create_hatcherydata_class(dict_.keys())
-        
+
     data_object = Activator.CreateInstance(class_)
     for (k, v) in dict_.items():
         prop = class_.GetProperty(k)
@@ -113,11 +115,17 @@ async def csv_to_stream(csv_path):
                         line_dict = {headers[j]: line_arr[j] for j in range(len(headers))}
 
                         if "time" in line_dict:
-                            await task_to_future(lambda _: fabric_service.get().WriteStreamItem[Object](stream.Stream,
-                                                int(line_dict.pop("time")), dict_to_data_object(line_dict, hatcherydata_class)))
+                            await task_to_future(
+                                lambda _: fabric_service.get().WriteStreamItem[Object](
+                                    stream.Stream, int(line_dict.pop("time")), dict_to_data_object(line_dict, hatcherydata_class)
+                                )
+                            )
                         else:
-                            await task_to_future(lambda _: fabric_service.get().WriteStreamItem[Object](stream.Stream,
-                                         fabric_service.get().CurrentTicks, dict_to_data_object(line_dict, hatcherydata_class)))
+                            await task_to_future(
+                                lambda _: fabric_service.get().WriteStreamItem[Object](
+                                    stream.Stream, fabric_service.get().CurrentTicks, dict_to_data_object(line_dict, hatcherydata_class)
+                                )
+                            )
 
     stream = await perpernet.create_blank_stream(ephemeral=False)
     await fill_stream(csv_path, stream)
@@ -125,6 +133,7 @@ async def csv_to_stream(csv_path):
 
     return stream
 
+
 def create_hatcherydata_class(keys):
     builder = ClassBuilder("HatcheryData")
-    return builder.CreateType(keys, [Object]*len(keys))
+    return builder.CreateType(keys, [Object] * len(keys))

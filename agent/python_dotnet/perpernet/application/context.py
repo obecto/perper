@@ -17,5 +17,11 @@ def register_delegate(delegate, function):
     AsyncLocals.SetExecution(fabric_execution.get())
     loop = asyncio.get_event_loop()
     handler = create_delegate_handler(function, loop)
-    PerperStartup.ListenExecutions(startup_context.get().task_collection, startup_context.get().agent,
-                                   startup_context.get().instance, delegate, handler, getattr(CancellationToken, 'None'))
+    PerperStartup.ListenExecutions(
+        startup_context.get().task_collection,
+        startup_context.get().agent,
+        startup_context.get().instance,
+        delegate,
+        handler,
+        getattr(CancellationToken, "None"),
+    )

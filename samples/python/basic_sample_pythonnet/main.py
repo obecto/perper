@@ -14,7 +14,7 @@ async def node1(other):
         if dict.Item2["test"] > 10:
             break
         await asyncio.sleep(0.1)
-        yield {"test": dict.Item2["test"]-1}
+        yield {"test": dict.Item2["test"] - 1}
 
 
 async def node2(other):
@@ -23,11 +23,11 @@ async def node2(other):
         if dict.Item2["test"] > 10:
             break
         await asyncio.sleep(0.1)
-        yield {'test': dict.Item2['test']+2}
+        yield {"test": dict.Item2["test"] + 2}
 
 
 async def generator(count):
-    count = count['count']
+    count = count["count"]
     for i in range(count):
         await asyncio.sleep(0.1)
         yield f"{i}. Message"
@@ -89,20 +89,21 @@ async def init():
     await node2_start(node1)
 
     # Calls
-    randomNumber1 = (await perpernet.call("GetRandomNumber", 1, 100, void=False))
+    randomNumber1 = await perpernet.call("GetRandomNumber", 1, 100, void=False)
     print(f"Random number: {randomNumber1}")
 
-    randomNumber2 = (await perpernet.call("GetRandomNumberAsync", 1, 100, void=False))
+    randomNumber2 = await perpernet.call("GetRandomNumberAsync", 1, 100, void=False)
     print(f"Random number: {randomNumber2}")
     #
-    (randomNumber3, randomNumber4) = (await perpernet.call("GetTwoRandomNumbers", 1, 100, void=False))
+    (randomNumber3, randomNumber4) = await perpernet.call("GetTwoRandomNumbers", 1, 100, void=False)
     print(f"Random numbers: {randomNumber3} + {randomNumber4}")
     #
-    countParams = (await perpernet.call("CountParams", 1, "a", "b", "c", void=False))
+    countParams = await perpernet.call("CountParams", 1, "a", "b", "c", void=False)
     print(f"Count params: {countParams}")
     # #
     await perpernet.call("DoSomething", "123")
     await perpernet.call("DoSomethingAsync", "456")
+
 
 asyncio.run(
     perpernet.run(

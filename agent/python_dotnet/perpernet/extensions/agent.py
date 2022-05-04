@@ -61,5 +61,3 @@ async def destroy_agent(agent):
     AsyncLocals.SetConnection(fabric_service.get())
     AsyncLocals.SetExecution(fabric_execution.get())
     await task_to_future(lambda _: AsyncLocals.FabricService.RemoveInstance(agent.Instance))
-
-

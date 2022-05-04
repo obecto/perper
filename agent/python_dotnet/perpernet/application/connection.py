@@ -12,4 +12,3 @@ def configure_instance() -> (str, str):
     agent = tuple.Item1
     instance = tuple.Item2
     return agent, instance
-

@@ -1,100 +1,107 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PerperUtils
 {
-   public class ClassBuilder
+    public class ClassBuilder
     {
-       AssemblyName asemblyName;
-       private Type type;
-       public ClassBuilder(string ClassName)
-       {
-           this.asemblyName = new AssemblyName(ClassName);
-       }
-       public object CreateType(string[] PropertyNames,Type[]Types)
-       {
-           if(PropertyNames.Length!=Types.Length)
-           {
-              Console.WriteLine("The number of property names should match their corresopnding types number");
-           }
+        private readonly AssemblyName asemblyName;
+        private Type type;
+        public ClassBuilder(string ClassName) => asemblyName = new AssemblyName(ClassName);
 
-           TypeBuilder DynamicClass = this.CreateClass();
-           CreateConstructor(DynamicClass);
-           for(int ind=0;ind< PropertyNames.Length ; ind++)
-               CreateProperty(DynamicClass, PropertyNames[ind],Types[ind]);
-           this.type = DynamicClass.CreateType();
+        public object CreateType(string[] PropertyNames, Type[] Types)
+        {
+            if (PropertyNames.Length != Types.Length)
+            {
+                Console.WriteLine("The number of property names should match their corresopnding types number");
+            }
 
-           return this.type;
-       }
+            var DynamicClass = CreateClass();
+            CreateConstructor(DynamicClass);
+            for (var ind = 0 ; ind < PropertyNames.Length ; ind++)
+            {
+                CreateProperty(DynamicClass, PropertyNames[ind], Types[ind]);
+            }
 
-       public object CreateObject()
-       {
-           try
-           {
-               return Activator.CreateInstance(this.type);
-           }
-           catch (ArgumentNullException e)
-           {
-               System.Console.WriteLine("Type not created yet");
-               throw;
-           }
-       }
-       private TypeBuilder CreateClass()
-       {
-           AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(this.asemblyName, AssemblyBuilderAccess.Run);
-           ModuleBuilder moduleBuilder = assemblyBuilder.DefineDynamicModule("MainModule");
-           TypeBuilder typeBuilder = moduleBuilder.DefineType(this.asemblyName.FullName
-                               , TypeAttributes.Public |
-                               TypeAttributes.Class |
-                               TypeAttributes.AutoClass |
-                               TypeAttributes.AnsiClass |
-                               TypeAttributes.BeforeFieldInit |
-                               TypeAttributes.AutoLayout
-                               , null);
-           return typeBuilder;
-       }
-       private static void CreateConstructor(TypeBuilder typeBuilder)
-       {
-           typeBuilder.DefineDefaultConstructor(MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName);
-       }
-       private static void CreateProperty(TypeBuilder typeBuilder, string propertyName, Type propertyType)
-       {
-           FieldBuilder fieldBuilder = typeBuilder.DefineField("_" + propertyName, propertyType, FieldAttributes.Private);
+            type = DynamicClass.CreateType();
 
-           PropertyBuilder propertyBuilder = typeBuilder.DefineProperty(propertyName, PropertyAttributes.HasDefault, propertyType, null);
-           MethodBuilder getPropMthdBldr = typeBuilder.DefineMethod("get_" + propertyName, MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig, propertyType, Type.EmptyTypes);
-           ILGenerator getIl = getPropMthdBldr.GetILGenerator();
+            return type;
+        }
 
-           getIl.Emit(OpCodes.Ldarg_0);
-           getIl.Emit(OpCodes.Ldfld, fieldBuilder);
-           getIl.Emit(OpCodes.Ret);
+        public object CreateObject()
+        {
+            try
+            {
+                return Activator.CreateInstance(type);
+            }
+            catch (ArgumentNullException)
+            {
+                Console.WriteLine("Type not created yet");
+                throw;
+            }
+        }
 
-           MethodBuilder setPropMthdBldr =typeBuilder.DefineMethod("set_" + propertyName,
-                 MethodAttributes.Public |
-                 MethodAttributes.SpecialName |
-                 MethodAttributes.HideBySig,
-                 null, new[] { propertyType });
+        private TypeBuilder CreateClass()
+        {
+            var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(asemblyName, AssemblyBuilderAccess.Run);
+            var moduleBuilder = assemblyBuilder.DefineDynamicModule("MainModule");
+            var typeBuilder = moduleBuilder.DefineType(
+                asemblyName.FullName,
+                TypeAttributes.Public |
+                TypeAttributes.Class |
+                TypeAttributes.AutoClass |
+                TypeAttributes.AnsiClass |
+                TypeAttributes.BeforeFieldInit |
+                TypeAttributes.AutoLayout,
+                null);
+            return typeBuilder;
+        }
 
-           ILGenerator setIl = setPropMthdBldr.GetILGenerator();
-           Label modifyProperty = setIl.DefineLabel();
-           Label exitSet = setIl.DefineLabel();
+        private static void CreateConstructor(TypeBuilder typeBuilder)
+        {
+            typeBuilder.DefineDefaultConstructor(MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName);
+        }
 
-           setIl.MarkLabel(modifyProperty);
-           setIl.Emit(OpCodes.Ldarg_0);
-           setIl.Emit(OpCodes.Ldarg_1);
-           setIl.Emit(OpCodes.Stfld, fieldBuilder);
+        private static void CreateProperty(TypeBuilder typeBuilder, string propertyName, Type propertyType)
+        {
+            var fieldBuilder = typeBuilder.DefineField("_" + propertyName, propertyType, FieldAttributes.Private);
 
-           setIl.Emit(OpCodes.Nop);
-           setIl.MarkLabel(exitSet);
-           setIl.Emit(OpCodes.Ret);
+            var propertyBuilder = typeBuilder.DefineProperty(propertyName, PropertyAttributes.HasDefault, propertyType, null);
 
-           propertyBuilder.SetGetMethod(getPropMthdBldr);
-           propertyBuilder.SetSetMethod(setPropMthdBldr);
-       }
+            var getPropMthdBldr = typeBuilder.DefineMethod(
+                "get_" + propertyName,
+                MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
+                propertyType,
+                Type.EmptyTypes);
+
+            var getIl = getPropMthdBldr.GetILGenerator();
+
+            getIl.Emit(OpCodes.Ldarg_0);
+            getIl.Emit(OpCodes.Ldfld, fieldBuilder);
+            getIl.Emit(OpCodes.Ret);
+
+            var setPropMthdBldr = typeBuilder.DefineMethod(
+                "set_" + propertyName,
+                MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
+                null,
+                new[] { propertyType });
+
+            var setIl = setPropMthdBldr.GetILGenerator();
+            var modifyProperty = setIl.DefineLabel();
+            var exitSet = setIl.DefineLabel();
+
+            setIl.MarkLabel(modifyProperty);
+            setIl.Emit(OpCodes.Ldarg_0);
+            setIl.Emit(OpCodes.Ldarg_1);
+            setIl.Emit(OpCodes.Stfld, fieldBuilder);
+
+            setIl.Emit(OpCodes.Nop);
+            setIl.MarkLabel(exitSet);
+            setIl.Emit(OpCodes.Ret);
+
+            propertyBuilder.SetGetMethod(getPropMthdBldr);
+            propertyBuilder.SetSetMethod(setPropMthdBldr);
+        }
     }
 }

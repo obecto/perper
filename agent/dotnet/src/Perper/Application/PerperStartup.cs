@@ -14,8 +14,6 @@ namespace Perper.Application
         private readonly List<(string, Func<Task>)> initHandlers = new();
         private readonly Dictionary<string, Dictionary<string, Func<Task>>> executionHandlers = new();
 
-        public static Func<Task> EmptyHandler => () => Task.CompletedTask;
-
         public PerperStartup AddInitHandler(string agent, Func<Task> handler)
         {
             initHandlers.Add((agent, handler));

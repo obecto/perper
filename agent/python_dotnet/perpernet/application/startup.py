@@ -16,7 +16,7 @@ from ..extensions.context_vars import fabric_service, fabric_execution
 def run_notebook(*, agent="notebook", instance="notebook-Main"):
     fabric_service.set(PerperConnection.EstablishConnection().Result)
     startup_context.set(StartupContext(agent, instance, TaskCollection()))
-    fabric_execution.set(FabricExecution(agent, instance, "Init", f"{instance}-init", getattr(CancellationToken, 'None')))
+    fabric_execution.set(FabricExecution(agent, instance, "Init", f"{instance}-init", getattr(CancellationToken, "None")))
 
 
 async def run(agent, delegates=None, *, use_instances=False):
@@ -31,13 +31,11 @@ async def run(agent, delegates=None, *, use_instances=False):
 
     if "Init" in delegates:
         init_func = delegates.pop("Init")
-        perper_startup = perper_startup.AddInitHandler. \
-            Overloads[str, Func[Task]](agent, HandlerUtils.
-                                       WrapHandler(create_init_handler(init_func, loop)))
+        perper_startup = perper_startup.AddInitHandler.Overloads[str, Func[Task]](agent, HandlerUtils.WrapHandler(create_init_handler(init_func, loop)))
 
     for (delegate, function) in delegates.items():
-        perper_startup = perper_startup.AddHandler. \
-            Overloads[str, str, Func[Task]](agent, delegate, HandlerUtils.
-                                            WrapHandler(create_delegate_handler(function, loop)))
+        perper_startup = perper_startup.AddHandler.Overloads[str, str, Func[Task]](
+            agent, delegate, HandlerUtils.WrapHandler(create_delegate_handler(function, loop))
+        )
 
     await task_to_future(lambda ct: perper_startup.RunAsync(ct))
