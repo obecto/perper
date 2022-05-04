@@ -45,16 +45,13 @@ namespace Perper.Extensions
         private static async Task<object?[]?> InternalCallAsync(PerperAgent agent, string @delegate, object?[] parameters, CancellationToken cancellationToken)
         {
             var execution = FabricService.GenerateName(@delegate);
-
             await AsyncLocals.FabricService.CreateExecution(execution, agent.Agent, agent.Instance, @delegate, parameters).ConfigureAwait(false);
 
             try
             {
                 await AsyncLocals.FabricService.WaitExecutionFinished(execution, cancellationToken).ConfigureAwait(false);
-
                 var results = await AsyncLocals.FabricService.ReadExecutionResult(execution).ConfigureAwait(false);
                 await AsyncLocals.FabricService.RemoveExecution(execution).ConfigureAwait(false);
-
                 return results;
             }
             catch (OperationCanceledException)

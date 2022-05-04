@@ -10,6 +10,7 @@ namespace Perper.Extensions
         private static readonly AsyncLocal<FabricExecution> _execution = new();
 
         public static FabricService FabricService => _fabricService.Value!;
+        public static FabricExecution FabricExecution => _execution.Value!;
         public static string Agent => _execution.Value?.Agent!;
         public static string Instance => _execution.Value?.Instance!;
         public static string Delegate => _execution.Value?.Delegate!;
