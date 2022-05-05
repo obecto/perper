@@ -24,7 +24,7 @@ namespace Perper.Protocol
             IgniteBinary = ignite.GetBinary();
             ExecutionsCache = ignite.GetOrCreateCache<string, ExecutionData>("executions");
             StreamListenersCache = ignite.GetOrCreateCache<string, StreamListener>("stream-listeners");
-            InstancesCache = ignite.GetOrCreateCache<string, InstanceData>("instances");
+            // InstancesCache = ignite.GetOrCreateCache<string, InstanceData>("instances");
             StatesCache = ignite.GetOrCreateCache<string, object>("states");
         }
 
@@ -33,7 +33,7 @@ namespace Perper.Protocol
         private readonly IBinary IgniteBinary;
         private readonly ICacheClient<string, ExecutionData> ExecutionsCache;
         private readonly ICacheClient<string, StreamListener> StreamListenersCache;
-        private readonly ICacheClient<string, InstanceData> InstancesCache;
+        // private readonly ICacheClient<string, InstanceData> InstancesCache;
         private readonly ICacheClient<string, object> StatesCache;
 
         private readonly Fabric.FabricClient FabricClient;
@@ -50,6 +50,9 @@ namespace Perper.Protocol
         {
             CancellationTokenSource.Cancel();
             await TaskCollection.GetTask().ConfigureAwait(false);
+#pragma warning disable CA1816
+            GC.SuppressFinalize(this);
+#pragma warning restore CA1816
         }
 
         protected virtual void Dispose(bool disposing)

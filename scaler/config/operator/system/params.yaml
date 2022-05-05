@@ -1,0 +1,6 @@
+apiVersion: kudo.dev/v1beta1
+parameters:
+- name: perperImage
+  default: "obecto/perper-fabric:0.8.0"
+- name: perperScalerImage
+  default: "perper-scaler:1.0.0"

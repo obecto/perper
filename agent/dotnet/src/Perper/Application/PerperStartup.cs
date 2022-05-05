@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,8 +12,15 @@ namespace Perper.Application
     public class PerperStartup
     {
         public bool UseInstances { get; set; } = false;
+        public bool UseDeployInit { get; set; } = false;
         private readonly List<(string, Func<Task>)> initHandlers = new();
         private readonly Dictionary<string, Dictionary<string, Func<Task>>> executionHandlers = new();
+
+        public PerperStartup WithDeployInit()
+        {
+            UseDeployInit = true;
+            return this;
+        }
 
         public PerperStartup AddInitHandler(string agent, Func<Task> handler)
         {
@@ -38,16 +46,18 @@ namespace Perper.Application
 
         public async Task RunAsync(CancellationToken cancellationToken = default)
         {
-            await using var fabricService = await PerperConnection.EstablishConnection().ConfigureAwait(false);
-            AsyncLocals.SetConnection(fabricService);
+            var fabricService = await PerperConnection.EstablishConnection().ConfigureAwait(false);
+            await using (fabricService.ConfigureAwait(false))
+            {
+                AsyncLocals.SetConnection(fabricService);
 
-            await RunInServiceContext(cancellationToken).ConfigureAwait(false);
+                await RunInServiceContext(cancellationToken).ConfigureAwait(false);
+            }
         }
 
         public Task RunInServiceContext(CancellationToken cancellationToken = default)
         {
             var (instanceAgent, instance) = UseInstances ? PerperConnection.ConfigureInstance() : (null, null);
-
             var taskCollection = new TaskCollection();
 
             foreach (var (agent, handler) in initHandlers)
@@ -57,13 +67,22 @@ namespace Perper.Application
                     continue;
                 }
 
-                var initInstance = instance ?? $"{agent}-init";
-                var initExecution = new FabricExecution(agent, initInstance, "Init", $"{initInstance}-init", cancellationToken);
-                taskCollection.Add(async () =>
+                if (UseDeployInit)
                 {
-                    AsyncLocals.SetExecution(initExecution);
-                    await handler().ConfigureAwait(false);
-                });
+                    var initInstance = instance ?? $"{agent}-init";
+                    var initExecution = new FabricExecution(agent, initInstance, "init", $"{initInstance}-init",
+                        cancellationToken);
+
+                    taskCollection.Add(async () =>
+                    {
+                        AsyncLocals.SetExecution(initExecution);
+                        await handler().ConfigureAwait(false);
+                    });
+                }
+                else
+                {
+                    ListenExecutions(taskCollection, agent, instance, "Init", handler, true, cancellationToken);
+                }
             }
 
             foreach (var (agent, agentExecutionHandlers) in executionHandlers)
@@ -78,20 +97,47 @@ namespace Perper.Application
                     await AsyncLocals.FabricService.WriteExecutionFinished(AsyncLocals.Execution).ConfigureAwait(false);
                 });
 
+                // Note: Deprecated - exists just for backwards compatibility with old `Startup`. Will be removed soon.
+                // Projects should switch to using `Start` instead.
+                agentExecutionHandlers.TryAdd(PerperContext.FallbackStartupFunctionName, async () =>
+                {
+                    await AsyncLocals.FabricService.WriteExecutionFinished(AsyncLocals.Execution).ConfigureAwait(false);
+                });
+
+                agentExecutionHandlers.TryAdd(PerperContext.StopFunctionName, async () =>
+                {
+                    await AsyncLocals.FabricService.WriteExecutionFinished(AsyncLocals.Execution).ConfigureAwait(false);
+                });
+
                 foreach (var (@delegate, handler) in agentExecutionHandlers)
                 {
-                    ListenExecutions(taskCollection, agent, instance, @delegate, handler, cancellationToken);
+                    ListenExecutions(taskCollection, agent, instance, @delegate, handler, false, cancellationToken);
                 }
             }
 
             return taskCollection.GetTask();
         }
 
-        public static void ListenExecutions(TaskCollection taskCollection, string agent, string? instance, string @delegate, Func<Task> handler, CancellationToken cancellationToken)
+        public static void ListenExecutions(TaskCollection taskCollection, string agent, string? instance,
+            string @delegate, Func<Task> handler, bool isInit, CancellationToken cancellationToken)
         {
             taskCollection.Add(async () =>
             {
-                await foreach (var execution in AsyncLocals.FabricService.GetExecutionsReader(agent, instance, @delegate).ReadAllAsync(cancellationToken))
+                var executions = isInit
+                    ? AsyncLocals.FabricService.GetExecutionsReader("Registry", agent, "Run")
+                        .ReadAllAsync(cancellationToken)
+                        .Where(x => instance == null || instance == x.Execution)
+                        .Select(x => x with
+                        {
+                            Agent = agent,
+                            Instance = x.Execution,
+                            Delegate = @delegate,
+                            Execution = $"{x.Execution}-init"
+                        })
+                    : AsyncLocals.FabricService.GetExecutionsReader(agent, instance, @delegate)
+                        .ReadAllAsync(cancellationToken);
+
+                await foreach (var execution in executions.WithCancellation(cancellationToken))
                 {
                     taskCollection.Add(async () =>
                     {

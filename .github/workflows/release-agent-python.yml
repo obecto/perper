@@ -1,11 +1,8 @@
-name: Perper Python Agent
+name: Release Python Agent
 
 on:
-  push:
-    paths:
-      - 'agent/python/**'
-    branches:
-      - master
+  release:
+    types: [created]
 
 jobs:
   deploy:

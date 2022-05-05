@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Perper.Extensions.Collections;
 using Perper.Model;
 using Perper.Protocol;
 
@@ -44,16 +45,13 @@ namespace Perper.Extensions
         private static async Task<object?[]?> InternalCallAsync(PerperAgent agent, string @delegate, object?[] parameters, CancellationToken cancellationToken)
         {
             var execution = FabricService.GenerateName(@delegate);
-
             await AsyncLocals.FabricService.CreateExecution(execution, agent.Agent, agent.Instance, @delegate, parameters).ConfigureAwait(false);
 
             try
             {
                 await AsyncLocals.FabricService.WaitExecutionFinished(execution, cancellationToken).ConfigureAwait(false);
-
                 var results = await AsyncLocals.FabricService.ReadExecutionResult(execution).ConfigureAwait(false);
                 await AsyncLocals.FabricService.RemoveExecution(execution).ConfigureAwait(false);
-
                 return results;
             }
             catch (OperationCanceledException)
@@ -66,7 +64,17 @@ namespace Perper.Extensions
 
         public static async Task DestroyAsync(this PerperAgent agent)
         {
+            await CallAsync(agent, PerperContext.StopFunctionName).ConfigureAwait(false);
+
+            await foreach (var child in agent.GetChildren()) // TODO: Move to the implementation for Stop() instead of managing the agent's children directly
+            {
+                await new PerperAgent(child.Value, child.Key).DestroyAsync().ConfigureAwait(false);
+            }
+
             await AsyncLocals.FabricService.RemoveInstance(agent.Instance).ConfigureAwait(false);
         }
+
+        public static PerperDictionary<string, string> GetChildren(this PerperAgent agent) =>
+            new(agent.Instance, "children");
     }
 }

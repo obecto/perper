@@ -1,12 +1,8 @@
-name: Perper Fabric
+name: Release Perper Fabric
 
 on:
-  push:
-    paths:
-      - 'fabric/**'
-      - 'docker/Dockerfile'
-    branches:
-      - master
+  release:
+    types: [created]
 
 jobs:
   build:

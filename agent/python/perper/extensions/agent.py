@@ -2,7 +2,9 @@ import asyncio
 from .context_vars import fabric_execution, fabric_service
 from ..model import PerperAgent
 
-startup_function_name = "Startup"
+startup_function_name = "Start"
+stop_function_name = "Stop"
+fallback_startup_function_name = "Startup"
 
 
 def get_agent():
@@ -18,6 +20,10 @@ async def start_agent(agent, *parameters):
     fabric_service.get().create_instance(instance, agent)
     model = PerperAgent(agent, instance)
     result = await call_agent(model, startup_function_name, *parameters)
+
+    if result is None:
+        result = await call_agent(model, fallback_startup_function_name, *parameters)
+
     return (model, result)
 
 
@@ -39,5 +45,6 @@ async def call_agent(agent, delegate, *parameters):
         return tuple(result)
 
 
-def destroy_agent(agent):
+async def destroy_agent(agent):
+    await call_agent(agent, stop_function_name)
     fabric_service.get().remove_instance(agent.instance)

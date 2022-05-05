@@ -4,11 +4,13 @@ import perper
 
 async def init():
     print("Starting container-sample #1")
-    (agent1, _) = await perper.start_agent("container-sample")
-    print("Started container-sample #1")
-
+    agent1_task = asyncio.create_task(perper.start_agent("container-sample"))
     print("Starting container-sample #2")
-    (agent2, _) = await perper.start_agent("container-sample")
+    agent2_task = asyncio.create_task(perper.start_agent("container-sample"))
+
+    (agent1, _) = await agent1_task
+    print("Started container-sample #1")
+    (agent2, _) = await agent2_task
     print("Started container-sample #2")
 
     id1 = await perper.call_agent(agent1, "Test", 1)
@@ -32,4 +34,4 @@ async def init():
     print("Both agents destroyed!")
 
 
-asyncio.run(perper.run("container-usage-sample", {"Init": init}))
+asyncio.run(perper.run("container-usage-sample", {"Init": init}, use_deploy_init=True))

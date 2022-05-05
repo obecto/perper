@@ -7,7 +7,12 @@ namespace Perper.Extensions
 {
     public static class PerperContext
     {
-        public static string StartupFunctionName { get; } = "Startup";
+        public static string StartupFunctionName { get; } = "Start";
+        public static string StopFunctionName { get; } = "Stop";
+
+        // Note: Deprecated - exists just for backwards compatibility with old `Startup`. Will be removed soon.
+        // Projects should switch to using `Start` instead.
+        public static string FallbackStartupFunctionName { get; } = "Startup";
 
         public static PerperAgent Agent => new(AsyncLocals.Agent, AsyncLocals.Instance);
 
@@ -15,13 +20,15 @@ namespace Perper.Extensions
         {
             var instance = await CreateInstanceAsync(agent).ConfigureAwait(false);
             await instance.CallAsync(StartupFunctionName, parameters).ConfigureAwait(false);
+            await instance.CallAsync(FallbackStartupFunctionName, parameters).ConfigureAwait(false);
             return instance;
         }
 
         public static async Task<(PerperAgent, TResult)> StartAgentAsync<TResult>(string agent, params object[] parameters)
         {
             var instance = await CreateInstanceAsync(agent).ConfigureAwait(false);
-            var result = await instance.CallAsync<TResult>(StartupFunctionName, parameters).ConfigureAwait(false);
+            var result = await instance.CallAsync<TResult>(StartupFunctionName, parameters).ConfigureAwait(false) ??
+                         await instance.CallAsync<TResult>(FallbackStartupFunctionName, parameters).ConfigureAwait(false);
             return (instance, result);
         }
 
@@ -29,7 +36,13 @@ namespace Perper.Extensions
         {
             var instance = FabricService.GenerateName(agent);
             await AsyncLocals.FabricService.CreateInstance(instance, agent).ConfigureAwait(false);
-            return new PerperAgent(agent, instance);
+            var resultAgent = new PerperAgent(agent, instance);
+
+            await Agent.GetChildren()
+                .AddAsync(resultAgent.Instance, resultAgent.Agent)
+                .ConfigureAwait(false);
+
+            return resultAgent;
         }
 
         public static PerperStreamBuilder Stream(string @delegate)

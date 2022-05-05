@@ -15,7 +15,7 @@ def run_notebook(*, agent="notebook", instance="notebook-Main"):  # It is import
     fabric_execution.set(FabricExecution(agent, instance, "Main", fabric_service.get().generate_name(agent)))
 
 
-async def run(agent, delegates={}, *, use_instances=False):
+async def run(agent, delegates={}, *, use_instances=False, use_deploy_init=False):
     fabric_service_instance = establish_connection()
     fabric_service.set(fabric_service_instance)
     try:
@@ -26,7 +26,17 @@ async def run(agent, delegates={}, *, use_instances=False):
         startup_context.set(StartupContext(agent, instance, task_collection))
 
         if "Init" in delegates:
-            run_init_delegate(delegates.pop("Init"))
+            run_init_delegate(delegates.pop("Init"), use_deploy_init)
+
+        # The `Start` and `Startup` checks here are needed only until we remove support for the deprecated `Startup`
+        if "Start" not in delegates:
+            delegates["Start"] = lambda *args: fabric_service.get().write_execution_finished(fabric_execution.get().execution)
+
+        if "Startup" not in delegates:
+            delegates["Startup"] = lambda *args: fabric_service.get().write_execution_finished(fabric_execution.get().execution)
+
+        if "Stop" not in delegates:
+            delegates["Stop"] = lambda *args: fabric_service.get().write_execution_finished(fabric_execution.get().execution)
 
         for (delegate, function) in delegates.items():
             register_delegate(delegate, function)
