@@ -32,9 +32,9 @@ namespace Perper.Extensions
             return fabricService.WriteExecutionError(call, exception.Message);
         }
 
-        public static async Task<object?[]?> ReadExecutionResult(this FabricService fabricService, string call)
+        public static async Task<object?[]?> ReadExecutionResult(this FabricService fabricService, string call, bool keepBinary = false)
         {
-            var (error, result) = await fabricService.ReadExecutionErrorAndResult(call).ConfigureAwait(false);
+            var (error, result) = await fabricService.ReadExecutionErrorAndResult(call, keepBinary).ConfigureAwait(false);
 
             if (error != null)
             {
