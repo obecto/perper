@@ -13,6 +13,8 @@ parameters:
   - name: origInstances
     default: []
     type: array
+  - name: fabricNamespace
+    default: default
   - name: env
     default: []
     type: array
