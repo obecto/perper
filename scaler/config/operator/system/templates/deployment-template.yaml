@@ -15,6 +15,11 @@ spec:
       - name: perper-fabric
         image: {{$.Params.perperImage}}
         command: ['perper-fabric/bin/perper-fabric', '-d', 'perper-fabric/config/example.xml']
+        env:
+          - name: IGNITE_QUITE
+            value: "false"
+          - name: JAVA_OPTS
+            value: "-XX:+AlwaysPreTouch -XX:+UseG1GC -XX:+ScavengeBeforeFullGC -XX:+DisableExplicitGC"            
         ports:
             - containerPort: 10800
             - containerPort: 40400
