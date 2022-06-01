@@ -58,7 +58,6 @@ namespace Perper.Application
         public Task RunInServiceContext(CancellationToken cancellationToken = default)
         {
             var (instanceAgent, instance) = UseInstances ? PerperConnection.ConfigureInstance() : (null, null);
-
             var taskCollection = new TaskCollection();
 
             foreach (var (agent, handler) in initHandlers)

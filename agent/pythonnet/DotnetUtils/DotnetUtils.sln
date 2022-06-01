@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PerperUtils", "PerperUtils\PerperUtils.csproj", "{BDB9E9F2-81A7-45C5-8271-64140959BCBA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DllDump", "DllDump\DllDump.csproj", "{638C77E7-30DF-4B11-A0FC-654238D87A77}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BDB9E9F2-81A7-45C5-8271-64140959BCBA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BDB9E9F2-81A7-45C5-8271-64140959BCBA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BDB9E9F2-81A7-45C5-8271-64140959BCBA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BDB9E9F2-81A7-45C5-8271-64140959BCBA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{638C77E7-30DF-4B11-A0FC-654238D87A77}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{638C77E7-30DF-4B11-A0FC-654238D87A77}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{638C77E7-30DF-4B11-A0FC-654238D87A77}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{638C77E7-30DF-4B11-A0FC-654238D87A77}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

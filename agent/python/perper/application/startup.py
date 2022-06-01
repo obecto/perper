@@ -35,6 +35,9 @@ async def run(agent, delegates={}, *, use_instances=False, use_deploy_init=False
         if "Startup" not in delegates:
             delegates["Startup"] = lambda *args: fabric_service.get().write_execution_finished(fabric_execution.get().execution)
 
+        if "Stop" not in delegates:
+            delegates["Stop"] = lambda *args: fabric_service.get().write_execution_finished(fabric_execution.get().execution)
+
         for (delegate, function) in delegates.items():
             register_delegate(delegate, function)
 
