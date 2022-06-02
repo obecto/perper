@@ -9,32 +9,38 @@ using Apache.Ignite.Core.Client.Cache;
 using Grpc.Core;
 using Grpc.Net.Client;
 
+using Perper.Model;
 using Perper.Protocol.Cache;
 using Perper.Protocol.Protobuf;
 
 namespace Perper.Protocol
 {
-    public partial class FabricService : IAsyncDisposable, IDisposable
+    public sealed partial class FabricService : IAsyncDisposable, IDisposable, IPerper
     {
-        public FabricService(IIgniteClient ignite, GrpcChannel grpcChannel)
+        public FabricService(IIgniteClient ignite, GrpcChannel grpcChannel, IFabricCaster fabricCaster)
         {
             Ignite = ignite;
             FabricClient = new Fabric.FabricClient(grpcChannel);
+            FabricCaster = fabricCaster;
 
             IgniteBinary = ignite.GetBinary();
             ExecutionsCache = ignite.GetOrCreateCache<string, ExecutionData>("executions");
             StreamListenersCache = ignite.GetOrCreateCache<string, StreamListener>("stream-listeners");
             // InstancesCache = ignite.GetOrCreateCache<string, InstanceData>("instances");
-            StatesCache = ignite.GetOrCreateCache<string, object>("states");
         }
 
+        IPerperExecutions IPerper.Executions => this;
+        IPerperAgents IPerper.Agents => this;
+        IPerperStreams IPerper.Streams => this;
+        IPerperStates IPerper.States => this;
+
         public IIgniteClient Ignite { get; }
+        public IFabricCaster FabricCaster { get; }
 
         private readonly IBinary IgniteBinary;
         private readonly ICacheClient<string, ExecutionData> ExecutionsCache;
         private readonly ICacheClient<string, StreamListener> StreamListenersCache;
         // private readonly ICacheClient<string, InstanceData> InstancesCache;
-        private readonly ICacheClient<string, object> StatesCache;
 
         private readonly Fabric.FabricClient FabricClient;
         private readonly CallOptions CallOptions = new CallOptions().WithWaitForReady();
@@ -50,12 +56,13 @@ namespace Perper.Protocol
         {
             CancellationTokenSource.Cancel();
             await TaskCollection.GetTask().ConfigureAwait(false);
+            Dispose(true);
 #pragma warning disable CA1816
             GC.SuppressFinalize(this);
 #pragma warning restore CA1816
         }
 
-        protected virtual void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
             if (disposing)
             {

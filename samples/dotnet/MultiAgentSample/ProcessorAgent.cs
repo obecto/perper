@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Perper.Extensions;
 using Perper.Model;
 
+using PerperState = Perper.Extensions.PerperState;
+
 namespace MultiAgentSample
 {
     public static class ProcessorAgent

@@ -12,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using Perper.Model;
 using Perper.Protocol;
 
 using Polly;
@@ -29,9 +30,12 @@ namespace Perper.Application
             Builder.ConfigureServices(services =>
             {
                 services.AddHostedService<PerperHandlerService>();
-                services.AddSingleton<FabricService>();
+                services.AddSingleton<IFabricCaster, DefaultFabricCaster>();
+
+                services.AddSingleton<IPerper, FabricService>();
 
                 services.AddScoped<PerperScopeService>();
+                services.AddScoped<IPerperContext, PerperContext>();
                 services.AddScoped(provider => provider.GetRequiredService<PerperScopeService>().CurrentExecution!);
 
                 services.AddOptions<PerperConfiguration>().Configure<ILogger<PerperBuilder>>((configuration, logger) =>

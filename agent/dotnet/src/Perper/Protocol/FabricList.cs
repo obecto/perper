@@ -7,21 +7,19 @@ using System.Threading.Tasks;
 using Apache.Ignite.Core.Client.Cache;
 using Apache.Ignite.Linq;
 
-namespace Perper.Extensions.Collections
+using Perper.Model;
+
+namespace Perper.Protocol
 {
-
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
-    public class PerperList<T> : IAsyncList<T>, IList<T>
+    public class FabricList<T> : IAsyncList<T>, IList<T>
     {
-        private readonly string instance;
-        private readonly string name;
-        private readonly bool keepBinary;
+        private readonly FabricService FabricService;
+        public PerperState State { get; }
 
-        public PerperList(string instance, string name, bool keepBinary = false)
+        public FabricList(FabricService fabricService, PerperState state)
         {
-            this.instance = instance;
-            this.name = name;
-            this.keepBinary = keepBinary;
+            FabricService = fabricService;
+            State = state;
 
             var configCache = ConfigCache;
 
@@ -42,11 +40,6 @@ namespace Perper.Extensions.Collections
         }
 
         public bool IsReadOnly => false;
-
-
-        public string Instance => instance;
-        public string Name => name;
-        public bool KeepBinary => keepBinary;
 
         public void Add(T item) => DataCache.Put(GetNextIndex("end_index"), item);
         public async Task AddAsync(T item) =>
@@ -293,10 +286,10 @@ namespace Perper.Extensions.Collections
             }
         }
 
-        private ICacheClient<string, int> ConfigCache => AsyncLocals.FabricService.GetListMetaCache<int>(instance, name);
+        private ICacheClient<string, int> ConfigCache => FabricService.GetStateCache<string, int>(State);
 
-        private ICacheClient<int, T> DataCache => AsyncLocals.FabricService.GetListCache<T>(instance, name, keepBinary);
+        private ICacheClient<int, T> DataCache => FabricService.GetStateCache<int, T>(State);
 
-        public override string ToString() => $"PerperList({Instance},{Name},{KeepBinary})";
+        public override string ToString() => $"PerperList({State})";
     }
 }

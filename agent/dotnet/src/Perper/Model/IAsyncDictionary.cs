@@ -1,12 +1,11 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Perper.Extensions.Collections
+namespace Perper.Model
 {
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "We want define async dictionary")]
     public interface IAsyncDictionary<TKey, TValue> : IAsyncEnumerable<KeyValuePair<TKey, TValue>>
     {
-        public string Name { get; }
         Task<ICollection<TKey>> GetKeysAsync();
         Task<ICollection<TValue>> GetValuesAsync();
         Task<int> GetCountAsync();

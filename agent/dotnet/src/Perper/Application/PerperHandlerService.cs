@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
-using Perper.Extensions;
+using Perper.Model;
 using Perper.Protocol;
 
 namespace Perper.Application
@@ -18,14 +18,14 @@ namespace Perper.Application
         public static string InitFunctionName { get; } = "Init";
 
         private readonly IEnumerable<IPerperHandler> Handlers;
-        private readonly FabricService FabricService;
+        private readonly IPerper Perper;
         private readonly IServiceProvider ServiceProvider;
         private readonly PerperConfiguration PerperConfiguration;
 
-        public PerperHandlerService(IEnumerable<IPerperHandler> handlers, FabricService fabricService, IServiceProvider serviceProvider, IOptions<PerperConfiguration> perperOptions)
+        public PerperHandlerService(IEnumerable<IPerperHandler> handlers, IPerper perper, IServiceProvider serviceProvider, IOptions<PerperConfiguration> perperOptions)
         {
             Handlers = handlers;
-            FabricService = fabricService;
+            Perper = perper;
             ServiceProvider = serviceProvider;
             PerperConfiguration = perperOptions.Value;
         }
@@ -53,12 +53,13 @@ namespace Perper.Application
                             continue;
                         }
 
-                        var initExecution = new FabricExecution(handler.Agent, initInstance, "Init", $"{initInstance}-init", stoppingToken);
+                        var initExecution = new PerperExecutionData(new PerperAgent(handler.Agent, initInstance), "Init", new PerperExecution($"{initInstance}-init"), stoppingToken);
                         taskCollection.Add(async () =>
                         {
                             //await using (ServiceProvider.CreateAsyncScope()) // TODO: #if NET6_0 ?
                             using var scope = ServiceProvider.CreateScope();
                             scope.ServiceProvider.GetRequiredService<PerperScopeService>().SetExecution(initExecution);
+                            Console.WriteLine($"hi! {handler.Agent} {handler.Delegate}");
                             await handler.Handle(scope.ServiceProvider).ConfigureAwait(false);
                         });
                     }
@@ -69,7 +70,7 @@ namespace Perper.Application
                 }
                 else
                 {
-                    if (handler.Delegate == PerperContext.StartupFunctionName)
+                    if (handler.Delegate == PerperAgentsExtensions.StartupFunctionName)
                     {
                         agentHasStartup[handler.Agent] = true;
                     }
@@ -89,7 +90,7 @@ namespace Perper.Application
                     continue;
                 }
 
-                ListenExecutions(taskCollection, new EmptyPerperHandler(agent, PerperContext.StartupFunctionName), stoppingToken);
+                ListenExecutions(taskCollection, new EmptyPerperHandler(agent, PerperAgentsExtensions.StartupFunctionName), stoppingToken);
             }
 
             return taskCollection.GetTask();
@@ -100,18 +101,15 @@ namespace Perper.Application
             taskCollection.Add(async () =>
             {
                 var executions = handler.Delegate == InitFunctionName
-                    ? FabricService.GetExecutionsReader("Registry", handler.Agent, "Run")
-                        .ReadAllAsync(stoppingToken)
-                        .Where(x => PerperConfiguration.Instance == null || PerperConfiguration.Instance == x.Execution)
+                    ? Perper.Executions.ListenAsync(new PerperExecutionFilter("Registry", handler.Agent, "Run"), stoppingToken)
+                        .Where(x => PerperConfiguration.Instance == null || PerperConfiguration.Instance == x.Execution.Execution)
                         .Select(x => x with
                         {
-                            Agent = handler.Agent,
-                            Instance = x.Execution,
+                            Agent = new PerperAgent(handler.Agent, x.Execution.Execution),
                             Delegate = handler.Delegate,
-                            Execution = $"{x.Execution}-init"
+                            Execution = new PerperExecution($"{x.Execution}-init")
                         })
-                    : FabricService.GetExecutionsReader(handler.Agent, PerperConfiguration.Instance, handler.Delegate)
-                        .ReadAllAsync(stoppingToken);
+                    : Perper.Executions.ListenAsync(new PerperExecutionFilter(handler.Agent, PerperConfiguration.Instance, handler.Delegate), stoppingToken);
 
                 await foreach (var execution in executions)
                 {

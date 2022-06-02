@@ -7,6 +7,8 @@ using Perper.Application;
 using Perper.Extensions;
 using Perper.Model;
 
+using PerperState = Perper.Extensions.PerperState;
+
 static async Task Init()
 {
     var (exists, processorStream) = await PerperState.TryGetAsync<PerperStream>("processor").ConfigureAwait(false);

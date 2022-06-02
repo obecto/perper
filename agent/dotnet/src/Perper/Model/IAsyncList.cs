@@ -1,12 +1,10 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Perper.Extensions.Collections
+namespace Perper.Model
 {
     public interface IAsyncList<T> : IAsyncEnumerable<T>
     {
-        public string Name { get; }
-
         public Task<int> CountAsync();
 
         public Task AddAsync(T item);

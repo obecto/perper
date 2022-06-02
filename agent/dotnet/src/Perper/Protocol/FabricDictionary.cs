@@ -9,20 +9,19 @@ using System.Threading.Tasks;
 using Apache.Ignite.Core.Client.Cache;
 using Apache.Ignite.Linq;
 
-namespace Perper.Extensions.Collections
-{
-    [SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
-    public class PerperDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IAsyncDictionary<TKey, TValue>
-    {
-        private readonly string instance;
-        private readonly string name;
-        private readonly bool keepBinary;
+using Perper.Model;
 
-        public PerperDictionary(string instance, string name, bool keepBinary = false)
+namespace Perper.Protocol
+{
+    public class FabricDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IAsyncDictionary<TKey, TValue>
+    {
+        private readonly FabricService FabricService;
+        public PerperState State { get; }
+
+        public FabricDictionary(FabricService fabricService, PerperState state)
         {
-            this.instance = instance;
-            this.name = name;
-            this.keepBinary = keepBinary;
+            FabricService = fabricService;
+            State = state;
         }
 
         public TValue this[TKey key] { get => DataCache[key]; set => DataCache[key] = value; }
@@ -34,10 +33,6 @@ namespace Perper.Extensions.Collections
         public int Count => DataCache.AsCacheQueryable().Count();
 
         public bool IsReadOnly => true;
-
-        public string Instance => instance;
-        public string Name => name;
-        public bool KeepBinary => keepBinary;
 
         public void Add(TKey key, TValue value)
         {
@@ -152,8 +147,8 @@ namespace Perper.Extensions.Collections
             => await DataCache.PutAsync(key, value).ConfigureAwait(false);
 
         private ICacheClient<TKey, TValue> DataCache
-            => AsyncLocals.FabricService.GetDictionaryCache<TKey, TValue>(instance, name, keepBinary);
+            => FabricService.GetStateCache<TKey, TValue>(State);
 
-        public override string ToString() => $"PerperDictionary({Instance},{Name},{KeepBinary})";
+        public override string ToString() => $"PerperDictionary({State})";
     }
 }

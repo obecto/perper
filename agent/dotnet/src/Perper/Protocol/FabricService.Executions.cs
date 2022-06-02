@@ -1,63 +1,162 @@
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 using Apache.Ignite.Core.Binary;
 
+using Grpc.Core;
+
+using Perper.Model;
 using Perper.Protocol.Cache;
+using Perper.Protocol.Protobuf;
 
 namespace Perper.Protocol
 {
-    public partial class FabricService
+    public partial class FabricService : IPerperExecutions
     {
-        public async Task CreateExecution(string execution, string agent, string instance, string @delegate, object?[] parameters)
+        (PerperExecution Execution, DelayedCreateFunc Start) IPerperExecutions.Create(PerperAgent agent, string @delegate, ParameterInfo[]? parameters)
         {
-            var executionData = new ExecutionData(agent, instance, @delegate, parameters);
-
-            await ExecutionsCache.PutIfAbsentOrThrowAsync(execution, executionData).ConfigureAwait(false);
+            var execution = new PerperExecution(GenerateName(@delegate));
+            return (execution, async (arguments) =>
+            {
+                var packedArguments = FabricCaster.PackArguments(parameters, arguments);
+                var executionData = new ExecutionData(agent.Agent, agent.Instance, @delegate, packedArguments);
+                await ExecutionsCache.PutIfAbsentOrThrowAsync(execution.Execution, executionData).ConfigureAwait(false);
+            }
+            );
         }
 
-        public async Task RemoveExecution(string execution)
+        async Task IPerperExecutions.WriteResultAsync(PerperExecution execution)
         {
-            await ExecutionsCache.RemoveAsync(execution).ConfigureAwait(false);
+            await ExecutionsCache.OptimisticUpdateAsync(execution.Execution, IgniteBinary, value =>
+            {
+                value.Finished = true;
+            }).ConfigureAwait(false);
         }
 
-        public async Task WriteExecutionFinished(string execution)
-        {
-            await ExecutionsCache.OptimisticUpdateAsync(execution, IgniteBinary, value => { value.Finished = true; }).ConfigureAwait(false);
-        }
-
-        public async Task WriteExecutionResult(string execution, object?[] result)
+        async Task IPerperExecutions.WriteResultAsync<TResult>(PerperExecution execution, TResult result)
         {
             // NOTE: Using builder directly to allow for binary objects to be passed and directly unwrapped in the result; otherwise, Ignite will not unwrap them on the receiving side.
-            // await ExecutionsCache.OptimisticUpdateAsync(execution, IgniteBinary, value => { value.Finished = true; value.Result = result; }).ConfigureAwait(false);
-            await ExecutionsCache.WithKeepBinary<string, IBinaryObject>().OptimisticUpdateAsync(execution, (binaryObject) =>
+            var packedResult = FabricCaster.PackResult(result);
+            await ExecutionsCache.WithKeepBinary<string, IBinaryObject>().OptimisticUpdateAsync(execution.Execution, binaryObject =>
             {
                 var builder = binaryObject.ToBuilder();
                 builder.SetField("Finished", true);
-                builder.SetField("Result", result);
+                builder.SetField("Result", packedResult);
                 return builder.Build();
             }).ConfigureAwait(false);
         }
 
-        public async Task WriteExecutionError(string execution, string error)
+        async Task IPerperExecutions.WriteExceptionAsync(PerperExecution execution, Exception exception)
         {
-            await ExecutionsCache.OptimisticUpdateAsync(execution, IgniteBinary, value => { value.Finished = true; value.Error = error; }).ConfigureAwait(false);
+            var packedException = FabricCaster.PackException(exception);
+            await ExecutionsCache.OptimisticUpdateAsync(execution.Execution, IgniteBinary, value =>
+            {
+                value.Finished = true;
+                value.Error = packedException;
+            }).ConfigureAwait(false);
         }
 
-        public async Task<object?[]> ReadExecutionParameters(string execution)
+        async Task<object?[]> IPerperExecutions.GetArgumentsAsync(PerperExecution execution, ParameterInfo[]? parameters)
         {
-            return (await ExecutionsCache.GetAsync(execution).ConfigureAwait(false)).Parameters;
+            var executionData = await ExecutionsCache.GetAsync(execution.Execution).ConfigureAwait(false);
+            return FabricCaster.UnpackArguments(parameters, executionData.Parameters);
         }
 
-        public async Task<string?> ReadExecutionError(string execution)
+        async Task IPerperExecutions.GetResultAsync(PerperExecution execution, CancellationToken cancellationToken)
         {
-            return (await ExecutionsCache.GetAsync(execution).ConfigureAwait(false)).Error;
+            await WaitExecutionFinished(execution, cancellationToken).ConfigureAwait(false);
+            var executionData = await ExecutionsCache.GetAsync(execution.Execution).ConfigureAwait(false);
+            if (executionData.Error != null)
+            {
+                throw FabricCaster.UnpackException(executionData.Error);
+            }
         }
 
-        public async Task<(string?, object?[]?)> ReadExecutionErrorAndResult(string execution)
+        async Task<TResult> IPerperExecutions.GetResultAsync<TResult>(PerperExecution execution, CancellationToken cancellationToken)
         {
-            var executionData = await ExecutionsCache.GetAsync(execution).ConfigureAwait(false);
+            await WaitExecutionFinished(execution, cancellationToken).ConfigureAwait(false);
+            var executionData = await ExecutionsCache.GetAsync(execution.Execution).ConfigureAwait(false);
+            if (executionData.Error != null)
+            {
+                throw FabricCaster.UnpackException(executionData.Error);
+            }
+            return FabricCaster.UnpackResult<TResult>(executionData.Result);
+        }
 
-            return (executionData.Error, executionData.Result);
+        private async Task WaitExecutionFinished(PerperExecution execution, CancellationToken cancellationToken = default)
+        {
+            await FabricClient.ExecutionFinishedAsync(new ExecutionFinishedRequest
+            {
+                Execution = execution.Execution
+            }, CallOptions.WithCancellationToken(cancellationToken));
+        }
+
+        async Task IPerperExecutions.DestroyAsync(PerperExecution execution)
+        {
+            await ExecutionsCache.RemoveAsync(execution.Execution).ConfigureAwait(false);
+        }
+
+        private readonly ConcurrentDictionary<(string, string?), bool> RunningExecutionListeners = new();
+        private readonly ConcurrentDictionary<PerperExecutionFilter, Channel<PerperExecutionData>> ExecutionChannels = new();
+
+        IAsyncEnumerable<PerperExecutionData> IPerperExecutions.ListenAsync(PerperExecutionFilter filter, CancellationToken cancellationToken)
+        {
+            if (filter.Delegate != null)
+            {
+                if (RunningExecutionListeners.TryAdd((filter.Agent, filter.Instance), true))
+                {
+                    TaskCollection.Add(async () =>
+                    {
+                        await foreach (var data in ListenAsyncHelper(filter.Agent, filter.Instance, CancellationTokenSource.Token))
+                        {
+                            var channel = ExecutionChannels.GetOrAdd(filter with { Delegate = data.Delegate }, _ => Channel.CreateUnbounded<PerperExecutionData>());
+                            await channel.Writer.WriteAsync(data).ConfigureAwait(false);
+                        }
+                    });
+                }
+
+                var resultChannel = ExecutionChannels.GetOrAdd(filter, _ => Channel.CreateUnbounded<PerperExecutionData>());
+                return resultChannel.Reader.ReadAllAsync(cancellationToken);
+            }
+            else
+            {
+                return ListenAsyncHelper(filter.Agent, filter.Instance, cancellationToken);
+            }
+        }
+
+        private async IAsyncEnumerable<PerperExecutionData> ListenAsyncHelper(string agent, string? instance, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var cancellationTokenSources = new Dictionary<string, CancellationTokenSource>();
+
+            var stream = FabricClient.Executions(new ExecutionsRequest
+            {
+                Agent = agent,
+                Instance = instance ?? "",
+            }, CallOptions.WithCancellationToken(cancellationToken));
+
+            while (await stream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+            {
+                var executionProto = stream.ResponseStream.Current;
+                if (executionProto.Cancelled)
+                {
+                    if (cancellationTokenSources.TryGetValue(executionProto.Execution, out var cts))
+                    {
+                        cts.Cancel();
+                    }
+                }
+                else
+                {
+                    var cts = new CancellationTokenSource();
+                    cancellationTokenSources[executionProto.Execution] = cts;
+                    yield return new PerperExecutionData(new PerperAgent(agent, executionProto.Instance), executionProto.Delegate, new PerperExecution(executionProto.Execution), cts.Token);
+                }
+            }
         }
     }
 }

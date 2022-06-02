@@ -10,9 +10,9 @@ namespace Perper.Application
         {
         }
 
-        protected override Task<object?[]> Handle(IServiceProvider serviceProvider, object?[] arguments)
+        protected override Task<(Type, object?)> Handle(IServiceProvider serviceProvider, object?[] arguments)
         {
-            return Task.FromResult(Array.Empty<object?>());
+            return Task.FromResult((typeof(void), (object?)null));
         }
     }
 }
