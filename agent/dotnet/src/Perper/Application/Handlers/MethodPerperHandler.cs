@@ -1,72 +1,53 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.DependencyInjection;
+
 using Perper.Extensions;
+using Perper.Protocol;
 
 namespace Perper.Application
 {
-    public static class PerperStartupHandlerUtils
+    public class MethodPerperHandler : BasePerperHandler
     {
-        public static Func<Task> CreateHandler(Func<object> createInstance, MethodInfo method, bool isInit)
+        public MethodInfo Method { get; }
+
+        public Func<IServiceProvider, object?>? CreateInstance { get; }
+
+        public MethodPerperHandler(string agent, string @delegate, Func<IServiceProvider, object?>? createInstance, MethodInfo method)
+            : base(agent, @delegate)
         {
-            return CreateHandler(
-                args => method.Invoke(method.IsStatic ? null : createInstance(), args),
-                method.GetParameters(),
-                method.ReturnType,
-                isInit);
+            Method = method;
+            CreateInstance = createInstance;
         }
 
-        public static Func<Task> CreateHandler(Delegate impl, bool isInit)
+        public MethodPerperHandler(string agent, string @delegate, Type type, MethodInfo method)
+            : this(agent, @delegate, (serviceProvider) => ActivatorUtilities.CreateInstance(serviceProvider, type), method)
         {
-            return CreateHandler(
-                args => impl.DynamicInvoke(args),
-                impl.Method.GetParameters(),
-                impl.Method.ReturnType,
-                isInit);
         }
 
-        public static Func<Task> CreateHandler(Func<object?[], object?> handler, ParameterInfo[] parameters, Type resultType, bool isInit)
+        public MethodPerperHandler(string agent, string @delegate, Delegate handler)
+            : this(agent, @delegate, (_) => handler.Target!, handler.Method)
         {
-            return isInit ?
-                async () => await ProcessAwaitable(handler(CastArguments(parameters, Array.Empty<object?>())), resultType).ConfigureAwait(false) :
-                WrapHandler(async () =>
-                {
-                    var arguments = await AsyncLocals.FabricService.ReadExecutionParameters(AsyncLocals.Execution).ConfigureAwait(false);
-                    var castArguments = CastArguments(parameters, arguments);
-                    var result = handler(castArguments);
-                    await ProcessResult(result, resultType).ConfigureAwait(false);
-                });
         }
 
-        [SuppressMessage("Design", "CA1031: Do not catch general exception types", Justification = "Exception is logged/handled through other means; rethrowing from handler will crash whole application.")]
-        public static Func<Task> WrapHandler(Func<Task> handler)
+        protected override async Task<object?[]> Handle(IServiceProvider serviceProvider, object?[] arguments)
         {
-            return async () =>
-            {
-                try
-                {
-                    await handler().ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine($"Exception while executing {AsyncLocals.Execution}: {e}");
-                    try
-                    {
-                        await AsyncLocals.FabricService.WriteExecutionException(AsyncLocals.Execution, e).ConfigureAwait(false);
-                    }
-                    catch (Exception e2)
-                    {
-                        Console.WriteLine($"Exception while executing {AsyncLocals.Execution}: {e2}");
-                    }
-                }
-            };
+            var instance = Method.IsStatic ? null : CreateInstance?.Invoke(serviceProvider);
+            var castArguments = CastArguments(Method.GetParameters(), arguments);
+
+            AsyncLocals.SetConnection(serviceProvider.GetRequiredService<FabricService>());
+            AsyncLocals.SetExecution(serviceProvider.GetRequiredService<FabricExecution>());
+
+            var result = Method.Invoke(instance, castArguments);
+
+            return await ProcessResult(serviceProvider, Method.ReturnType, result).ConfigureAwait(false);
         }
 
         public static object?[] CastArguments(ParameterInfo[] parameters, object?[] arguments)
@@ -85,7 +66,7 @@ namespace Perper.Application
                             var paramsArray = Array.CreateInstance(paramsType, arguments.Length - i);
                             for (var j = 0 ; j < paramsArray.Length ; j++)
                             {
-                                paramsArray.SetValue(CastArgument(arguments[i + j], paramsType), j);
+                                paramsArray.SetValue(CastArgument(paramsType, arguments[i + j]), j);
                             }
                             castArgument = paramsArray;
                         }
@@ -96,7 +77,7 @@ namespace Perper.Application
                     }
                     else if (i < arguments.Length)
                     {
-                        castArgument = CastArgument(arguments[i], parameters[i].ParameterType);
+                        castArgument = CastArgument(parameters[i].ParameterType, arguments[i]);
                     }
                     else
                     {
@@ -117,7 +98,7 @@ namespace Perper.Application
             return castArguments;
         }
 
-        public static object? CastArgument(object? arg, Type parameterType)
+        public static object? CastArgument(Type parameterType, object? arg)
         {
             return arg != null && parameterType.IsAssignableFrom(arg.GetType())
                 ? arg
@@ -126,27 +107,11 @@ namespace Perper.Application
                     : Convert.ChangeType(arg, parameterType, CultureInfo.InvariantCulture);
         }
 
-        public static async Task WriteAsyncEnumerable<T>(IAsyncEnumerable<T> values)
-        {
-            await foreach (var value in values)
-            {
-                await AsyncLocals.FabricService.WriteStreamItem(AsyncLocals.Execution, value).ConfigureAwait(false);
-            }
-        }
-
-        public static async Task WriteAsyncEnumerableWithKeys<T>(IAsyncEnumerable<(long, T)> values)
-        {
-            await foreach (var (key, value) in values)
-            {
-                await AsyncLocals.FabricService.WriteStreamItem(AsyncLocals.Execution, key, value).ConfigureAwait(false);
-            }
-        }
-
-        public static async Task WriteResult(object? result, Type resultType)
+        public static object?[] CastResult(Type resultType, object? result)
         {
             if (result == null)
             {
-                await AsyncLocals.FabricService.WriteExecutionFinished(AsyncLocals.Execution).ConfigureAwait(false);
+                return Array.Empty<object?>();
             }
             else
             {
@@ -165,44 +130,60 @@ namespace Perper.Application
                     results = result is object?[] _results && resultType == typeof(object[]) ? _results : (new object?[] { result });
                 }
 
-                await AsyncLocals.FabricService.WriteExecutionResult(AsyncLocals.Execution, results).ConfigureAwait(false);
+                return results;
             }
         }
 
-        public static async Task ProcessResult(object? result, Type resultType)
+        public static async Task<object?[]> ProcessResult(IServiceProvider serviceProvider, Type resultType, object? result)
         {
-            (result, resultType) = await ProcessAwaitable(result, resultType).ConfigureAwait(false);
-            (result, resultType) = await ProcessStream(result, resultType).ConfigureAwait(false);
-            await WriteResult(result, resultType).ConfigureAwait(false);
+            (resultType, result) = await ProcessAwaitable(serviceProvider, resultType, result).ConfigureAwait(false);
+            (resultType, result) = await ProcessStream(serviceProvider, resultType, result).ConfigureAwait(false);
+            return CastResult(resultType, result);
         }
 
-        private static async ValueTask<(object?, Type)> ProcessAwaitable(object? result, Type resultType)
+        private static readonly MethodInfo WriteAsyncEnumerableMethod = typeof(MethodPerperHandler).GetMethod(nameof(WriteAsyncEnumerable))!;
+        public static async Task WriteAsyncEnumerable<T>(FabricService fabricService, FabricExecution fabricExecution, IAsyncEnumerable<T> values)
+        {
+            await foreach (var value in values)
+            {
+                await fabricService.WriteStreamItem(fabricExecution.Execution, value).ConfigureAwait(false);
+            }
+        }
+
+        private static readonly MethodInfo WriteAsyncEnumerableWithKeysMethod = typeof(MethodPerperHandler).GetMethod(nameof(WriteAsyncEnumerableWithKeys))!;
+        public static async Task WriteAsyncEnumerableWithKeys<T>(FabricService fabricService, FabricExecution fabricExecution, IAsyncEnumerable<(long, T)> values)
+        {
+            await foreach (var (key, value) in values)
+            {
+                await fabricService.WriteStreamItem(fabricExecution.Execution, key, value).ConfigureAwait(false);
+            }
+        }
+
+        private static async ValueTask<(Type, object?)> ProcessAwaitable(IServiceProvider serviceProvider, Type resultType, object? result)
         {
             var isAwaitable = resultType.GetMethod(nameof(Task.GetAwaiter)) != null;
             if (isAwaitable)
             {
                 if (resultType.IsGenericType)
                 {
-                    return (await (dynamic)result!, resultType.GetGenericArguments()[0]);
+                    return (resultType.GetGenericArguments()[0], await (dynamic)result!);
                 }
                 else
                 {
                     await (dynamic)result!;
-                    return (null, typeof(void));
+                    return (typeof(void), null);
                 }
             }
-            return (result, resultType);
+            return (resultType, result);
         }
 
-        private static readonly MethodInfo WriteAsyncEnumerableMethod = typeof(PerperStartupHandlerUtils).GetMethod(nameof(WriteAsyncEnumerable))!;
-
-        private static readonly MethodInfo WriteAsyncEnumerableWithKeysMethod = typeof(PerperStartupHandlerUtils).GetMethod(nameof(WriteAsyncEnumerableWithKeys))!;
-
-        private static async ValueTask<(object?, Type)> ProcessStream(object? result, Type resultType)
+        private static async ValueTask<(Type, object?)> ProcessStream(IServiceProvider serviceProvider, Type resultType, object? result)
         {
             var asyncEnumerableInterface = GetGenericInterface(resultType, typeof(IAsyncEnumerable<>));
             if (asyncEnumerableInterface != null)
             {
+                var fabricService = serviceProvider.GetRequiredService<FabricService>();
+                var fabricExecution = serviceProvider.GetRequiredService<FabricExecution>();
                 var itemType = asyncEnumerableInterface.GetGenericArguments()[0]!;
 
                 MethodInfo processMethod;
@@ -219,14 +200,14 @@ namespace Perper.Application
                     processMethod = WriteAsyncEnumerableMethod.MakeGenericMethod(itemType);
                 }
 
-                await AsyncLocals.FabricService.WaitListenerAttached(AsyncLocals.Execution, AsyncLocals.CancellationToken).ConfigureAwait(false);
+                await fabricService.WaitListenerAttached(fabricExecution.Execution, fabricExecution.CancellationToken).ConfigureAwait(false);
 
-                await ((Task)processMethod.Invoke(null, new[] { result })!).ConfigureAwait(false);
+                await ((Task)processMethod.Invoke(null, new[] { fabricService, fabricExecution, result })!).ConfigureAwait(false);
 
-                return (null, typeof(void));
+                return (typeof(void), null);
             }
 
-            return (result, resultType);
+            return (resultType, result);
         }
 
         private static Type? GetGenericInterface(Type type, Type genericInterface)

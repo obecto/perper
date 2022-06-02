@@ -30,6 +30,6 @@ static async Task Init()
 await new PerperStartup()
     .AddClassHandlers(typeof(GeneratorAgent))
     .AddClassHandlers(typeof(ProcessorAgent))
-    .AddInitHandler("", Init)
+    .AddInitHandler("", (Func<Task>)Init)
     .WithDeployInit()
     .RunAsync(default).ConfigureAwait(false);
