@@ -14,7 +14,7 @@ spec:
       containers:
       - name: perper-fabric
         image: {{$.Params.perperImage}}
-        command: ['perper-fabric/bin/perper-fabric', '-d', 'perper-fabric/config/example.xml']
+        command: ['perper-fabric/bin/perper-fabric', '-d', '-d /fabric-default/perper-config.xml']
         env:
           - name: IGNITE_QUITE
             value: "false"
@@ -23,6 +23,13 @@ spec:
         ports:
             - containerPort: 10800
             - containerPort: 40400
+        volumeMounts:
+          - name: perper-fabric-config
+            mountPath: /fabric-default/       
+      volumes:
+      - name: perper-fabric-config
+        secret:
+          secretName: perper-fabric-config
 ---
 apiVersion: v1
 kind: Service
@@ -81,3 +88,10 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: default
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: perper-fabric-config
+data:
+  perper-config.xml: PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPGJlYW5zIHhtbG5zPSJodHRwOi8vd3d3LnNwcmluZ2ZyYW1ld29yay5vcmcvc2NoZW1hL2JlYW5zIgogICAgICAgeG1sbnM6eHNpPSJodHRwOi8vd3d3LnczLm9yZy8yMDAxL1hNTFNjaGVtYS1pbnN0YW5jZSIKICAgICAgIHhzaTpzY2hlbWFMb2NhdGlvbj0iaHR0cDovL3d3dy5zcHJpbmdmcmFtZXdvcmsub3JnL3NjaGVtYS9iZWFucwogICAgICAgIGh0dHA6Ly93d3cuc3ByaW5nZnJhbWV3b3JrLm9yZy9zY2hlbWEvYmVhbnMvc3ByaW5nLWJlYW5zLnhzZCI+CiAgICA8aW1wb3J0IHJlc291cmNlPSIuLi9hcHAvcGVycGVyLWZhYnJpYy9jb25maWcvYmFzZS54bWwiLz4KCiAgICA8YmVhbiBwYXJlbnQ9IlBlcnBlckRlZmF1bHRDb25maWciPgogICAgICAgIDxwcm9wZXJ0eSBuYW1lPSJkYXRhU3RvcmFnZUNvbmZpZ3VyYXRpb24iPjxiZWFuIGNsYXNzPSJvcmcuYXBhY2hlLmlnbml0ZS5jb25maWd1cmF0aW9uLkRhdGFTdG9yYWdlQ29uZmlndXJhdGlvbiI+CiAgICAgICAgICAgIDxwcm9wZXJ0eSBuYW1lPSJkZWZhdWx0RGF0YVJlZ2lvbkNvbmZpZ3VyYXRpb24iPjxiZWFuIGNsYXNzPSJvcmcuYXBhY2hlLmlnbml0ZS5jb25maWd1cmF0aW9uLkRhdGFSZWdpb25Db25maWd1cmF0aW9uIj4KICAgICAgICAgICAgICAgIDxwcm9wZXJ0eSBuYW1lPSJwZXJzaXN0ZW5jZUVuYWJsZWQiIHZhbHVlPSJ0cnVlIi8+CiAgICAgICAgICAgICAgICA8cHJvcGVydHkgbmFtZT0ibWF4U2l6ZSIgdmFsdWU9IjUzNjg3MDkxMjAiLz4gPCEtLTEzNDIxNzcyODAwMC0tPgogICAgICAgICAgICA8L2JlYW4+PC9wcm9wZXJ0eT4KICAgICAgICA8L2JlYW4+PC9wcm9wZXJ0eT4KICAgIDwvYmVhbj4KPC9iZWFucz4=
