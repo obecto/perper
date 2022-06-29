@@ -999,7 +999,7 @@ dotnet_diagnostic.IDE0076.severity = error
 dotnet_diagnostic.IDE0077.severity = error
 
 # IDE0078: Use pattern matching
-dotnet_diagnostic.IDE0078.severity = error
+dotnet_diagnostic.IDE0078.severity = none
 
 # IDE0079: Remove unnecessary suppression
 dotnet_diagnostic.IDE0079.severity = error

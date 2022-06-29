@@ -16,7 +16,7 @@ namespace Perper.Protocol
             return (instance, async (arguments) =>
             {
                 await create().ConfigureAwait(false);
-                await PerperExecutions.CallAsync(instance, PerperAgentsExtensions.StartupFunctionName, arguments).ConfigureAwait(false);
+                await PerperExecutions.CallAsync(instance, PerperAgentsExtensions.StartFunctionName, arguments).ConfigureAwait(false);
             }
             );
         }
@@ -27,7 +27,7 @@ namespace Perper.Protocol
             return (instance, async (arguments) =>
             {
                 await create().ConfigureAwait(false);
-                return await PerperExecutions.CallAsync<TResult>(instance, PerperAgentsExtensions.StartupFunctionName, arguments).ConfigureAwait(false);
+                return await PerperExecutions.CallAsync<TResult>(instance, PerperAgentsExtensions.StartFunctionName, arguments).ConfigureAwait(false);
             }
             );
         }

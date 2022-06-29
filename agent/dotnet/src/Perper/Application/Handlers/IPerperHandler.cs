@@ -1,16 +1,17 @@
-using System;
+using System.Reflection;
 using System.Threading.Tasks;
 
-#pragma warning disable CA1716
+using Perper.Model;
 
-namespace Perper.Application
+namespace Perper.Application.Handlers
 {
     public interface IPerperHandler
     {
-        string Agent { get; }
+        ParameterInfo[]? GetParameters();
+    }
 
-        string Delegate { get; }
-
-        Task Handle(IServiceProvider serviceProvider);
+    public interface IPerperHandler<TResult> : IPerperHandler
+    {
+        Task<TResult> Invoke(PerperExecutionData executionData, object?[] arguments);
     }
 }

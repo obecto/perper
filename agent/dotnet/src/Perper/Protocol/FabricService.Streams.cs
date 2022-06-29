@@ -45,10 +45,6 @@ namespace Perper.Protocol
                 {
                     await StreamListenersCache.PutAsync($"-{stream.Stream}-persist", new StreamListener(stream.Stream, ListenerPersistAll)).ConfigureAwait(false);
                 }
-                else if (options.Action)
-                {
-                    await StreamListenersCache.PutAsync($"-{stream.Stream}-trigger", new StreamListener(stream.Stream, ListenerJustTrigger)).ConfigureAwait(false);
-                }
             }
             );
         }

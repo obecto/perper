@@ -6,6 +6,5 @@ namespace Perper.Application
         public string FabricEndpoint { get; set; } = "http://127.0.0.1:40400";
         public string? Agent { get; set; }
         public string? Instance { get; set; }
-        public bool UseDeployInit { get; set; }
     }
 }

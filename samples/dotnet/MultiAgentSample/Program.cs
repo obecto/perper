@@ -9,7 +9,7 @@ using Perper.Model;
 
 using PerperState = Perper.Extensions.PerperState;
 
-static async Task Init()
+static async Task Deploy()
 {
     var (exists, processorStream) = await PerperState.TryGetAsync<PerperStream>("processor").ConfigureAwait(false);
 
@@ -32,6 +32,5 @@ static async Task Init()
 await new PerperStartup()
     .AddClassHandlers(typeof(GeneratorAgent))
     .AddClassHandlers(typeof(ProcessorAgent))
-    .AddInitHandler("", (Func<Task>)Init)
-    .WithDeployInit()
+    .AddHandler("MultiAgentSample", "Deploy", (Func<Task>)Deploy)
     .RunAsync(default).ConfigureAwait(false);

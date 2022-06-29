@@ -15,23 +15,23 @@ namespace Perper.Protocol
 
         async Task<(bool Exists, TValue Value)> IPerperStates.TryGetAsync<TValue>(PerperState state, string key)
         {
-            var result = await GetStateCache<string, TValue>(state).TryGetAsync(key).ConfigureAwait(false);
+            var result = await GetStateCache<string, object>(state).TryGetAsync(key).ConfigureAwait(false);
             if (!result.Success)
             {
                 return (false, default(TValue)!);
             }
-            return (true, result.Value);
+            return (true, (TValue)result.Value!);
         }
 
         async Task IPerperStates.SetAsync<TValue>(PerperState state, string key, TValue value)
         {
             if (value != null)
             {
-                await GetStateCache<string, TValue>(state).PutAsync(key, value).ConfigureAwait(false);
+                await GetStateCache<string, object>(state).PutAsync(key, value).ConfigureAwait(false);
             }
             else
             {
-                await GetStateCache<string, TValue>(state).RemoveAsync(key).ConfigureAwait(false);
+                await GetStateCache<string, object>(state).RemoveAsync(key).ConfigureAwait(false);
             }
         }
 
@@ -59,7 +59,14 @@ namespace Perper.Protocol
         {
             var queryEntity = new QueryEntity(typeof(TK), typeof(TV));
 
-            return Ignite.GetOrCreateCache<TK, TV>(new CacheClientConfiguration(state.Name, queryEntity)).WithKeepBinary(FabricCaster.TypeShouldKeepBinary(typeof(TV)));
+            if (queryEntity.Fields == null)
+            {
+                return Ignite.GetOrCreateCache<TK, TV>(state.Name).WithKeepBinary(FabricCaster.TypeShouldKeepBinary(typeof(TV)));
+            }
+            else
+            {
+                return Ignite.GetOrCreateCache<TK, TV>(new CacheClientConfiguration(state.Name, queryEntity)).WithKeepBinary(FabricCaster.TypeShouldKeepBinary(typeof(TV)));
+            }
         }
     }
 }

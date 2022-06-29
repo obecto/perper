@@ -1,13 +1,11 @@
 using System;
-#pragma warning disable CA1716
+
+using Perper.Application.Listeners;
+
 namespace Perper.Application
 {
     public interface IPerperBuilder
     {
-        IPerperBuilder AddHandler(IPerperHandler handler);
-
-        IPerperBuilder AddHandler(Func<IServiceProvider, IPerperHandler> handlerFactory);
-
-        IPerperBuilder WithDeployInit();
+        IPerperBuilder AddListener(Func<IServiceProvider, IPerperListener> listenerFactory);
     }
 }

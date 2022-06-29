@@ -1,18 +1,17 @@
-using System;
+using System.Reflection;
 using System.Threading.Tasks;
 
-namespace Perper.Application
-{
-    public class EmptyPerperHandler : BasePerperHandler
-    {
-        public EmptyPerperHandler(string agent, string @delegate)
-            : base(agent, @delegate)
-        {
-        }
+using Perper.Model;
 
-        protected override Task<(Type, object?)> Handle(IServiceProvider serviceProvider, object?[] arguments)
+namespace Perper.Application.Handlers
+{
+    public class EmptyPerperHandler : IPerperHandler<VoidStruct>
+    {
+        public ParameterInfo[]? GetParameters() => null;
+
+        public Task<VoidStruct> Invoke(PerperExecutionData executionData, object?[] arguments)
         {
-            return Task.FromResult((typeof(void), (object?)null));
+            return Task.FromResult(VoidStruct.Value);
         }
     }
 }

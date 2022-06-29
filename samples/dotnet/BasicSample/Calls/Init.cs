@@ -39,7 +39,6 @@ namespace BasicSample.Calls
 
             await PerperContext.CallAsync("DoSomething", "123").ConfigureAwait(false);
             await PerperContext.CallAsync("DoSomethingAsync", "456").ConfigureAwait(false);
-
         }
     }
 }

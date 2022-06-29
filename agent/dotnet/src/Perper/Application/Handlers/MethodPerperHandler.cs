@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -8,137 +7,82 @@ using Microsoft.Extensions.DependencyInjection;
 using Perper.Extensions;
 using Perper.Model;
 
-namespace Perper.Application
+namespace Perper.Application.Handlers
 {
-    public class MethodPerperHandler : BasePerperHandler
+    public class MethodPerperHandler<TResult> : IPerperHandler<TResult>
     {
-        public MethodInfo Method { get; }
+        private readonly Func<IServiceProvider, object?>? CreateInstance;
+        private readonly MethodInfo Method;
+        private readonly IServiceProvider Services;
 
-        public Func<IServiceProvider, object?>? CreateInstance { get; }
-
-        public MethodPerperHandler(string agent, string @delegate, Func<IServiceProvider, object?>? createInstance, MethodInfo method)
-            : base(agent, @delegate)
+        public MethodPerperHandler(Func<IServiceProvider, object?>? createInstance, MethodInfo method, IServiceProvider services)
         {
+            CreateInstance = method.IsStatic ? null : createInstance;
             Method = method;
-            CreateInstance = createInstance;
+            Services = services;
         }
 
-        public MethodPerperHandler(string agent, string @delegate, Type type, MethodInfo method)
-            : this(agent, @delegate, (serviceProvider) => ActivatorUtilities.CreateInstance(serviceProvider, type), method)
+        public ParameterInfo[]? GetParameters() => Method.GetParameters();
+
+        public async Task<TResult> Invoke(PerperExecutionData executionData, object?[] arguments)
         {
-        }
+            //await using (Services.CreateAsyncScope()) // TODO: #if NET6_0 ?
+            using var scope = Services.CreateScope();
+            scope.ServiceProvider.GetRequiredService<PerperScopeService>().SetExecution(executionData);
 
-        public MethodPerperHandler(string agent, string @delegate, Delegate handler)
-            : this(agent, @delegate, (_) => handler.Target!, handler.Method)
-        {
-        }
-
-        protected override ParameterInfo[]? GetParameters() => Method.GetParameters();
-
-        protected override async Task<(Type, object?)> Handle(IServiceProvider serviceProvider, object?[] arguments)
-        {
-            var instance = Method.IsStatic ? null : CreateInstance?.Invoke(serviceProvider);
-
-            using (serviceProvider.GetRequiredService<IPerperContext>().UseContext())
+            using (scope.ServiceProvider.GetRequiredService<IPerperContext>().UseContext())
             {
+                var instance = CreateInstance?.Invoke(scope.ServiceProvider);
                 var result = Method.Invoke(instance, arguments);
 
-                return await ProcessResult(serviceProvider, Method.ReturnType, result).ConfigureAwait(false);
-            }
-        }
-
-        // TODO: Convert to decorator pattern (yayy genericss)
-        public static async Task<(Type, object?)> ProcessResult(IServiceProvider serviceProvider, Type resultType, object? result)
-        {
-            (resultType, result) = await ProcessAwaitable(serviceProvider, resultType, result).ConfigureAwait(false);
-            (resultType, result) = await ProcessStream(serviceProvider, resultType, result).ConfigureAwait(false);
-            return (resultType, result);
-        }
-
-        private static readonly MethodInfo WriteAsyncEnumerableMethod = typeof(MethodPerperHandler).GetMethod(nameof(WriteAsyncEnumerable))!;
-        public static async Task WriteAsyncEnumerable<T>(IPerperStreams streams, PerperStream stream, IAsyncEnumerable<T> values)
-        {
-            await foreach (var value in values)
-            {
-                await streams.WriteItemAsync(stream, value).ConfigureAwait(false);
-            }
-        }
-
-        private static readonly MethodInfo WriteAsyncEnumerableWithKeysMethod = typeof(MethodPerperHandler).GetMethod(nameof(WriteAsyncEnumerableWithKeys))!;
-        public static async Task WriteAsyncEnumerableWithKeys<T>(IPerperStreams streams, PerperStream stream, IAsyncEnumerable<(long, T)> values)
-        {
-            await foreach (var (key, value) in values)
-            {
-                await streams.WriteItemAsync(stream, key, value).ConfigureAwait(false);
-            }
-        }
-
-        private static async ValueTask<(Type, object?)> ProcessAwaitable(IServiceProvider serviceProvider, Type resultType, object? result)
-        {
-            var isAwaitable = resultType.GetMethod(nameof(Task.GetAwaiter)) != null;
-            if (isAwaitable)
-            {
-                if (resultType.IsGenericType)
+                // HACK: ! Currently MethodPerperHandler takes care of ValueTask/Task results, since otherwise the context and scope are destroyed too early.
+                if (typeof(TResult) == typeof(VoidStruct))
                 {
-                    return (resultType.GetGenericArguments()[0], await (dynamic)result!);
+                    if (result is ValueTask valueTask)
+                    {
+                        await valueTask.ConfigureAwait(false);
+                    }
+                    else if (result is Task task)
+                    {
+                        await task.ConfigureAwait(false);
+                    }
+                    return (TResult)(object)VoidStruct.Value;
                 }
                 else
                 {
-                    await (dynamic)result!;
-                    return (typeof(void), null);
+                    if (result is ValueTask<TResult> valueTask)
+                    {
+                        result = await valueTask.ConfigureAwait(false);
+                    }
+                    else if (result is Task<TResult> task)
+                    {
+                        result = await task.ConfigureAwait(false);
+                    }
+                    return (TResult)result!;
                 }
             }
-            return (resultType, result);
         }
+    }
 
-        private static async ValueTask<(Type, object?)> ProcessStream(IServiceProvider serviceProvider, Type resultType, object? result)
+    public static class MethodPerperHandler
+    {
+        public static IPerperHandler From(Func<IServiceProvider, object?>? createInstance, MethodInfo method, IServiceProvider services)
         {
-            var asyncEnumerableInterface = GetGenericInterface(resultType, typeof(IAsyncEnumerable<>));
-            if (asyncEnumerableInterface != null)
-            {
-                var streams = serviceProvider.GetRequiredService<IPerperContext>().Streams;
-                var executionData = serviceProvider.GetRequiredService<PerperExecutionData>();
-                var stream = new PerperStream(executionData.Execution.Execution);
-                var itemType = asyncEnumerableInterface.GetGenericArguments()[0]!;
+            var returnType = method.ReturnType;
 
-                MethodInfo processMethod;
-
-                if (itemType.IsGenericType
-                    && itemType.GetGenericTypeDefinition().Equals(typeof(ValueTuple<,>))
-                    && itemType.GetGenericArguments()[0].Equals(typeof(long)))
-                {
-                    itemType = itemType.GetGenericArguments()[1];
-                    processMethod = WriteAsyncEnumerableWithKeysMethod.MakeGenericMethod(itemType);
-                }
-                else
-                {
-                    processMethod = WriteAsyncEnumerableMethod.MakeGenericMethod(itemType);
-                }
-
-                await streams.WaitForListenerAsync(stream, executionData.CancellationToken).ConfigureAwait(false);
-
-                await ((Task)processMethod.Invoke(null, new[] { streams, stream, result })!).ConfigureAwait(false);
-
-                return (typeof(void), null);
-            }
-
-            return (resultType, result);
+            var resultType = returnType == typeof(void) || returnType == typeof(Task) || returnType == typeof(ValueTask)
+                ? typeof(VoidStruct)
+                : returnType.IsGenericType && (returnType.GetGenericTypeDefinition() == typeof(Task<>) || returnType.GetGenericTypeDefinition() == typeof(ValueTask<>))
+                    ? returnType.GenericTypeArguments[0]
+                    : returnType;
+            var handlerType = typeof(MethodPerperHandler<>).MakeGenericType(resultType);
+            return (IPerperHandler)Activator.CreateInstance(handlerType, createInstance, method, services)!;
         }
 
-        private static Type? GetGenericInterface(Type type, Type genericInterface)
-        {
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == genericInterface)
-            {
-                return type;
-            }
-            foreach (var iface in type.GetInterfaces())
-            {
-                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == genericInterface)
-                {
-                    return iface;
-                }
-            }
-            return null;
-        }
+        public static IPerperHandler From(Type type, MethodInfo method, IServiceProvider services) =>
+            From((serviceProvider) => ActivatorUtilities.CreateInstance(serviceProvider, type), method, services);
+
+        public static IPerperHandler From(Delegate handler, IServiceProvider services) =>
+            From((_) => handler.Target!, handler.Method, services);
     }
 }

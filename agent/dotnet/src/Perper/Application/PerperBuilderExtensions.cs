@@ -2,10 +2,19 @@ using System;
 using System.Globalization;
 using System.Reflection;
 
+using Perper.Application.Handlers;
+using Perper.Application.Listeners;
+using Perper.Model;
+
 namespace Perper.Application
 {
     public static class PerperBuilderExtensions
     {
+        public const string DeployDelegateName = "Deploy";
+        public const string InitDelegateName = "Init";
+        public const string StartDelegateName = "Start";
+        public const string FallbackStartDelegateName = "Startup";
+        public const string StopDelegateName = "Stop";
         public const string RunMethodName = "Run";
         public const string AsyncMethodSuffix = "Async";
 
@@ -30,7 +39,7 @@ namespace Perper.Application
                 {
                     continue;
                 }
-                // builder = type.Name == InitDelegateName ? builder.AddInitHandler(agent, type, runMethod) : builder.AddHandler(agent, type.Name, type, runMethod);
+
                 builder = builder.AddHandler(agent, type.Name, type, runMethod);
             }
 
@@ -43,6 +52,9 @@ namespace Perper.Application
         public static IPerperBuilder AddClassHandlers(this IPerperBuilder builder, Type type) =>
             builder.AddClassHandlers(type.Name, type);
 
+        public static IPerperBuilder AddDeploySingletonHandler(this IPerperBuilder builder, string agent) =>
+            builder.AddListener(services => DeployPerperListener.From(agent, new DeploySingletonPerperHandler(services), services));
+
         public static IPerperBuilder AddClassHandlers(this IPerperBuilder builder, string agent, Type type)
         {
             foreach (var method in type.GetMethods())
@@ -52,48 +64,70 @@ namespace Perper.Application
                 {
                     name = name[..^AsyncMethodSuffix.Length];
                 }
-                // builder = name == InitDelegateName ? builder.AddInitHandler(agent, type, method) : builder.AddHandler(agent, name, type, method);
+
                 builder = builder.AddHandler(agent, name, type, method);
+
             }
 
             return builder;
         }
 
-        #region AddInitHandler
-        public static IPerperBuilder AddInitHandler(this IPerperBuilder builder, string agent, Delegate handler) =>
-            builder.AddHandler(agent, PerperHandlerService.InitFunctionName, handler);
-
-        public static IPerperBuilder AddInitHandler<T>(this IPerperBuilder builder, string agent) =>
-            builder.AddInitHandler(agent, typeof(T));
-
-        public static IPerperBuilder AddInitHandler(this IPerperBuilder builder, string agent, Type initType) =>
-            builder.AddHandler(agent, PerperHandlerService.InitFunctionName, initType, GetRunMethodOrThrow(initType));
-
-        public static IPerperBuilder AddInitHandler(this IPerperBuilder builder, string agent, Type initType, MethodInfo method) =>
-            builder.AddHandler(agent, PerperHandlerService.InitFunctionName, initType, method);
-
-        public static IPerperBuilder AddInitHandler(this IPerperBuilder builder, string agent, Func<IServiceProvider, object?> createInstance, MethodInfo method) =>
-            builder.AddHandler(agent, PerperHandlerService.InitFunctionName, createInstance, method);
-        #endregion AddInitHandler
-
-        #region AddHandler
-        public static IPerperBuilder AddHandler(this IPerperBuilder builder, string agent, string @delegate, Delegate handler) =>
-            builder.AddHandler(new MethodPerperHandler(agent, @delegate, handler));
-
         public static IPerperBuilder AddHandler<T>(this IPerperBuilder builder, string agent) =>
             builder.AddHandler(agent, typeof(T));
 
         public static IPerperBuilder AddHandler(this IPerperBuilder builder, string agent, Type type) =>
-            builder.AddHandler(new MethodPerperHandler(agent, type.Name, type, GetRunMethodOrThrow(type)));
+            builder.AddHandler(agent, type.Name, type, GetRunMethodOrThrow(type));
+
+        public static IPerperBuilder AddHandler(this IPerperBuilder builder, string agent, string @delegate, Type type) =>
+            builder.AddHandler(agent, @delegate, type, GetRunMethodOrThrow(type));
+
+        public static IPerperBuilder AddHandler(this IPerperBuilder builder, string agent, Type type, MethodInfo method) =>
+            builder.AddHandler(agent, StripSuffix(method.Name, AsyncMethodSuffix), type, GetRunMethodOrThrow(type));
 
         public static IPerperBuilder AddHandler(this IPerperBuilder builder, string agent, string @delegate, Type type, MethodInfo method) =>
-            builder.AddHandler(new MethodPerperHandler(agent, @delegate, type, method));
+            builder.AddHandler(agent, @delegate, services => MethodPerperHandler.From(type, method, services), (method.GetCustomAttribute<PerperStreamOptionsAttribute>() ?? type.GetCustomAttribute<PerperStreamOptionsAttribute>())?.Options);
 
-        public static IPerperBuilder AddHandler(this IPerperBuilder builder, string agent, string @delegate, Func<IServiceProvider, object?> createInstance, MethodInfo method) =>
-            builder.AddHandler(new MethodPerperHandler(agent, @delegate, createInstance, method));
-        #endregion AddHandler
+        public static IPerperBuilder AddHandler(this IPerperBuilder builder, string agent, string @delegate, Delegate handler) =>
+            builder.AddHandler(agent, @delegate, services => MethodPerperHandler.From(handler, services), handler.Method.GetCustomAttribute<PerperStreamOptionsAttribute>()?.Options);
 
-        #region Utils
+#pragma warning disable CA1801 // HACK
+        public static IPerperBuilder AddHandler(this IPerperBuilder builder, string agent, string @delegate, Func<IServiceProvider, IPerperHandler> handlerFactory, PerperStreamOptions? streamOptions = null) =>
+            builder.AddListener(services =>
+            {
+                var handler = handlerFactory(services);
+                var streamHandler = PerperHandler.TryWrapAsyncEnumerable(handler, services);
+
+                if (streamHandler != null)
+                {
+                    return ExecutionPerperListener.From(agent, @delegate, streamHandler, services);
+                    //return StreamPerperListener.From(agent, @delegate, streamOptions ?? new PerperStreamOptions(), streamHandler, services);
+                }
+                else if (@delegate == DeployDelegateName)
+                {
+                    return DeployPerperListener.From(agent, handler, services);
+                }
+                else if (@delegate == InitDelegateName)
+                {
+                    return InitPerperListener.From(agent, handler, services);
+                }
+                else if (@delegate == StartDelegateName || @delegate == FallbackStartDelegateName)
+                {
+                    return StartPerperListener.From(agent, handler, services);
+                }
+                else if (@delegate == StopDelegateName)
+                {
+                    return StopPerperListener.From(agent, handler, services);
+                }
+                else
+                {
+                    return ExecutionPerperListener.From(agent, @delegate, handler, services);
+                }
+            });
+
+
+        private static string StripSuffix(string @string, string suffix) =>
+            @string.EndsWith(suffix, false, CultureInfo.InvariantCulture) ? @string[..^suffix.Length] : @string;
+
         private static MethodInfo? GetRunMethod(Type type)
         {
             return type.GetMethod(RunMethodName + AsyncMethodSuffix) ?? type.GetMethod(RunMethodName);
@@ -103,6 +137,5 @@ namespace Perper.Application
         {
             return GetRunMethod(type) ?? throw new ArgumentOutOfRangeException($"Type {type} does not contain a definition for {RunMethodName + AsyncMethodSuffix} or {RunMethodName}");
         }
-        #endregion Utils
     }
 }

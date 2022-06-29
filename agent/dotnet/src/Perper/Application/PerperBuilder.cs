@@ -12,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using Perper.Application.Listeners;
 using Perper.Model;
 using Perper.Protocol;
 
@@ -29,10 +30,10 @@ namespace Perper.Application
 
             Builder.ConfigureServices(services =>
             {
-                services.AddHostedService<PerperHandlerService>();
                 services.AddSingleton<IFabricCaster, DefaultFabricCaster>();
 
                 services.AddSingleton<IPerper, FabricService>();
+                services.AddSingleton<PerperListenerFilter>();
 
                 services.AddScoped<PerperScopeService>();
                 services.AddScoped<IPerperContext, PerperContext>();
@@ -88,21 +89,10 @@ namespace Perper.Application
             });
         }
 
-        public IPerperBuilder AddHandler(IPerperHandler handler)
+        public IPerperBuilder AddListener(Func<IServiceProvider, IPerperListener> listenerFactory)
         {
-            Builder.ConfigureServices(services => services.AddSingleton(handler));
-            return this;
-        }
-
-        public IPerperBuilder AddHandler(Func<IServiceProvider, IPerperHandler> handlerFactory)
-        {
-            Builder.ConfigureServices(services => services.AddSingleton(handlerFactory));
-            return this;
-        }
-
-        public IPerperBuilder WithDeployInit()
-        {
-            Builder.ConfigureServices(services => services.Configure<PerperConfiguration>(c => c.UseDeployInit = true));
+            Builder.ConfigureServices(services => services.AddSingleton<IHostedService>(
+                (IServiceProvider servicesProvider) => listenerFactory(servicesProvider)));
             return this;
         }
     }

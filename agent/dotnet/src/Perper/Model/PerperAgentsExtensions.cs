@@ -4,7 +4,10 @@ namespace Perper.Model
 {
     public static class PerperAgentsExtensions
     {
-        public static string StartupFunctionName => "Start"; // TODO: Move out of hereFabricList
+        [System.Obsolete("Use StartFunctionName instead")]
+        public static string StartupFunctionName => StartFunctionName; // TODO: Move out of here
+
+        public static string StartFunctionName => "Start"; // TODO: Move out of here
         public static string StopFunctionName => "Stop"; // TODO: Move out of here
 
         public static async Task<PerperAgent> CreateAsync(this IPerperAgents perperAgents, PerperAgent? parent, string @delegate, params object?[] arguments)
