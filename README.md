@@ -20,6 +20,10 @@ Built by [Obecto](https://www.obecto.com/) on top of [Apache Ignite](https://ign
 
 <!--TODO: Check the [Apocryph](https://github.com/comrade-coop/apocryph) blockchain project as a use case of the Perper framework.-->
 
+## Video presentation
+
+[![Building serverless reactive systems using Apache Ignite](https://img.youtube.com/vi/eRzX1Rd7T7I/0.jpg)](https://www.youtube.com/watch?v=eRzX1Rd7T7I)
+
 ## Getting Started
 
 User documentation:
