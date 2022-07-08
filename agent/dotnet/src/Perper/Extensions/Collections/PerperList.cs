@@ -15,11 +15,13 @@ namespace Perper.Extensions.Collections
     {
         private readonly string instance;
         private readonly string name;
+        private readonly bool keepBinary;
 
-        public PerperList(string instance, string name)
+        public PerperList(string instance, string name, bool keepBinary = false)
         {
             this.instance = instance;
             this.name = name;
+            this.keepBinary = keepBinary;
 
             var configCache = ConfigCache;
 
@@ -44,6 +46,7 @@ namespace Perper.Extensions.Collections
 
         public string Instance => instance;
         public string Name => name;
+        public bool KeepBinary => keepBinary;
 
         public void Add(T item) => DataCache.Put(GetNextIndex("end_index"), item);
         public async Task AddAsync(T item) =>
@@ -292,8 +295,8 @@ namespace Perper.Extensions.Collections
 
         private ICacheClient<string, int> ConfigCache => AsyncLocals.FabricService.GetListMetaCache<int>(instance, name);
 
-        private ICacheClient<int, T> DataCache => AsyncLocals.FabricService.GetListCache<T>(instance, name);
+        private ICacheClient<int, T> DataCache => AsyncLocals.FabricService.GetListCache<T>(instance, name, keepBinary);
 
-        public override string ToString() => $"PerperList({Instance},{Name})";
+        public override string ToString() => $"PerperList({Instance},{Name},{KeepBinary})";
     }
 }

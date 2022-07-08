@@ -1,5 +1,7 @@
 using System.Threading.Tasks;
 
+using Apache.Ignite.Core.Binary;
+
 using Perper.Protocol.Cache;
 
 namespace Perper.Protocol
@@ -25,7 +27,15 @@ namespace Perper.Protocol
 
         public async Task WriteExecutionResult(string execution, object?[] result)
         {
-            await ExecutionsCache.OptimisticUpdateAsync(execution, IgniteBinary, value => { value.Finished = true; value.Result = result; }).ConfigureAwait(false);
+            // NOTE: Using builder directly to allow for binary objects to be passed and directly unwrapped in the result; otherwise, Ignite will not unwrap them on the receiving side.
+            // await ExecutionsCache.OptimisticUpdateAsync(execution, IgniteBinary, value => { value.Finished = true; value.Result = result; }).ConfigureAwait(false);
+            await ExecutionsCache.WithKeepBinary<string, IBinaryObject>().OptimisticUpdateAsync(execution, (binaryObject) =>
+            {
+                var builder = binaryObject.ToBuilder();
+                builder.SetField("Finished", true);
+                builder.SetField("Result", result);
+                return builder.Build();
+            }).ConfigureAwait(false);
         }
 
         public async Task WriteExecutionError(string execution, string error)

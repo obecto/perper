@@ -5,25 +5,33 @@ namespace Perper.Protocol
 {
     public partial class FabricService
     {
-        public ICacheClient<int, T> GetListCache<T>(string instance, string name)
+        public ICacheClient<int, T> GetListCache<T>(string instance, string name, bool keepBinary = false)
         {
-            var queryEntity = new QueryEntity(typeof(int), typeof(T));
-
-            return Ignite.GetOrCreateCache<int, T>(new CacheClientConfiguration($"{instance}-list-{name}", queryEntity));
+            return GetCollectionCache<int, T>($"{instance}-list-{name}").WithKeepBinary(keepBinary);
         }
 
         public ICacheClient<string, T> GetListMetaCache<T>(string instance, string name)
         {
-            var queryEntity = new QueryEntity(typeof(string), typeof(T));
-
-            return Ignite.GetOrCreateCache<string, T>(new CacheClientConfiguration($"{instance}-list-{name}-meta", queryEntity));
+            return GetCollectionCache<string, T>($"{instance}-list-{name}-meta");
         }
 
-        public ICacheClient<TKey, TValue> GetDictionaryCache<TKey, TValue>(string instance, string name)
+        public ICacheClient<TKey, TValue> GetDictionaryCache<TKey, TValue>(string instance, string name, bool keepBinary = false)
         {
-            var queryEntity = new QueryEntity(typeof(TKey), typeof(TValue));
+            return GetCollectionCache<TKey, TValue>($"{instance}-dictionary-{name}").WithKeepBinary(keepBinary);
+        }
 
-            return Ignite.GetOrCreateCache<TKey, TValue>(new CacheClientConfiguration($"{instance}-dictionary-{name}", queryEntity));
+        private ICacheClient<TK, TV> GetCollectionCache<TK, TV>(string name)
+        {
+            var queryEntity = new QueryEntity(typeof(TK), typeof(TV));
+
+            if (queryEntity.Fields == null)
+            {
+                return Ignite.GetOrCreateCache<TK, TV>(name);
+            }
+            else
+            {
+                return Ignite.GetOrCreateCache<TK, TV>(new CacheClientConfiguration(name, queryEntity));
+            }
         }
     }
 }

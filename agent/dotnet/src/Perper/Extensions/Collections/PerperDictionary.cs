@@ -16,11 +16,13 @@ namespace Perper.Extensions.Collections
     {
         private readonly string instance;
         private readonly string name;
+        private readonly bool keepBinary;
 
-        public PerperDictionary(string instance, string name)
+        public PerperDictionary(string instance, string name, bool keepBinary = false)
         {
             this.instance = instance;
             this.name = name;
+            this.keepBinary = keepBinary;
         }
 
         public TValue this[TKey key] { get => DataCache[key]; set => DataCache[key] = value; }
@@ -35,6 +37,7 @@ namespace Perper.Extensions.Collections
 
         public string Instance => instance;
         public string Name => name;
+        public bool KeepBinary => keepBinary;
 
         public void Add(TKey key, TValue value)
         {
@@ -149,8 +152,8 @@ namespace Perper.Extensions.Collections
             => await DataCache.PutAsync(key, value).ConfigureAwait(false);
 
         private ICacheClient<TKey, TValue> DataCache
-            => AsyncLocals.FabricService.GetDictionaryCache<TKey, TValue>(instance, name);
+            => AsyncLocals.FabricService.GetDictionaryCache<TKey, TValue>(instance, name, keepBinary);
 
-        public override string ToString() => $"PerperDictionary({Instance},{Name})";
+        public override string ToString() => $"PerperDictionary({Instance},{Name},{KeepBinary})";
     }
 }
