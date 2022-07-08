@@ -188,10 +188,10 @@ class FabricService:
 
             async for proto in executions:
                 if proto.cancelled:
-                    value = self.execution_tasks.setdefault(proto.execution, CANCELLED)
-                    if value is not CANCELLED:
+                    value = self.execution_tasks.setdefault(proto.execution, FabricService.CANCELLED)
+                    if value is not FabricService.CANCELLED:
                         value.cancel()
-                        self.execution_tasks[proto.execution] = CANCELLED
+                        self.execution_tasks[proto.execution] = FabricService.CANCELLED
                 else:
                     execution = FabricExecution(agent, proto.instance, proto.delegate, proto.execution)
                     await self.execution_channels[(agent, instance, proto.delegate)].put(execution)
