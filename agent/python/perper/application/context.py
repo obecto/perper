@@ -26,8 +26,9 @@ def register_delegate(delegate, function, is_init=False):
     async def helper():
         if is_init:
             async for execution in fabric_service.get().enumerate_executions("Registry", startup_context.get().agent, "Run"):
-                if startup_context.get().instance is None or startup_context.get().instance == execution:
-                    startup_context.get().task_collection.add(process_execution(execution, function, is_init))
+                if startup_context.get().instance is None or startup_context.get().instance == execution.execution:
+                    transformed_execution = FabricExecution(startup_context.get().agent, execution.execution, "Init", f"{execution.execution}-init")
+                    startup_context.get().task_collection.add(process_execution(transformed_execution, function, is_init))
         else:
             async for execution in fabric_service.get().enumerate_executions(startup_context.get().agent, startup_context.get().instance, delegate):
                 startup_context.get().task_collection.add(process_execution(execution, function))
