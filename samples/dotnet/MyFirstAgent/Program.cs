@@ -1,2 +1,4 @@
+using Microsoft.Extensions.Hosting;
+
 using Perper.Application;
-await new PerperStartup().AddAssemblyHandlers("MyFirstAgent").WithDeployInit().RunAsync(default).ConfigureAwait(false);
+Host.CreateDefaultBuilder().ConfigurePerper(perper => perper.AddAssemblyHandlers("MyFirstAgent")).Build().Run();

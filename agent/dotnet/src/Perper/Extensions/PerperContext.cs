@@ -9,8 +9,8 @@ namespace Perper.Extensions
     {
         public static PerperAgent Agent => AsyncLocalContext.PerperContext.CurrentAgent;
 
-        [Obsolete("Moved to Perper.Model")]
-        public static string StartupFunctionName => PerperAgentsExtensions.StartupFunctionName;
+        [Obsolete("Moved to Perper.Model.PerperAgentsExtensions.StartFunctionName")]
+        public static string StartupFunctionName => PerperAgentsExtensions.StartFunctionName;
 
         public static Task<PerperAgent> StartAgentAsync(string agent, params object[] parameters) =>
             AsyncLocalContext.PerperContext.CreateAgentAsync(agent, parameters);

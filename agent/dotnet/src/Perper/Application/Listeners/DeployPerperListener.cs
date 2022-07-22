@@ -38,8 +38,9 @@ namespace Perper.Application.Listeners
                 return;
             }
 
+            // NOTE: PerperAgent("Deployer", Agent) would be more "correct", but it breaks the simple usecase of using Deploy to make calls in the same agent.
             var executionData = new PerperExecutionData(
-                new PerperAgent("Deployer", Agent),
+                new PerperAgent(Agent, $"{Agent}-deploy"),
                 Delegate,
                 new PerperExecution($"{Agent}-deploy-deploy"),
                 default)

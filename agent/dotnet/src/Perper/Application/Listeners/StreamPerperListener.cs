@@ -1,6 +1,4 @@
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Perper.Application.Handlers;
 using Perper.Model;
@@ -9,32 +7,35 @@ using Perper.Model;
 
 namespace Perper.Application.Listeners
 {
-    public class StreamPerperListener : IPerperListener
+    public class StreamPerperListener : CompositePerperListener
     {
-        private readonly IPerperListener outerListener;
-        private readonly IPerperListener innerListener;
+        private readonly string Agent;
+        private readonly string Delegate;
+        private readonly PerperStreamOptions StreamOptions;
+        private readonly IPerperHandler Handler;
+        private readonly IServiceProvider Services;
 
-        public StreamPerperListener(string agent, string @delegate, PerperStreamOptions streamOptions, IPerperHandler handler, IServiceProvider serviceProvider)
+        protected virtual string ExternalDelegate => Delegate;
+        protected virtual string InternalDelegate => $"{Delegate}-stream";
+
+        public StreamPerperListener(string agent, string @delegate, PerperStreamOptions streamOptions, IPerperHandler handler, IServiceProvider services)
         {
-            var externalDelegate = @delegate;
-            var internalDelegate = $"{@delegate}-stream";
-
-            outerListener = new ExecutionPerperListener(agent, externalDelegate, new StartStreamPerperHandler(streamOptions, internalDelegate, serviceProvider), serviceProvider);
-            innerListener = new ExecutionPerperListener(agent, internalDelegate, handler, serviceProvider);
+            Agent = agent;
+            Delegate = @delegate;
+            StreamOptions = streamOptions;
+            Handler = handler;
+            Services = services;
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken)
+        protected override IPerperListener[] GetListeners()
         {
-            await outerListener.StartAsync(cancellationToken).ConfigureAwait(false);
-            await innerListener.StartAsync(cancellationToken).ConfigureAwait(false);
+            return new IPerperListener[]
+            {
+                new ExecutionPerperListener(Agent, ExternalDelegate, new StartStreamPerperHandler(StreamOptions, InternalDelegate, Services), Services),
+                new ExecutionPerperListener(Agent, InternalDelegate, Handler, Services)
+            };
         }
 
-        public async Task StopAsync(CancellationToken cancellationToken)
-        {
-            await outerListener.StopAsync(cancellationToken).ConfigureAwait(false);
-            await innerListener.StopAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        public override string ToString() => $"{GetType()}({outerListener}, {innerListener})";
+        public override string ToString() => $"{GetType()}({Agent}, {ExternalDelegate}, {InternalDelegate}, {StreamOptions}, {Handler})";
     }
 }

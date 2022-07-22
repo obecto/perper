@@ -5,7 +5,7 @@ using Perper.Extensions;
 
 namespace ContainerUsageSample.Calls
 {
-    public static class Init
+    public static class Deploy
     {
         public static async Task RunAsync()
         {

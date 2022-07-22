@@ -6,7 +6,7 @@ using Perper.Model;
 
 namespace BasicSample.Calls
 {
-    public class Init
+    public class Deploy
     {
         public async Task RunAsync()
         {
@@ -14,8 +14,8 @@ namespace BasicSample.Calls
             const int batchCount = 10;
             const int messageCount = 28;
 
-            var generator = await PerperContext.Stream("Generator").Packed(1).Persistent().StartAsync(messageCount).ConfigureAwait(false);
-            var processor = await PerperContext.Stream("Processor").Index<SampleUserType>().StartAsync(generator.Replay(1), batchCount).ConfigureAwait(false);
+            var generator = await PerperContext.CallAsync<PerperStream>("Generator", messageCount).ConfigureAwait(false);
+            var processor = await PerperContext.CallAsync<PerperStream>("Processor", generator.Replay(1), batchCount).ConfigureAwait(false);
             var _ = PerperContext.CallAsync("Consumer", processor).ConfigureAwait(false);
 
             // Cyclic streams:

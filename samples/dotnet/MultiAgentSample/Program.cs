@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.Hosting;
+
 using MultiAgentSample;
 
 using Perper.Application;
@@ -29,8 +31,9 @@ static async Task Deploy()
     }
 }
 
-await new PerperStartup()
-    .AddClassHandlers(typeof(GeneratorAgent))
-    .AddClassHandlers(typeof(ProcessorAgent))
-    .AddHandler("MultiAgentSample", "Deploy", (Func<Task>)Deploy)
-    .RunAsync(default).ConfigureAwait(false);
+Host.CreateDefaultBuilder().ConfigurePerper(perper =>
+    perper
+        .AddHandler("MultiAgentSample", "Deploy", (Func<Task>)Deploy)
+        .AddClassHandlers(typeof(GeneratorAgent))
+        .AddClassHandlers(typeof(ProcessorAgent))
+).Build().Run();

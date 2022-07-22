@@ -1,2 +1,4 @@
+using Microsoft.Extensions.Hosting;
+
 using Perper.Application;
-await new PerperStartup().AddAssemblyHandlers("container-usage-sample").WithDeployInit().RunAsync(default).ConfigureAwait(false);
+Host.CreateDefaultBuilder().ConfigurePerper(perper => perper.AddAssemblyHandlers("container-usage-sample")).Build().Run();

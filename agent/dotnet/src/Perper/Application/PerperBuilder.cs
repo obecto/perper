@@ -91,8 +91,14 @@ namespace Perper.Application
 
         public IPerperBuilder AddListener(Func<IServiceProvider, IPerperListener> listenerFactory)
         {
-            Builder.ConfigureServices(services => services.AddSingleton<IHostedService>(
-                (IServiceProvider servicesProvider) => listenerFactory(servicesProvider)));
+            Builder.ConfigureServices(services => services.AddSingleton<IHostedService>((IServiceProvider servicesProvider) =>
+            {
+                var listener = listenerFactory(servicesProvider);
+
+                servicesProvider.GetService<ILogger<IPerperBuilder>>()?.LogDebug("Registering Listener {Listener}", listener);
+
+                return listener;
+            }));
             return this;
         }
     }

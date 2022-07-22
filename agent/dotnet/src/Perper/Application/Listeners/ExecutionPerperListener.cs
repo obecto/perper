@@ -17,8 +17,8 @@ namespace Perper.Application.Listeners
 {
     public class ExecutionPerperListener : BackgroundService, IPerperListener
     {
-        private readonly string Agent;
-        private readonly string Delegate;
+        public string Agent { get; }
+        public string Delegate { get; }
         private readonly IPerperHandler Handler;
         private readonly IPerper Perper;
         private readonly PerperListenerFilter Filter;

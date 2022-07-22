@@ -43,6 +43,8 @@ namespace Perper.Application
                 builder = builder.AddHandler(agent, type.Name, type, runMethod);
             }
 
+            builder = builder.AddFallbackHandlers(agent);
+
             return builder;
         }
 
@@ -66,8 +68,9 @@ namespace Perper.Application
                 }
 
                 builder = builder.AddHandler(agent, name, type, method);
-
             }
+
+            builder = builder.AddFallbackHandlers(agent);
 
             return builder;
         }
@@ -120,6 +123,8 @@ namespace Perper.Application
                     return new ExecutionPerperListener(agent, @delegate, handler, services);
                 }
             });
+
+        public static IPerperBuilder AddFallbackHandlers(this IPerperBuilder builder, string agent) => builder.AddListener(services => new FallbackPerperListener(agent, services));
 
 
         private static string StripSuffix(string @string, string suffix) =>

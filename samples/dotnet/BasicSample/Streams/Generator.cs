@@ -2,10 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
+using Perper.Application;
+
 namespace BasicSample.Streams
 {
     public class Generator
     {
+        [PerperStreamOptions(Packed = true, Stride = 1, Persistent = true)]
         public async IAsyncEnumerable<(long, string)> RunAsync(int count)
         {
             for (var i = 0 ; i < count ; i++)
