@@ -8,10 +8,6 @@ namespace Perper.Application.Handlers
     public interface IPerperHandler
     {
         ParameterInfo[]? GetParameters();
-    }
-
-    public interface IPerperHandler<TResult> : IPerperHandler
-    {
-        Task<TResult> Invoke(PerperExecutionData executionData, object?[] arguments);
+        Task Invoke(PerperExecutionData executionData, object?[] arguments);
     }
 }

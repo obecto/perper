@@ -23,7 +23,8 @@ namespace Perper.Extensions
             Delegate = @delegate;
             if (Delegate != null)
             {
-                var (linkedExecution, linkedExecutionCreation) = AsyncLocalContext.PerperContext.Executions.Create(AsyncLocalContext.PerperContext.CurrentAgent, Delegate);
+                var internalDelegate = Delegate; // $"{Delegate}-stream"
+                var (linkedExecution, linkedExecutionCreation) = AsyncLocalContext.PerperContext.Executions.Create(AsyncLocalContext.PerperContext.CurrentAgent, internalDelegate);
                 LinkedExecutionCreation = linkedExecutionCreation;
                 StreamCreationLazy = new(() => AsyncLocalContext.PerperContext.Streams.Create(Options, linkedExecution));
             }

@@ -15,23 +15,23 @@ using Perper.Protocol;
 
 namespace Perper.Application.Listeners
 {
-    public class ExecutionPerperListener<TResult> : BackgroundService, IPerperListener
+    public class ExecutionPerperListener : BackgroundService, IPerperListener
     {
         private readonly string Agent;
         private readonly string Delegate;
-        private readonly IPerperHandler<TResult> Handler;
+        private readonly IPerperHandler Handler;
         private readonly IPerper Perper;
         private readonly PerperListenerFilter Filter;
-        private readonly ILogger<ExecutionPerperListener<TResult>>? Logger;
+        private readonly ILogger<ExecutionPerperListener>? Logger;
 
-        public ExecutionPerperListener(string agent, string @delegate, IPerperHandler<TResult> handler, IServiceProvider services)
+        public ExecutionPerperListener(string agent, string @delegate, IPerperHandler handler, IServiceProvider services)
         {
             Agent = agent;
             Delegate = @delegate;
             Handler = handler;
             Perper = services.GetRequiredService<IPerper>();
             Filter = services.GetRequiredService<PerperListenerFilter>();
-            Logger = services.GetService<ILogger<ExecutionPerperListener<TResult>>>();
+            Logger = services.GetService<ILogger<ExecutionPerperListener>>();
         }
 
         [SuppressMessage("Design", "CA1031: Do not catch general exception types", Justification = "Exception is logged/handled through other means; rethrowing from handler will crash the whole service.")]
@@ -51,16 +51,7 @@ namespace Perper.Application.Listeners
                 {
                     var arguments = await Perper.Executions.GetArgumentsAsync(executionData.Execution, Handler.GetParameters()).ConfigureAwait(false);
 
-                    var result = await Handler.Invoke(executionData, arguments).ConfigureAwait(false);
-
-                    if (typeof(TResult) == typeof(VoidStruct))
-                    {
-                        await Perper.Executions.WriteResultAsync(executionData.Execution).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        await Perper.Executions.WriteResultAsync(executionData.Execution, result).ConfigureAwait(false);
-                    }
+                    await Handler.Invoke(executionData, arguments).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -80,23 +71,5 @@ namespace Perper.Application.Listeners
         }
 
         public override string ToString() => $"{GetType()}({Agent}, {Delegate}, {Handler})";
-    }
-
-    public static class ExecutionPerperListener
-    {
-        public static IPerperListener From(string agent, string @delegate, IPerperHandler handler, IServiceProvider services)
-        {
-            foreach (var type in handler.GetType().GetInterfaces())
-            {
-                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IPerperHandler<>))
-                {
-                    var resultType = type.GenericTypeArguments[0];
-                    var listenerType = typeof(ExecutionPerperListener<>).MakeGenericType(resultType);
-                    return (IPerperListener)Activator.CreateInstance(listenerType, agent, @delegate, handler, services)!;
-                }
-            }
-
-            throw new ArgumentOutOfRangeException($"Execution handler ({handler}) must implement IPerperHandler<T>.");
-        }
     }
 }

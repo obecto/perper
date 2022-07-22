@@ -4,7 +4,7 @@ using Perper.Model;
 
 namespace Perper.Application
 {
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public sealed class PerperStreamOptionsAttribute : Attribute
     {
         public PerperStreamOptions Options { get; } = new PerperStreamOptions();

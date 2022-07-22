@@ -14,12 +14,13 @@ namespace Perper.Application.Listeners
         private readonly IPerperListener outerListener;
         private readonly IPerperListener innerListener;
 
-        public StreamPerperListener(string agent, string @delegate, PerperStreamOptions streamOptions, IPerperHandler<VoidStruct> handler, IServiceProvider serviceProvider)
+        public StreamPerperListener(string agent, string @delegate, PerperStreamOptions streamOptions, IPerperHandler handler, IServiceProvider serviceProvider)
         {
-            var internalDelegate = $"{@delegate}-stream";
+            var externalDelegate = $"Start_{@delegate}"; // @delegate
+            var internalDelegate = @delegate; // $"{@delegate}-stream"
 
-            outerListener = new ExecutionPerperListener<PerperStream>(agent, @delegate, new StreamPerperHandler(streamOptions, internalDelegate, serviceProvider), serviceProvider);
-            innerListener = new ExecutionPerperListener<VoidStruct>(agent, internalDelegate, handler, serviceProvider);
+            outerListener = new ExecutionPerperListener(agent, externalDelegate, new StartStreamPerperHandler(streamOptions, internalDelegate, serviceProvider), serviceProvider);
+            innerListener = new ExecutionPerperListener(agent, internalDelegate, handler, serviceProvider);
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -35,17 +36,5 @@ namespace Perper.Application.Listeners
         }
 
         public override string ToString() => $"{GetType()}({outerListener}, {innerListener})";
-
-        public static IPerperListener From(string agent, string @delegate, PerperStreamOptions streamOptions, IPerperHandler handler, IServiceProvider services)
-        {
-            if (handler is IPerperHandler<VoidStruct> voidHandler)
-            {
-                return new StreamPerperListener(agent, @delegate, streamOptions, voidHandler, services);
-            }
-            else
-            {
-                throw new ArgumentOutOfRangeException($"Stream handler ({handler}) may not return a value. (Consider using PerperHandler.TryWrapAsyncEnumerable)");
-            }
-        }
     }
 }

@@ -19,12 +19,12 @@ namespace Perper.Application.Listeners
     {
         private readonly string Agent;
         private const string Delegate = "Init";
-        private readonly IPerperHandler<VoidStruct> Handler;
+        private readonly IPerperHandler Handler;
         private readonly IPerper Perper;
         private readonly PerperListenerFilter Filter;
         private readonly ILogger<InitPerperListener>? Logger;
 
-        public InitPerperListener(string agent, IPerperHandler<VoidStruct> handler, IServiceProvider services)
+        public InitPerperListener(string agent, IPerperHandler handler, IServiceProvider services)
         {
             Agent = agent;
             Handler = handler;
@@ -52,7 +52,8 @@ namespace Perper.Application.Listeners
                     {
                         Agent = new PerperAgent(Agent, rawExecutionData.Execution.Execution),
                         Delegate = Delegate,
-                        Execution = new PerperExecution($"{rawExecutionData.Execution.Execution}-init")
+                        Execution = new PerperExecution($"{rawExecutionData.Execution.Execution}-init"),
+                        IsSynthetic = true
                     };
 
                     try
@@ -78,17 +79,5 @@ namespace Perper.Application.Listeners
         }
 
         public override string ToString() => $"{GetType()}({Agent}, {Handler})";
-
-        public static IPerperListener From(string agent, IPerperHandler handler, IServiceProvider services)
-        {
-            if (handler is IPerperHandler<VoidStruct> voidHandler)
-            {
-                return new InitPerperListener(agent, voidHandler, services);
-            }
-            else
-            {
-                throw new ArgumentOutOfRangeException($"Init handler ({handler}) may not return a value.");
-            }
-        }
     }
 }

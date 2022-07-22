@@ -53,7 +53,7 @@ namespace Perper.Application
             builder.AddClassHandlers(type.Name, type);
 
         public static IPerperBuilder AddDeploySingletonHandler(this IPerperBuilder builder, string agent) =>
-            builder.AddListener(services => DeployPerperListener.From(agent, new DeploySingletonPerperHandler(services), services));
+            builder.AddListener(services => new DeployPerperListener(agent, new DeploySingletonPerperHandler(services), services));
 
         public static IPerperBuilder AddClassHandlers(this IPerperBuilder builder, string agent, Type type)
         {
@@ -85,42 +85,39 @@ namespace Perper.Application
             builder.AddHandler(agent, StripSuffix(method.Name, AsyncMethodSuffix), type, GetRunMethodOrThrow(type));
 
         public static IPerperBuilder AddHandler(this IPerperBuilder builder, string agent, string @delegate, Type type, MethodInfo method) =>
-            builder.AddHandler(agent, @delegate, services => MethodPerperHandler.From(type, method, services), (method.GetCustomAttribute<PerperStreamOptionsAttribute>() ?? type.GetCustomAttribute<PerperStreamOptionsAttribute>())?.Options);
+            builder.AddHandler(agent, @delegate, services => new MethodPerperHandler(type, method, services), method.GetCustomAttribute<PerperStreamOptionsAttribute>()?.Options);
 
         public static IPerperBuilder AddHandler(this IPerperBuilder builder, string agent, string @delegate, Delegate handler) =>
-            builder.AddHandler(agent, @delegate, services => MethodPerperHandler.From(handler, services), handler.Method.GetCustomAttribute<PerperStreamOptionsAttribute>()?.Options);
+            builder.AddHandler(agent, @delegate, services => new MethodPerperHandler(handler, services), handler.Method.GetCustomAttribute<PerperStreamOptionsAttribute>()?.Options);
 
-#pragma warning disable CA1801 // HACK
         public static IPerperBuilder AddHandler(this IPerperBuilder builder, string agent, string @delegate, Func<IServiceProvider, IPerperHandler> handlerFactory, PerperStreamOptions? streamOptions = null) =>
             builder.AddListener(services =>
             {
                 var handler = handlerFactory(services);
-                var streamHandler = PerperHandler.TryWrapAsyncEnumerable(handler, services);
 
-                if (streamHandler != null)
+                if (streamOptions != null || (handler is MethodPerperHandler methodHandler && methodHandler.IsStream))
                 {
-                    return ExecutionPerperListener.From(agent, @delegate, streamHandler, services);
-                    //return StreamPerperListener.From(agent, @delegate, streamOptions ?? new PerperStreamOptions(), streamHandler, services);
+                    return new StreamPerperListener(agent, @delegate, streamOptions ?? new PerperStreamOptions(), handler, services);
                 }
                 else if (@delegate == DeployDelegateName)
                 {
-                    return DeployPerperListener.From(agent, handler, services);
+                    return new DeployPerperListener(agent, handler, services);
                 }
                 else if (@delegate == InitDelegateName)
                 {
-                    return InitPerperListener.From(agent, handler, services);
+                    return new InitPerperListener(agent, handler, services);
                 }
                 else if (@delegate == StartDelegateName || @delegate == FallbackStartDelegateName)
                 {
-                    return StartPerperListener.From(agent, handler, services);
+                    return new StartPerperListener(agent, handler, services);
                 }
                 else if (@delegate == StopDelegateName)
                 {
-                    return StopPerperListener.From(agent, handler, services);
+                    return new StopPerperListener(agent, handler, services);
                 }
                 else
                 {
-                    return ExecutionPerperListener.From(agent, @delegate, handler, services);
+                    return new ExecutionPerperListener(agent, @delegate, handler, services);
                 }
             });
 

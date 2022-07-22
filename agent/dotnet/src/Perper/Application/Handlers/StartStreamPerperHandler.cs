@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -9,13 +8,13 @@ using Perper.Model;
 
 namespace Perper.Application.Handlers
 {
-    public class StreamPerperHandler : IPerperHandler<PerperStream>
+    public class StartStreamPerperHandler : IPerperHandler
     {
         private readonly PerperStreamOptions StreamOptions;
         private readonly IPerper Perper;
         private readonly string InternalDelegate;
 
-        public StreamPerperHandler(PerperStreamOptions streamOptions, string internalDelegate, IServiceProvider services)
+        public StartStreamPerperHandler(PerperStreamOptions streamOptions, string internalDelegate, IServiceProvider services)
         {
             StreamOptions = streamOptions;
             InternalDelegate = internalDelegate;
@@ -24,17 +23,23 @@ namespace Perper.Application.Handlers
 
         public ParameterInfo[]? GetParameters() => null;
 
-        public async Task<PerperStream> Invoke(PerperExecutionData executionData, object?[] arguments)
+        public async Task Invoke(PerperExecutionData executionData, object?[] arguments)
         {
+            if (executionData.IsSynthetic)
+            {
+                return;
+            }
+
             var (internalExecution, startAsync) = Perper.Executions.Create(executionData.Agent, InternalDelegate);
 
             // NOTE: If decoupling streams and executions, can create the stream before the execution.
             var stream = await Perper.Streams.CreateAsync(StreamOptions, internalExecution).ConfigureAwait(false);
 
-            arguments = new object?[] { stream }.Concat(arguments).ToArray();
+            //arguments = new object?[] { stream }.Concat(arguments).ToArray();
+
             await startAsync(arguments).ConfigureAwait(false);
 
-            return stream;
+            await Perper.Executions.WriteResultAsync(executionData.Execution, stream).ConfigureAwait(false);
         }
     }
 }

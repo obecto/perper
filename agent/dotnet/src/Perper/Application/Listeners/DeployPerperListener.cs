@@ -18,11 +18,11 @@ namespace Perper.Application.Listeners
     {
         private readonly string Agent;
         private const string Delegate = "Deploy";
-        private readonly IPerperHandler<VoidStruct> Handler;
+        private readonly IPerperHandler Handler;
         private readonly PerperListenerFilter Filter;
         private readonly ILogger<DeployPerperListener>? Logger;
 
-        public DeployPerperListener(string agent, IPerperHandler<VoidStruct> handler, IServiceProvider services)
+        public DeployPerperListener(string agent, IPerperHandler handler, IServiceProvider services)
         {
             Agent = agent;
             Handler = handler;
@@ -42,7 +42,10 @@ namespace Perper.Application.Listeners
                 new PerperAgent("Deployer", Agent),
                 Delegate,
                 new PerperExecution($"{Agent}-deploy-deploy"),
-                default);
+                default)
+            {
+                IsSynthetic = true,
+            };
 
             try
             {
@@ -64,17 +67,5 @@ namespace Perper.Application.Listeners
         }
 
         public override string ToString() => $"{GetType()}({Agent}, {Handler})";
-
-        public static IPerperListener From(string agent, IPerperHandler handler, IServiceProvider services)
-        {
-            if (handler is IPerperHandler<VoidStruct> voidHandler)
-            {
-                return new DeployPerperListener(agent, voidHandler, services);
-            }
-            else
-            {
-                throw new ArgumentOutOfRangeException($"Deploy handler ({handler}) may not return a value.");
-            }
-        }
     }
 }

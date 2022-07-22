@@ -6,5 +6,8 @@ namespace Perper.Model
         PerperAgent Agent,
         string Delegate,
         PerperExecution Execution,
-        CancellationToken CancellationToken);
+        CancellationToken CancellationToken)
+    {
+        public bool IsSynthetic { init; get; }
+    }
 }

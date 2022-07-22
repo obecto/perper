@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -9,22 +11,39 @@ using Perper.Model;
 
 namespace Perper.Application.Handlers
 {
-    public class MethodPerperHandler<TResult> : IPerperHandler<TResult>
+    public class MethodPerperHandler : IPerperHandler
     {
         private readonly Func<IServiceProvider, object?>? CreateInstance;
         private readonly MethodInfo Method;
         private readonly IServiceProvider Services;
+        private readonly IPerper Perper;
+        private readonly HandlerFunc Handler;
+
+        public bool IsStream { get; protected set; }
 
         public MethodPerperHandler(Func<IServiceProvider, object?>? createInstance, MethodInfo method, IServiceProvider services)
         {
             CreateInstance = method.IsStatic ? null : createInstance;
             Method = method;
             Services = services;
+            Perper = services.GetRequiredService<IPerper>();
+
+            Handler = WrapHandler((context, arguments) =>
+            {
+                var instance = CreateInstance?.Invoke(context.ScopedServices);
+                return ValueTask.FromResult(Method.Invoke(instance, arguments));
+            }, Method.ReturnType);
         }
+
+        public MethodPerperHandler(Type type, MethodInfo method, IServiceProvider services)
+            : this((serviceProvider) => ActivatorUtilities.CreateInstance(serviceProvider, type), method, services) { }
+
+        public MethodPerperHandler(Delegate handler, IServiceProvider services)
+            : this((_) => handler.Target!, handler.Method, services) { }
 
         public ParameterInfo[]? GetParameters() => Method.GetParameters();
 
-        public async Task<TResult> Invoke(PerperExecutionData executionData, object?[] arguments)
+        public async Task Invoke(PerperExecutionData executionData, object?[] arguments)
         {
             //await using (Services.CreateAsyncScope()) // TODO: #if NET6_0 ?
             using var scope = Services.CreateScope();
@@ -32,57 +51,132 @@ namespace Perper.Application.Handlers
 
             using (scope.ServiceProvider.GetRequiredService<IPerperContext>().UseContext())
             {
-                var instance = CreateInstance?.Invoke(scope.ServiceProvider);
-                var result = Method.Invoke(instance, arguments);
-
-                // HACK: ! Currently MethodPerperHandler takes care of ValueTask/Task results, since otherwise the context and scope are destroyed too early.
-                if (typeof(TResult) == typeof(VoidStruct))
-                {
-                    if (result is ValueTask valueTask)
-                    {
-                        await valueTask.ConfigureAwait(false);
-                    }
-                    else if (result is Task task)
-                    {
-                        await task.ConfigureAwait(false);
-                    }
-                    return (TResult)(object)VoidStruct.Value;
-                }
-                else
-                {
-                    if (result is ValueTask<TResult> valueTask)
-                    {
-                        result = await valueTask.ConfigureAwait(false);
-                    }
-                    else if (result is Task<TResult> task)
-                    {
-                        result = await task.ConfigureAwait(false);
-                    }
-                    return (TResult)result!;
-                }
+                await Handler(new HandlerContext(scope.ServiceProvider, executionData), arguments).ConfigureAwait(false);
             }
         }
-    }
 
-    public static class MethodPerperHandler
-    {
-        public static IPerperHandler From(Func<IServiceProvider, object?>? createInstance, MethodInfo method, IServiceProvider services)
+        protected record HandlerContext(IServiceProvider ScopedServices, PerperExecutionData ExecutionData);
+
+        protected delegate ValueTask<object?> HandlerFunc(HandlerContext context, object?[] arguments);
+
+        protected HandlerFunc WrapHandler(HandlerFunc handler, Type resultType)
         {
-            var returnType = method.ReturnType;
-
-            var resultType = returnType == typeof(void) || returnType == typeof(Task) || returnType == typeof(ValueTask)
-                ? typeof(VoidStruct)
-                : returnType.IsGenericType && (returnType.GetGenericTypeDefinition() == typeof(Task<>) || returnType.GetGenericTypeDefinition() == typeof(ValueTask<>))
-                    ? returnType.GenericTypeArguments[0]
-                    : returnType;
-            var handlerType = typeof(MethodPerperHandler<>).MakeGenericType(resultType);
-            return (IPerperHandler)Activator.CreateInstance(handlerType, createInstance, method, services)!;
+            (handler, resultType) = HandleAwaitingTasks(handler, resultType);
+            (handler, resultType) = HandleWritingStream(handler, resultType);
+            (handler, resultType) = HandleWritingResult(handler, resultType);
+            System.Diagnostics.Debug.Assert(resultType == typeof(void));
+            return handler;
         }
 
-        public static IPerperHandler From(Type type, MethodInfo method, IServiceProvider services) =>
-            From((serviceProvider) => ActivatorUtilities.CreateInstance(serviceProvider, type), method, services);
+        protected static (HandlerFunc, Type) HandleAwaitingTasks(HandlerFunc next, Type resultType)
+        {
+            if (resultType == typeof(Task))
+            {
+                return (async (HandlerContext context, object?[] arguments) =>
+                {
+                    var result = await next(context, arguments).ConfigureAwait(false);
+                    if (result != null)
+                    {
+                        await ((Task)result).ConfigureAwait(false);
+                    }
+                    return null;
+                }, typeof(void));
+            }
+            else if (resultType == typeof(ValueTask))
+            {
+                return (async (HandlerContext context, object?[] arguments) =>
+                {
+                    var result = await next(context, arguments).ConfigureAwait(false);
+                    if (result != null)
+                    {
+                        await ((ValueTask)result).ConfigureAwait(false);
+                    }
+                    return null;
+                }, typeof(void));
+            }
+            else if (resultType.IsGenericType && (resultType.GetGenericTypeDefinition() == typeof(Task<>) || resultType.GetGenericTypeDefinition() == typeof(ValueTask<>)))
+            {
+                return (async (HandlerContext context, object?[] arguments) =>
+                {
+                    var result = await next(context, arguments).ConfigureAwait(false);
+                    return result is null ? null : await (dynamic)result;
+                }, resultType.GenericTypeArguments[0]);
+            }
+            else
+            {
+                return (next, resultType);
+            }
+        }
 
-        public static IPerperHandler From(Delegate handler, IServiceProvider services) =>
-            From((_) => handler.Target!, handler.Method, services);
+        private static readonly MethodInfo WriteItemsMethod = typeof(PerperStreamsExtensions).GetMethod(nameof(PerperStreamsExtensions.WriteItemsAsync))!;
+        private static readonly MethodInfo WriteKeyedItemsMethod = typeof(PerperStreamsExtensions).GetMethod(nameof(PerperStreamsExtensions.WriteKeyedItemsAsync))!;
+
+        protected (HandlerFunc, Type) HandleWritingStream(HandlerFunc next, Type resultType)
+        {
+            if (resultType.IsGenericType && resultType.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>))
+            {
+                IsStream = true;
+
+                var itemType = resultType.GenericTypeArguments[0];
+
+                var writeItemsMethod =
+                    (itemType.IsGenericType && itemType.GetGenericTypeDefinition() == typeof(ValueTuple<,>) && itemType.GenericTypeArguments[0] == typeof(long))
+                        ? WriteKeyedItemsMethod.MakeGenericMethod(itemType.GenericTypeArguments[1])
+                        : WriteItemsMethod.MakeGenericMethod(itemType);
+
+                return (async (HandlerContext context, object?[] arguments) =>
+                {
+                    if (context.ExecutionData.IsSynthetic)
+                    {
+                        return await next(context, arguments).ConfigureAwait(false);
+                    }
+
+                    var stream = new PerperStream(context.ExecutionData.Execution.Execution);
+
+                    var cancellationToken = context.ExecutionData.CancellationToken;
+
+                    await Perper.Streams.WaitForListenerAsync(stream, cancellationToken).ConfigureAwait(false);
+
+                    var result = await next(context, arguments).ConfigureAwait(false);
+                    if (result is null)
+                    {
+                        return null;
+                    }
+
+                    await ((Task)writeItemsMethod.Invoke(null, new object?[] { Perper.Streams, stream, result, cancellationToken })!).ConfigureAwait(false);
+
+                    return null;
+                }, typeof(void));
+            }
+            else
+            {
+                return (next, resultType);
+            }
+        }
+
+        private static readonly MethodInfo WriteResultMethod = typeof(IPerperExecutions).GetMethods().Single(x => x.Name == nameof(IPerperExecutions.WriteResultAsync) && x.IsGenericMethod);
+
+        protected (HandlerFunc, Type) HandleWritingResult(HandlerFunc next, Type resultType)
+        {
+            var writeResultMethod = resultType == typeof(void) ? null : WriteResultMethod.MakeGenericMethod(resultType);
+            return (async (HandlerContext context, object?[] arguments) =>
+            {
+                var result = await next(context, arguments).ConfigureAwait(false);
+
+                if (!context.ExecutionData.IsSynthetic)
+                {
+                    if (writeResultMethod != null)
+                    {
+                        await ((Task)writeResultMethod.Invoke(Perper.Executions, new object?[] { context.ExecutionData.Execution, result })!).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await Perper.Executions.WriteResultAsync(context.ExecutionData.Execution).ConfigureAwait(false);
+                    }
+                }
+
+                return null;
+            }, typeof(void));
+        }
     }
 }

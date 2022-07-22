@@ -8,7 +8,7 @@ using Perper.Model;
 
 namespace Perper.Application.Handlers
 {
-    public class DeploySingletonPerperHandler : IPerperHandler<VoidStruct>
+    public class DeploySingletonPerperHandler : IPerperHandler
     {
         private readonly IPerper Perper;
 
@@ -17,7 +17,7 @@ namespace Perper.Application.Handlers
 
         public ParameterInfo[]? GetParameters() => null;
 
-        public async Task<VoidStruct> Invoke(PerperExecutionData executionData, object?[] arguments)
+        public async Task Invoke(PerperExecutionData executionData, object?[] arguments)
         {
             var state = Perper.States.Create(executionData.Agent);
             var (exists, _) = await Perper.States.TryGetAsync<object?>(state, "agent").ConfigureAwait(false);
@@ -27,8 +27,6 @@ namespace Perper.Application.Handlers
                 await Perper.States.SetAsync(state, "agent", newAgent).ConfigureAwait(false); // TODO: ensure this is atomic
                 await createAsync().ConfigureAwait(false);
             }
-
-            return VoidStruct.Value;
         }
     }
 }

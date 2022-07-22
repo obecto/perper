@@ -41,5 +41,21 @@ namespace Perper.Model
 
         public static IAsyncEnumerable<(long, TItem)> EnumerateItemsAsync<TItem>(this IPerper perper, PerperStream stream, string? listenerName = null, CancellationToken cancellationToken = default) =>
             perper.Streams.EnumerateItemsAsync<TItem>(stream, listenerName, cancellationToken);
+
+        public static async Task WriteItemsAsync<TItem>(this IPerperStreams streams, PerperStream stream, IAsyncEnumerable<TItem> enumerable, CancellationToken cancellationToken = default)
+        {
+            await foreach (var value in enumerable.WithCancellation(cancellationToken))
+            {
+                await streams.WriteItemAsync(stream, value).ConfigureAwait(false);
+            }
+        }
+
+        public static async Task WriteKeyedItemsAsync<TItem>(this IPerperStreams streams, PerperStream stream, IAsyncEnumerable<(long, TItem)> enumerable, CancellationToken cancellationToken = default)
+        {
+            await foreach (var (key, value) in enumerable.WithCancellation(cancellationToken))
+            {
+                await streams.WriteItemAsync(stream, key, value).ConfigureAwait(false);
+            }
+        }
     }
 }

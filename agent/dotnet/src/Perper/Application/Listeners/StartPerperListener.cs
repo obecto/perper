@@ -5,28 +5,42 @@ using Perper.Model;
 
 namespace Perper.Application.Listeners
 {
-    public class StartPerperListener<TResult> : ExecutionPerperListener<TResult>
+    public class StartPerperListener : ExecutionPerperListener
     {
-        public StartPerperListener(string agent, IPerperHandler<TResult> handler, IServiceProvider services) : base(agent, PerperAgentsExtensions.StartFunctionName, handler, services)
+        public StartPerperListener(string agent, IPerperHandler handler, IServiceProvider services) : base(agent, PerperAgentsExtensions.StartFunctionName, handler, services)
         {
-        }
-    }
-
-    public static class StartPerperListener
-    {
-        public static IPerperListener From(string agent, IPerperHandler handler, IServiceProvider services)
-        {
-            foreach (var type in handler.GetType().GetInterfaces())
-            {
-                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IPerperHandler<>))
-                {
-                    var resultType = type.GenericTypeArguments[0];
-                    var listenerType = typeof(StartPerperListener<>).MakeGenericType(resultType);
-                    return (IPerperListener)Activator.CreateInstance(listenerType, agent, handler, services)!;
-                }
-            }
-
-            throw new ArgumentOutOfRangeException($"Start handler ({handler}) must implement IPerperHandler<T>.");
         }
     }
 }
+
+/*
+namespace Perper.Application.Listeners
+{
+    public class StartPerperListener : IPerperListener
+    {
+        public const string FallbackStartDelegate = "Startup";
+
+        private readonly IPerperListener listener;
+        private readonly IPerperListener fallbackListener;
+
+        public StreamPerperListener(string agent, IPerperHandler handler, IServiceProvider services)
+        {
+            listener = new ExecutionPerperListener(agent, PerperAgentsExtensions.StartFunctionName, handler, serviceProvider);
+            fallbackListener = new ExecutionPerperListener(agent, FallbackStartDelegate, handler, serviceProvider);
+        }
+
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            await outerListener.StartAsync(cancellationToken).ConfigureAwait(false);
+            await innerListener.StartAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+            await outerListener.StopAsync(cancellationToken).ConfigureAwait(false);
+            await innerListener.StopAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        public override string ToString() => $"{GetType()}({listener}, {fallbackListener})";
+    }
+}*/
