@@ -16,8 +16,8 @@ namespace Perper.Application.Listeners
 
         public StreamPerperListener(string agent, string @delegate, PerperStreamOptions streamOptions, IPerperHandler handler, IServiceProvider serviceProvider)
         {
-            var externalDelegate = $"Start_{@delegate}"; // @delegate
-            var internalDelegate = @delegate; // $"{@delegate}-stream"
+            var externalDelegate = @delegate;
+            var internalDelegate = $"{@delegate}-stream";
 
             outerListener = new ExecutionPerperListener(agent, externalDelegate, new StartStreamPerperHandler(streamOptions, internalDelegate, serviceProvider), serviceProvider);
             innerListener = new ExecutionPerperListener(agent, internalDelegate, handler, serviceProvider);

@@ -16,7 +16,7 @@ namespace BasicSample.Calls
 
             var generator = await PerperContext.Stream("Generator").Packed(1).Persistent().StartAsync(messageCount).ConfigureAwait(false);
             var processor = await PerperContext.Stream("Processor").Index<SampleUserType>().StartAsync(generator.Replay(1), batchCount).ConfigureAwait(false);
-            var _ = await PerperContext.Stream("Consumer").Action().StartAsync(processor).ConfigureAwait(false);
+            var _ = PerperContext.CallAsync("Consumer", processor).ConfigureAwait(false);
 
             // Cyclic streams:
             var node1 = PerperContext.Stream("Node1");

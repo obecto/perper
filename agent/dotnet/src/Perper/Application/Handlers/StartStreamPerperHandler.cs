@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -35,7 +36,7 @@ namespace Perper.Application.Handlers
             // NOTE: If decoupling streams and executions, can create the stream before the execution.
             var stream = await Perper.Streams.CreateAsync(StreamOptions, internalExecution).ConfigureAwait(false);
 
-            //arguments = new object?[] { stream }.Concat(arguments).ToArray();
+            arguments = new object?[] { stream }.Concat(arguments).ToArray();
 
             await startAsync(arguments).ConfigureAwait(false);
 

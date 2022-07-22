@@ -41,7 +41,16 @@ namespace Perper.Application.Handlers
         public MethodPerperHandler(Delegate handler, IServiceProvider services)
             : this((_) => handler.Target!, handler.Method, services) { }
 
-        public ParameterInfo[]? GetParameters() => Method.GetParameters();
+        private static readonly ParameterInfo PerperStreamParameter = typeof(MethodPerperHandler)
+            .GetMethod(nameof(PerperStreamParameterMethod), BindingFlags.NonPublic | BindingFlags.Static)!
+            .GetParameters()[0];
+#pragma warning disable CA1801, IDE0060
+        private static void PerperStreamParameterMethod(PerperStream perperStream) { }
+#pragma warning restore CA1801, IDE0060
+
+        public ParameterInfo[]? GetParameters() => IsStream ?
+            new[] { PerperStreamParameter }.Concat(Method.GetParameters()).ToArray() :
+            Method.GetParameters();
 
         public async Task Invoke(PerperExecutionData executionData, object?[] arguments)
         {
@@ -131,7 +140,8 @@ namespace Perper.Application.Handlers
                         return await next(context, arguments).ConfigureAwait(false);
                     }
 
-                    var stream = new PerperStream(context.ExecutionData.Execution.Execution);
+                    var stream = (PerperStream)arguments[0]!;
+                    arguments = arguments.Skip(1).ToArray();
 
                     var cancellationToken = context.ExecutionData.CancellationToken;
 
