@@ -18,7 +18,6 @@ plugins {
 
 repositories {
     mavenCentral()
-    maven { url = URI("https://kotlin.bintray.com/kotlinx") }
     maven { url = URI("https://www.gridgainsystems.com/nexus/content/repositories/external") }
 }
 
@@ -29,7 +28,7 @@ dependencies {
     runtimeOnly("org.apache.ignite:ignite-indexing:$igniteVersion")
     implementation("org.apache.ignite:ignite-slf4j:$igniteVersion")
     implementation("org.apache.ignite:ignite-spring:$igniteVersion")
-    implementation("org.gridgain:control-center-agent:$igniteVersion.0")
+    runtimeOnly("org.gridgain:control-center-agent:$igniteVersion.0")
     runtimeOnly("org.slf4j:slf4j-simple:$slf4jVersion")
     implementation("javax.annotation:javax.annotation-api:1.2")
     implementation("com.google.protobuf:protobuf-java-util:$protobufVersion")
