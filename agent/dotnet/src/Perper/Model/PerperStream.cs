@@ -4,6 +4,8 @@ namespace Perper.Model
 {
     [SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
     [SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "All that is *Stream is not made of Byte-s")]
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
+    [SuppressMessage("ReSharper", "ConvertToAutoProperty")]
     public class PerperStream
     {
         private readonly string stream;
@@ -28,8 +30,8 @@ namespace Perper.Model
         public long Stride => stride;
         public bool LocalToData => localToData;
 
-        public bool Replay => startIndex != -1;
-        public bool Packed => stride != 0;
+        public bool IsReplay => startIndex != -1;
+        public bool IsPacked => stride != 0;
 
         public override string ToString() => $"PerperStream({Stream}, from: {StartIndex}, stride: {Stride}, local: {LocalToData})";
     }

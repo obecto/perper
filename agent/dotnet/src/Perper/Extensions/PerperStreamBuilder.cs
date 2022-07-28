@@ -1,112 +1,70 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-using Apache.Ignite.Core.Cache.Configuration;
-
 using Perper.Model;
-using Perper.Protocol;
 
 namespace Perper.Extensions
 {
     public class PerperStreamBuilder
     {
-        public PerperStream Stream => new(StreamName, -1, Stride, false);
-
-        public string StreamName { get; }
         public string? Delegate { get; }
 
-        public bool IsPersistent { get; private set; }
-        public long Stride { get; private set; }
-        public bool IsAction { get; private set; }
-        public bool IsExternal => Delegate == null;
+        public bool IsBlank => Delegate == null;
+        public PerperStream Stream => StreamCreationLazy.Value.stream;
 
-        private readonly List<QueryEntity> indexes = new();
-        public IReadOnlyCollection<QueryEntity> Indexes => indexes;
+        private readonly PerperStreamOptions Options = new();
+        private readonly DelayedCreateFunc? LinkedExecutionCreation = null;
 
-        public PerperStreamBuilder(string? @delegate) : this(FabricService.GenerateName(@delegate ?? ""), @delegate)
+        private readonly Lazy<(PerperStream stream, Func<Task> create)> StreamCreationLazy;
+
+        public PerperStreamBuilder(string? @delegate)
         {
-        }
-
-        public PerperStreamBuilder(string stream, string? @delegate)
-        {
-            StreamName = stream;
             Delegate = @delegate;
+            if (Delegate != null)
+            {
+                var internalDelegate = $"{Delegate}-stream";
+                var (linkedExecution, linkedExecutionCreation) = AsyncLocalContext.PerperContext.Executions.Create(AsyncLocalContext.PerperContext.CurrentAgent, internalDelegate);
+                LinkedExecutionCreation = linkedExecutionCreation;
+                StreamCreationLazy = new(() => AsyncLocalContext.PerperContext.Streams.Create(Options, linkedExecution));
+            }
+            else
+            {
+                StreamCreationLazy = new(() => AsyncLocalContext.PerperContext.Streams.Create(Options));
+            }
         }
 
         public async Task<PerperStream> StartAsync(params object[] parameters)
         {
-            await AsyncLocals.FabricService.CreateStream(StreamName, Indexes.ToArray()).ConfigureAwait(false);
+            await StreamCreationLazy.Value.create().ConfigureAwait(false);
 
-            if (IsPersistent)
+            if (LinkedExecutionCreation != null)
             {
-                await AsyncLocals.FabricService.SetStreamListenerPosition($"{StreamName}-persist", StreamName, FabricService.ListenerPersistAll).ConfigureAwait(false);
-            }
-            else if (IsAction)
-            {
-                await AsyncLocals.FabricService.SetStreamListenerPosition($"{StreamName}-trigger", StreamName, FabricService.ListenerJustTrigger).ConfigureAwait(false);
-            }
-
-            if (Delegate != null)
-            {
-                await AsyncLocals.FabricService.CreateExecution(StreamName, AsyncLocals.Agent, AsyncLocals.Instance, Delegate, parameters).ConfigureAwait(false);
+                await LinkedExecutionCreation(new object?[] { Stream }.Concat(parameters).ToArray()).ConfigureAwait(false);
             }
             else if (parameters.Length > 0)
             {
-                throw new InvalidOperationException("PerperStreamBuilder.StartAsync() does not take parameters for external streams");
+                throw new InvalidOperationException("PerperStreamBuilder.StartAsync() does not take parameters for blank streams");
             }
 
-            return Stream;
+            return StreamCreationLazy.Value.stream;
         }
 
-        public PerperStreamBuilder Persistent()
-        {
-            IsPersistent = true;
-            return this;
-        }
-
-        public PerperStreamBuilder Ephemeral()
-        {
-            IsPersistent = false;
-            return this;
-        }
-
-        public PerperStreamBuilder Packed(long stride)
-        {
-            Stride = stride;
-            return this;
-        }
-
-        public PerperStreamBuilder Action()
-        {
-            if (IsExternal)
-            {
-                throw new InvalidOperationException("PerperStreamBuilder.Action() does not apply to external streams");
-            }
-            IsAction = true;
-            return this;
-        }
-
-        public PerperStreamBuilder Index(QueryEntity queryEntity)
-        {
-            if (queryEntity.Fields == null)
-            {
-                Console.WriteLine($"Warning: Stream indexing configured on {Stream} for type {queryEntity.ValueTypeName}, but no fields are configured; this can cause problems when writing items. If using Index<T> or Index(Type), consider annotating one or more properties with [Apache.Ignite.Core.Cache.Configuration.QuerySqlField].");
-            }
-            indexes.Add(queryEntity);
-            return this;
-        }
-
+        public PerperStreamBuilder Persistent() => Configure(options => options.Persistent = true);
+        public PerperStreamBuilder Ephemeral() => Configure(options => options.Persistent = false);
+        public PerperStreamBuilder Packed(long stride) => Configure(options => options.Stride = stride);
+        public PerperStreamBuilder Action() => Configure(options => options.Action = true);
+        public PerperStreamBuilder Index(Type type) => Configure(options => options.IndexTypes = options.IndexTypes.Append(type));
         public PerperStreamBuilder Index<T>() => Index(typeof(T));
 
-        public PerperStreamBuilder Index(Type type) => Index(new QueryEntity(type));
-
-        public PerperStreamBuilder Index(string indexType, Dictionary<string, string> indexFields) => Index(new QueryEntity()
+        public PerperStreamBuilder Configure(Action<PerperStreamOptions> change)
         {
-            ValueTypeName = indexType,
-            Fields = indexFields.Select(kv => new QueryField(kv.Key, kv.Value)).ToList(),
-            Indexes = indexFields.Select(kv => new QueryIndex(new QueryIndexField(kv.Key))).ToList()
-        });
+            if (StreamCreationLazy.IsValueCreated)
+            {
+                throw new InvalidOperationException("PerperStreamBuilder has already been initialized.");
+            }
+            change(Options);
+            return this;
+        }
     }
 }

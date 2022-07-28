@@ -1,2 +1,6 @@
+using Microsoft.Extensions.Hosting;
+
 using Perper.Application;
-await new PerperStartup().AddAssemblyHandlers("container-usage-sample").WithDeployInit().RunAsync(default).ConfigureAwait(false);
+#pragma warning disable CA1812
+Host.CreateDefaultBuilder().ConfigurePerper(perper => perper.AddAssemblyHandlers("container-usage-sample")).Build().Run();
+#pragma warning restore CA1812

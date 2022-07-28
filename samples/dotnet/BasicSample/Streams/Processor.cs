@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 
+using Perper.Application;
 using Perper.Extensions;
 using Perper.Model;
 
@@ -8,6 +9,7 @@ namespace BasicSample.Streams
 {
     public class Processor
     {
+        [PerperStreamOptions(IndexTypes = new[] { typeof(SampleUserType) })]
         public static async IAsyncEnumerable<SampleUserType> RunAsync(PerperStream generator, int batchSize)
         {
             var count = 0;

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -21,13 +22,8 @@ namespace Perper.Protocol
 
         public TaskCollection() { }
         public TaskCollection(params Task[] tasks) : this((IEnumerable<Task>)tasks) { }
-        public TaskCollection(IEnumerable<Task> tasks)
-        {
-            foreach (var task in tasks)
-            {
-                Add(task);
-            }
-        }
+        public TaskCollection(IAsyncEnumerable<Task> tasks) => AddRange(tasks);
+        public TaskCollection(IEnumerable<Task> tasks) => AddRange(tasks);
 
         public Task GetTask()
         {
@@ -41,9 +37,21 @@ namespace Perper.Protocol
             return _completionSource.Task;
         }
 
-        public void Add(Func<Task> taskFactory) // Sugar
-        {
+        public void Add(Func<Task> taskFactory) => // Sugar
             Add(taskFactory());
+
+        public void AddRange(IAsyncEnumerable<Task> tasks) =>
+            Add(tasks.ForEachAsync(Add));
+
+        public void AddRange<T>(IAsyncEnumerable<T> tasks, Func<T, Task> taskFactory) =>
+            Add(tasks.Select(taskFactory).ForEachAsync(Add));
+
+        public void AddRange(IEnumerable<Task> tasks)
+        {
+            foreach (var task in tasks)
+            {
+                Add(task);
+            }
         }
 
         public void Add(Task item)
