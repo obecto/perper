@@ -6,6 +6,8 @@ using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
 
+using Microsoft.Extensions.Options;
+
 using Grpc.Core;
 using Grpc.Net.Client;
 
@@ -15,13 +17,14 @@ using Perper.Protocol.Protobuf;
 
 namespace Perper.Protocol
 {
-    public sealed partial class FabricService : IAsyncDisposable, IDisposable, IPerper
+    public sealed partial class FabricService : IPerper //, IAsyncDisposable, IDisposable
     {
-        public FabricService(IIgniteClient ignite, GrpcChannel grpcChannel, IFabricCaster fabricCaster)
+        public FabricService(IIgniteClient ignite, GrpcChannel grpcChannel, IOptions<FabricConfiguration> configuration, IFabricCaster fabricCaster)
         {
             Ignite = ignite;
             FabricClient = new Fabric.FabricClient(grpcChannel);
             FabricCaster = fabricCaster;
+            Configuration = configuration.Value;
 
             IgniteBinary = ignite.GetBinary();
             ExecutionsCache = ignite.GetOrCreateCache<string, ExecutionData>("executions");
@@ -37,6 +40,8 @@ namespace Perper.Protocol
         public IIgniteClient Ignite { get; }
         public IFabricCaster FabricCaster { get; }
 
+        public FabricConfiguration Configuration { get; }
+
         private readonly IBinary IgniteBinary;
         private readonly ICacheClient<string, ExecutionData> ExecutionsCache;
         private readonly ICacheClient<string, StreamListener> StreamListenersCache;
@@ -45,21 +50,20 @@ namespace Perper.Protocol
         private readonly Fabric.FabricClient FabricClient;
         private readonly CallOptions CallOptions = new CallOptions().WithWaitForReady();
 
-        private readonly CancellationTokenSource CancellationTokenSource = new();
-        private readonly TaskCollection TaskCollection = new();
-
         private static long CurrentTicks => DateTime.UtcNow.Ticks - DateTime.UnixEpoch.Ticks;
 
         private static string GenerateName(string? baseName = null) => $"{baseName}-{Guid.NewGuid()}";
+
+        /*
+         * private readonly CancellationTokenSource CancellationTokenSource = new();
+        private readonly TaskCollection TaskCollection = new();
 
         public async ValueTask DisposeAsync()
         {
             CancellationTokenSource.Cancel();
             await TaskCollection.GetTask().ConfigureAwait(false);
             Dispose(true);
-#pragma warning disable CA1816
             GC.SuppressFinalize(this);
-#pragma warning restore CA1816
         }
 
         private void Dispose(bool disposing)
@@ -77,5 +81,6 @@ namespace Perper.Protocol
         }
 
         ~FabricService() => Dispose(false);
+        */
     }
 }

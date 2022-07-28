@@ -10,17 +10,29 @@ import com.obecto.perper.protobuf.ExecutionsRequest
 import com.obecto.perper.protobuf.ExecutionsResponse
 import com.obecto.perper.protobuf.FabricGrpcKt
 import com.obecto.perper.protobuf.ListenerAttachedRequest
+import com.obecto.perper.protobuf.ReserveExecutionRequest
+import com.obecto.perper.protobuf.ReservedExecutionsRequest
 import com.obecto.perper.protobuf.StreamItemsRequest
 import com.obecto.perper.protobuf.StreamItemsResponse
 import io.grpc.Server
 import io.grpc.ServerBuilder
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CompletableJob
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteLogger
@@ -38,18 +50,44 @@ import sh.keda.externalscaler.GetMetricsRequest
 import sh.keda.externalscaler.GetMetricsResponse
 import sh.keda.externalscaler.IsActiveResponse
 import sh.keda.externalscaler.ScaledObjectRef
+import java.lang.Thread
 import java.util.concurrent.CancellationException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import javax.cache.Cache.Entry
 import javax.cache.configuration.Factory
 import javax.cache.event.CacheEntryEvent
 import javax.cache.event.CacheEntryEventFilter
 import javax.cache.event.CacheEntryUpdatedListener
 import javax.cache.event.EventType
+import kotlin.concurrent.thread
 
 private inline val EventType.isRemoval get() = this == EventType.REMOVED || this == EventType.EXPIRED
 private inline val EventType.isCreation get() = this == EventType.CREATED
+
+private class SemaphoreWithArbitraryRelease(permits: Long) { // NOTE: Likely not a fair Semaphore
+    private var _permits = AtomicLong(permits)
+    private var _wait = AtomicReference<CompletableJob?>()
+
+    public suspend fun acquire(count: Long = 1) {
+        while (true) {
+            val newValue = _permits.addAndGet(-count)
+            if (newValue < 0) {
+                _permits.addAndGet(count) // Revert
+                (_wait.updateAndGet { oldValue -> oldValue ?: Job() })!!.join()
+                continue
+            }
+            break
+        }
+    }
+
+    public suspend fun release(count: Long = 1) {
+        _permits.addAndGet(count)
+        _wait.getAndSet(null)?.complete()
+    }
+}
 
 class FabricService(var port: Int = 40400) : Service {
 
@@ -99,16 +137,14 @@ class FabricService(var port: Int = 40400) : Service {
         server.awaitTermination()
     }
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    private fun <T> tryCatchFlow(block: suspend FlowCollector<T>.() -> Unit): Flow<T> = flow<T> {
-        try {
-            block()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            log.error(e.toString())
-            e.printStackTrace()
-            throw e
+    private fun <T> Flow<T>.logExceptions(): Flow<T> = catch { e ->
+        when (e) {
+            is CancellationException -> throw e
+            is Exception -> {
+                log.error(e.toString())
+                e.printStackTrace()
+                throw e
+            }
         }
     }
 
@@ -127,10 +163,33 @@ class FabricService(var port: Int = 40400) : Service {
 
     inner class FabricImpl : FabricGrpcKt.FabricCoroutineImplBase() {
 
-        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-        override fun executions(request: ExecutionsRequest) = tryCatchFlow<ExecutionsResponse> {
+        private fun Flow<ExecutionsResponse>.filterRemovedExecutions(): Flow<ExecutionsResponse> {
+            val sentExecutions = HashSet<String>()
+            return filter { execution ->
+                if (execution.cancelled) {
+                    sentExecutions.remove(execution.execution)
+                } else {
+                    sentExecutions.add(execution.execution)
+                }
+            }
+        }
+
+        private fun _executionsFilter(request: ExecutionsRequest): (ExecutionData) -> Boolean {
             val agent = request.agent
             val instance = if (request.instance != "") request.instance else null
+            val delegate = if (request.delegate != "") request.delegate else null
+            return { value ->
+                !value.finished &&
+                    value.agent == agent &&
+                    (instance == null || value.instance == instance) &&
+                    (delegate == null || value.delegate == delegate)
+            }
+        }
+
+        private fun _executions(request: ExecutionsRequest) = flow<ExecutionsResponse> {
+            val agent = request.agent
+            val instance = if (request.instance != "") request.instance else null
+            val filterValue = _executionsFilter(request)
             val localToData = request.localToData
 
             if (instance != null) {
@@ -152,34 +211,30 @@ class FabricService(var port: Int = 40400) : Service {
                     if (event.isOldValueAvailable && !event.oldValue.finished && !event.eventType.isRemoval)
                         false
                     else // NOTE: Can probably use a single query for all executions
-                        event.value.agent == agent && (instance == null || event.value.instance == instance) && !event.value.finished
+                        filterValue(event.value)
                 }
             }
             query.initialQuery = ScanQuery<String, ExecutionData>().also {
                 it.setLocal(localToData)
                 it.filter = IgniteBiPredicate<String, ExecutionData> { _, value ->
-                    value.agent == agent && (instance == null || value.instance == instance) && !value.finished
+                    filterValue(value)
                 }
             }
 
-            log.debug({ "Executions listener started for '$agent'-'$instance'!" })
+            log.debug({ "Executions listener started for '$agent'-'$instance'.'${request.delegate}'!" })
 
             val queryCursor = executionsCache.query(query)
 
             try {
-                val sentExecutions = HashMap<String, Boolean>()
-
                 suspend fun FlowCollector<ExecutionsResponse>.output(key: String, value: ExecutionData, removed: Boolean) {
-                    if (sentExecutions.put(key, removed) != removed) {
-                        emit(
-                            ExecutionsResponse.newBuilder().also {
-                                it.instance = value.instance
-                                it.delegate = value.delegate
-                                it.execution = key
-                                it.cancelled = removed
-                            }.build()
-                        )
-                    }
+                    emit(
+                        ExecutionsResponse.newBuilder().also {
+                            it.instance = value.instance
+                            it.delegate = value.delegate
+                            it.execution = key
+                            it.cancelled = removed
+                        }.build()
+                    )
                 }
 
                 for (entry in queryCursor) {
@@ -198,7 +253,7 @@ class FabricService(var port: Int = 40400) : Service {
                 e.printStackTrace()
                 throw e
             } finally {
-                log.debug({ "Executions listener stopped for '$agent'-'$instance'!" })
+                log.debug({ "Executions listener stopped for '$agent'-'$instance'.'${request.delegate}'!" })
                 if (instance != null) {
                     InstanceService.setInstanceRunning(ignite, instance, false)
                 }
@@ -207,10 +262,10 @@ class FabricService(var port: Int = 40400) : Service {
             }
         }
 
-        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+        override fun executions(request: ExecutionsRequest) = _executions(request).filterRemovedExecutions().logExceptions()
+
         override suspend fun allExecutions(request: ExecutionsRequest): AllExecutionsResponse {
-            val agent = request.agent
-            val instance = if (request.instance != "") request.instance else null
+            val filterValue = _executionsFilter(request)
             val localToData = request.localToData
 
             val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
@@ -218,11 +273,11 @@ class FabricService(var port: Int = 40400) : Service {
             val query = ScanQuery<String, ExecutionData>().also {
                 it.setLocal(localToData)
                 it.filter = IgniteBiPredicate<String, ExecutionData> { _, value ->
-                    value.agent == agent && (instance == null || value.instance == instance) && !value.finished
+                    filterValue(value)
                 }
             }
 
-            log.trace({ "All executions listener requested for '$agent'-'$instance'!" })
+            log.trace({ "All executions listener requested for '${request.agent}'-'${request.instance}'.'${request.delegate}'!" })
 
             val queryCursor = executionsCache.query(query)
 
@@ -245,9 +300,6 @@ class FabricService(var port: Int = 40400) : Service {
                 e.printStackTrace()
                 throw e
             } finally {
-                if (instance != null) {
-                    InstanceService.setInstanceRunning(ignite, instance, false)
-                }
                 queryCursor.close()
             }
         }
@@ -284,8 +336,112 @@ class FabricService(var port: Int = 40400) : Service {
             }
         }
 
+        suspend fun reserveExecution(execution: String, workGroup: String, block: suspend () -> Unit) {
+            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
+
+            val locked = Channel<Unit>(1)
+
+            var finished = false
+            val lock = Object()
+
+            lateinit var lockThread: Thread
+            lockThread = thread { // Sigh. Ignite locks are thread-bound and don't care about async usage
+                val executionLock = ignite.reentrantLock("executions-$workGroup-$execution", true, false, true)
+                // log.debug({ "Trylock: executions-$workGroup-$execution" })
+                executionLock.lock()
+                // log.debug({ "Lock: executions-$workGroup-$execution" })
+                runBlocking {
+                    locked.send(Unit)
+                }
+                try {
+                    synchronized(lock) {
+                        while (!finished)
+                            lock.wait()
+                    }
+                } finally {
+                    // log.debug({ "Unlock: executions-$workGroup-$execution" })
+                    executionLock.unlock()
+                    // log.debug({ "Unlocked: executions-$workGroup-$execution" })
+                }
+            }
+
+            try {
+                locked.receive()
+                val executionData = executionsCache.get(execution)
+                if (executionData == null || executionData.finished) {
+                    throw CancellationException()
+                }
+                block()
+            } finally {
+                // log.debug({ "Interrupt: executions-$workGroup-$execution" })
+                synchronized(lock) {
+                    finished = true
+                    lock.notifyAll()
+                }
+                // log.debug({ "Interrupted: executions-$workGroup-$execution" })
+                lockThread.join()
+                // log.debug({ "Join: executions-$workGroup-$execution" })
+            }
+        }
+
+        override fun reserveExecution(request: ReserveExecutionRequest) = flow<Empty> {
+            val execution = request.execution
+
+            reserveExecution(execution, request.workGroup) {
+                emit(Empty.getDefaultInstance())
+                awaitCancellation()
+            }
+        }.logExceptions()
+
         @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-        override fun streamItems(request: StreamItemsRequest) = tryCatchFlow<StreamItemsResponse> {
+        override fun reservedExecutions(requests: Flow<ReservedExecutionsRequest>) = channelFlow<ExecutionsResponse> {
+            coroutineScope {
+                val executions = CompletableDeferred<Flow<ExecutionsResponse>>()
+                var workGroup = ""
+                var semaphore = SemaphoreWithArbitraryRelease(0)
+
+                launch {
+                    requests.collect { request ->
+                        if (request.reserveNext != 0L) {
+                            semaphore.release(request.reserveNext)
+                        }
+                        if (request.workGroup != "") {
+                            workGroup = request.workGroup
+                        }
+                        if (request.hasFilter()) {
+                            executions.complete(_executions(request.filter))
+                        }
+                    }
+                }
+
+                val reserveExecutionJobs = HashMap<String, Job>()
+
+                executions.await().collect { execution ->
+                    if (execution.startOfStream) {
+                        send(execution)
+                    } else if (execution.cancelled) {
+                        val reserveJob = reserveExecutionJobs.remove(execution.execution)
+                        if (reserveJob != null) {
+                            reserveJob.cancel()
+                            send(execution)
+                        }
+                    } else {
+                        reserveExecutionJobs.getOrPut(execution.execution) {
+                            launch {
+                                reserveExecution(execution.execution, workGroup) {
+                                    semaphore.acquire(1)
+                                    send(execution)
+                                    awaitCancellation()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }.filterRemovedExecutions().logExceptions()
+
+        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+        override fun streamItems(request: StreamItemsRequest) = flow<StreamItemsResponse> {
             val stream = request.stream
             val startKey = if (request.startKey != -1L) request.startKey else null
             val stride = request.stride
@@ -410,7 +566,7 @@ class FabricService(var port: Int = 40400) : Service {
                         log.debug({ "Stream items listener finished for '$stream' ${startKey ?: "last"}..+$stride!" })
                     }
                 }
-        }
+        }.logExceptions()
 
         override suspend fun listenerAttached(request: ListenerAttachedRequest): Empty {
             val stream = request.stream
@@ -470,7 +626,7 @@ class FabricService(var port: Int = 40400) : Service {
         }
 
         @OptIn(kotlinx.coroutines.FlowPreview::class)
-        override fun streamIsActive(request: ScaledObjectRef) = tryCatchFlow<Boolean> {
+        override fun streamIsActive(request: ScaledObjectRef) = flow<Boolean> {
             val agent = request.agent
 
             val instancesCache = ignite.getOrCreateCache<String, InstanceData>("instances")
@@ -506,7 +662,7 @@ class FabricService(var port: Int = 40400) : Service {
             IsActiveResponse.newBuilder().also {
                 it.result = value
             }.build()
-        })
+        }).logExceptions()
 
         override suspend fun getMetricSpec(request: ScaledObjectRef): GetMetricSpecResponse {
             val agent = request.agent

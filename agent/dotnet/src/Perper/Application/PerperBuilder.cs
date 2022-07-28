@@ -41,6 +41,8 @@ namespace Perper.Application
                 services.AddScoped<IPerperContext, PerperContext>();
                 services.AddScoped(provider => provider.GetRequiredService<PerperScopeService>().CurrentExecution!);
 
+                services.AddOptions<FabricConfiguration>();
+
                 services.AddOptions<PerperConfiguration>().Configure<ILogger<PerperBuilder>>((configuration, logger) =>
                 {
                     configuration.IgniteEndpoint = Environment.GetEnvironmentVariable("APACHE_IGNITE_ENDPOINT") ?? "127.0.0.1:10800";
@@ -53,6 +55,7 @@ namespace Perper.Application
                     logger.LogInformation("X_PERPER_AGENT: {Agent}", configuration.Agent);
                     logger.LogInformation("X_PERPER_INSTANCE: {Instance}", configuration.Instance);
                 });
+
                 services.AddOptions<IgniteClientConfiguration>().Configure(configuration =>
                 {
                     configuration.BinaryConfiguration = new BinaryConfiguration
