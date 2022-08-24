@@ -83,7 +83,7 @@ private class SemaphoreWithArbitraryRelease(permits: Long) { // NOTE: Likely not
         }
     }
 
-    public suspend fun release(count: Long = 1) {
+    public fun release(count: Long = 1) {
         _permits.addAndGet(count)
         _wait.getAndSet(null)?.complete()
     }
@@ -208,7 +208,9 @@ class FabricService(var port: Int = 40400) : Service {
 
             query.remoteFilterFactory = Factory {
                 CacheEntryEventFilter { event ->
-                    if (event.isOldValueAvailable && !event.oldValue.finished && !event.eventType.isRemoval)
+                    if (event.eventType.isRemoval)
+                        true
+                    else if (event.isOldValueAvailable && !event.oldValue.finished)
                         false
                     else // NOTE: Can probably use a single query for all executions
                         filterValue(event.value)
@@ -336,10 +338,8 @@ class FabricService(var port: Int = 40400) : Service {
             }
         }
 
-        suspend fun reserveExecution(execution: String, workGroup: String, block: suspend () -> Unit) {
-            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
-
-            val locked = Channel<Unit>(1)
+        suspend fun reserveExecution(execution: String, workGroup: String, fastLockFailBlock: suspend () -> Unit = {}, block: suspend () -> Unit) {
+            val locked = Channel<Boolean>(Channel.CONFLATED)
 
             var finished = false
             val lock = Object()
@@ -347,11 +347,15 @@ class FabricService(var port: Int = 40400) : Service {
             lateinit var lockThread: Thread
             lockThread = thread { // Sigh. Ignite locks are thread-bound and don't care about async usage
                 val executionLock = ignite.reentrantLock("executions-$workGroup-$execution", true, false, true)
-                // log.debug({ "Trylock: executions-$workGroup-$execution" })
-                executionLock.lock()
-                // log.debug({ "Lock: executions-$workGroup-$execution" })
+                val tryLockSuccess = executionLock.tryLock()
+                if (!tryLockSuccess) {
+                    runBlocking {
+                        locked.send(false)
+                    }
+                    executionLock.lock()
+                }
                 runBlocking {
-                    locked.send(Unit)
+                    locked.send(true)
                 }
                 try {
                     synchronized(lock) {
@@ -359,35 +363,39 @@ class FabricService(var port: Int = 40400) : Service {
                             lock.wait()
                     }
                 } finally {
-                    // log.debug({ "Unlock: executions-$workGroup-$execution" })
                     executionLock.unlock()
-                    // log.debug({ "Unlocked: executions-$workGroup-$execution" })
                 }
             }
 
             try {
-                locked.receive()
-                val executionData = executionsCache.get(execution)
-                if (executionData == null || executionData.finished) {
-                    throw CancellationException()
+                while (true) {
+                    val lockedSuccessfully = locked.receive()
+
+                    if (lockedSuccessfully) {
+                        block()
+                        break
+                    } else {
+                        fastLockFailBlock()
+                    }
                 }
-                block()
             } finally {
-                // log.debug({ "Interrupt: executions-$workGroup-$execution" })
                 synchronized(lock) {
                     finished = true
                     lock.notifyAll()
                 }
-                // log.debug({ "Interrupted: executions-$workGroup-$execution" })
                 lockThread.join()
-                // log.debug({ "Join: executions-$workGroup-$execution" })
             }
         }
 
         override fun reserveExecution(request: ReserveExecutionRequest) = flow<Empty> {
             val execution = request.execution
+            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
 
             reserveExecution(execution, request.workGroup) {
+                val executionData = executionsCache.get(execution)
+                if (executionData == null || executionData.finished) {
+                    throw CancellationException()
+                }
                 emit(Empty.getDefaultInstance())
                 awaitCancellation()
             }
@@ -402,11 +410,11 @@ class FabricService(var port: Int = 40400) : Service {
 
                 launch {
                     requests.collect { request ->
-                        if (request.reserveNext != 0L) {
-                            semaphore.release(request.reserveNext)
-                        }
                         if (request.workGroup != "") {
                             workGroup = request.workGroup
+                        }
+                        if (request.reserveNext != 0L) {
+                            semaphore.release(request.reserveNext)
                         }
                         if (request.hasFilter()) {
                             executions.complete(_executions(request.filter))
@@ -428,10 +436,26 @@ class FabricService(var port: Int = 40400) : Service {
                     } else {
                         reserveExecutionJobs.getOrPut(execution.execution) {
                             launch {
-                                reserveExecution(execution.execution, workGroup) {
-                                    semaphore.acquire(1)
-                                    send(execution)
-                                    awaitCancellation()
+                                semaphore.acquire(1)
+                                var semaphoreHeld = true
+                                try {
+                                    reserveExecution(execution.execution, workGroup, fastLockFailBlock = {
+                                        semaphore.release(1)
+                                        semaphoreHeld = false
+                                    }) {
+                                        if (!semaphoreHeld) {
+                                            semaphore.acquire(1)
+                                            semaphoreHeld = true
+                                        }
+                                        send(execution)
+                                        semaphoreHeld = false // Once we send the execution, the semaphore token is "held" by the client; and will be released with the next reserveNext message
+                                        awaitCancellation()
+                                    }
+                                } finally {
+                                    if (semaphoreHeld) {
+                                        semaphore.release(1)
+                                        semaphoreHeld = false
+                                    }
                                 }
                             }
                         }

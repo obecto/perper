@@ -1,10 +1,8 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 
 using Apache.Ignite.Core.Binary;
@@ -133,7 +131,7 @@ namespace Perper.Protocol
 
                     await stream.RequestStream.WriteAsync(new ReservedExecutionsRequest
                     {
-                        ReserveNext = batchSize
+                        ReserveNext = 1, // TODO: With larger batch sizes, send only when the batch is about to run out.
                     }).ConfigureAwait(false);
                 }
             }

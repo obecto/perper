@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Perper.Extensions;
@@ -10,12 +11,14 @@ public static class Deploy
 {
     public static async Task RunAsync()
     {
-        await Task.WhenAll(Enumerable.Range(0, 1).Select(async x =>
+        var nonselfCount = 0;
+        await Task.WhenAll(Enumerable.Range(0, 6).Select(async x =>
         {
             while (true)
             {
                 var responder = await PerperContext.CallAsync<string>("GetProcessName");
                 Console.WriteLine("{0} Got response from {1}", Program.ProcessId, responder);
+                Program.CountReply();
             }
         }));
     }

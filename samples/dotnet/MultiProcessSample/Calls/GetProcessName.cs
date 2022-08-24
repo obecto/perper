@@ -14,6 +14,7 @@ public static class GetProcessName
     public static async Task<string> RunAsync()
     {
         await Task.Delay(random.Next(100, 1000)).ConfigureAwait(false);
+        Program.CountResponse();
         return $"Name: {Program.ProcessId}";
     }
 }

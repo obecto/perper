@@ -1,15 +1,13 @@
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
 using Apache.Ignite.Core.Client.Cache;
 
-using Microsoft.Extensions.Options;
-
 using Grpc.Core;
 using Grpc.Net.Client;
+
+using Microsoft.Extensions.Options;
 
 using Perper.Model;
 using Perper.Protocol.Cache;
