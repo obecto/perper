@@ -108,7 +108,7 @@ class StreamService : JobService() {
 
             var couldLock = false
             try {
-                couldLock = queryLock.tryLock()
+                couldLock = !queryLock.isHeldByCurrentThread() && queryLock.tryLock()
             } catch (_: Exception) {}
 
             if (couldLock) {
