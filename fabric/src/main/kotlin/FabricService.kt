@@ -14,8 +14,10 @@ import com.obecto.perper.protobuf.StreamItemsRequest
 import com.obecto.perper.protobuf.StreamItemsResponse
 import io.grpc.Server
 import io.grpc.ServerBuilder
+import io.grpc.kotlin.GrpcContextElement
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.debounce
@@ -162,7 +164,7 @@ class FabricService(var port: Int = 40400) : Service {
                 }
             }
 
-            log.debug({ "Executions listener started for '$agent'-'$instance'!" })
+            log.debug({ "Executions listener started for '$agent'-'$instance'! ${currentCoroutineContext()[GrpcContextElement]}" })
 
             val queryCursor = executionsCache.query(query)
 
@@ -171,6 +173,7 @@ class FabricService(var port: Int = 40400) : Service {
 
                 suspend fun FlowCollector<ExecutionsResponse>.output(key: String, value: ExecutionData, removed: Boolean) {
                     if (sentExecutions.put(key, removed) != removed) {
+                        log.debug({ "Executions listener sending '$key' for '$agent'! ${currentCoroutineContext()[GrpcContextElement]}" })
                         emit(
                             ExecutionsResponse.newBuilder().also {
                                 it.instance = value.instance
@@ -198,7 +201,7 @@ class FabricService(var port: Int = 40400) : Service {
                 e.printStackTrace()
                 throw e
             } finally {
-                log.debug({ "Executions listener stopped for '$agent'-'$instance'!" })
+                log.debug({ "Executions listener stopped for '$agent'-'$instance'! ${currentCoroutineContext()[GrpcContextElement]}" })
                 if (instance != null) {
                     InstanceService.setInstanceRunning(ignite, instance, false)
                 }
@@ -222,7 +225,7 @@ class FabricService(var port: Int = 40400) : Service {
                 }
             }
 
-            log.trace({ "All executions listener requested for '$agent'-'$instance'!" })
+            log.trace({ "All executions listener requested for '$agent'-'$instance'! ${currentCoroutineContext()[GrpcContextElement]}" })
 
             val queryCursor = executionsCache.query(query)
 
@@ -269,7 +272,7 @@ class FabricService(var port: Int = 40400) : Service {
 
             val queryCursor = executionsCache.query(query) // Important to start query before checking if it is already finished
 
-            log.debug({ "Execution finished listener started for '$execution'!" })
+            log.debug({ "Execution finished listener started for '$execution'! ${currentCoroutineContext()[GrpcContextElement]}" })
 
             try {
                 val executionData = executionsCache.get(execution)
@@ -278,7 +281,7 @@ class FabricService(var port: Int = 40400) : Service {
                 }
                 return Empty.getDefaultInstance()
             } finally {
-                log.debug({ "Execution finished listener completed for '$execution'!" })
+                log.debug({ "Execution finished listener completed for '$execution'! ${currentCoroutineContext()[GrpcContextElement]}" })
                 queryCursor.close()
                 queryChannel.close()
             }
@@ -327,7 +330,7 @@ class FabricService(var port: Int = 40400) : Service {
                 }
 
                 val queryCursor = streamCache.query(query)
-                log.debug({ "Stream items listener started for '$stream' ${startKey ?: "last"}..!" })
+                log.debug({ "Stream items listener started for '$stream' ${startKey ?: "last"}..! ${currentCoroutineContext()[GrpcContextElement]}" })
 
                 try {
                     val itemKeys = queryCursor.map({ item -> item.key }).toMutableList() // NOTE: Sorts all keys in-memory; inefficient
@@ -345,13 +348,13 @@ class FabricService(var port: Int = 40400) : Service {
                         }
                     }
                 } finally {
-                    log.debug({ "Stream items listener finished for '$stream' ${startKey ?: "last"}..!" })
+                    log.debug({ "Stream items listener finished for '$stream' ${startKey ?: "last"}..! ${currentCoroutineContext()[GrpcContextElement]}" })
                     queryCursor.close()
                     queryChannel.close()
                 }
             } else // if (stride != 0L)
                 {
-                    log.debug({ "Stream items listener started for '$stream' ${startKey ?: "last"}..+$stride!" })
+                    log.debug({ "Stream items listener started for '$stream' ${startKey ?: "last"}..+$stride! ${currentCoroutineContext()[GrpcContextElement]}" })
                     try {
                         var keyOrNull = startKey
 
@@ -407,7 +410,7 @@ class FabricService(var port: Int = 40400) : Service {
                             key += stride
                         }
                     } finally {
-                        log.debug({ "Stream items listener finished for '$stream' ${startKey ?: "last"}..+$stride!" })
+                        log.debug({ "Stream items listener finished for '$stream' ${startKey ?: "last"}..+$stride! ${currentCoroutineContext()[GrpcContextElement]}" })
                     }
                 }
         }
@@ -431,7 +434,7 @@ class FabricService(var port: Int = 40400) : Service {
 
             val queryCursor = streamListenersCache.query(query)
 
-            log.debug({ "Listener attached listener started for '$stream'!" })
+            log.debug({ "Listener attached listener started for '$stream'! ${currentCoroutineContext()[GrpcContextElement]}" })
 
             try {
                 for (_i in queryCursor) {
@@ -440,7 +443,7 @@ class FabricService(var port: Int = 40400) : Service {
                 queryChannel.receive()
                 return Empty.getDefaultInstance()
             } finally {
-                log.debug({ "Listener attached listener completed for '$stream'!" })
+                log.debug({ "Listener attached listener completed for '$stream'! ${currentCoroutineContext()[GrpcContextElement]}" })
                 queryCursor.close()
                 queryChannel.close()
             }

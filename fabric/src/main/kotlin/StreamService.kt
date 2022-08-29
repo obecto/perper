@@ -104,6 +104,7 @@ class StreamService : JobService() {
         }
 
         fun startStreamQuery(stream: String) {
+            val streamQueriesCache = ignite.getOrCreateCache<String, Boolean>("running-stream-queries") // TODO: Make non-persistent
             val queryLock = ignite.reentrantLock("stream-$stream-query", false, false, true)
 
             var couldLock = false
@@ -112,7 +113,8 @@ class StreamService : JobService() {
             } catch (_: Exception) {}
 
             if (couldLock) {
-                log.debug({ "Starting query on '$stream'" })
+                val existing = streamQueriesCache.putIfAbsent(stream, true)
+                log.debug({ "Starting query on '$stream' -- $existing ${queryLock.getHoldCount()}" })
 
                 val cache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, BinaryObject>()
 
