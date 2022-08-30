@@ -18,7 +18,10 @@ import io.grpc.Server
 import io.grpc.ServerBuilder
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CompletableJob
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
@@ -34,7 +37,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.apache.ignite.Ignite
+import org.apache.ignite.IgniteInterruptedException
 import org.apache.ignite.IgniteLogger
 import org.apache.ignite.cache.query.ContinuousQuery
 import org.apache.ignite.cache.query.QueryCursor
@@ -42,7 +47,6 @@ import org.apache.ignite.cache.query.ScanQuery
 import org.apache.ignite.lang.IgniteBiPredicate
 import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
-import org.apache.ignite.services.Service
 import org.apache.ignite.services.ServiceContext
 import sh.keda.externalscaler.ExternalScalerGrpcKt
 import sh.keda.externalscaler.GetMetricSpecResponse
@@ -50,6 +54,7 @@ import sh.keda.externalscaler.GetMetricsRequest
 import sh.keda.externalscaler.GetMetricsResponse
 import sh.keda.externalscaler.IsActiveResponse
 import sh.keda.externalscaler.ScaledObjectRef
+import java.lang.InterruptedException
 import java.lang.Thread
 import java.util.concurrent.CancellationException
 import java.util.concurrent.TimeUnit
@@ -89,7 +94,7 @@ private class SemaphoreWithArbitraryRelease(permits: Long) { // NOTE: Likely not
     }
 }
 
-class FabricService(var port: Int = 40400) : Service {
+class FabricService(var port: Int = 40400) : JobService() {
 
     /*companion object Ticks {
         val startTicks = (System.currentTimeMillis()) * 10_000
@@ -118,23 +123,23 @@ class FabricService(var port: Int = 40400) : Service {
         }
     }
 
-    override fun init(ctx: ServiceContext) {
+    override suspend fun CoroutineScope.execute(ctx: ServiceContext) {
         var serverBuilder = ServerBuilder.forPort(port)
         serverBuilder.addService(FabricImpl())
         // serverBuilder.addService(ExternalScalerImpl())
         server = serverBuilder.build()
-    }
 
-    override fun execute(ctx: ServiceContext) {
         server.start()
-        log.debug({ "Transport service started!" })
-    }
+        log.debug({ "Fabric server started!" })
 
-    override fun cancel(ctx: ServiceContext) {
-        server.shutdown()
-        server.awaitTermination(1L, TimeUnit.SECONDS)
-        server.shutdownNow()
-        server.awaitTermination()
+        try {
+            awaitCancellation()
+        } finally {
+            server.shutdown()
+            server.awaitTermination(1L, TimeUnit.SECONDS)
+            server.shutdownNow()
+            server.awaitTermination()
+        }
     }
 
     private fun <T> Flow<T>.logExceptions(): Flow<T> = catch { e ->
@@ -346,24 +351,29 @@ class FabricService(var port: Int = 40400) : Service {
 
             lateinit var lockThread: Thread
             lockThread = thread { // Sigh. Ignite locks are thread-bound and don't care about async usage
-                val executionLock = ignite.reentrantLock("executions-$workGroup-$execution", true, false, true)
-                val tryLockSuccess = executionLock.tryLock()
-                if (!tryLockSuccess) {
-                    runBlocking {
-                        locked.send(false)
-                    }
-                    executionLock.lock()
-                }
-                runBlocking {
-                    locked.send(true)
-                }
                 try {
-                    synchronized(lock) {
-                        while (!finished)
-                            lock.wait()
+                    val executionLock = ignite.reentrantLock("executions-$workGroup-$execution", true, false, true)
+                    val tryLockSuccess = executionLock.tryLock()
+                    if (!tryLockSuccess) {
+                        runBlocking {
+                            locked.send(false)
+                        }
+                        executionLock.lockInterruptibly()
                     }
-                } finally {
-                    executionLock.unlock()
+                    runBlocking {
+                        locked.send(true)
+                    }
+                    try {
+                        synchronized(lock) {
+                            while (!finished)
+                                lock.wait()
+                        }
+                    } finally {
+                        Thread.interrupted() // Clear interrupted status
+                        executionLock.unlock()
+                    }
+                } catch (_: IgniteInterruptedException) {
+                } catch (_: InterruptedException) {
                 }
             }
 
@@ -379,11 +389,14 @@ class FabricService(var port: Int = 40400) : Service {
                     }
                 }
             } finally {
-                synchronized(lock) {
-                    finished = true
-                    lock.notifyAll()
+                withContext(Dispatchers.IO + NonCancellable) {
+                    synchronized(lock) {
+                        finished = true
+                        lock.notifyAll()
+                    }
+                    lockThread.interrupt()
+                    lockThread.join()
                 }
-                lockThread.join()
             }
         }
 
