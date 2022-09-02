@@ -2,7 +2,6 @@ package com.obecto.perper.fabric
 import com.google.protobuf.Empty
 import com.obecto.perper.fabric.cache.AgentType
 import com.obecto.perper.fabric.cache.ExecutionData
-import com.obecto.perper.fabric.cache.InstanceData
 import com.obecto.perper.fabric.cache.StreamListener
 import com.obecto.perper.protobuf.AllExecutionsResponse
 import com.obecto.perper.protobuf.ExecutionFinishedRequest
@@ -14,8 +13,8 @@ import com.obecto.perper.protobuf.ReserveExecutionRequest
 import com.obecto.perper.protobuf.ReservedExecutionsRequest
 import com.obecto.perper.protobuf.StreamItemsRequest
 import com.obecto.perper.protobuf.StreamItemsResponse
-import io.grpc.Server
 import io.grpc.ServerBuilder
+import io.grpc.protobuf.services.ProtoReflectionService
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineScope
@@ -42,7 +41,6 @@ import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteInterruptedException
 import org.apache.ignite.IgniteLogger
 import org.apache.ignite.cache.query.ContinuousQuery
-import org.apache.ignite.cache.query.QueryCursor
 import org.apache.ignite.cache.query.ScanQuery
 import org.apache.ignite.lang.IgniteBiPredicate
 import org.apache.ignite.resources.IgniteInstanceResource
@@ -61,7 +59,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
-import javax.cache.Cache.Entry
 import javax.cache.configuration.Factory
 import javax.cache.event.CacheEntryEvent
 import javax.cache.event.CacheEntryEventFilter
@@ -107,8 +104,6 @@ class FabricService(var port: Int = 40400) : JobService() {
 
     lateinit var ignite: Ignite
 
-    lateinit var server: Server
-
     @IgniteInstanceResource
     fun setIgniteResource(igniteResource: Ignite?) {
         if (igniteResource != null) {
@@ -124,10 +119,11 @@ class FabricService(var port: Int = 40400) : JobService() {
     }
 
     override suspend fun CoroutineScope.execute(ctx: ServiceContext) {
-        var serverBuilder = ServerBuilder.forPort(port)
-        serverBuilder.addService(FabricImpl())
-        // serverBuilder.addService(ExternalScalerImpl())
-        server = serverBuilder.build()
+        val server = ServerBuilder.forPort(port).also({
+            it.addService(FabricImpl())
+            it.addService(ExternalScalerImpl())
+            it.addService(ProtoReflectionService.newInstance())
+        }).build()
 
         server.start()
         log.debug({ "Fabric server started!" })
@@ -643,57 +639,66 @@ class FabricService(var port: Int = 40400) : JobService() {
     inner class ExternalScalerImpl : ExternalScalerGrpcKt.ExternalScalerCoroutineImplBase() {
         val ScaledObjectRef.agent
             get() = scalerMetadataMap.getOrDefault("agent", name)
-        // val ScaledObjectRef.targetExecutions
-        //    get() = scalerMetadataMap.getOrDefault("targetExecutions", "10").toLong()
-        val ScaledObjectRef.targetInstances
-            get() = scalerMetadataMap.getOrDefault("targetInstances", "10").toLong()
+        val ScaledObjectRef.isLocal
+            get() = scalerMetadataMap.getOrDefault("local", "false") == "true"
 
         override suspend fun isActive(request: ScaledObjectRef): IsActiveResponse {
             val agent = request.agent
+            val isLocal = request.isLocal
 
-            val instancesCache = ignite.getOrCreateCache<String, InstanceData>("instances")
-            val query = ScanQuery(IgniteBiPredicate<String, InstanceData> { _, value -> value.agent == agent }).also {
-                it.setLocal(true)
+            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
+            val query = ScanQuery(IgniteBiPredicate<String, ExecutionData> { _, value -> value.agent == agent || (value.agent == "Registry" && value.instance == agent) }).also {
+                it.setLocal(isLocal)
             }
-            val queryCursor = instancesCache.query(query)
-            val hasAvailable = queryCursor.any()
-            return IsActiveResponse.newBuilder().also {
-                it.result = hasAvailable
-            }.build()
+            val queryCursor = executionsCache.query(query)
+            try {
+                val hasAvailable = queryCursor.any()
+                return IsActiveResponse.newBuilder().also {
+                    it.result = hasAvailable
+                }.build()
+            } finally {
+                queryCursor.close()
+            }
         }
 
-        @OptIn(kotlinx.coroutines.FlowPreview::class)
-        override fun streamIsActive(request: ScaledObjectRef) = flow<Boolean> {
-            val agent = request.agent
+        @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+        override fun streamIsActive(request: ScaledObjectRef) = channelFlow<Boolean> {
+            // NOTE: QUESTION: Should we report IsActive as true for a ScaledObjectRef that only includes targetExecutions but has active instances?
+            // .. Currently, we do, but maybe that's not optimal for KEDA?
 
-            val instancesCache = ignite.getOrCreateCache<String, InstanceData>("instances")
+            val agent = request.agent
+            val isLocal = request.isLocal
+
+            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
 
             var count = AtomicInteger(0)
-            lateinit var queryCursor: QueryCursor<Entry<String, InstanceData>>
 
-            val query = ContinuousQuery<String, InstanceData>()
+            val query = ContinuousQuery<String, ExecutionData>()
+            query.remoteFilterFactory = Factory { CacheEntryEventFilter { event -> event.value.agent == agent || (event.value.agent == "Registry" && event.value.instance == agent) } }
             query.localListener = CacheEntryUpdatedListener { events ->
                 for (event in events) {
-                    if (event.value.agent == agent) {
-                        val value = if (event.eventType.isRemoval) count.incrementAndGet() else if (event.eventType.isCreation) count.decrementAndGet() else continue
-                        runBlocking {
-                            try {
-                                emit(value > 0)
-                            } catch (_: CancellationException) {
-                                queryCursor.close()
-                            }
-                        }
+                    if (event.eventType.isRemoval && count.decrementAndGet() == 0) {
+                        runBlocking { send(false) }
+                    } else if (event.eventType.isCreation && count.incrementAndGet() == 1) {
+                        runBlocking { send(true) }
                     }
                 }
             }
-            query.setLocal(true)
-            query.initialQuery = ScanQuery(IgniteBiPredicate<String, InstanceData> { _, value -> value.agent == agent }).also {
-                it.setLocal(true)
+            query.setLocal(isLocal)
+            query.initialQuery = ScanQuery(IgniteBiPredicate<String, ExecutionData> { _, value -> value.agent == agent || (value.agent == "Registry" && value.instance == agent) }).also {
+                it.setLocal(isLocal)
             }
-            queryCursor = instancesCache.query(query)
-
-            for (entry in queryCursor) {
-                emit(count.incrementAndGet() > 0)
+            val queryCursor = executionsCache.query(query)
+            try {
+                send(false)
+                for (entry in queryCursor) {
+                    if (count.incrementAndGet() == 1) {
+                        send(true)
+                    }
+                }
+                awaitCancellation()
+            } finally {
+                queryCursor.close()
             }
         }.debounce(100).map({ value ->
             IsActiveResponse.newBuilder().also {
@@ -704,30 +709,59 @@ class FabricService(var port: Int = 40400) : JobService() {
         override suspend fun getMetricSpec(request: ScaledObjectRef): GetMetricSpecResponse {
             val agent = request.agent
             return GetMetricSpecResponse.newBuilder().also {
-                it.addMetricSpecsBuilder().also {
-                    it.metricName = "$agent-instances"
-                    it.targetSize = request.targetInstances
+                fun addMetric(metricName: String, scalerMetadataProperty: String) {
+                    val targetValue = request.scalerMetadataMap.get(scalerMetadataProperty)?.toLong()
+                    if (targetValue != null) {
+                        it.addMetricSpecsBuilder().also {
+                            it.metricName = metricName
+                            it.targetSize = targetValue
+                        }
+                    }
                 }
+
+                addMetric("$agent-instances", "targetInstances")
+                addMetric("$agent-executions", "targetExecutions")
             }.build()
         }
 
         override suspend fun getMetrics(request: GetMetricsRequest): GetMetricsResponse {
+            // NOTE: We aren't using request.metricName yet -- but it might be useful for performance optimizations?
             val agent = request.scaledObjectRef.agent
+            val isLocal = request.scaledObjectRef.isLocal
 
-            val instancesCache = ignite.getOrCreateCache<String, InstanceData>("instances")
+            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
 
-            val query = ScanQuery(IgniteBiPredicate<String, InstanceData> { _, value -> value.agent == agent }).also {
-                it.setLocal(true)
+            val query = ScanQuery(IgniteBiPredicate<String, ExecutionData> { _, value -> value.agent == agent || (value.agent == "Registry" && value.instance == agent) }).also {
+                it.setLocal(isLocal)
             }
-            val queryCursor = instancesCache.query(query)
-            val available = queryCursor.count()
+            val queryCursor = executionsCache.query(query)
 
-            return GetMetricsResponse.newBuilder().also {
-                it.addMetricValuesBuilder().also {
-                    it.metricName = "$agent-instances"
-                    it.metricValue = available.toLong()
+            try {
+                var instances = 0
+                var executions = 0
+
+                for (entry in queryCursor) {
+                    if (entry.value.agent == "Registry" && entry.value.instance == agent) {
+                        instances ++
+                    }
+                    if (entry.value.agent == agent) {
+                        executions ++
+                    }
                 }
-            }.build()
+
+                return GetMetricsResponse.newBuilder().also {
+                    it.addMetricValuesBuilder().also {
+                        it.metricName = "$agent-instances"
+                        it.metricValue = instances.toLong()
+                    }
+                    it.addMetricValuesBuilder().also {
+                        it.metricName = "$agent-executions"
+                        it.metricValue = executions.toLong()
+                    }
+                }.build()
+            } finally {
+                queryCursor.close()
+            }
         }
     }
 }
