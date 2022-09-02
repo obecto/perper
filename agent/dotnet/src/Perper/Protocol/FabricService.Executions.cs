@@ -1,10 +1,8 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 
 using Apache.Ignite.Core.Binary;
@@ -95,43 +93,25 @@ namespace Perper.Protocol
 
         async Task IPerperExecutions.DestroyAsync(PerperExecution execution) => await ExecutionsCache.RemoveAsync(execution.Execution).ConfigureAwait(false);
 
-        private readonly ConcurrentDictionary<(string, string?), bool> _runningExecutionListeners = new();
-        private readonly ConcurrentDictionary<PerperExecutionFilter, Channel<PerperExecutionData>> _executionChannels = new();
-
-        IAsyncEnumerable<PerperExecutionData> IPerperExecutions.ListenAsync(PerperExecutionFilter filter, CancellationToken cancellationToken)
+        async IAsyncEnumerable<PerperExecutionData> IPerperExecutions.ListenAsync(PerperExecutionFilter filter, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            if (filter.Delegate != null)
-            {
-                if (_runningExecutionListeners.TryAdd((filter.Agent, filter.Instance), true))
-                {
-                    TaskCollection.Add(async () =>
-                    {
-                        await foreach (var data in ListenAsyncHelper(filter.Agent, filter.Instance, CancellationTokenSource.Token))
-                        {
-                            var channel = _executionChannels.GetOrAdd(filter with { Delegate = data.Delegate }, _ => Channel.CreateUnbounded<PerperExecutionData>());
-                            await channel.Writer.WriteAsync(data, cancellationToken).ConfigureAwait(false);
-                        }
-                    });
-                }
-
-                var resultChannel = _executionChannels.GetOrAdd(filter, _ => Channel.CreateUnbounded<PerperExecutionData>());
-                return resultChannel.Reader.ReadAllAsync(cancellationToken);
-            }
-            else
-            {
-                return ListenAsyncHelper(filter.Agent, filter.Instance, cancellationToken);
-            }
-        }
-
-        private async IAsyncEnumerable<PerperExecutionData> ListenAsyncHelper(string agent, string? instance, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
+            var batchSize = (ulong)1; // TODO: Make configurable (PerperExecutionFilter subclass?)
+            var workGroup = Configuration.Workgroup;
             var cancellationTokenSources = new Dictionary<string, CancellationTokenSource>();
 
-            var stream = FabricClient.Executions(new ExecutionsRequest
+            var stream = FabricClient.ReservedExecutions(CallOptions.WithCancellationToken(cancellationToken));
+
+            await stream.RequestStream.WriteAsync(new ReservedExecutionsRequest
             {
-                Agent = agent,
-                Instance = instance ?? "",
-            }, CallOptions.WithCancellationToken(cancellationToken));
+                ReserveNext = batchSize,
+                WorkGroup = workGroup,
+                Filter = new ExecutionsRequest
+                {
+                    Agent = filter.Agent,
+                    Instance = filter.Instance ?? "",
+                    Delegate = filter.Delegate ?? "",
+                }
+            }).ConfigureAwait(false);
 
             while (await stream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
             {
@@ -143,11 +123,16 @@ namespace Perper.Protocol
                         cts.Cancel();
                     }
                 }
-                else
+                else if (!string.IsNullOrEmpty(executionProto.Execution))
                 {
                     var cts = new CancellationTokenSource();
                     cancellationTokenSources[executionProto.Execution] = cts;
-                    yield return new PerperExecutionData(new PerperAgent(agent, executionProto.Instance), executionProto.Delegate, new PerperExecution(executionProto.Execution), cts.Token);
+                    yield return new PerperExecutionData(new PerperAgent(filter.Agent, executionProto.Instance), executionProto.Delegate, new PerperExecution(executionProto.Execution), cts.Token);
+
+                    await stream.RequestStream.WriteAsync(new ReservedExecutionsRequest
+                    {
+                        ReserveNext = 1, // TODO: With larger batch sizes, send only when the batch is about to run out.
+                    }).ConfigureAwait(false);
                 }
             }
         }

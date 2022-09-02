@@ -12,8 +12,14 @@ import "google/protobuf/empty.proto";
 service Fabric {
     rpc Executions (ExecutionsRequest) returns (stream ExecutionsResponse) {}
     rpc AllExecutions (ExecutionsRequest) returns (AllExecutionsResponse) {}
+
     rpc ExecutionFinished (ExecutionFinishedRequest) returns (google.protobuf.Empty) {}
+
+    rpc ReserveExecution (ReserveExecutionRequest) returns (stream google.protobuf.Empty) {}
+    rpc ReservedExecutions (stream ReservedExecutionsRequest) returns (stream ExecutionsResponse) {}
+
     rpc StreamItems (StreamItemsRequest) returns (stream StreamItemsResponse) {}
+
     rpc ListenerAttached (ListenerAttachedRequest) returns (google.protobuf.Empty) {}
 }
 
@@ -24,7 +30,7 @@ message AllExecutionsResponse {
 message ExecutionsRequest {
     string agent = 1;
     string instance = 2;
-    //string delegate = 3;
+    string delegate = 3;
     bool localToData = 4;
 }
 
@@ -37,6 +43,19 @@ message ExecutionsResponse {
     bool cancelled = 5;
 
     bool startOfStream = 10;
+}
+
+message ReservedExecutionsRequest {
+    uint64 reserveNext = 1;
+
+    // Only send with first message:
+    string workGroup = 5;
+    ExecutionsRequest filter = 10;
+}
+
+message ReserveExecutionRequest {
+    string execution = 4;
+    string workGroup = 5;
 }
 
 message ExecutionFinishedRequest {
