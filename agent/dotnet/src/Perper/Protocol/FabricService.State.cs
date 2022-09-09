@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 
 using Apache.Ignite.Core.Cache.Configuration;
@@ -9,9 +10,25 @@ namespace Perper.Protocol
 {
     public partial class FabricService : IPerperStates
     {
-        PerperState IPerperStates.Create() => new(GenerateName(""));
-        PerperState IPerperStates.Create(PerperAgent instance, string? name) => new($"{instance.Instance}-{name}");
-        PerperState IPerperStates.Create(PerperExecution execution, string? name) => new($"{execution.Execution}-{name}");
+        (PerperState State, Func<Task> Create) IPerperStates.Create(PerperStateOptions? options) =>
+            CreateInner(GenerateName(""), options);
+        (PerperState State, Func<Task> Create) IPerperStates.Create(PerperAgent instance, string? name, PerperStateOptions? options) =>
+            CreateInner($"{instance.Instance}-{name}", options);
+        (PerperState State, Func<Task> Create) IPerperStates.Create(PerperExecution execution, string? name, PerperStateOptions? options) =>
+            CreateInner($"{execution.Execution}-{name}", options);
+
+        private (PerperState State, Func<Task> Create) CreateInner(string name, PerperStateOptions? options)
+        {
+            var state = new PerperState(name);
+            return (state, () =>
+            {
+                var cacheConfiguration = FabricCaster.GetCacheConfiguration(state, options);
+                cacheConfiguration.Name = state.Name;
+                Ignite.GetOrCreateCache<object, object>(cacheConfiguration);
+                return Task.CompletedTask;
+            }
+            );
+        }
 
         async Task<(bool Exists, TValue Value)> IPerperStates.TryGetAsync<TValue>(PerperState state, string key)
         {

@@ -12,5 +12,7 @@ namespace Perper.Model
 
         public IEnumerable<Type> IndexTypes { get; set; } = Type.EmptyTypes;
         // public Collection<QueryEntity> IndexEntities { get; set; }
+
+        public object? PersistenceOptions { get; set; }
     }
 }

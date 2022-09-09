@@ -41,7 +41,7 @@ namespace Perper.Protocol
                 // await InstancesCache.PutIfAbsentOrThrowAsync(instance.Instance, new InstanceData(instance.Agent)).ConfigureAwait(false);
                 if (parent != null)
                 {
-                    await GetChildren(parent)
+                    await (await GetChildren(parent).ConfigureAwait(false))
                         .AddAsync(instance.Instance, instance.Agent)
                         .ConfigureAwait(false);
                 }
@@ -54,7 +54,7 @@ namespace Perper.Protocol
         {
             await PerperExecutions.CallAsync(instance, PerperAgentsExtensions.StopFunctionName).ConfigureAwait(false);
 
-            await foreach (var child in GetChildren(instance)) // TODO: Move to the implementation for Stop() instead of managing the agent's children directly
+            await foreach (var child in await GetChildren(instance).ConfigureAwait(false)) // TODO: Move to the implementation for Stop() instead of managing the agent's children directly
             {
                 await ((IPerperAgents)this).DestroyAsync(new PerperAgent(child.Value, child.Key)).ConfigureAwait(false);
             }
@@ -64,7 +64,7 @@ namespace Perper.Protocol
             // await InstancesCache.RemoveAsync(instance.Instance).ConfigureAwait(false);
         }
 
-        private IAsyncDictionary<string, string> GetChildren(PerperAgent instance) =>
-            PerperStates.AsAsyncDictionary<string, string>(PerperStates.Create(instance, "children"));
+        private async Task<IAsyncDictionary<string, string>> GetChildren(PerperAgent instance) =>
+            PerperStates.AsAsyncDictionary<string, string>(await PerperStates.CreateAsync(instance, "children").ConfigureAwait(false));
     }
 }

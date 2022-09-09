@@ -57,7 +57,10 @@ namespace Perper.Application.Handlers
 #pragma warning disable CA2007
             await using var scope = Services.CreateAsyncScope();
 #pragma warning restore CA2007
-            scope.ServiceProvider.GetRequiredService<PerperScopeService>().SetExecution(executionData);
+
+            var state = await Perper.States.CreateAsync(executionData.Agent).ConfigureAwait(false);
+            executionData = executionData with { State = state };
+            scope.ServiceProvider.GetRequiredService<PerperScopeService>().SetExecutionData(executionData);
 
             using (scope.ServiceProvider.GetRequiredService<IPerperContext>().UseContext())
             {

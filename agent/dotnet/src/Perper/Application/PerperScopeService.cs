@@ -9,6 +9,6 @@ namespace Perper.Application
     {
         public PerperExecutionData? CurrentExecution { get; private set; }
 
-        public void SetExecution(PerperExecutionData execution) => CurrentExecution = execution;
+        public void SetExecutionData(PerperExecutionData execution) => CurrentExecution = execution;
     }
 }

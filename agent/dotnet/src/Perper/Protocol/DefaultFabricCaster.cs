@@ -8,11 +8,21 @@ using System.Runtime.CompilerServices;
 
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Cache.Configuration;
+using Apache.Ignite.Core.Client.Cache;
+
+using Microsoft.Extensions.Options;
+
+using Perper.Model;
 
 namespace Perper.Protocol
 {
     public class DefaultFabricCaster : IFabricCaster
     {
+        protected FabricConfiguration Configuration { get; }
+
+        public DefaultFabricCaster(IOptions<FabricConfiguration> configuration) =>
+            Configuration = configuration.Value;
+
         public object?[] PackArguments(ParameterInfo[]? parameters, object?[] arguments) => arguments;
 
         public object?[] UnpackArguments(ParameterInfo[]? parameters, object?[] packedArguments)
@@ -144,5 +154,33 @@ namespace Perper.Protocol
         }
 
         public bool TypeShouldKeepBinary(Type type) => type == typeof(IBinaryObject);
+
+        public CacheClientConfiguration GetCacheConfiguration(PerperStream stream, PerperStreamOptions options)
+        {
+            return ConvertPersistenceOptions(options.PersistenceOptions) ??
+                new CacheClientConfiguration()
+                {
+                    DataRegionName = options.Persistent ? Configuration.PersistentStreamDataRegion : Configuration.EphemeralStreamDataRegion
+                };
+        }
+
+        public CacheClientConfiguration GetCacheConfiguration(PerperState state, PerperStateOptions? options)
+        {
+            return ConvertPersistenceOptions(options?.PersistenceOptions) ??
+                new CacheClientConfiguration()
+                {
+                    DataRegionName = Configuration.StateDataRegion
+                };
+        }
+
+        protected virtual CacheClientConfiguration? ConvertPersistenceOptions(object? persistenceOptions)
+        {
+            return persistenceOptions switch
+            {
+                CacheClientConfiguration configuration => new CacheClientConfiguration(configuration),
+                string dataRegion => new CacheClientConfiguration() { DataRegionName = dataRegion },
+                _ => null,
+            };
+        }
     }
 }

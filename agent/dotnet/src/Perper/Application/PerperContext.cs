@@ -17,7 +17,7 @@ namespace Perper.Application
             Perper = perper;
             CurrentExecution = data.Execution;
             CurrentAgent = data.Agent;
-            CurrentState = States.Create(data.Agent);
+            CurrentState = data.State!;
         }
 
         public IPerperExecutions Executions => Perper.Executions;
