@@ -36,6 +36,7 @@ namespace Perper.Application
 
                 services.AddSingleton<IPerper, FabricService>();
                 services.AddSingleton<PerperListenerFilter>();
+                services.AddSingleton<PerperInstanceLifecycleService>();
 
                 services.AddScoped<PerperScopeService>();
                 services.AddScoped<IPerperContext, PerperContext>();

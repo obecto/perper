@@ -95,27 +95,57 @@ namespace Perper.Protocol
 
         async IAsyncEnumerable<PerperExecutionData> IPerperExecutions.ListenAsync(PerperExecutionFilter filter, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            var batchSize = (ulong)1; // TODO: Make configurable (PerperExecutionFilter subclass?)
-            var workGroup = Configuration.Workgroup;
-            var cancellationTokenSources = new Dictionary<string, CancellationTokenSource>();
-
-            var stream = FabricClient.ReservedExecutions(CallOptions.WithCancellationToken(cancellationToken));
-
-            await stream.RequestStream.WriteAsync(new ReservedExecutionsRequest
+            async IAsyncEnumerable<ExecutionsResponse> Helper()
             {
-                ReserveNext = batchSize,
-                WorkGroup = workGroup,
-                Filter = new ExecutionsRequest
+                var executionsRequest = new ExecutionsRequest
                 {
                     Agent = filter.Agent,
                     Instance = filter.Instance ?? "",
-                    Delegate = filter.Delegate ?? "",
-                }
-            }).ConfigureAwait(false);
+                    Delegate = filter.Delegate ?? ""
+                };
 
-            while (await stream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+                if (filter.Reserve)
+                {
+                    var batchSize = (ulong)1; // TODO: Make configurable (PerperExecutionFilter subclass?)
+
+                    var stream = FabricClient.ReservedExecutions(CallOptions.WithCancellationToken(cancellationToken));
+
+                    await stream.RequestStream.WriteAsync(new ReservedExecutionsRequest
+                    {
+                        ReserveNext = batchSize,
+                        WorkGroup = Configuration.Workgroup,
+                        Filter = executionsRequest
+                    }).ConfigureAwait(false);
+
+                    while (await stream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+                    {
+                        var executionProto = stream.ResponseStream.Current;
+                        yield return executionProto;
+                        if (!executionProto.Cancelled && !string.IsNullOrEmpty(executionProto.Execution))
+                        {
+                            await stream.RequestStream.WriteAsync(new ReservedExecutionsRequest
+                            {
+                                ReserveNext = 1, // TODO: With larger batch sizes, send only when the batch is about to run out.
+                            }).ConfigureAwait(false);
+                        }
+                    }
+                }
+                else
+                {
+                    var stream = FabricClient.Executions(executionsRequest, CallOptions.WithCancellationToken(cancellationToken));
+
+                    while (await stream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+                    {
+                        var executionProto = stream.ResponseStream.Current;
+                        yield return executionProto;
+                    }
+                }
+            }
+
+            var cancellationTokenSources = new Dictionary<string, CancellationTokenSource>();
+
+            await foreach (var executionProto in Helper())
             {
-                var executionProto = stream.ResponseStream.Current;
                 if (executionProto.Cancelled)
                 {
                     if (cancellationTokenSources.TryGetValue(executionProto.Execution, out var cts))
@@ -128,11 +158,6 @@ namespace Perper.Protocol
                     var cts = new CancellationTokenSource();
                     cancellationTokenSources[executionProto.Execution] = cts;
                     yield return new PerperExecutionData(new PerperAgent(filter.Agent, executionProto.Instance), executionProto.Delegate, new PerperExecution(executionProto.Execution), cts.Token);
-
-                    await stream.RequestStream.WriteAsync(new ReservedExecutionsRequest
-                    {
-                        ReserveNext = 1, // TODO: With larger batch sizes, send only when the batch is about to run out.
-                    }).ConfigureAwait(false);
                 }
             }
         }

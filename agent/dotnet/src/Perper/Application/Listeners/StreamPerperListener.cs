@@ -9,7 +9,7 @@ namespace Perper.Application.Listeners
 {
     public class StreamPerperListener : CompositePerperListener
     {
-        private readonly string Agent;
+        public override string Agent { get; }
         private readonly string Delegate;
         private readonly PerperStreamOptions StreamOptions;
         private readonly IPerperHandler Handler;

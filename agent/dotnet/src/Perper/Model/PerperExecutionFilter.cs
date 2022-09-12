@@ -9,5 +9,7 @@ namespace Perper.Model
         public PerperExecutionFilter(string agent, string @delegate) : this(agent, null, @delegate) { }
 
         public PerperExecutionFilter(PerperAgent agent, string @delegate) : this(agent.Agent, agent.Instance, @delegate) { }
+
+        public bool Reserve { get; init; } = true;
     }
 }

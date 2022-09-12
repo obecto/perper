@@ -19,15 +19,15 @@ namespace Perper.Application
             builder.AddDeploySingletonHandler(PerperConnection.ConfigureInstance().Item1);
 
         public static IPerperBuilder AddInitHandler(this IPerperBuilder builder, string agent, Delegate handler) =>
-            builder.AddHandler(agent, PerperBuilderExtensions.InitDelegateName, handler);
+            builder.AddHandler(agent, "Init", handler);
 
         public static IPerperBuilder AddInitHandler<T>(this IPerperBuilder builder, string agent) =>
-            builder.AddHandler(agent, PerperBuilderExtensions.InitDelegateName, typeof(T));
+            builder.AddHandler(agent, "Init", typeof(T));
 
         public static IPerperBuilder AddInitHandler(this IPerperBuilder builder, string agent, Type initType) =>
-            builder.AddHandler(agent, PerperBuilderExtensions.InitDelegateName, initType);
+            builder.AddHandler(agent, "Init", initType);
 
         public static IPerperBuilder AddInitHandler(this IPerperBuilder builder, string agent, Type initType, MethodInfo method) =>
-            builder.AddHandler(agent, PerperBuilderExtensions.InitDelegateName, initType, method);
+            builder.AddHandler(agent, "Init", initType, method);
     }
 }

@@ -7,6 +7,8 @@ namespace Perper.Application.Listeners
 {
     public abstract class CompositePerperListener : IPerperListener
     {
+        public abstract string Agent { get; }
+
         private IPerperListener[]? Listeners;
 
         protected abstract IPerperListener[] GetListeners();
