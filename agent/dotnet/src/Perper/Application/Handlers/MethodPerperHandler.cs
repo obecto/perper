@@ -58,8 +58,6 @@ namespace Perper.Application.Handlers
             await using var scope = Services.CreateAsyncScope();
 #pragma warning restore CA2007
 
-            var state = await Perper.States.CreateAsync(executionData.Agent).ConfigureAwait(false);
-            executionData = executionData with { State = state };
             scope.ServiceProvider.GetRequiredService<PerperScopeService>().SetExecutionData(executionData);
 
             using (scope.ServiceProvider.GetRequiredService<IPerperContext>().UseContext())

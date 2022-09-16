@@ -10,14 +10,14 @@ namespace Perper.Application
         private readonly IPerper Perper;
         public PerperExecution CurrentExecution { get; }
         public PerperAgent CurrentAgent { get; }
-        public PerperState CurrentState { get; }
+        public PerperDictionary CurrentState { get; }
 
         public PerperContext(IPerper perper, PerperExecutionData data)
         {
             Perper = perper;
             CurrentExecution = data.Execution;
             CurrentAgent = data.Agent;
-            CurrentState = data.State!;
+            CurrentState = perper.States.GetInstanceDictionary(data.Agent);
         }
 
         public IPerperExecutions Executions => Perper.Executions;

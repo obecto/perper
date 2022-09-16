@@ -27,6 +27,6 @@ namespace Perper.Protocol
         bool TypeShouldKeepBinary(Type type);
 
         CacheClientConfiguration GetCacheConfiguration(PerperStream stream, PerperStreamOptions options);
-        CacheClientConfiguration GetCacheConfiguration(PerperState state, PerperStateOptions? options);
+        CacheClientConfiguration GetCacheConfiguration(string stateName, PerperStateOptions? options);
     }
 }

@@ -4,6 +4,6 @@ namespace Perper.Model
     {
         PerperExecution CurrentExecution { get; }
         PerperAgent CurrentAgent { get; }
-        PerperState CurrentState { get; }
+        PerperDictionary CurrentState { get; }
     }
 }

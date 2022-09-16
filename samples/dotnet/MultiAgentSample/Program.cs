@@ -9,8 +9,6 @@ using Perper.Application;
 using Perper.Extensions;
 using Perper.Model;
 
-using PerperState = Perper.Extensions.PerperState;
-
 namespace MultiAgentSample;
 
 public static class Program

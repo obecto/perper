@@ -164,7 +164,7 @@ namespace Perper.Protocol
                 };
         }
 
-        public CacheClientConfiguration GetCacheConfiguration(PerperState state, PerperStateOptions? options)
+        public CacheClientConfiguration GetCacheConfiguration(string stateName, PerperStateOptions? options)
         {
             return ConvertPersistenceOptions(options?.PersistenceOptions) ??
                 new CacheClientConfiguration()

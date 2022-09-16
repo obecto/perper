@@ -9,6 +9,5 @@ namespace Perper.Model
         CancellationToken CancellationToken)
     {
         public bool IsSynthetic { init; get; }
-        public PerperState? State { init; get; }
     }
 }

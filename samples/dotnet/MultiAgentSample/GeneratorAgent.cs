@@ -4,8 +4,6 @@ using System.Threading.Tasks;
 using Perper.Extensions;
 using Perper.Model;
 
-using PerperState = Perper.Extensions.PerperState;
-
 namespace MultiAgentSample;
 
 #pragma warning disable CA1822

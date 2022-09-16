@@ -23,7 +23,8 @@ namespace Perper.Protocol
         {
             new BinaryTypeConfiguration(typeof(PerperStream)),
             new BinaryTypeConfiguration(typeof(PerperAgent)),
-            new BinaryTypeConfiguration(typeof(PerperState)),
+            new BinaryTypeConfiguration(typeof(PerperDictionary)),
+            new BinaryTypeConfiguration(typeof(PerperList)),
             new BinaryTypeConfiguration(typeof(PerperExecution)),
         };
 

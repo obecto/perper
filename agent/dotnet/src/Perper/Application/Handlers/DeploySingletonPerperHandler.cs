@@ -19,8 +19,8 @@ namespace Perper.Application.Handlers
 
         public async Task Invoke(PerperExecutionData executionData, object?[] arguments)
         {
-            var state = await Perper.States.CreateAsync(executionData.Agent).ConfigureAwait(false);
-            var (exists, _) = await Perper.States.TryGetAsync<object?>(state, "agent").ConfigureAwait(false);
+            var state = Perper.States.GetInstanceDictionary(executionData.Agent);
+            var (exists, _) = await Perper.States.TryGetAsync<string, object?>(state, "agent").ConfigureAwait(false);
             if (!exists)
             {
                 var (newAgent, createAsync) = Perper.Agents.Create(executionData.Agent, executionData.Agent.Instance);
