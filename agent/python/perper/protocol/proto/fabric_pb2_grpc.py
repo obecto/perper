@@ -20,10 +20,25 @@ class FabricStub(object):
                 request_serializer=fabric__pb2.ExecutionsRequest.SerializeToString,
                 response_deserializer=fabric__pb2.ExecutionsResponse.FromString,
                 )
+        self.AllExecutions = channel.unary_unary(
+                '/perper.Fabric/AllExecutions',
+                request_serializer=fabric__pb2.ExecutionsRequest.SerializeToString,
+                response_deserializer=fabric__pb2.AllExecutionsResponse.FromString,
+                )
         self.ExecutionFinished = channel.unary_unary(
                 '/perper.Fabric/ExecutionFinished',
                 request_serializer=fabric__pb2.ExecutionFinishedRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+        self.ReserveExecution = channel.unary_stream(
+                '/perper.Fabric/ReserveExecution',
+                request_serializer=fabric__pb2.ReserveExecutionRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+        self.ReservedExecutions = channel.stream_stream(
+                '/perper.Fabric/ReservedExecutions',
+                request_serializer=fabric__pb2.ReservedExecutionsRequest.SerializeToString,
+                response_deserializer=fabric__pb2.ExecutionsResponse.FromString,
                 )
         self.StreamItems = channel.unary_stream(
                 '/perper.Fabric/StreamItems',
@@ -46,7 +61,25 @@ class FabricServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def AllExecutions(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def ExecutionFinished(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ReserveExecution(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ReservedExecutions(self, request_iterator, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -72,10 +105,25 @@ def add_FabricServicer_to_server(servicer, server):
                     request_deserializer=fabric__pb2.ExecutionsRequest.FromString,
                     response_serializer=fabric__pb2.ExecutionsResponse.SerializeToString,
             ),
+            'AllExecutions': grpc.unary_unary_rpc_method_handler(
+                    servicer.AllExecutions,
+                    request_deserializer=fabric__pb2.ExecutionsRequest.FromString,
+                    response_serializer=fabric__pb2.AllExecutionsResponse.SerializeToString,
+            ),
             'ExecutionFinished': grpc.unary_unary_rpc_method_handler(
                     servicer.ExecutionFinished,
                     request_deserializer=fabric__pb2.ExecutionFinishedRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'ReserveExecution': grpc.unary_stream_rpc_method_handler(
+                    servicer.ReserveExecution,
+                    request_deserializer=fabric__pb2.ReserveExecutionRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'ReservedExecutions': grpc.stream_stream_rpc_method_handler(
+                    servicer.ReservedExecutions,
+                    request_deserializer=fabric__pb2.ReservedExecutionsRequest.FromString,
+                    response_serializer=fabric__pb2.ExecutionsResponse.SerializeToString,
             ),
             'StreamItems': grpc.unary_stream_rpc_method_handler(
                     servicer.StreamItems,
@@ -115,6 +163,23 @@ class Fabric(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
+    def AllExecutions(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/perper.Fabric/AllExecutions',
+            fabric__pb2.ExecutionsRequest.SerializeToString,
+            fabric__pb2.AllExecutionsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
     def ExecutionFinished(request,
             target,
             options=(),
@@ -128,6 +193,40 @@ class Fabric(object):
         return grpc.experimental.unary_unary(request, target, '/perper.Fabric/ExecutionFinished',
             fabric__pb2.ExecutionFinishedRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ReserveExecution(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/perper.Fabric/ReserveExecution',
+            fabric__pb2.ReserveExecutionRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ReservedExecutions(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_stream(request_iterator, target, '/perper.Fabric/ReservedExecutions',
+            fabric__pb2.ReservedExecutionsRequest.SerializeToString,
+            fabric__pb2.ExecutionsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

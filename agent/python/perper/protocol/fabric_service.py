@@ -46,7 +46,6 @@ class FabricService:
         self.fabric_stub = fabric_pb2_grpc.FabricStub(self.grpc_channel)
 
         self.execution_channels = defaultdict(asyncio.Queue)
-        self.execution_listen_tasks = factorydict(self._create_executions_listener)
         self.execution_tasks = {}
 
     @classmethod
@@ -180,27 +179,29 @@ class FabricService:
 
         return helper()
 
-    def _create_executions_listener(self, key):
-        (agent, instance) = key
-
+    async def enumerate_executions(self, agent, instance, delegate, reserve=True, work_group=""):
         async def helper():
-            executions = self.fabric_stub.Executions(fabric_pb2.ExecutionsRequest(agent=agent, instance=instance), wait_for_ready=True)
+            request = fabric_pb2.ExecutionsRequest(agent=agent, instance=instance, delegate=delegate)
+            if reserve:
+                executions = self.fabric_stub.ReservedExecutions(wait_for_ready=True)
+                await executions.write(fabric_pb2.ReservedExecutionsRequest(reserveNext=1, workGroup=work_group, filter=request))
+                async for proto in executions:
+                    yield proto
+                    if not proto.cancelled and proto.execution != "":
+                        await executions.write(fabric_pb2.ReservedExecutionsRequest(reserveNext=1))
+            else:
+                async for proto in self.fabric_stub.Executions(request, wait_for_ready=True):
+                    yield proto
 
-            async for proto in executions:
-                if proto.cancelled:
-                    value = self.execution_tasks.setdefault(proto.execution, FabricService.CANCELLED)
-                    if value is not FabricService.CANCELLED:
-                        value.cancel()
-                        self.execution_tasks[proto.execution] = FabricService.CANCELLED
-                else:
-                    execution = FabricExecution(agent, proto.instance, proto.delegate, proto.execution)
-                    await self.execution_channels[(agent, instance, proto.delegate)].put(execution)
-
-        return asyncio.create_task(helper())
-
-    async def get_executions_queue(self, agent, instance, delegate):
-        self.task_collection.add(self.execution_listen_tasks[(agent, instance)])
-        return self.execution_channels[(agent, instance, delegate)]
+        async for proto in helper():
+            if proto.cancelled:
+                value = self.execution_tasks.setdefault(proto.execution, FabricService.CANCELLED)
+                if value is not FabricService.CANCELLED:
+                    value.cancel()
+                    self.execution_tasks[proto.execution] = FabricService.CANCELLED
+            elif proto.execution != "":
+                execution = FabricExecution(agent, proto.instance, proto.delegate, proto.execution)
+                yield execution
 
     async def set_execution_task(self, execution, task):
         value = self.execution_tasks.setdefault(execution, task)
@@ -230,10 +231,3 @@ class FabricService:
         item = await queue.get()
         queue.task_done()
         return item
-
-    async def enumerate_executions(self, agent, instance, delegate):
-        queue = await self.get_executions_queue(agent, instance, delegate)
-        while True:
-            item = await queue.get()
-            yield item
-            queue.task_done()
