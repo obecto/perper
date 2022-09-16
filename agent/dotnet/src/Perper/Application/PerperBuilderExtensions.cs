@@ -31,7 +31,7 @@ namespace Perper.Application
 
         public static IPerperBuilder AddAssemblyHandlers(this IPerperBuilder builder, string? agent = null, Assembly? assembly = null, string? rootNamespace = null)
         {
-            assembly ??= Assembly.GetEntryAssembly()!;
+            assembly ??= Assembly.GetCallingAssembly()!;
             agent ??= assembly.GetName().Name!;
             rootNamespace ??= assembly.GetName().Name!;
 

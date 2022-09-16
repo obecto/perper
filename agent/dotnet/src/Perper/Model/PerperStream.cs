@@ -8,6 +8,8 @@ namespace Perper.Model
     [SuppressMessage("ReSharper", "ConvertToAutoProperty")]
     public class PerperStream
     {
+        public const long StartIndexReplay = -1;
+
         private readonly string stream;
         private readonly long startIndex;
         private readonly long stride;
@@ -15,7 +17,7 @@ namespace Perper.Model
 
         public PerperStream(
             string stream,
-            long startIndex = -1,
+            long startIndex = StartIndexReplay,
             long stride = 0,
             bool localToData = false)
         {
@@ -30,7 +32,7 @@ namespace Perper.Model
         public long Stride => stride;
         public bool LocalToData => localToData;
 
-        public bool IsReplay => startIndex != -1;
+        public bool IsReplayed => startIndex != StartIndexReplay;
         public bool IsPacked => stride != 0;
 
         public override string ToString() => $"PerperStream({Stream}, from: {StartIndex}, stride: {Stride}, local: {LocalToData})";
