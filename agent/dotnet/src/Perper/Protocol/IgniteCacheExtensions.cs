@@ -40,5 +40,11 @@ namespace Perper.Protocol
                 throw new InvalidOperationException($"Duplicate cache item key! (key is {key})");
             }
         }
+
+        public static async Task<TV> GetOrDefaultAsync<TK, TV>(this ICacheClient<TK, TV> cache, TK key, TV defaultValue)
+        {
+            var result = await cache.TryGetAsync(key).ConfigureAwait(false);
+            return result.Success ? result.Value : defaultValue;
+        }
     }
 }

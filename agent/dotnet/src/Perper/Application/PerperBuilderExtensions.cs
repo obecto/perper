@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
 
@@ -10,11 +11,21 @@ namespace Perper.Application
 {
     public static class PerperBuilderExtensions
     {
-        public const string DeployDelegateName = "Deploy";
-        public const string InitDelegateName = "Init";
-        public const string StartDelegateName = "Start";
-        public const string FallbackStartDelegateName = "Startup";
-        public const string StopDelegateName = "Stop";
+        public static IReadOnlyDictionary<string, Type> DelegateNames { get; } = new Dictionary<string, Type>()
+        {
+            ["Deploy"] = typeof(DeployPerperListener),
+
+            ["Upgrade"] = typeof(UpgradePerperListener),
+            ["Init"] = typeof(EnterContainerPerperListener),
+            ["EnterContainer"] = typeof(EnterContainerPerperListener),
+
+            ["RunInstance"] = typeof(RunInstancePerperListener),
+
+            ["Start"] = typeof(StartPerperListener),
+            ["Startup"] = typeof(StartPerperListener),
+            ["Stop"] = typeof(StopPerperListener),
+        };
+
         public const string RunMethodName = "Run";
         public const string AsyncMethodSuffix = "Async";
 
@@ -98,25 +109,13 @@ namespace Perper.Application
             {
                 var handler = handlerFactory(services);
 
-                if (streamOptions != null || (handler is MethodPerperHandler methodHandler && methodHandler.IsStream))
+                if (DelegateNames.TryGetValue(@delegate, out var type))
+                {
+                    return (IPerperListener)Activator.CreateInstance(type, new object?[] { agent, handler, services })!;
+                }
+                else if (streamOptions != null || (handler is MethodPerperHandler methodHandler && methodHandler.IsStream))
                 {
                     return new StreamPerperListener(agent, @delegate, streamOptions ?? new PerperStreamOptions(), handler, services);
-                }
-                else if (@delegate == DeployDelegateName)
-                {
-                    return new DeployPerperListener(agent, handler, services);
-                }
-                else if (@delegate == InitDelegateName)
-                {
-                    return new InitPerperListener(agent, handler, services);
-                }
-                else if (@delegate == StartDelegateName || @delegate == FallbackStartDelegateName)
-                {
-                    return new StartPerperListener(agent, handler, services);
-                }
-                else if (@delegate == StopDelegateName)
-                {
-                    return new StopPerperListener(agent, handler, services);
                 }
                 else
                 {

@@ -28,7 +28,10 @@ namespace Perper.Protocol
             var indexes = options.IndexTypes.SelectMany(FabricCaster.TypeToQueryEntities).ToArray();
             return (stream, async () =>
             {
-                await Task.Run(() => Ignite.CreateCache<long, object>(new CacheClientConfiguration(stream.Stream, indexes))).ConfigureAwait(false);
+                var cacheConfiguration = FabricCaster.GetCacheConfiguration(stream, options);
+                cacheConfiguration.Name = stream.Stream;
+                cacheConfiguration.QueryEntities = indexes;
+                await Task.Run(() => Ignite.CreateCache<long, object>(cacheConfiguration)).ConfigureAwait(false);
             }
             );
         }
@@ -39,7 +42,10 @@ namespace Perper.Protocol
             var indexes = options.IndexTypes.SelectMany(FabricCaster.TypeToQueryEntities).ToArray();
             return (stream, async () =>
             {
-                await Task.Run(() => Ignite.CreateCache<long, object>(new CacheClientConfiguration(stream.Stream, indexes))).ConfigureAwait(false);
+                var cacheConfiguration = FabricCaster.GetCacheConfiguration(stream, options);
+                cacheConfiguration.Name = stream.Stream;
+                cacheConfiguration.QueryEntities = indexes;
+                await Task.Run(() => Ignite.CreateCache<long, object>(cacheConfiguration)).ConfigureAwait(false);
 
                 if (options.Persistent)
                 {

@@ -25,6 +25,7 @@ namespace Perper.Application.Listeners
         private readonly IPerperHandler Handler;
         private readonly IPerper Perper;
         private readonly PerperListenerFilter Filter;
+        private readonly PerperInstanceLifecycleService Lifecycle;
         private readonly ILogger<ExecutionPerperListener>? Logger;
 
         public ExecutionPerperListener(string agent, string @delegate, IPerperHandler handler, IServiceProvider services)
@@ -34,6 +35,7 @@ namespace Perper.Application.Listeners
             Handler = handler;
             Perper = services.GetRequiredService<IPerper>();
             Filter = services.GetRequiredService<PerperListenerFilter>();
+            Lifecycle = services.GetRequiredService<PerperInstanceLifecycleService>();
             Logger = services.GetService<ILogger<ExecutionPerperListener>>();
         }
 
@@ -49,6 +51,7 @@ namespace Perper.Application.Listeners
 
             taskCollection.AddRange(Perper.Executions.ListenAsync(new PerperExecutionFilter(Agent, Filter.Instance, Delegate), stoppingToken), async (executionData) =>
             {
+                await Lifecycle.WaitForAsync(executionData.Agent, PerperInstanceLifecycleState.EnteredContainer).ConfigureAwait(false);
                 Logger?.LogDebug("Executing {Execution}", executionData.Execution);
                 try
                 {

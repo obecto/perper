@@ -1,19 +1,19 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using Perper.Application;
 using Perper.Extensions;
 using Perper.Model;
 
-using PerperState = Perper.Extensions.PerperState;
-
 namespace MultiAgentSample;
 
 public static class Program
 {
-    public static async Task Main()
+    public static async Task Main(string[] args)
     {
         var host = Host.CreateDefaultBuilder()
             .ConfigurePerper(builder =>
@@ -22,6 +22,17 @@ public static class Program
                     .AddClassHandlers<GeneratorAgent>()
                     .AddClassHandlers<ProcessorAgent>()
                     .AddHandler("MultiAgentSample", "Deploy", Deploy);
+            }).ConfigureServices(services =>
+            {
+                if (args.Contains("--use-dataregions"))
+                {
+                    services.Configure<Perper.Protocol.FabricConfiguration>(o =>
+                    {
+                        o.PersistentStreamDataRegion = "persistent";
+                        o.EphemeralStreamDataRegion = "ephemeral";
+                        o.StateDataRegion = "persistent";
+                    });
+                }
             })
             .Build();
 

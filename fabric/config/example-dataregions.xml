@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd">
+    <import resource="base.xml"/>
+
+    <bean parent="PerperDefaultConfig">
+        <property name="workDirectory" value="/tmp/ignite-work"/>
+
+        <property name="dataStorageConfiguration"><bean class="org.apache.ignite.configuration.DataStorageConfiguration">
+            <property name="defaultDataRegionConfiguration"><bean class="org.apache.ignite.configuration.DataRegionConfiguration">
+                <property name="persistenceEnabled" value="true"/>
+            </bean></property>
+            <property name="dataRegionConfigurations"><list>
+                <bean class="org.apache.ignite.configuration.DataRegionConfiguration">
+                    <property name="name" value="fabric"/>
+                    <property name="persistenceEnabled" value="true"/>
+                </bean>
+                <bean class="org.apache.ignite.configuration.DataRegionConfiguration">
+                    <property name="name" value="persistent"/>
+                    <property name="persistenceEnabled" value="true"/>
+                </bean>
+                <bean class="org.apache.ignite.configuration.DataRegionConfiguration">
+                    <property name="name" value="ephemeral"/>
+                    <property name="persistenceEnabled" value="false"/>
+                </bean>
+            </list></property>
+        </bean></property>
+
+        <property name="cacheConfiguration"><list>
+            <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                <property name="name" value="executions"></property>
+                <property name="dataRegionName" value="fabric"></property>
+            </bean>
+            <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                <property name="name" value="stream-listeners"></property>
+                <property name="dataRegionName" value="fabric"></property>
+            </bean>
+            <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                <property name="name" value="instances"></property>
+                <property name="dataRegionName" value="fabric"></property>
+            </bean>
+        </list></property>
+    </bean>
+</beans>

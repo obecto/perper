@@ -1,11 +1,13 @@
 using System;
 using System.Threading.Tasks;
 
+using Perper.Model;
+
 namespace Perper.Extensions
 {
     public static class PerperState
     {
-        public static Model.PerperState State => AsyncLocalContext.PerperContext.CurrentState;
+        public static PerperDictionary State => AsyncLocalContext.PerperContext.CurrentState;
 
         public static Task<(bool Exists, T Value)> TryGetAsync<T>(string key) =>
             State.TryGetAsync<T>(key);

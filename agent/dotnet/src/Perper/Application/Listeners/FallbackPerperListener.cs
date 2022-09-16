@@ -10,7 +10,7 @@ namespace Perper.Application.Listeners
 {
     public class FallbackPerperListener : CompositePerperListener
     {
-        private readonly string Agent;
+        public override string Agent { get; }
         private readonly IServiceProvider Services;
 
         public FallbackPerperListener(string agent, IServiceProvider services)
@@ -21,29 +21,34 @@ namespace Perper.Application.Listeners
 
         protected override IPerperListener[] GetListeners()
         {
-            var hasStart = false;
-            var hasStop = false;
+            var typesFound = new HashSet<Type>();
 
             foreach (var service in Services.GetRequiredService<IEnumerable<IHostedService>>()) // HACK
             {
-                if (service is StartPerperListener startListener && startListener.Agent == Agent)
+                if (service is IPerperListener listener && listener.Agent == Agent)
                 {
-                    hasStart = true;
-                }
-                else if (service is StopPerperListener stopListener && stopListener.Agent == Agent)
-                {
-                    hasStop = true;
+                    typesFound.Add(listener.GetType());
                 }
             }
 
             var listeners = new List<IPerperListener>();
 
-            if (!hasStart)
+            if (!typesFound.Contains(typeof(UpgradePerperListener)))
+            {
+                listeners.Add(new UpgradePerperListener(Agent, new DoNothingPerperHandler(Services), Services));
+            }
+
+            if (!typesFound.Contains(typeof(EnterContainerPerperListener)))
+            {
+                listeners.Add(new EnterContainerPerperListener(Agent, new DoNothingPerperHandler(Services), Services));
+            }
+
+            if (!typesFound.Contains(typeof(StartPerperListener)))
             {
                 listeners.Add(new StartPerperListener(Agent, new DoNothingPerperHandler(Services), Services));
             }
 
-            if (!hasStop)
+            if (!typesFound.Contains(typeof(StopPerperListener)))
             {
                 listeners.Add(new StopPerperListener(Agent, new DoNothingPerperHandler(Services), Services));
             }

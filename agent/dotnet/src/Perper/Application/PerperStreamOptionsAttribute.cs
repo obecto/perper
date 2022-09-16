@@ -15,5 +15,7 @@ namespace Perper.Application
         public long Stride { get => Options.Stride; set => Options.Stride = value; }
 
         public Type[] IndexTypes { get => (Type[])Options.IndexTypes; set => Options.IndexTypes = value; }
+
+        public object? PersistenceOptions { get => Options.PersistenceOptions; set => Options.PersistenceOptions = value; }
     }
 }

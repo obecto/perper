@@ -16,22 +16,23 @@ using Perper.Protocol;
 namespace Perper.Application.Listeners
 {
     [SuppressMessage("Performance", "CA1848:Use the LoggerMessage delegates")]
-    public class InitPerperListener : BackgroundService, IPerperListener
+    public class RunInstancePerperListener : BackgroundService, IPerperListener
     {
-        private readonly string Agent;
-        private const string Delegate = "Init";
+        public static string RunInstanceDelegate => "RunInstance";
+
+        public string Agent { get; }
         private readonly IPerperHandler Handler;
         private readonly IPerper Perper;
         private readonly PerperListenerFilter Filter;
-        private readonly ILogger<InitPerperListener>? Logger;
+        private readonly ILogger<RunInstancePerperListener>? Logger;
 
-        public InitPerperListener(string agent, IPerperHandler handler, IServiceProvider services)
+        public RunInstancePerperListener(string agent, IPerperHandler handler, IServiceProvider services)
         {
             Agent = agent;
             Handler = handler;
             Perper = services.GetRequiredService<IPerper>();
             Filter = services.GetRequiredService<PerperListenerFilter>();
-            Logger = services.GetService<ILogger<InitPerperListener>>();
+            Logger = services.GetService<ILogger<RunInstancePerperListener>>();
         }
 
         [SuppressMessage("Design", "CA1031: Do not catch general exception types", Justification = "Exception is logged/handled through other means; rethrowing from handler will crash the whole service.")]
@@ -52,23 +53,14 @@ namespace Perper.Application.Listeners
                     var executionData = rawExecutionData with
                     {
                         Agent = new PerperAgent(Agent, rawExecutionData.Execution.Execution),
-                        Delegate = Delegate,
-                        Execution = new PerperExecution($"{rawExecutionData.Execution.Execution}-init"),
+                        Delegate = RunInstanceDelegate,
+                        Execution = new PerperExecution($"{rawExecutionData.Execution.Execution}-{RunInstanceDelegate}"),
                         IsSynthetic = true
                     };
 
                     try
                     {
-                        var parameters = Handler.GetParameters() ?? Enumerable.Empty<ParameterInfo>();
-                        var arguments = parameters.Select(param =>
-                            param.HasDefaultValue ?
-                                param.DefaultValue :
-                                param.GetCustomAttribute<ParamArrayAttribute>() != null ?
-                                    Array.CreateInstance(param.ParameterType.GetElementType()!, 0) :
-                                    throw new ArgumentException($"Init handler ({Handler}) may not have required arguments.")
-                        ).ToArray();
-
-                        await Handler.Invoke(executionData, arguments).ConfigureAwait(false);
+                        await Invoke(executionData).ConfigureAwait(false);
                     }
                     catch (Exception e)
                     {
@@ -77,6 +69,20 @@ namespace Perper.Application.Listeners
                 });
 
             return taskCollection.GetTask();
+        }
+
+        protected virtual async Task Invoke(PerperExecutionData executionData)
+        {
+            var parameters = Handler.GetParameters() ?? Enumerable.Empty<ParameterInfo>();
+            var arguments = parameters.Select(param =>
+                param.HasDefaultValue ?
+                    param.DefaultValue :
+                    param.GetCustomAttribute<ParamArrayAttribute>() != null ?
+                        Array.CreateInstance(param.ParameterType.GetElementType()!, 0) :
+                        throw new ArgumentException($"Instance handler ({Handler}) may not have required arguments.")
+            ).ToArray();
+
+            await Handler.Invoke(executionData, arguments).ConfigureAwait(false);
         }
 
         public override string ToString() => $"{GetType()}({Agent}, {Handler})";

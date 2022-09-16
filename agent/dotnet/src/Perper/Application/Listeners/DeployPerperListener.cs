@@ -17,10 +17,11 @@ namespace Perper.Application.Listeners
     [SuppressMessage("Performance", "CA1848:Use the LoggerMessage delegates")]
     public class DeployPerperListener : BackgroundService, IPerperListener
     {
-        private readonly string Agent;
+        public string Agent { get; }
         private const string Delegate = "Deploy";
         private readonly IPerperHandler Handler;
         private readonly PerperListenerFilter Filter;
+        private readonly PerperInstanceLifecycleService Lifecycle;
         private readonly ILogger<DeployPerperListener>? Logger;
 
         public DeployPerperListener(string agent, IPerperHandler handler, IServiceProvider services)
@@ -28,6 +29,7 @@ namespace Perper.Application.Listeners
             Agent = agent;
             Handler = handler;
             Filter = services.GetRequiredService<PerperListenerFilter>();
+            Lifecycle = services.GetRequiredService<PerperInstanceLifecycleService>();
             Logger = services.GetService<ILogger<DeployPerperListener>>();
         }
 
@@ -48,6 +50,8 @@ namespace Perper.Application.Listeners
             {
                 IsSynthetic = true,
             };
+
+            Lifecycle.TransitionTo(executionData.Agent, PerperInstanceLifecycleState.EnteredContainer); // HACK
 
             try
             {
