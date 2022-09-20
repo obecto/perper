@@ -1,0 +1,17 @@
+name: Check Protobufs
+
+on:
+  push:
+    paths:
+      - 'proto/**'
+
+jobs:
+  check-format:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: bufbuild/buf-setup-action@v1.8.0
+    - name: Check formatting
+      run: buf format -d --exit-code
