@@ -10,7 +10,6 @@ namespace Perper.Model
     [SuppressMessage("Style", "CA1716:Using a reserved keyword as the name of a parameter on a virtual/interface member makes it harder for consumers in other languages to override/implement the member.", Justification = "We are using 'delegate' on purpose")]
     public interface IPerperStreams
     {
-        // Task<PerperStream> CreateAsync(PerperStreamOptions options, );
         #region Writer
         (PerperStream Stream, Func<Task> Create) Create(PerperStreamOptions options);
         // TODO: fully decouple streams and executions
