@@ -5,6 +5,7 @@ package perper.grpc2;
 import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/type.proto";
 
 option csharp_namespace = "Perper.Protocol.Protobuf2";
 option go_package = "github.com/obecto/perper/scaler/proto2";
@@ -49,6 +50,31 @@ message PerperStream {
 
 message PerperExecution {
   string execution = 1;
+}
+
+service FabricProtobufDescriptors {
+  rpc Register(FabricProtobufDescriptorsRegisterRequest) returns (google.protobuf.Empty) {}
+
+  rpc Get(FabricProtobufDescriptorsGetRequest) returns (FabricProtobufDescriptorsGetResponse) {}
+}
+
+message FabricProtobufDescriptorsRegisterRequest {
+  string type_url = 1;
+  oneof descriptor {
+    google.protobuf.Type type = 2;
+    google.protobuf.Enum enum = 3;
+  }
+}
+
+message FabricProtobufDescriptorsGetRequest {
+  string type_url = 1;
+}
+
+message FabricProtobufDescriptorsGetResponse {
+  oneof descriptor {
+    google.protobuf.Type type = 2;
+    google.protobuf.Enum enum = 3;
+  }
 }
 
 service FabricExecutions {
