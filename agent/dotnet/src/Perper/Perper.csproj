@@ -24,7 +24,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.0" />
     <PackageReference Include="Polly" Version="7.2.2" />
-    <PackageReference Include="Grpc.Tools" Version="2.32.0">
+    <PackageReference Include="Grpc.Tools" Version="2.49.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -32,7 +32,7 @@
     <PackageReference Include="Apache.Ignite.Linq" Version="2.10.0">
       <ExcludeAssets>build;buildMultitargeting;buildTransitive</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Google.Protobuf" Version="3.15.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.21.7" />
     <PackageReference Include="System.Threading.Channels" Version="4.7.0" />
     <PackageReference Include="System.Linq.Async" Version="4.1.1" />
     <PackageReference Include="Grpc.Net.Client" Version="2.32.0" />
@@ -40,6 +40,7 @@
 
   <ItemGroup>
     <Protobuf Include="..\..\..\..\proto\fabric.proto" />
+    <Protobuf Include="..\..\..\..\proto\grpc2.proto" />
   </ItemGroup>
 
   <PropertyGroup>
