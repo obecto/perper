@@ -14,11 +14,13 @@ import com.obecto.perper.protobuf.ReservedExecutionsRequest
 import com.obecto.perper.protobuf.StreamItemsRequest
 import com.obecto.perper.protobuf.StreamItemsResponse
 import io.grpc.ServerBuilder
+import io.grpc.kotlin.GrpcContextElement
 import io.grpc.protobuf.services.ProtoReflectionService
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
@@ -34,9 +36,11 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
 import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteInterruptedException
 import org.apache.ignite.IgniteLogger
@@ -46,6 +50,7 @@ import org.apache.ignite.lang.IgniteBiPredicate
 import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
 import org.apache.ignite.services.ServiceContext
+import org.apache.ignite.binary.BinaryObject
 import sh.keda.externalscaler.ExternalScalerGrpcKt
 import sh.keda.externalscaler.GetMetricSpecResponse
 import sh.keda.externalscaler.GetMetricsRequest
@@ -90,6 +95,8 @@ private class SemaphoreWithArbitraryRelease(permits: Long) { // NOTE: Likely not
         _wait.getAndSet(null)?.complete()
     }
 }
+
+private fun CoroutineContext.requestId() = System.identityHashCode(this[GrpcContextElement]).toString(16)
 
 class FabricService(var port: Int = 40400) : JobService() {
 
@@ -175,6 +182,24 @@ class FabricService(var port: Int = 40400) : JobService() {
             }
         }
 
+        private fun Flow<ExecutionsResponse>.logExecutionParameters(): Flow<ExecutionsResponse> {
+            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions").withKeepBinary<String, BinaryObject>()
+            if (!log.isDebugEnabled()) {
+                return this
+            } else {
+                return onEach { execution ->
+                    if (execution.execution == "") {
+                        // Pass
+                    } else if (execution.cancelled) {
+                        log.debug("Sending execution; instance=${execution.instance} delegate=${execution.delegate} execution=${execution.execution} cancelled=true request=${currentCoroutineContext().requestId()}")
+                    } else {
+                        val executionDataBinary = executionsCache.get(execution.execution)
+                        log.debug("Sending execution; instance=${execution.instance} delegate=${execution.delegate} execution=${execution.execution} parameters=${executionDataBinary?.field<Array<Any>>("parameters")?.joinToString(", ", "[", "]")} request=${currentCoroutineContext().requestId()}")
+                    }
+                }
+            }
+        }
+
         private fun _executionsFilter(request: ExecutionsRequest): (ExecutionData) -> Boolean {
             val agent = request.agent
             val instance = if (request.instance != "") request.instance else null
@@ -224,7 +249,7 @@ class FabricService(var port: Int = 40400) : JobService() {
                 }
             }
 
-            log.debug({ "Executions listener started for '$agent'-'$instance'.'${request.delegate}'!" })
+            log.debug({ "Listening executions; agent=$agent instance=$instance delegate=${request.delegate} request=${currentCoroutineContext().requestId()}" })
 
             val queryCursor = executionsCache.query(query)
 
@@ -256,7 +281,7 @@ class FabricService(var port: Int = 40400) : JobService() {
                 e.printStackTrace()
                 throw e
             } finally {
-                log.debug({ "Executions listener stopped for '$agent'-'$instance'.'${request.delegate}'!" })
+                log.debug({ "Listening executions stopped; agent=$agent instance=$instance delegate=${request.delegate} request=${currentCoroutineContext().requestId()}" })
                 if (instance != null) {
                     InstanceService.setInstanceRunning(ignite, instance, false)
                 }
@@ -265,7 +290,10 @@ class FabricService(var port: Int = 40400) : JobService() {
             }
         }
 
-        override fun executions(request: ExecutionsRequest) = _executions(request).filterRemovedExecutions().logExceptions()
+        override fun executions(request: ExecutionsRequest) = _executions(request)
+            .filterRemovedExecutions()
+            .logExecutionParameters()
+            .logExceptions()
 
         override suspend fun allExecutions(request: ExecutionsRequest): AllExecutionsResponse {
             val filterValue = _executionsFilter(request)
@@ -280,7 +308,7 @@ class FabricService(var port: Int = 40400) : JobService() {
                 }
             }
 
-            log.trace({ "All executions listener requested for '${request.agent}'-'${request.instance}'.'${request.delegate}'!" })
+            log.debug({ "All executions requested; agent=${request.agent} instance=${request.instance} delegate=${request.delegate} request=${currentCoroutineContext().requestId()}" })
 
             val queryCursor = executionsCache.query(query)
 
@@ -324,16 +352,22 @@ class FabricService(var port: Int = 40400) : JobService() {
 
             val queryCursor = executionsCache.query(query) // Important to start query before checking if it is already finished
 
-            log.debug({ "Execution finished listener started for '$execution'!" })
+            log.debug({ "Listening execution finishing; execution=$execution request=${currentCoroutineContext().requestId()}" })
 
             try {
                 val executionData = executionsCache.get(execution)
                 if (!(executionData == null || executionData.finished)) {
                     queryChannel.receive()
                 }
+
+                if (log.isDebugEnabled()) {
+                    val executionDataBinary = executionsCache.withKeepBinary<String, BinaryObject>().get(execution)
+                    log.debug("Execution finished; instance=${executionData?.instance} delegate=${executionData?.delegate} execution=${execution} result=${executionDataBinary?.field<Array<Any>>("result")?.joinToString(", ", "[", "]")} request=${currentCoroutineContext().requestId()}")
+                }
+
                 return Empty.getDefaultInstance()
             } finally {
-                log.debug({ "Execution finished listener completed for '$execution'!" })
+                log.debug({ "Listening execution finishing stopped; request=${currentCoroutineContext().requestId()}" })
                 queryCursor.close()
                 queryChannel.close()
             }
@@ -471,7 +505,10 @@ class FabricService(var port: Int = 40400) : JobService() {
                     }
                 }
             }
-        }.filterRemovedExecutions().logExceptions()
+        }
+            .filterRemovedExecutions()
+            .logExecutionParameters()
+            .logExceptions()
 
         @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
         override fun streamItems(request: StreamItemsRequest) = flow<StreamItemsResponse> {
@@ -516,7 +553,7 @@ class FabricService(var port: Int = 40400) : JobService() {
                 }
 
                 val queryCursor = streamCache.query(query)
-                log.debug({ "Stream items listener started for '$stream' ${startKey ?: "last"}..!" })
+                log.debug({ "Listening stream items; stream=$stream start=${startKey ?: "(last)"} stride=(any) request=${currentCoroutineContext().requestId()}" })
 
                 try {
                     val itemKeys = queryCursor.map({ item -> item.key }).toMutableList() // NOTE: Sorts all keys in-memory; inefficient
@@ -534,13 +571,13 @@ class FabricService(var port: Int = 40400) : JobService() {
                         }
                     }
                 } finally {
-                    log.debug({ "Stream items listener finished for '$stream' ${startKey ?: "last"}..!" })
+                    log.debug({ "Listening stream items stopped; stream=$stream start=${startKey ?: "(last)"} stride=(any) request=${currentCoroutineContext().requestId()}" })
                     queryCursor.close()
                     queryChannel.close()
                 }
             } else // if (stride != 0L)
                 {
-                    log.debug({ "Stream items listener started for '$stream' ${startKey ?: "last"}..+$stride!" })
+                    log.debug({ "Listening stream items; stream=$stream start=${startKey ?: "(last)"} stride=$stride request=${currentCoroutineContext().requestId()}" })
                     try {
                         var keyOrNull = startKey
 
@@ -596,7 +633,7 @@ class FabricService(var port: Int = 40400) : JobService() {
                             key += stride
                         }
                     } finally {
-                        log.debug({ "Stream items listener finished for '$stream' ${startKey ?: "last"}..+$stride!" })
+                        log.debug({ "Listening stream items stopped; stream=$stream start=${startKey ?: "(last)"} stride=$stride request=${currentCoroutineContext().requestId()}" })
                     }
                 }
         }.logExceptions()
@@ -620,7 +657,7 @@ class FabricService(var port: Int = 40400) : JobService() {
 
             val queryCursor = streamListenersCache.query(query)
 
-            log.debug({ "Listener attached listener started for '$stream'!" })
+            log.debug({ "Listening attached listener; stream=$stream request=${currentCoroutineContext().requestId()}" })
 
             try {
                 for (_i in queryCursor) {
@@ -629,7 +666,7 @@ class FabricService(var port: Int = 40400) : JobService() {
                 queryChannel.receive()
                 return Empty.getDefaultInstance()
             } finally {
-                log.debug({ "Listener attached listener completed for '$stream'!" })
+                log.debug({ "Listening attached listener stopped; stream=$stream request=${currentCoroutineContext().requestId()}" })
                 queryCursor.close()
                 queryChannel.close()
             }

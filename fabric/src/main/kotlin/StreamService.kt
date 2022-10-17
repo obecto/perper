@@ -112,7 +112,7 @@ class StreamService : JobService() {
             } catch (_: Exception) {}
 
             if (couldLock) {
-                log.debug({ "Starting query on '$stream'" })
+                log.debug({ "Starting stream query; stream=$stream" })
 
                 val cache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, BinaryObject>()
 
@@ -152,7 +152,7 @@ class StreamService : JobService() {
                             break
                         }
                         val count = ignite.atomicLong("$stream-at-$oldestElement", 0, true).get()
-                        log.trace({ "cleanup $stream; at $oldestElement = $count" })
+                        log.trace({ "Cleanup stream; stream=$stream key=$oldestElement count=$count" })
                         if (count != 0L) {
                             break
                         }
@@ -180,7 +180,7 @@ class StreamService : JobService() {
                 StreamServiceExecutor.run(
                     stream,
                     Runnable {
-                        log.trace({ "add to $stream key ${event.key}" })
+                        log.trace({ "Add to queue; stream=$stream key=${event.key}" })
                         helpers.getKeysQueue(stream).put(event.key)
                     }
                 )
