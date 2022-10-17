@@ -20,13 +20,13 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.catch
@@ -40,17 +40,16 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.currentCoroutineContext
 import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteInterruptedException
 import org.apache.ignite.IgniteLogger
+import org.apache.ignite.binary.BinaryObject
 import org.apache.ignite.cache.query.ContinuousQuery
 import org.apache.ignite.cache.query.ScanQuery
 import org.apache.ignite.lang.IgniteBiPredicate
 import org.apache.ignite.resources.IgniteInstanceResource
 import org.apache.ignite.resources.LoggerResource
 import org.apache.ignite.services.ServiceContext
-import org.apache.ignite.binary.BinaryObject
 import sh.keda.externalscaler.ExternalScalerGrpcKt
 import sh.keda.externalscaler.GetMetricSpecResponse
 import sh.keda.externalscaler.GetMetricsRequest
@@ -70,6 +69,7 @@ import javax.cache.event.CacheEntryEventFilter
 import javax.cache.event.CacheEntryUpdatedListener
 import javax.cache.event.EventType
 import kotlin.concurrent.thread
+import kotlin.coroutines.CoroutineContext
 
 private inline val EventType.isRemoval get() = this == EventType.REMOVED || this == EventType.EXPIRED
 private inline val EventType.isCreation get() = this == EventType.CREATED
@@ -362,7 +362,7 @@ class FabricService(var port: Int = 40400) : JobService() {
 
                 if (log.isDebugEnabled()) {
                     val executionDataBinary = executionsCache.withKeepBinary<String, BinaryObject>().get(execution)
-                    log.debug("Execution finished; instance=${executionData?.instance} delegate=${executionData?.delegate} execution=${execution} result=${executionDataBinary?.field<Array<Any>>("result")?.joinToString(", ", "[", "]")} request=${currentCoroutineContext().requestId()}")
+                    log.debug("Execution finished; instance=${executionData?.instance} delegate=${executionData?.delegate} execution=$execution result=${executionDataBinary?.field<Array<Any>>("result")?.joinToString(", ", "[", "]")} request=${currentCoroutineContext().requestId()}")
                 }
 
                 return Empty.getDefaultInstance()
