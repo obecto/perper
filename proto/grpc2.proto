@@ -6,6 +6,7 @@ import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/type.proto";
+import "grpc2.model.proto";
 
 option csharp_namespace = "Perper.Protocol.Protobuf2";
 option go_package = "github.com/obecto/perper/scaler/proto2";
@@ -21,35 +22,17 @@ extend google.protobuf.FieldOptions {
 }
 
 enum LifecycleMethod {
-  LifecycleMethodDeploy = 0; // Will be called by the runtime when connected to Fabric
-  LifecycleMethodEnterContainer = 1; // Will be called by the runtime when receiving an instance's data for the first time
-  LifecycleMethodRunningInstance = 2 [(execution_delegate) = "RunningInstance"];
-  LifecycleMethodStart = 3 [(execution_delegate) = "Start"];
-  LifecycleMethodStop = 4 [(execution_delegate) = "Stop"];
-}
-
-message Error {
-  string message = 1;
+  LifecycleMethodNull = 0;
+  LifecycleMethodDeploy = 1; // Will be called by the runtime when connected to Fabric
+  LifecycleMethodEnterProcess = 2; // Will be called by the runtime when receiving an instance's data for the first time
+  LifecycleMethodExitProcess = 3; // Will be called by the runtime when before exiting or after processing an instance's stop call
+  LifecycleMethodStart = 4 [(execution_delegate) = "Start"];
+  LifecycleMethodStop = 5 [(execution_delegate) = "Stop"];
 }
 
 message CacheOptions {
   repeated string index_type_urls = 1;
   string data_region = 2;
-}
-
-message PerperInstance {
-  string instance = 1;
-  string agent = 2;
-}
-
-message PerperStream {
-  string stream = 1;
-  int64 start_key = 2;
-  int64 stride = 3;
-}
-
-message PerperExecution {
-  string execution = 1;
 }
 
 service FabricProtobufDescriptors {
@@ -82,7 +65,7 @@ service FabricExecutions {
 
   rpc Listen(ExecutionsListenRequest) returns (stream ExecutionsListenResponse) {}
   rpc Reserve(ExecutionsReserveRequest) returns (stream google.protobuf.Empty) {}
-  rpc ListenAndReserve(ExecutionsListenAndReserveRequest) returns (stream ExecutionsListenResponse) {}
+  rpc ListenAndReserve(stream ExecutionsListenAndReserveRequest) returns (stream ExecutionsListenResponse) {}
 
   rpc Complete(ExecutionsCompleteRequest) returns (google.protobuf.Empty) {}
   rpc GetResult(ExecutionsGetResultRequest) returns (ExecutionsGetResultResponse) {}
@@ -91,67 +74,66 @@ service FabricExecutions {
 }
 
 message ExecutionsCreateRequest {
-  PerperExecution execution = 1;
-  PerperInstance instance = 2;
+  perper.grpc2.model.PerperExecution execution = 1;
+  perper.grpc2.model.PerperInstance instance = 2;
   string delegate = 3;
 
-  repeated google.protobuf.Any parameters = 6;
+  repeated google.protobuf.Any arguments = 6;
 }
 
 message ExecutionsListenRequest {
-  PerperInstance instance_filter = 2;
+  perper.grpc2.model.PerperInstance instance_filter = 2;
   string delegate = 3;
 
   bool local_to_data = 101;
 }
 
 message ExecutionsListenResponse {
-  PerperExecution execution = 1;
-  PerperInstance instance = 2;
+  perper.grpc2.model.PerperExecution execution = 1;
+  perper.grpc2.model.PerperInstance instance = 2;
   string delegate = 4;
 
   bool deleted = 5;
 
-  repeated google.protobuf.Any parameters = 6;
+  repeated google.protobuf.Any arguments = 6;
 
   bool start_of_stream = 100;
 }
 
 message ExecutionsReserveRequest {
-  PerperExecution execution = 1;
+  perper.grpc2.model.PerperExecution execution = 1;
 
-  string work_group = 10;
+  string workgroup = 10;
 }
 
 message ExecutionsListenAndReserveRequest {
   uint64 reserve_next = 1;
 
-  // Only send with first message:
   ExecutionsListenRequest filter = 2 [(first_message_only) = true];
-  string work_group = 10 [(first_message_only) = true];
+  string workgroup = 10 [(first_message_only) = true];
 }
 
 message ExecutionsCompleteRequest {
-  PerperExecution execution = 1;
+  perper.grpc2.model.PerperExecution execution = 1;
 
-  repeated google.protobuf.Any result = 6;
-  Error error = 7;
+  repeated google.protobuf.Any results = 6;
+  perper.grpc2.model.PerperError error = 7;
 }
 
 message ExecutionsGetResultRequest {
-  PerperExecution execution = 1;
+  perper.grpc2.model.PerperExecution execution = 1;
 
   bool wait_for_creation = 5;
 }
 
 message ExecutionsGetResultResponse {
   bool deleted = 5;
-  repeated google.protobuf.Any result = 6;
-  Error error = 7;
+  repeated google.protobuf.Any results = 6;
+  perper.grpc2.model.PerperError error = 7;
 }
 
 message ExecutionsDeleteRequest {
-  PerperExecution execution = 1;
+  perper.grpc2.model.PerperExecution execution = 1;
 }
 
 service FabricInstances {
@@ -163,12 +145,12 @@ service FabricInstances {
 }
 
 message InstancesCreateAndStartRequest {
-  PerperInstance instance = 2;
-  repeated google.protobuf.Any parameters = 6;
+  perper.grpc2.model.PerperInstance instance = 2;
+  repeated google.protobuf.Any arguments = 6;
 }
 
 message InstancesStopAndDeleteRequest {
-  PerperInstance instance = 2;
+  perper.grpc2.model.PerperInstance instance = 2;
   repeated google.protobuf.Any stop_parameters = 6;
 }
 
@@ -206,7 +188,7 @@ message StreamsWriteItemRequest {
 }
 
 message StreamsListenItemsRequest {
-  PerperStream stream = 1;
+  perper.grpc2.model.PerperStream stream = 1;
 
   string listener_name = 2;
 
@@ -227,7 +209,7 @@ message StreamsMoveListenerRequest {
 
 /*
 message QuerySQLStreamItemsRequest {
-    PerperStream stream = 1;
+    perper.grpc2.model.PerperStream stream = 1;
     string sql = 2;
 }
 

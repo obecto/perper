@@ -5,12 +5,6 @@
         http://www.springframework.org/schema/beans/spring-beans.xsd">
     <import resource="base.xml"/>
 
-    <bean class="org.springframework.beans.factory.config.PropertyOverrideConfigurer">
-        <property name="properties"><value>
-            InstanceService.composeFile=../agent/dotnet/src/SimpleContainerAgent/docker-compose.yml
-        </value></property>
-    </bean>
-
     <bean parent="PerperDefaultConfig">
         <property name="workDirectory" value="/tmp/ignite-work"/>
 

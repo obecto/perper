@@ -3,17 +3,17 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URI
 
 val igniteVersion = "2.10.0"
-val grpcVersion = "1.31.1"
+val grpcVersion = "1.50.0"
 val grpcKotlinVersion = "0.2.0"
-val protobufVersion = "3.13.0"
+val protobufVersion = "3.21.7"
 val coroutinesVersion = "1.5.2"
 val slf4jVersion = "1.7.28"
 
 plugins {
     id("org.gradle.application")
-    kotlin("jvm") version "1.5.30"
+    kotlin("jvm") version "1.6.21"
     id("org.jmailen.kotlinter") version "3.6.0"
-    id("com.google.protobuf") version "0.8.17"
+    id("com.google.protobuf") version "0.9.1"
 }
 
 repositories {
@@ -44,7 +44,7 @@ dependencies {
 
 val compileKotlin: KotlinCompile by tasks
 
-compileKotlin.kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
+compileKotlin.kotlinOptions.freeCompilerArgs += "-opt-in=kotlin.RequiresOptIn"
 
 application {
     version = "0.8.0-rc1"
@@ -85,4 +85,12 @@ protobuf {
             }
         }
     }
+}
+
+tasks.formatKotlinMain {
+    exclude { it.file.path.contains("generated/")}
+}
+
+tasks.lintKotlinMain {
+    exclude { it.file.path.contains("generated/")}
 }

@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package perper.grpc2.model;
+
+option csharp_namespace = "Perper.Model";
+option java_multiple_files = true;
+option java_package = "com.obecto.perper.model";
+
+message PerperInstance {
+  string instance = 1;
+  string agent = 2;
+}
+
+message PerperStream {
+  string stream = 1;
+  int64 start_key = 2;
+  int64 stride = 3;
+}
+
+message PerperExecution {
+  string execution = 1;
+}
+
+message PerperError {
+  string message = 1;
+}
+
