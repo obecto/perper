@@ -14,7 +14,7 @@ namespace Perper.Model
             new(stream.Stream, replayFromKey, stream.Stride, stream.LocalToData);
 
         public static PerperStream LocalToData(this PerperStream stream, bool localToData = true) =>
-            new(stream.Stream, stream.StartIndex, stream.Stride, localToData);
+            new(stream.Stream, stream.StartKey, stream.Stride, localToData);
 
         public static async Task<PerperStream> CreateAsync(this IPerperStreams perperStreams, PerperStreamOptions options)
         {
@@ -31,7 +31,7 @@ namespace Perper.Model
         }
 
         /*public static PerperStream Filter<T>(this PerperStream stream, Expression<Func<T, bool>> filter) =>
-            return new PerperStream(stream.Stream, FilterUtils.ConvertFilter(filter), stream.StartIndex, stream.Stride, stream.LocalToData);*/
+            return new PerperStream(stream.Stream, FilterUtils.ConvertFilter(filter), stream.StartKey, stream.Stride, stream.LocalToData);*/
 
         public static IAsyncEnumerable<TItem> EnumerateAsync<TItem>(this IPerperStreams streams, PerperStream stream, string? listenerName = null, CancellationToken cancellationToken = default) =>
             streams.EnumerateItemsAsync<TItem>(stream, listenerName, cancellationToken).Select(x => x.value);

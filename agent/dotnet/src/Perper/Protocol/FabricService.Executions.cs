@@ -17,7 +17,7 @@ namespace Perper.Protocol
 {
     public partial class FabricService : IPerperExecutions
     {
-        (PerperExecution Execution, DelayedCreateFunc Start) IPerperExecutions.Create(PerperAgent agent, string @delegate, ParameterInfo[]? parameters)
+        (PerperExecution Execution, DelayedCreateFunc Start) IPerperExecutions.Create(PerperInstance agent, string @delegate, ParameterInfo[]? parameters)
         {
             var execution = new PerperExecution(GenerateName(@delegate));
             return (execution, async (arguments) =>
@@ -58,7 +58,7 @@ namespace Perper.Protocol
             }).ConfigureAwait(false);
         }
 
-        async Task<object?[]> IPerperExecutions.GetArgumentsAsync(PerperExecution execution, ParameterInfo[]? parameters)
+        public async Task<object?[]> GetArgumentsAsync(PerperExecution execution, ParameterInfo[]? parameters)
         {
             var executionData = await ExecutionsCache.GetAsync(execution.Execution).ConfigureAwait(false);
             return FabricCaster.UnpackArguments(parameters, executionData.Parameters);
@@ -157,7 +157,13 @@ namespace Perper.Protocol
                 {
                     var cts = new CancellationTokenSource();
                     cancellationTokenSources[executionProto.Execution] = cts;
-                    yield return new PerperExecutionData(new PerperAgent(filter.Agent, executionProto.Instance), executionProto.Delegate, new PerperExecution(executionProto.Execution), cts.Token);
+                    var execution = new PerperExecution(executionProto.Execution);
+                    yield return new PerperExecutionData(
+                        new PerperInstance(filter.Agent, executionProto.Instance),
+                        executionProto.Delegate,
+                        execution,
+                        await GetArgumentsAsync(execution, filter.Parameters).ConfigureAwait(false),
+                        cts.Token);
                 }
             }
         }

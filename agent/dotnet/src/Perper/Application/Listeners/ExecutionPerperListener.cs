@@ -49,15 +49,13 @@ namespace Perper.Application.Listeners
 
             var taskCollection = new TaskCollection();
 
-            taskCollection.AddRange(Perper.Executions.ListenAsync(new PerperExecutionFilter(Agent, Filter.Instance, Delegate), stoppingToken), async (executionData) =>
+            taskCollection.AddRange(Perper.Executions.ListenAsync(new PerperExecutionFilter(Agent, Filter.Instance, Delegate) { Parameters = Handler.GetParameters() }, stoppingToken), async (executionData) =>
             {
                 await Lifecycle.WaitForAsync(executionData.Agent, PerperInstanceLifecycleState.EnteredContainer).ConfigureAwait(false);
                 Logger?.LogDebug("Executing {Execution}", executionData.Execution);
                 try
                 {
-                    var arguments = await Perper.Executions.GetArgumentsAsync(executionData.Execution, Handler.GetParameters()).ConfigureAwait(false);
-
-                    await Handler.Invoke(executionData, arguments).ConfigureAwait(false);
+                    await Handler.Invoke(executionData, executionData.Arguments).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {

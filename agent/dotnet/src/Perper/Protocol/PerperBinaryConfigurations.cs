@@ -22,7 +22,7 @@ namespace Perper.Protocol
         public static ICollection<BinaryTypeConfiguration> StandardTypeConfigurations { get; } = new[]
         {
             new BinaryTypeConfiguration(typeof(PerperStream)),
-            new BinaryTypeConfiguration(typeof(PerperAgent)),
+            new BinaryTypeConfiguration(typeof(PerperInstance)),
             new BinaryTypeConfiguration(typeof(PerperDictionary)),
             new BinaryTypeConfiguration(typeof(PerperList)),
             new BinaryTypeConfiguration(typeof(PerperExecution)),

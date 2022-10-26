@@ -10,10 +10,10 @@ namespace Perper.Application
 {
     public class PerperInstanceLifecycleService
     {
-        private readonly ConcurrentDictionary<PerperAgent, (PerperInstanceLifecycleState, TaskCompletionSource)> States = new();
-        private readonly ConcurrentDictionary<(string, PerperInstanceLifecycleState), Channel<PerperAgent>> WaitingForChannels = new();
+        private readonly ConcurrentDictionary<PerperInstance, (PerperInstanceLifecycleState, TaskCompletionSource)> States = new();
+        private readonly ConcurrentDictionary<(string, PerperInstanceLifecycleState), Channel<PerperInstance>> WaitingForChannels = new();
 
-        public async Task WaitForAsync(PerperAgent agent, PerperInstanceLifecycleState state)
+        public async Task WaitForAsync(PerperInstance agent, PerperInstanceLifecycleState state)
         {
             while (true)
             {
@@ -27,18 +27,18 @@ namespace Perper.Application
                 }
 
 
-                var channel = WaitingForChannels.GetOrAdd((agent.Agent, state), _ => Channel.CreateUnbounded<PerperAgent>());
+                var channel = WaitingForChannels.GetOrAdd((agent.Agent, state), _ => Channel.CreateUnbounded<PerperInstance>());
                 await channel.Writer.WriteAsync(agent).ConfigureAwait(false);
                 await currentSource.Task.ConfigureAwait(false);
             }
         }
 
-        public IAsyncEnumerable<PerperAgent> ListenWaitingForAsync(string agent, PerperInstanceLifecycleState state, CancellationToken cancellationToken = default)
+        public IAsyncEnumerable<PerperInstance> ListenWaitingForAsync(string agent, PerperInstanceLifecycleState state, CancellationToken cancellationToken = default)
         {
-            return WaitingForChannels.GetOrAdd((agent, state), _ => Channel.CreateUnbounded<PerperAgent>()).Reader.ReadAllAsync(cancellationToken);
+            return WaitingForChannels.GetOrAdd((agent, state), _ => Channel.CreateUnbounded<PerperInstance>()).Reader.ReadAllAsync(cancellationToken);
         }
 
-        public void TransitionTo(PerperAgent agent, PerperInstanceLifecycleState state)
+        public void TransitionTo(PerperInstance agent, PerperInstanceLifecycleState state)
         {
             States.AddOrUpdate(
                 agent,

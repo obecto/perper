@@ -10,7 +10,7 @@ namespace Perper.Protocol
         private IPerperExecutions PerperExecutions => this;
         private IPerperStates PerperStates => this;
 
-        (PerperAgent Instance, DelayedCreateFunc Start) IPerperAgents.Create(PerperAgent? parent, string agent)
+        (PerperInstance Instance, DelayedCreateFunc Start) IPerperAgents.Create(PerperInstance? parent, string agent)
         {
             var (instance, create) = CreateWithoutStarting(parent, agent);
             return (instance, async (arguments) =>
@@ -21,7 +21,7 @@ namespace Perper.Protocol
             );
         }
 
-        (PerperAgent Instance, DelayedCreateFunc<TResult> Start) IPerperAgents.Create<TResult>(PerperAgent? parent, string agent)
+        (PerperInstance Instance, DelayedCreateFunc<TResult> Start) IPerperAgents.Create<TResult>(PerperInstance? parent, string agent)
         {
             var (instance, create) = CreateWithoutStarting(parent, agent);
             return (instance, async (arguments) =>
@@ -32,10 +32,10 @@ namespace Perper.Protocol
             );
         }
 
-        private (PerperAgent Instance, Func<Task> Create) CreateWithoutStarting(PerperAgent? parent, string agent)
+        private (PerperInstance Instance, Func<Task> Create) CreateWithoutStarting(PerperInstance? parent, string agent)
         {
-            var (execution, start) = PerperExecutions.Create(new PerperAgent("Registry", agent), "Run", null);
-            var instance = new PerperAgent(agent, execution.Execution);
+            var (execution, start) = PerperExecutions.Create(new PerperInstance("Registry", agent), "Run", null);
+            var instance = new PerperInstance(agent, execution.Execution);
             return (instance, async () =>
             {
                 // await InstancesCache.PutIfAbsentOrThrowAsync(instance.Instance, new InstanceData(instance.Agent)).ConfigureAwait(false);
@@ -48,12 +48,12 @@ namespace Perper.Protocol
             );
         }
 
-        async Task IPerperAgents.DestroyAsync(PerperAgent instance)
+        async Task IPerperAgents.DestroyAsync(PerperInstance instance)
         {
             await PerperExecutions.CallAsync(instance, PerperAgentsExtensions.StopFunctionName).ConfigureAwait(false);
 
             // TODO: Move to the implementation for Stop() instead of managing the agent's children directly
-            await foreach (var child in PerperStates.EnumerateAsync<PerperAgent>(PerperStates.GetInstanceChildrenList(instance)).ConfigureAwait(false))
+            await foreach (var child in PerperStates.EnumerateAsync<PerperInstance>(PerperStates.GetInstanceChildrenList(instance)).ConfigureAwait(false))
             {
                 await ((IPerperAgents)this).DestroyAsync(child).ConfigureAwait(false);
             }

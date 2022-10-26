@@ -16,13 +16,13 @@ namespace Perper.Extensions
             new AsyncLocalContext(context);
 
         #region Agents
-        public static Task<TResult> CallAsync<TResult>(this PerperAgent agent, string @delegate, params object?[] parameters) =>
+        public static Task<TResult> CallAsync<TResult>(this PerperInstance agent, string @delegate, params object?[] parameters) =>
             PerperContext.CallAsync<TResult>(agent, @delegate, parameters);
 
-        public static Task CallAsync(this PerperAgent agent, string @delegate, params object?[] parameters) =>
+        public static Task CallAsync(this PerperInstance agent, string @delegate, params object?[] parameters) =>
             PerperContext.CallAsync(agent, @delegate, parameters);
 
-        public static Task DestroyAsync(this PerperAgent agent) =>
+        public static Task DestroyAsync(this PerperInstance agent) =>
             PerperContext.Agents.DestroyAsync(agent);
         #endregion Agents
 

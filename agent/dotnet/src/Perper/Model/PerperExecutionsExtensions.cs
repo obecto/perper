@@ -8,14 +8,14 @@ namespace Perper.Model
 {
     public static class PerperExecutionsExtensions
     {
-        public static async Task<PerperExecution> CreateAsync(this IPerperExecutions perperExecutions, PerperAgent agent, string @delegate, params object?[] arguments)
+        public static async Task<PerperExecution> CreateAsync(this IPerperExecutions perperExecutions, PerperInstance agent, string @delegate, params object?[] arguments)
         {
             var (execution, delayedCreate) = perperExecutions.Create(agent, @delegate);
             await delayedCreate(arguments).ConfigureAwait(false);
             return execution;
         }
 
-        public static async Task<TResult> CallAsync<TResult>(this IPerperExecutions executions, PerperAgent agent, string @delegate, params object?[] arguments)
+        public static async Task<TResult> CallAsync<TResult>(this IPerperExecutions executions, PerperInstance agent, string @delegate, params object?[] arguments)
         {
             var execution = await executions.CreateAsync(agent, @delegate, arguments).ConfigureAwait(false);
             var result = await executions.GetResultAsync<TResult>(execution).ConfigureAwait(false);
@@ -23,17 +23,17 @@ namespace Perper.Model
             return result;
         }
 
-        public static async Task CallAsync(this IPerperExecutions executions, PerperAgent agent, string @delegate, params object?[] arguments)
+        public static async Task CallAsync(this IPerperExecutions executions, PerperInstance agent, string @delegate, params object?[] arguments)
         {
             var execution = await executions.CreateAsync(agent, @delegate, arguments).ConfigureAwait(false);
             await executions.GetResultAsync(execution).ConfigureAwait(false);
             await executions.DestroyAsync(execution).ConfigureAwait(false);
         }
 
-        public static Task<TResult> CallAsync<TResult>(this IPerper perper, PerperAgent agent, string @delegate, params object?[] arguments) =>
+        public static Task<TResult> CallAsync<TResult>(this IPerper perper, PerperInstance agent, string @delegate, params object?[] arguments) =>
             perper.Executions.CallAsync<TResult>(agent, @delegate, arguments);
 
-        public static Task CallAsync(this IPerper perper, PerperAgent agent, string @delegate, params object?[] arguments) =>
+        public static Task CallAsync(this IPerper perper, PerperInstance agent, string @delegate, params object?[] arguments) =>
             perper.Executions.CallAsync(agent, @delegate, arguments);
 
         public static Task<TResult> CallAsync<TResult>(this IPerperContext perper, string @delegate, params object?[] arguments) =>

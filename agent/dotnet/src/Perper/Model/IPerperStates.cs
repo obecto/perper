@@ -8,7 +8,7 @@ namespace Perper.Model
     {
         #region Dictionaries
         (PerperDictionary Dictionary, Func<Task> Create) CreateDictionary(PerperStateOptions? options = null);
-        PerperDictionary GetInstanceDictionary(PerperAgent instance);
+        PerperDictionary GetInstanceDictionary(PerperInstance instance);
 
         Task SetAsync<TKey, TValue>(PerperDictionary dictionary, TKey key, TValue value);
         Task<bool> SetIfNotChangedAsync<TKey, TValue>(PerperDictionary dictionary, TKey key, TValue oldValue, TValue value);
@@ -34,7 +34,7 @@ namespace Perper.Model
 
         #region Lists
         (PerperList List, Func<Task> Create) CreateList(PerperStateOptions? options = null);
-        PerperList GetInstanceChildrenList(PerperAgent instance);
+        PerperList GetInstanceChildrenList(PerperInstance instance);
 
         IAsyncEnumerable<TValue> EnumerateAsync<TValue>(PerperList list);
         Task<int> CountAsync(PerperList list);

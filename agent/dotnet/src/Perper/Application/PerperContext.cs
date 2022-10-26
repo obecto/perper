@@ -9,7 +9,7 @@ namespace Perper.Application
     {
         private readonly IPerper Perper;
         public PerperExecution CurrentExecution { get; }
-        public PerperAgent CurrentAgent { get; }
+        public PerperInstance CurrentAgent { get; }
         public PerperDictionary CurrentState { get; }
 
         public PerperContext(IPerper perper, PerperExecutionData data)

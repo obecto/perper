@@ -11,7 +11,7 @@ namespace Perper.Model
     public interface IPerperExecutions
     {
         #region Sender
-        (PerperExecution Execution, DelayedCreateFunc Start) Create(PerperAgent agent, string @delegate, ParameterInfo[]? parameters = null);
+        (PerperExecution Execution, DelayedCreateFunc Start) Create(PerperInstance agent, string @delegate, ParameterInfo[]? parameters = null);
 
         Task GetResultAsync(PerperExecution execution, CancellationToken cancellationToken = default);
         Task<TResult> GetResultAsync<TResult>(PerperExecution execution, CancellationToken cancellationToken = default);
@@ -20,8 +20,6 @@ namespace Perper.Model
         #endregion Sender
 
         #region Receiver
-        Task<object?[]> GetArgumentsAsync(PerperExecution execution, ParameterInfo[]? parameters = null);
-
         Task WriteResultAsync(PerperExecution execution);
         Task WriteResultAsync<TResult>(PerperExecution execution, TResult result);
         Task WriteExceptionAsync(PerperExecution execution, Exception exception);

@@ -1,18 +1,21 @@
-using System.Diagnostics.CodeAnalysis;
+
+using Apache.Ignite.Core.Binary;
 
 namespace Perper.Model
 {
-    [SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
-    [SuppressMessage("ReSharper", "InconsistentNaming")]
-    [SuppressMessage("ReSharper", "ConvertToAutoProperty")]
-    public class PerperExecution
+    // Also defined through protobufs
+    public partial class PerperExecution : IBinarizable
     {
-        private readonly string execution;
+        public PerperExecution(string execution) : this() => Execution = execution;
 
-        public PerperExecution(string execution) => this.execution = execution;
+        void IBinarizable.ReadBinary(IBinaryReader reader)
+        {
+            Execution = reader.ReadString("execution");
+        }
 
-        public string Execution => execution;
-
-        public override string ToString() => $"PerperExecution({Execution})";
+        void IBinarizable.WriteBinary(IBinaryWriter writer)
+        {
+            writer.WriteString("execution", Execution);
+        }
     }
 }

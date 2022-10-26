@@ -3,7 +3,7 @@ namespace Perper.Model
     public interface IPerperContext : IPerper
     {
         PerperExecution CurrentExecution { get; }
-        PerperAgent CurrentAgent { get; }
+        PerperInstance CurrentAgent { get; }
         PerperDictionary CurrentState { get; }
     }
 }

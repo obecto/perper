@@ -39,8 +39,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\..\..\..\proto\fabric.proto" />
-    <Protobuf Include="..\..\..\..\proto\grpc2.proto" />
+    <Protobuf Include="..\..\..\..\proto\*.proto" />
   </ItemGroup>
 
   <PropertyGroup>

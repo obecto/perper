@@ -21,7 +21,7 @@ namespace Perper.Protocol
             return (new(name), () => CreateCache(name, options));
         }
 
-        PerperDictionary IPerperStates.GetInstanceDictionary(PerperAgent instance) =>
+        PerperDictionary IPerperStates.GetInstanceDictionary(PerperInstance instance) =>
             new($"{instance.Instance}-");
 
         async Task IPerperStates.SetAsync<TKey, TValue>(PerperDictionary dictionary, TKey key, TValue value)
@@ -123,7 +123,7 @@ namespace Perper.Protocol
             return (new(name), () => CreateCache(name, options));
         }
 
-        PerperList IPerperStates.GetInstanceChildrenList(PerperAgent instance) =>
+        PerperList IPerperStates.GetInstanceChildrenList(PerperInstance instance) =>
             new($"{instance.Instance}-children");
 
         async IAsyncEnumerable<TValue> IPerperStates.EnumerateAsync<TValue>(PerperList list)

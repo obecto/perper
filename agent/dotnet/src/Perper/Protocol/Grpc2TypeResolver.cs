@@ -35,7 +35,7 @@ namespace Perper.Protocol
         private readonly ConcurrentDictionary<DescriptorBase, Lazy<Task>> RegisteredDescriptors = new();
         //private readonly ConcurrentDictionary<string, Lazy<Task<EnumDescriptor>>> KnownEnums = new();
 
-        public async Task<WellKnownTypes.Any> SerializeAny(object value)
+        public async Task<WellKnownTypes.Any> SerializeAny(object? value)
         {
             var message = Grpc2Caster.SerializeValueToMessage(value);
             var result = new WellKnownTypes.Any
@@ -46,7 +46,7 @@ namespace Perper.Protocol
             return result;
         }
 
-        public async Task<object> DeserializeAny(WellKnownTypes.Any any, Type expectedType)
+        public async Task<object?> DeserializeAny(WellKnownTypes.Any any, Type expectedType)
         {
             var parser = await ResolveType(any.TypeUrl).ConfigureAwait(false);
             var message = parser.ParseFrom(any.Value);

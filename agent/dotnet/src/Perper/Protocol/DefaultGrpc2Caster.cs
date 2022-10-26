@@ -1,18 +1,31 @@
 using System;
+using System.Globalization;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 
 using Google.Protobuf;
 
-using Perper.Protocol.Protobuf2;
+using Perper.Model;
+
+using WellKnownTypes = Google.Protobuf.WellKnownTypes;
 
 namespace Perper.Protocol
 {
     public class DefaultGrpc2Caster : IGrpc2Caster
     {
-        public virtual IMessage SerializeValueToMessage(object value)
+        public virtual IMessage SerializeValueToMessage(object? value)
         {
             if (value is IMessage message)
             {
                 return message;
+            }
+            else if (value is null)
+            {
+                return WellKnownTypes.Value.ForNull();
+            }
+            else if (value is int i)
+            {
+                return new WellKnownTypes.Int32Value() { Value = i };
             }
             else
             {
@@ -20,8 +33,16 @@ namespace Perper.Protocol
             }
         }
 
-        public virtual object DeserializeValueFromMessage(IMessage message, Type expectedType)
+        public virtual object? DeserializeValueFromMessage(IMessage message, Type expectedType)
         {
+            if (message is WellKnownTypes.Value)
+            {
+                return null; // FIXME
+            }
+            if (message is WellKnownTypes.Int32Value iv)
+            {
+                return iv.Value;
+            }
             if (typeof(IMessage).IsAssignableFrom(expectedType))
             {
                 return message;
@@ -32,9 +53,9 @@ namespace Perper.Protocol
             }
         }
 
-        public virtual Error SerializeException(Exception exception) => new() { Message = exception.Message };
+        public virtual PerperError SerializeException(Exception exception) => new() { Message = exception.Message };
 #pragma warning disable CA2201 // TODO
-        public virtual Exception DeserializeException(Error packedException) => new(packedException.Message);
+        public virtual Exception DeserializeException(PerperError packedException) => new(packedException.Message);
 #pragma warning restore CA2201
 
         public object?[] PackArguments(ParameterInfo[]? parameters, object?[] arguments) => arguments;
@@ -95,9 +116,7 @@ namespace Perper.Protocol
         private static object? UnpackArgument(Type parameterType, object? arg) =>
             arg != null && parameterType.IsInstanceOfType(arg)
                 ? arg
-                : arg is ArrayList arrayList && parameterType == typeof(object[])
-                    ? arrayList.Cast<object>().ToArray()
-                    : Convert.ChangeType(arg, parameterType, CultureInfo.InvariantCulture);
+                : Convert.ChangeType(arg, parameterType, CultureInfo.InvariantCulture);
 
         public object?[]? PackResult<TResult>(TResult result)
         {

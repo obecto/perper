@@ -1,40 +1,39 @@
 using System.Diagnostics.CodeAnalysis;
 
+using Apache.Ignite.Core.Binary;
+
 namespace Perper.Model
 {
-    [SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
+    // Also defined through protobufs
     [SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "All that is *Stream is not made of Byte-s")]
-    [SuppressMessage("ReSharper", "InconsistentNaming")]
-    [SuppressMessage("ReSharper", "ConvertToAutoProperty")]
-    public class PerperStream
+    public partial class PerperStream : IBinarizable
     {
-        public const long StartIndexReplay = -1;
+        public const long StartKeyLive = -1;
 
-        private readonly string stream;
-        private readonly long startIndex;
-        private readonly long stride;
-        private readonly bool localToData;
-
-        public PerperStream(
-            string stream,
-            long startIndex = StartIndexReplay,
-            long stride = 0,
-            bool localToData = false)
+        public PerperStream(string stream, long startIndex = StartKeyLive, long stride = 0, bool localToData = false) : this()
         {
-            this.stream = stream;
-            this.startIndex = startIndex;
-            this.stride = stride;
-            this.localToData = localToData;
+            Stream = stream;
+            StartKey = startIndex;
+            Stride = stride;
+            LocalToData = localToData;
         }
 
-        public string Stream => stream;
-        public long StartIndex => startIndex;
-        public long Stride => stride;
-        public bool LocalToData => localToData;
+        public bool LocalToData { get; set; }
+        public bool IsReplayed => StartKey != StartKeyLive;
+        public bool IsPacked => Stride != 0;
 
-        public bool IsReplayed => startIndex != StartIndexReplay;
-        public bool IsPacked => stride != 0;
+        void IBinarizable.ReadBinary(IBinaryReader reader)
+        {
+            Stream = reader.ReadString("stream");
+            StartKey = reader.ReadLong("startKey");
+            Stride = reader.ReadLong("stride");
+        }
 
-        public override string ToString() => $"PerperStream({Stream}, from: {StartIndex}, stride: {Stride}, local: {LocalToData})";
+        void IBinarizable.WriteBinary(IBinaryWriter writer)
+        {
+            writer.WriteString("stream", Stream);
+            writer.WriteLong("startKey", StartKey);
+            writer.WriteLong("stride", Stride);
+        }
     }
 }

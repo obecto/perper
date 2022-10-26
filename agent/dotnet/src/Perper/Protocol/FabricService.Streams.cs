@@ -128,7 +128,7 @@ namespace Perper.Protocol
             var streamItems = FabricClient.StreamItems(new StreamItemsRequest
             {
                 Stream = stream.Stream,
-                StartKey = stream.StartIndex,
+                StartKey = stream.StartKey,
                 Stride = stream.Stride,
                 LocalToData = stream.LocalToData
             }, CallOptions.WithCancellationToken(cancellationToken));

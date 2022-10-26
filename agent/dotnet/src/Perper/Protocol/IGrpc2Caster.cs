@@ -1,18 +1,19 @@
 using System;
+using System.Reflection;
 
 using Google.Protobuf;
 
-using Perper.Protocol.Protobuf2;
+using Perper.Model;
 
 namespace Perper.Protocol
 {
     public interface IGrpc2Caster
     {
-        IMessage SerializeValueToMessage(object value);
-        object DeserializeValueFromMessage(IMessage message, Type expectedType);
+        IMessage SerializeValueToMessage(object? value);
+        object? DeserializeValueFromMessage(IMessage message, Type expectedType);
 
-        Error SerializeException(Exception exception);
-        Exception DeserializeException(Error packedException);
+        PerperError SerializeException(Exception exception);
+        Exception DeserializeException(PerperError packedException);
 
         object?[] PackArguments(ParameterInfo[]? parameters, object?[] arguments);
         object?[] UnpackArguments(ParameterInfo[]? parameters, object?[] packedArguments);

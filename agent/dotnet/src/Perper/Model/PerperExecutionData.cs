@@ -3,9 +3,10 @@ using System.Threading;
 namespace Perper.Model
 {
     public record PerperExecutionData(
-        PerperAgent Agent,
+        PerperInstance Agent,
         string Delegate,
         PerperExecution Execution,
+        object?[] Arguments,
         CancellationToken CancellationToken)
     {
         public bool IsSynthetic { init; get; }

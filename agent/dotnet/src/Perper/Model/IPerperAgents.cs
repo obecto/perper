@@ -4,9 +4,9 @@ namespace Perper.Model
 {
     public interface IPerperAgents
     {
-        (PerperAgent Instance, DelayedCreateFunc Start) Create(PerperAgent? parent, string agent);
-        (PerperAgent Instance, DelayedCreateFunc<TResult> Start) Create<TResult>(PerperAgent? parent, string agent);
+        (PerperInstance Instance, DelayedCreateFunc Start) Create(PerperInstance? parent, string agent);
+        (PerperInstance Instance, DelayedCreateFunc<TResult> Start) Create<TResult>(PerperInstance? parent, string agent);
 
-        Task DestroyAsync(PerperAgent agent);
+        Task DestroyAsync(PerperInstance agent);
     }
 }

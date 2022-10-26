@@ -57,6 +57,7 @@ namespace Perper.Application.Listeners
                         instance,
                         Delegate,
                         new PerperExecution($"{instance.Instance}-{Delegate}"),
+                        Array.Empty<object>(),
                         default)
                     {
                         IsSynthetic = true,

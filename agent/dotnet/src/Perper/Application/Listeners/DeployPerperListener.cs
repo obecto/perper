@@ -41,11 +41,12 @@ namespace Perper.Application.Listeners
                 return;
             }
 
-            // NOTE: PerperAgent("Deployer", Agent) would be more "correct", but it breaks the simple usecase of using Deploy to make calls in the same agent.
+            // NOTE: PerperInstance("Deployer", Agent) would be more "correct", but it breaks the simple usecase of using Deploy to make calls in the same agent.
             var executionData = new PerperExecutionData(
-                new PerperAgent(Agent, $"{Agent}-deploy"),
+                new PerperInstance(Agent, $"{Agent}-deploy"),
                 Delegate,
                 new PerperExecution($"{Agent}-deploy-deploy"),
+                Array.Empty<object>(),
                 default)
             {
                 IsSynthetic = true,

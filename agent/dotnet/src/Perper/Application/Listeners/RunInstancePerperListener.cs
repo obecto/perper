@@ -52,7 +52,7 @@ namespace Perper.Application.Listeners
                 {
                     var executionData = rawExecutionData with
                     {
-                        Agent = new PerperAgent(Agent, rawExecutionData.Execution.Execution),
+                        Agent = new PerperInstance(Agent, rawExecutionData.Execution.Execution),
                         Delegate = RunInstanceDelegate,
                         Execution = new PerperExecution($"{rawExecutionData.Execution.Execution}-{RunInstanceDelegate}"),
                         IsSynthetic = true
