@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using Grpc.Core;
 using Grpc.Net.Client;
 
+using Microsoft.Extensions.Options;
+
 using Perper.Model;
 using Perper.Protocol.Protobuf2;
 
@@ -19,12 +21,12 @@ namespace Perper.Protocol
 {
     public sealed class Grpc2Executions : IPerperExecutions
     {
-        public Grpc2Executions(GrpcChannel grpcChannel, Grpc2TypeResolver grpc2TypeResolver, IGrpc2Caster grpc2Caster, FabricConfiguration configuration)
+        public Grpc2Executions(GrpcChannel grpcChannel, Grpc2TypeResolver grpc2TypeResolver, IGrpc2Caster grpc2Caster, IOptions<FabricConfiguration> configuration)
         {
             FabricExecutionsClient = new FabricExecutionsClient(grpcChannel);
             Grpc2TypeResolver = grpc2TypeResolver;
             Grpc2Caster = grpc2Caster;
-            Configuration = configuration;
+            Configuration = configuration.Value;
         }
 
         private readonly FabricExecutionsClient FabricExecutionsClient;

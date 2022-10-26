@@ -63,6 +63,8 @@ namespace Perper.Application.Listeners
                         IsSynthetic = true,
                     };
 
+                    Logger?.LogDebug("Executing {Execution}", executionData);
+
                     try
                     {
                         var parameters = Handler.GetParameters() ?? Enumerable.Empty<ParameterInfo>();

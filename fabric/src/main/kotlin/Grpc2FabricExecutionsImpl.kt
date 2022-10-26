@@ -27,10 +27,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
+private fun String.toNullIfEmpty(): String? = if (this.isEmpty()) { null } else { this }
+
 private fun ExecutionsListenRequest.toFilter() = PerperExecutionFilter(
-    agent = instanceFilter.agent,
-    instance = instanceFilter.instance,
-    delegate = delegate,
+    agent = instanceFilter.agent!!,
+    instance = instanceFilter.instance.toNullIfEmpty(),
+    delegate = delegate.toNullIfEmpty(),
     localToData = localToData
 )
 
@@ -50,7 +52,7 @@ private suspend fun Pair<Array<Any>, PerperError?>?.toGetResultResponse(perperPr
         it.deleted = true
     } else {
         it.addAllResults(first.map({ x -> perperProtobufDescriptors.pack(x) }))
-        it.error = second
+        if (second != null) it.error = second
     }
 }.build()
 
@@ -77,7 +79,7 @@ class Grpc2FabricExecutionsImpl(
     val perperProtobufDescriptors: PerperProtobufDescriptors
 ) : FabricExecutionsGrpcKt.FabricExecutionsCoroutineImplBase() {
 
-    // val log = ignite.log()
+    // val log = ignite.log().getLogger(this)
 
     override suspend fun create(request: ExecutionsCreateRequest): Empty {
         perperExecutions.create(

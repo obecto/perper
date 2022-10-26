@@ -10,14 +10,13 @@ using Grpc.Net.Client;
 
 using Microsoft.Extensions.Options;
 
-using Perper.Model;
 using Perper.Protocol.Cache;
 using Perper.Protocol.Protobuf;
 
 namespace Perper.Protocol
 {
     [SuppressMessage("Maintainability", "CA1506")] // TODO
-    public sealed partial class FabricService : IPerper //, IAsyncDisposable, IDisposable
+    public sealed partial class FabricService //: IAsyncDisposable, IDisposable
     {
         public FabricService(IIgniteClient ignite, GrpcChannel grpcChannel, IOptions<FabricConfiguration> configuration, IFabricCaster fabricCaster)
         {
@@ -31,11 +30,6 @@ namespace Perper.Protocol
             StreamListenersCache = ignite.GetOrCreateCache<string, StreamListener>("stream-listeners");
             // InstancesCache = ignite.GetOrCreateCache<string, InstanceData>("instances");
         }
-
-        IPerperExecutions IPerper.Executions => this;
-        IPerperAgents IPerper.Agents => this;
-        IPerperStreams IPerper.Streams => this;
-        IPerperStates IPerper.States => this;
 
         public IIgniteClient Ignite { get; }
         public IFabricCaster FabricCaster { get; }

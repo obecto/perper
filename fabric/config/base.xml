@@ -58,9 +58,6 @@
 
         <property name="gridLogger"><bean class="org.apache.ignite.logger.slf4j.Slf4jLogger"/></property>
     </bean>
-    <bean name="InstanceService" class="com.obecto.perper.fabric.InstanceService">
-        <property name="composeFile" value="docker-compose.yml"/>
-    </bean>
     <bean name="FabricService" class="com.obecto.perper.fabric.GrpcService">
         <property name="port" value="40400"/>
     </bean>

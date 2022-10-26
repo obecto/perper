@@ -27,6 +27,10 @@ namespace Perper.Protocol
             {
                 return new WellKnownTypes.Int32Value() { Value = i };
             }
+            else if (value is string s)
+            {
+                return new WellKnownTypes.StringValue() { Value = s };
+            }
             else
             {
                 throw new ArgumentOutOfRangeException($"Override IGrpc2Caster to serialize value of type {value.GetType()} or use protobuf messages.");
@@ -43,14 +47,15 @@ namespace Perper.Protocol
             {
                 return iv.Value;
             }
-            if (typeof(IMessage).IsAssignableFrom(expectedType))
+            if (message is WellKnownTypes.StringValue sv)
+            {
+                return sv.Value;
+            }
+            if (expectedType.IsAssignableFrom(message.GetType()))
             {
                 return message;
             }
-            else
-            {
-                throw new ArgumentOutOfRangeException($"Override IGrpc2Caster to deserialize value of type {expectedType} or use protobuf messages.");
-            }
+            throw new ArgumentOutOfRangeException($"Override IGrpc2Caster to deserialize value of type {message.GetType()} / {expectedType} or use protobuf messages.");
         }
 
         public virtual PerperError SerializeException(Exception exception) => new() { Message = exception.Message };

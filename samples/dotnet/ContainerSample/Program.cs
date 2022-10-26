@@ -17,7 +17,7 @@ var perperConfiguration = host.Services.GetRequiredService<IOptions<PerperConfig
 var executions = perper.Executions;
 
 var startupExecution = await executions.ListenAsync(new PerperExecutionFilter(perperConfiguration.Agent, perperConfiguration.Instance, PerperAgentsExtensions.StartFunctionName)).FirstAsync().ConfigureAwait(false);
-var startupArguments = await executions.GetArgumentsAsync(startupExecution.Execution).ConfigureAwait(false);
+var startupArguments = startupExecution.Arguments;
 await executions.WriteResultAsync(startupExecution.Execution).ConfigureAwait(false);
 
 var id = Guid.NewGuid();

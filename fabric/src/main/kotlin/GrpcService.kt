@@ -1,5 +1,6 @@
 package com.obecto.perper.fabric
 import io.grpc.ForwardingServerCall
+import io.grpc.ForwardingServerCallListener
 import io.grpc.Metadata
 import io.grpc.ServerBuilder
 import io.grpc.ServerCall
@@ -43,9 +44,10 @@ class GrpcService(var port: Int = 40400) : JobService() {
 
     override suspend fun CoroutineScope.execute(ctx: ServiceContext) {
         val server = ServerBuilder.forPort(port).also({
-            it.intercept(ExceptionInterceptor)
+            it.intercept(ExceptionInterceptor())
             it.addService(Grpc1FabricImpl(ignite))
             it.addService(Grpc2FabricExecutionsImpl(PerperExecutionsIgniteImpl(ignite), DummyPerperProtobufDescriptors()))
+            it.addService(Grpc2FabricProtobufDescriptorsImpl(ignite))
             it.addService(GrpcExternalScalerImpl(ignite))
             it.addService(ProtoReflectionService.newInstance())
         }).build()
@@ -63,10 +65,18 @@ class GrpcService(var port: Int = 40400) : JobService() {
         }
     }
 
-    private val ExceptionInterceptor: ServerInterceptor = object : ServerInterceptor { // via https://github.com/grpc/grpc-kotlin/issues/141#issuecomment-726829195
-        override fun <ReqT : Any, RespT : Any> interceptCall(call: ServerCall<ReqT, RespT>, headers: Metadata, next: ServerCallHandler<ReqT, RespT>): ServerCall.Listener<ReqT> =
-            next.startCall(
+    private inner class ExceptionInterceptor : ServerInterceptor { // via https://github.com/grpc/grpc-kotlin/issues/141#issuecomment-726829195
+        var idx = 0
+
+        override fun <ReqT : Any, RespT : Any> interceptCall(call: ServerCall<ReqT, RespT>, headers: Metadata, next: ServerCallHandler<ReqT, RespT>): ServerCall.Listener<ReqT> {
+            idx = idx + 1
+            log.trace({ "!$idx!${call.methodDescriptor.getFullMethodName()}! $$" })
+            val inner = next.startCall(
                 object : ForwardingServerCall.SimpleForwardingServerCall<ReqT, RespT>(call) {
+                    override fun sendMessage(message: RespT) {
+                        log.trace({ "!$idx!${call.methodDescriptor.getFullMethodName()} --> $message" })
+                        super.sendMessage(message)
+                    }
                     override fun close(status: Status, trailers: Metadata) {
                         if (status.isOk) {
                             return super.close(status, trailers)
@@ -86,6 +96,13 @@ class GrpcService(var port: Int = 40400) : JobService() {
                 },
                 headers
             )
+            return object : ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(inner) {
+                override fun onMessage(message: ReqT) {
+                    log.trace({ "!$idx!${call.methodDescriptor.getFullMethodName()} <-- $message" })
+                    super.onMessage(message)
+                }
+            }
+        }
     }
 
     private fun <T, K, V> ContinuousQuery<K, V>.setChannelLocalListener(channel: Channel<T>, block: suspend Channel<T>.(CacheEntryEvent<out K, out V>) -> Unit): Channel<T> {

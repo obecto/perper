@@ -29,7 +29,7 @@ import javax.cache.event.CacheEntryEventFilter
 class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
     val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions").withKeepBinary<String, BinaryObject>()
     val binary = ignite.binary()
-    val log = ignite.log()
+    val log = ignite.log().getLogger(this)
 
     override suspend fun create(instance: PerperInstance, delegate: String, arguments: Array<Any>, execution: PerperExecution?): PerperExecution {
         val executionNonNull = execution ?: PerperExecution("$delegate-${UUID.randomUUID()}")
@@ -54,7 +54,9 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
         val key = execution.execution
 
         query.remoteFilterFactory = Factory {
-            CacheEntryEventFilter { event -> event.key == key && (event.eventType.isRemoval || event.value.deserialize<ExecutionData>().finished) }
+            CacheEntryEventFilter { event ->
+                event.key == key && (event.eventType.isRemoval || event.value.field<Boolean>("finished"))
+            }
         }
 
         val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
@@ -87,6 +89,7 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
                 val executionData = value.deserialize<ExecutionData>()
                 executionData.results = results
                 executionData.error = error?.message
+                executionData.finished = true
                 binary.toBinary(executionData)
             }
         }
@@ -106,16 +109,13 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
 
         query.setScanAndRemoteFilter { _, currentValue, oldValue ->
             if (currentValue != null) {
-                if (oldValue != null && !oldValue.deserialize<ExecutionData>().finished) {
+                if (oldValue != null && !oldValue.field<Boolean>("finished")) {
                     false
                 } else {
-                    val currentValueDeserialized = currentValue.deserialize<ExecutionData>()
-                    (
-                        !currentValueDeserialized.finished &&
-                            currentValueDeserialized.agent == agent &&
-                            (instance == null || currentValueDeserialized.instance == instance) &&
-                            (delegate == null || currentValueDeserialized.delegate == delegate)
-                        )
+                    !currentValue.field<Boolean>("finished") &&
+                        currentValue.field<String>("agent") == agent &&
+                        (instance == null || currentValue.field<String>("instance") == instance) &&
+                        (delegate == null || currentValue.field<String>("delegate") == delegate)
                 }
             } else {
                 true

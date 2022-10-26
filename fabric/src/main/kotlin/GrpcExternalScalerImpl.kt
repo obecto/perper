@@ -22,7 +22,7 @@ import javax.cache.event.CacheEntryUpdatedListener
 
 class GrpcExternalScalerImpl(val ignite: Ignite) : ExternalScalerGrpcKt.ExternalScalerCoroutineImplBase() {
 
-    val log = ignite.log()
+    val log = ignite.log().getLogger(this)
     val ScaledObjectRef.agent
         get() = scalerMetadataMap.getOrDefault("agent", name)
     val ScaledObjectRef.isLocal

@@ -26,6 +26,7 @@ namespace Perper.Application
     {
         private readonly IHostBuilder Builder;
 
+        [SuppressMessage("Maintainability", "CA1506")] // TODO
         public PerperBuilder(IHostBuilder builder)
         {
             Builder = builder;
@@ -33,8 +34,18 @@ namespace Perper.Application
             Builder.ConfigureServices(services =>
             {
                 services.AddSingleton<IFabricCaster, DefaultFabricCaster>();
+                services.AddSingleton<IGrpc2Caster, DefaultGrpc2Caster>();
 
-                services.AddSingleton<IPerper, FabricService>();
+                services.AddSingleton<Grpc2TypeResolver>();
+                services.AddSingleton<IPerperExecutions, Grpc2Executions>();
+
+                services.AddSingleton<FabricService>();
+                //services.AddSingleton<IPerperExecutions>(provider => provider.GetRequiredService<FabricService>());
+                services.AddSingleton<IPerperAgents>(provider => provider.GetRequiredService<FabricService>());
+                services.AddSingleton<IPerperStreams>(provider => provider.GetRequiredService<FabricService>());
+                services.AddSingleton<IPerperStates>(provider => provider.GetRequiredService<FabricService>());
+
+                services.AddSingleton<IPerper, Perper>();
                 services.AddSingleton<PerperListenerFilter>();
                 services.AddSingleton<PerperInstanceLifecycleService>();
 

@@ -47,7 +47,7 @@ import kotlin.concurrent.thread
 
 class Grpc1FabricImpl(val ignite: Ignite) : FabricGrpcKt.FabricCoroutineImplBase() {
 
-    val log = ignite.log()
+    val log = ignite.log().getLogger(this)
 
     private fun Flow<ExecutionsResponse>.filterRemovedExecutions(): Flow<ExecutionsResponse> {
         val sentExecutions = HashSet<String>()

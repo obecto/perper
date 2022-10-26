@@ -35,6 +35,7 @@ namespace Perper.Protocol
         private readonly ConcurrentDictionary<DescriptorBase, Lazy<Task>> RegisteredDescriptors = new();
         //private readonly ConcurrentDictionary<string, Lazy<Task<EnumDescriptor>>> KnownEnums = new();
 
+        // TODO: Serialization should not register types.
         public async Task<WellKnownTypes.Any> SerializeAny(object? value)
         {
             var message = Grpc2Caster.SerializeValueToMessage(value);
