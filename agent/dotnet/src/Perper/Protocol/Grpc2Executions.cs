@@ -19,7 +19,7 @@ using WellKnownTypes = Google.Protobuf.WellKnownTypes;
 
 namespace Perper.Protocol
 {
-    public sealed class Grpc2Executions : IPerperExecutions
+    public class Grpc2Executions : IPerperExecutions
     {
         public Grpc2Executions(GrpcChannel grpcChannel, Grpc2TypeResolver grpc2TypeResolver, IGrpc2Caster grpc2Caster, IOptions<FabricConfiguration> configuration)
         {
@@ -36,7 +36,8 @@ namespace Perper.Protocol
         private readonly FabricConfiguration Configuration;
 
         private static string GenerateName(string? baseName = null) => $"{baseName}-{Guid.NewGuid()}";
-        (PerperExecution Execution, DelayedCreateFunc Start) IPerperExecutions.Create(PerperInstance instance, string @delegate, ParameterInfo[]? parameters)
+
+        public (PerperExecution Execution, DelayedCreateFunc Start) Create(PerperInstance instance, string @delegate, ParameterInfo[]? parameters)
         {
             var execution = new PerperExecution { Execution = GenerateName(@delegate) };
             return (execution, async (arguments) =>
@@ -49,13 +50,13 @@ namespace Perper.Protocol
                 }, CallOptions));
         }
 
-        async Task IPerperExecutions.WriteResultAsync(PerperExecution execution) =>
+        public async Task WriteResultAsync(PerperExecution execution) =>
             await FabricExecutionsClient.CompleteAsync(new()
             {
                 Execution = execution,
             }, CallOptions);
 
-        async Task IPerperExecutions.WriteResultAsync<TResult>(PerperExecution execution, TResult result)
+        public async Task WriteResultAsync<TResult>(PerperExecution execution, TResult result)
         {
             var packedResult = Grpc2Caster.PackResult(result);
             await FabricExecutionsClient.CompleteAsync(new()
@@ -65,19 +66,19 @@ namespace Perper.Protocol
             }, CallOptions);
         }
 
-        async Task IPerperExecutions.WriteExceptionAsync(PerperExecution execution, Exception exception) =>
+        public async Task WriteExceptionAsync(PerperExecution execution, Exception exception) =>
             await FabricExecutionsClient.CompleteAsync(new()
             {
                 Execution = execution,
                 Error = Grpc2Caster.SerializeException(exception)
             }, CallOptions);
 
-        async Task IPerperExecutions.GetResultAsync(PerperExecution execution, CancellationToken cancellationToken)
+        public async Task GetResultAsync(PerperExecution execution, CancellationToken cancellationToken)
         {
             var result = await FabricExecutionsClient.GetResultAsync(new()
             {
                 Execution = execution
-            }, CallOptions);
+            }, CallOptions.WithCancellationToken(cancellationToken));
 
             if (result.Error != null)
             {
@@ -85,12 +86,12 @@ namespace Perper.Protocol
             }
         }
 
-        async Task<TResult> IPerperExecutions.GetResultAsync<TResult>(PerperExecution execution, CancellationToken cancellationToken)
+        public async Task<TResult> GetResultAsync<TResult>(PerperExecution execution, CancellationToken cancellationToken)
         {
             var result = await FabricExecutionsClient.GetResultAsync(new()
             {
                 Execution = execution
-            }, CallOptions);
+            }, CallOptions.WithCancellationToken(cancellationToken));
 
             if (result.Error != null)
             {
@@ -99,13 +100,13 @@ namespace Perper.Protocol
             return Grpc2Caster.UnpackResult<TResult>(await Task.WhenAll(result.Results.Select(x => Grpc2TypeResolver.DeserializeAny(x, typeof(object)))).ConfigureAwait(false));
         }
 
-        async Task IPerperExecutions.DestroyAsync(PerperExecution execution) =>
+        public async Task DestroyAsync(PerperExecution execution) =>
             await FabricExecutionsClient.DeleteAsync(new()
             {
                 Execution = execution
             }, CallOptions);
 
-        async IAsyncEnumerable<PerperExecutionData> IPerperExecutions.ListenAsync(PerperExecutionFilter filter, [EnumeratorCancellation] CancellationToken cancellationToken)
+        public async IAsyncEnumerable<PerperExecutionData> ListenAsync(PerperExecutionFilter filter, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             async IAsyncEnumerable<ExecutionsListenResponse> Helper()
             {

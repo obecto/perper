@@ -11,7 +11,7 @@ namespace Perper.Model
     public interface IPerperExecutions
     {
         #region Sender
-        (PerperExecution Execution, DelayedCreateFunc Start) Create(PerperInstance agent, string @delegate, ParameterInfo[]? parameters = null);
+        (PerperExecution Execution, DelayedCreateFunc Start) Create(PerperInstance instance, string @delegate, ParameterInfo[]? parameters = null);
 
         Task GetResultAsync(PerperExecution execution, CancellationToken cancellationToken = default);
         Task<TResult> GetResultAsync<TResult>(PerperExecution execution, CancellationToken cancellationToken = default);

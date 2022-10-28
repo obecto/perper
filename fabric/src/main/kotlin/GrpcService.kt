@@ -47,6 +47,7 @@ class GrpcService(var port: Int = 40400) : JobService() {
             it.intercept(ExceptionInterceptor())
             it.addService(Grpc1FabricImpl(ignite))
             it.addService(Grpc2FabricExecutionsImpl(PerperExecutionsIgniteImpl(ignite), DummyPerperProtobufDescriptors()))
+            it.addService(Grpc2FabricStreamsImpl(PerperStreamsIgniteImpl(ignite), DummyPerperProtobufDescriptors()))
             it.addService(Grpc2FabricProtobufDescriptorsImpl(ignite))
             it.addService(GrpcExternalScalerImpl(ignite))
             it.addService(ProtoReflectionService.newInstance())

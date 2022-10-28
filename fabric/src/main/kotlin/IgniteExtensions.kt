@@ -1,6 +1,7 @@
 package com.obecto.perper.fabric
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filter
@@ -12,6 +13,7 @@ import org.apache.ignite.Ignite
 import org.apache.ignite.IgniteCache
 import org.apache.ignite.IgniteInterruptedException
 import org.apache.ignite.IgniteLogger
+import org.apache.ignite.cache.CachePeekMode
 import org.apache.ignite.cache.query.ContinuousQuery
 import org.apache.ignite.cache.query.ScanQuery
 import org.apache.ignite.lang.IgniteBiPredicate
@@ -54,6 +56,17 @@ internal inline val EventType.isRemoval get() = this == EventType.REMOVED || thi
 
 internal inline val EventType.isCreation get() = this == EventType.CREATED
 
+internal inline val <K, V> CacheEntryEvent<K, V>.currentValue get() = when (this.eventType!!) {
+    EventType.CREATED, EventType.UPDATED -> this.value
+    EventType.REMOVED, EventType.EXPIRED -> null
+}
+
+internal inline val <K, V> CacheEntryEvent<K, V>.oldValue get() = when (this.eventType!!) {
+    EventType.CREATED -> null
+    EventType.UPDATED -> this.oldValue
+    EventType.REMOVED, EventType.EXPIRED -> this.value
+}
+
 internal fun <T, K, V> ContinuousQuery<K, V>.setChannelLocalListener(channel: Channel<T>, block: suspend Channel<T>.(CacheEntryEvent<out K, out V>) -> Unit): Channel<T> {
     this.localListener = CacheEntryUpdatedListener { events ->
         try {
@@ -72,17 +85,7 @@ internal fun <T, K, V> ContinuousQuery<K, V>.setChannelLocalListener(channel: Ch
 internal inline fun <K, V> ContinuousQuery<K, V>.setScanAndRemoteFilter(crossinline block: (K, V?, V?) -> Boolean) {
     this.remoteFilterFactory = Factory {
         CacheEntryEventFilter { event ->
-            val value = when (event.eventType!!) {
-                EventType.CREATED -> event.value
-                EventType.UPDATED -> event.value
-                EventType.REMOVED, EventType.EXPIRED -> null
-            }
-            val oldValue = when (event.eventType!!) {
-                EventType.CREATED -> null
-                EventType.UPDATED -> event.oldValue
-                EventType.REMOVED, EventType.EXPIRED -> event.value
-            }
-            block(event.key, value, oldValue)
+            block(event.key, event.currentValue, event.oldValue)
         }
     }
     this.initialQuery = ScanQuery<K, V>().also {
@@ -91,9 +94,9 @@ internal inline fun <K, V> ContinuousQuery<K, V>.setScanAndRemoteFilter(crossinl
     }
 }
 
-internal fun <K, V> IgniteCache<K, V>.iterateQuery(cquery: ContinuousQuery<K, V>) = flow<Pair<K, V?>?> {
+internal fun <K, V> IgniteCache<K, V>.iterateQuery(cquery: ContinuousQuery<K, V>, channelCapacity: Int = Channel.UNLIMITED, onBufferOverflow: BufferOverflow = BufferOverflow.SUSPEND, signalStartOfStream: suspend () -> Unit = {}, sortKeysBy: Comparator<in K>? = null) = flow<Pair<K, V?>> {
 
-    val queryChannel = cquery.setChannelLocalListener(Channel<Pair<K, V?>>(Channel.UNLIMITED)) { event ->
+    val queryChannel = cquery.setChannelLocalListener(Channel<Pair<K, V?>>(channelCapacity, onBufferOverflow)) { event ->
         send(
             Pair(
                 event.key,
@@ -107,11 +110,12 @@ internal fun <K, V> IgniteCache<K, V>.iterateQuery(cquery: ContinuousQuery<K, V>
 
     val queryCursor = query(cquery)
     try {
-        for (entry in queryCursor) {
+        val items = if (sortKeysBy == null) { queryCursor } else { queryCursor.sortedWith(compareBy(sortKeysBy, { it.key })) }
+        for (entry in items) {
             emit(Pair(entry.key, entry.value))
         }
 
-        emit(null)
+        signalStartOfStream()
 
         emitAll(queryChannel)
     } finally {
@@ -127,6 +131,41 @@ internal suspend fun <K, V> IgniteCache<K, V>.optimisticUpdateSuspend(key: K, bl
         if (this.replaceAsync(key, value, newValue).await()) {
             break
         }
+    }
+}
+
+internal suspend fun <K, V> IgniteCache<K, V>.getWhenPredicateSuspend(key: K, attemptEarlyExit: Boolean = true, localToData: Boolean = false, predicate: (V?) -> Boolean): V? {
+    if (attemptEarlyExit) {
+        val initialValue = if (!localToData) { getAsync(key).await() } else { localPeek(key, CachePeekMode.PRIMARY) }
+        if (predicate(initialValue)) {
+            return initialValue
+        }
+    }
+
+    val cquery = ContinuousQuery<K, V>()
+
+    cquery.remoteFilterFactory = Factory {
+        CacheEntryEventFilter { event ->
+            event.key == key && predicate(event.currentValue)
+        }
+    }
+    cquery.setLocal(localToData)
+
+    val queryChannel = cquery.setChannelLocalListener(Channel<V?>(Channel.CONFLATED)) { event -> send(event.currentValue) }
+    val queryCursor = query(cquery)
+
+    try {
+        val currentValue = if (!localToData) { getAsync(key).await() } else { localPeek(key, CachePeekMode.PRIMARY) }
+        if (predicate(currentValue)) {
+            return currentValue
+        } else {
+            val matchedValue = queryChannel.receive()
+            // assert(predicate(matchedValue))
+            return matchedValue
+        }
+    } finally {
+        queryCursor.close()
+        queryChannel.close()
     }
 }
 

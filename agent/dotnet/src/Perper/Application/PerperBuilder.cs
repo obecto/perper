@@ -38,11 +38,12 @@ namespace Perper.Application
 
                 services.AddSingleton<Grpc2TypeResolver>();
                 services.AddSingleton<IPerperExecutions, Grpc2Executions>();
+                services.AddSingleton<IPerperStreams, Grpc2Streams>();
 
                 services.AddSingleton<FabricService>();
                 //services.AddSingleton<IPerperExecutions>(provider => provider.GetRequiredService<FabricService>());
                 services.AddSingleton<IPerperAgents>(provider => provider.GetRequiredService<FabricService>());
-                services.AddSingleton<IPerperStreams>(provider => provider.GetRequiredService<FabricService>());
+                //services.AddSingleton<IPerperStreams>(provider => provider.GetRequiredService<FabricService>());
                 services.AddSingleton<IPerperStates>(provider => provider.GetRequiredService<FabricService>());
 
                 services.AddSingleton<IPerper, Perper>();

@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package perper.grpc2;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/descriptor.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/type.proto";
+import "grpc2.model.proto";
+import "grpc2.proto";
+
+option csharp_namespace = "Perper.Protocol.Protobuf2";
+option go_package = "github.com/obecto/perper/scaler/proto2";
+option java_multiple_files = true;
+option java_package = "com.obecto.perper.protobuf2";
+
+service FabricStreams {
+  rpc Create(StreamsCreateRequest) returns (google.protobuf.Empty) {}
+
+  rpc WriteItem(StreamsWriteItemRequest) returns (google.protobuf.Empty) {}
+
+  rpc ListenItems(StreamsListenItemsRequest) returns (stream StreamsListenItemsResponse) {}
+
+  rpc MoveListener(StreamsMoveListenerRequest) returns (google.protobuf.Empty) {}
+
+  // rpc ListenItemsAndMove(stream StreamsListenItemsAndMoveRequest) returns (stream StreamsListenItemsResponse) {}
+
+  rpc WaitForListener(StreamsWaitForListenerRequest) returns (google.protobuf.Empty) {}
+
+  //rpc QuerySQL (QuerySQLStreamItemsRequest) returns (stream QuerySQLStreamItemsResponse) {}
+
+  rpc Delete(StreamsDeleteRequest) returns (google.protobuf.Empty) {}
+}
+
+message StreamsCreateRequest {
+  perper.grpc2.model.PerperStream stream = 1;
+
+  perper.grpc2.model.CacheOptions cache_options = 10;
+  bool ephemeral = 11;
+}
+
+message StreamsWaitForListenerRequest {
+  perper.grpc2.model.PerperStream stream = 1;
+}
+
+message StreamsWriteItemRequest {
+  perper.grpc2.model.PerperStream stream = 1;
+
+  oneof item_key {
+    int64 key = 2;
+    bool auto_key = 3;
+  }
+  google.protobuf.Any value = 4;
+}
+
+message StreamsListenItemsRequest {
+  perper.grpc2.model.PerperStream stream = 1;
+
+  string listener_name = 2;
+
+  bool start_from_latest = 10;
+  //string sql_where = 11;
+
+
+  bool local_to_data = 101;
+}
+
+message StreamsListenItemsResponse {
+  int64 key = 1;
+  google.protobuf.Any value = 2;
+}
+
+message StreamsMoveListenerRequest {
+  perper.grpc2.model.PerperStream stream = 1;
+
+  string listener_name = 2;
+
+  oneof item_key {
+    int64 reached_key = 3;
+    bool delete_listener = 4;
+  }
+}
+
+/*
+message QuerySQLStreamItemsRequest {
+  perper.grpc2.model.PerperStream stream = 1;
+  string sql = 2;
+}
+
+message QuerySQLStreamItemsResponse {
+  repeated google.protobuf.Any sql_result_values = 1;
+}
+*/
+
+message StreamsDeleteRequest {
+  perper.grpc2.model.PerperStream stream = 1;
+}

@@ -26,7 +26,7 @@ namespace Perper.Model
         IQueryable<T> Query<T>(PerperStream stream);
         IAsyncEnumerable<T> QuerySqlAsync<T>(PerperStream stream, string sqlCondition, params object[] sqlParameters);
 
-        Task DestroyAsync(PerperStream agent);
+        Task DestroyAsync(PerperStream stream);
         #endregion Reader
     }
 }

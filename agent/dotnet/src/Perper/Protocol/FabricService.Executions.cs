@@ -17,13 +17,13 @@ namespace Perper.Protocol
 {
     public partial class FabricService : IPerperExecutions
     {
-        (PerperExecution Execution, DelayedCreateFunc Start) IPerperExecutions.Create(PerperInstance agent, string @delegate, ParameterInfo[]? parameters)
+        (PerperExecution Execution, DelayedCreateFunc Start) IPerperExecutions.Create(PerperInstance instance, string @delegate, ParameterInfo[]? parameters)
         {
             var execution = new PerperExecution(GenerateName(@delegate));
             return (execution, async (arguments) =>
             {
                 var packedArguments = FabricCaster.PackArguments(parameters, arguments);
-                var executionData = new ExecutionData(agent.Agent, agent.Instance, @delegate, packedArguments);
+                var executionData = new ExecutionData(instance.Agent, instance.Instance, @delegate, packedArguments);
                 await ExecutionsCache.PutIfAbsentOrThrowAsync(execution.Execution, executionData).ConfigureAwait(false);
             }
             );

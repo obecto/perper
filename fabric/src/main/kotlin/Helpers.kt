@@ -29,3 +29,9 @@ class SemaphoreWithArbitraryRelease(permits: Long) { // NOTE: Likely not a fair 
         _wait.getAndSet(null)?.complete()
     }
 }
+
+object Ticks {
+    val startTicks = (System.currentTimeMillis()) * 10_000
+    val startNanos = System.nanoTime()
+    fun getCurrentTicks() = startTicks + (System.nanoTime() - startNanos) / 100
+}

@@ -59,6 +59,12 @@ namespace Perper.Protocol
             return descriptor.File.Package == "google.protobuf" ? "type.googleapis.com/" + descriptor.FullName : "x/" + descriptor.FullName;
         }
 
+        public void RegisterWellKnownDescriptor(MessageDescriptor descriptor)
+        {
+            var typeUrl = GetTypeUrl(descriptor);
+            KnownTypes[typeUrl] = new Lazy<Task<MessageParser>>(Task.FromResult(descriptor.Parser));
+        }
+
         public async Task<string> RegisterDescriptor(MessageDescriptor descriptor)
         {
             var typeUrl = GetTypeUrl(descriptor);

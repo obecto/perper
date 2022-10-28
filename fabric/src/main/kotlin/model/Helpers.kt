@@ -13,6 +13,12 @@ fun PerperInstance(agent: String, instance: String): PerperInstance {
     }.build()
 }
 
+fun PerperStream(name: String): PerperStream {
+    return PerperStream.newBuilder().also {
+        it.stream = name
+    }.build()
+}
+
 fun PerperError(message: String): PerperError {
     return PerperError.newBuilder().also {
         it.message = message

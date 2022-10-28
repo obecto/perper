@@ -13,12 +13,12 @@ namespace Perper.Application
         private readonly ConcurrentDictionary<PerperInstance, (PerperInstanceLifecycleState, TaskCompletionSource)> States = new();
         private readonly ConcurrentDictionary<(string, PerperInstanceLifecycleState), Channel<PerperInstance>> WaitingForChannels = new();
 
-        public async Task WaitForAsync(PerperInstance agent, PerperInstanceLifecycleState state)
+        public async Task WaitForAsync(PerperInstance instance, PerperInstanceLifecycleState state)
         {
             while (true)
             {
                 var (currentState, currentSource) = States.GetOrAdd(
-                    agent,
+                    instance,
                     _ => (PerperInstanceLifecycleState.Uninitialized, new()));
 
                 if (IsStateAfter(currentState, state))
@@ -27,8 +27,8 @@ namespace Perper.Application
                 }
 
 
-                var channel = WaitingForChannels.GetOrAdd((agent.Agent, state), _ => Channel.CreateUnbounded<PerperInstance>());
-                await channel.Writer.WriteAsync(agent).ConfigureAwait(false);
+                var channel = WaitingForChannels.GetOrAdd((instance.Agent, state), _ => Channel.CreateUnbounded<PerperInstance>());
+                await channel.Writer.WriteAsync(instance).ConfigureAwait(false);
                 await currentSource.Task.ConfigureAwait(false);
             }
         }
@@ -38,10 +38,10 @@ namespace Perper.Application
             return WaitingForChannels.GetOrAdd((agent, state), _ => Channel.CreateUnbounded<PerperInstance>()).Reader.ReadAllAsync(cancellationToken);
         }
 
-        public void TransitionTo(PerperInstance agent, PerperInstanceLifecycleState state)
+        public void TransitionTo(PerperInstance instance, PerperInstanceLifecycleState state)
         {
             States.AddOrUpdate(
-                agent,
+                instance,
                 _ => (state, new()),
                 (_, current) =>
                 {

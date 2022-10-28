@@ -24,3 +24,8 @@ message PerperExecution {
 message PerperError {
   string message = 1;
 }
+
+message CacheOptions {
+  repeated string index_type_urls = 1;
+  string data_region = 2;
+}

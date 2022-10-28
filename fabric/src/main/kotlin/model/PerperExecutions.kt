@@ -39,5 +39,5 @@ interface PerperExecutions {
 
     suspend fun reserve(execution: PerperExecution, workgroup: String, block: suspend () -> Unit)
 
-    suspend fun listen(filter: PerperExecutionFilter): Flow<PerperExecutionData?> // Null signals start-of-stream
+    fun listen(filter: PerperExecutionFilter): Flow<PerperExecutionData?> // Null signals start-of-stream
 }

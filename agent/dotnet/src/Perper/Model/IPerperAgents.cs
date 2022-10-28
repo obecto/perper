@@ -7,6 +7,6 @@ namespace Perper.Model
         (PerperInstance Instance, DelayedCreateFunc Start) Create(PerperInstance? parent, string agent);
         (PerperInstance Instance, DelayedCreateFunc<TResult> Start) Create<TResult>(PerperInstance? parent, string agent);
 
-        Task DestroyAsync(PerperInstance agent);
+        Task DestroyAsync(PerperInstance instance);
     }
 }

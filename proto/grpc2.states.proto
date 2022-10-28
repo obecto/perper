@@ -1,0 +1,176 @@
+syntax = "proto3";
+
+package perper.grpc2;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/descriptor.proto";
+import "google/protobuf/empty.proto";
+import "grpc2.model.proto";
+import "grpc2.proto";
+
+option csharp_namespace = "Perper.Protocol.Protobuf2";
+option go_package = "github.com/obecto/perper/scaler/proto2";
+option java_multiple_files = true;
+option java_package = "com.obecto.perper.protobuf2";
+
+service FabricStatesDictionary {
+  rpc Create(StatesDictionaryCreateRequest) returns (google.protobuf.Empty) {}
+  //rpc GetInstanceDictionary () returns () {}
+
+
+  rpc Operate(StatesDictionaryOperateRequest) returns (StatesDictionaryOperateResponse) {}
+
+  rpc ListItems(StatesDictionaryListItemsRequest) returns (stream StatesDictionaryListItemsResponse) {}
+
+  // rpc CountItems (StatesDictionaryCountItemsRequest) returns (StatesDictionaryCountItemsResponse) {}
+  rpc QuerySQL(StatesDictionaryQuerySQLRequest) returns (stream StatesDictionaryQuerySQLResponse) {}
+
+  rpc Delete(StatesDictionaryDeleteRequest) returns (google.protobuf.Empty) {}
+}
+
+message StatesDictionaryCreateRequest {
+  string dictionary = 1;
+
+  perper.grpc2.model.CacheOptions cache_options = 20;
+}
+
+/** StatesDictionaryOperateRequest operations guide:
+ * Set/Put: set_new_value + new_value
+ * SetIfNotChanged/Replace`3: set_new_value + new_value + compare_existing_value + expected_existing_value
+ * SetIfNotExisting/PutIfAbsent: set_new_value + new_value + compare_existing_value
+ * SetIfExisting/Replace`2: no matching operation
+ * Remove: set_new_value
+ * RemoveIfNotChanged/Remove`3: set_new_value + compare_existing_value + expected_existing_value
+ * Get: get_existing_value
+ * GetAndSet: get_existing_value + set_new_value + new_value
+ * GetAnd...: get_existing_value + ...
+ * ContainsKey: (nothing)
+ */
+message StatesDictionaryOperateRequest {
+  string dictionary = 1;
+
+  string key = 2;
+
+  bool get_existing_value = 3;
+
+  bool set_new_value = 4;
+  google.protobuf.Any new_value = 5;
+
+  bool compare_existing_value = 6;
+  google.protobuf.Any expected_existing_value = 7;
+}
+
+message StatesDictionaryOperateResponse {
+  bool operation_successful = 1;
+  google.protobuf.Any previous_value = 2;
+}
+
+message StatesDictionaryListItemsRequest {
+  string dictionary = 1;
+}
+
+message StatesDictionaryListItemsResponse {
+  string key = 1;
+  google.protobuf.Any value = 2;
+}
+
+message StatesDictionaryQuerySQLRequest {
+  string dictionary = 1;
+  string sql = 2;
+}
+
+message StatesDictionaryQuerySQLResponse {
+  repeated google.protobuf.Any sql_result_values = 1;
+}
+
+message StatesDictionaryDeleteRequest {
+  string dictionary = 1;
+
+  bool keep_cache = 2;
+}
+
+service FabricStatesList {
+  rpc Create(StatesListCreateRequest) returns (google.protobuf.Empty) {}
+  //rpc GetInstanceChildrenList () returns () {}
+
+
+  rpc Operate(StatesListOperateRequest) returns (StatesListOperateResponse) {}
+  rpc Find(StatesListFindRequest) returns (StatesListFindResponse) {}
+
+  rpc ListItems(StatesListListItemsRequest) returns (stream StatesListListItemsResponse) {}
+
+  // rpc CountItems (StatesDictionaryCountItemsRequest) returns (StatesDictionaryCountItemsResponse) {}
+  rpc QuerySQL(StatesListQuerySQLRequest) returns (stream StatesListQuerySQLResponse) {}
+
+  rpc Delete(StatesListDeleteRequest) returns (google.protobuf.Empty) {}
+}
+
+message StatesListCreateRequest {
+  string list = 1;
+
+  perper.grpc2.model.CacheOptions cache_options = 20;
+}
+/** StatesListOperateRequest operations guide
+ * PushFront: at_front + new_values
+ * PushBack: at_back + new_values
+ * PopFront: at_front + values_count + get_values + remove_values
+ * PopBack: at_back + values_count + get_values + remove_values
+ * Set: index/raw_index + values_count + remove_values + new_values
+ * Insert: index/raw_index + new_values
+ * Remove: index/raw_index + values_count + remove_values
+ */
+message StatesListOperateRequest {
+  string list = 1;
+
+  oneof location {
+    bool at_front = 2;
+    bool at_back = 3;
+    uint32 index = 4;
+    uint32 index_backwards = 5;
+    int32 raw_index = 10;
+    int32 raw_index_backwards = 11;
+  }
+  uint32 values_count = 6;
+
+  bool get_values = 7;
+  bool remove_values = 8;
+  repeated google.protobuf.Any insert_values = 9;
+}
+
+message StatesListOperateResponse {
+  repeated google.protobuf.Any values = 1;
+}
+
+message StatesListFindRequest {
+  string list = 1;
+
+  google.protobuf.Any value = 8;
+}
+
+message StatesListFindResponse {
+  uint32 index = 1;
+  int32 raw_index = 2;
+}
+
+message StatesListListItemsRequest {
+  string list = 1;
+}
+
+message StatesListListItemsResponse {
+  google.protobuf.Any value = 2;
+}
+
+message StatesListQuerySQLRequest {
+  string list = 1;
+  string sql = 2;
+}
+
+message StatesListQuerySQLResponse {
+  repeated google.protobuf.Any sql_result_values = 1;
+}
+
+message StatesListDeleteRequest {
+  string list = 1;
+
+  bool keep_cache = 2;
+}

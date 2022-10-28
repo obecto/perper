@@ -32,6 +32,10 @@ class Grpc2FabricProtobufDescriptorsImpl(val ignite: Ignite) : FabricProtobufDes
 
     override suspend fun get(request: FabricProtobufDescriptorsGetRequest): FabricProtobufDescriptorsGetResponse {
         val bytes = descriptorsCache.getAsync(request.typeUrl).await()
-        return FabricProtobufDescriptorsGetResponse.parseFrom(bytes) // Rude casting, but it should Just Work" for now
+        if (bytes != null) {
+            return FabricProtobufDescriptorsGetResponse.parseFrom(bytes) // Rude casting, but it should Just Work" for now
+        } else {
+            return FabricProtobufDescriptorsGetResponse.getDefaultInstance()
+        }
     }
 }

@@ -20,5 +20,8 @@ namespace Perper.Protocol
 
         object?[]? PackResult<TResult>(TResult result);
         TResult UnpackResult<TResult>(object?[]? packedResult);
+
+        CacheOptions GetCacheOptions(PerperStream stream, PerperStreamOptions options);
+        CacheOptions GetCacheOptions(string stateName, PerperStateOptions? options);
     }
 }

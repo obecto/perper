@@ -1,4 +1,5 @@
 package com.obecto.perper.fabric
+import com.obecto.perper.fabric.cache.StreamData
 import com.obecto.perper.fabric.cache.StreamListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -138,6 +139,9 @@ class StreamService : JobService() {
 
         fun cleanupStream(stream: String) {
             if (ignite.atomicLong("$stream-at-${StreamServiceConstants.persistAllIndex}", 0, true).get() > 0L) {
+                return
+            }
+            if (ignite.getOrCreateCache<String, StreamData>("streams").get(stream)?.ephemeral == false) {
                 return
             }
 

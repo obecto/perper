@@ -5,6 +5,8 @@ using System.Runtime.CompilerServices;
 
 using Google.Protobuf;
 
+using Microsoft.Extensions.Options;
+
 using Perper.Model;
 
 using WellKnownTypes = Google.Protobuf.WellKnownTypes;
@@ -13,6 +15,11 @@ namespace Perper.Protocol
 {
     public class DefaultGrpc2Caster : IGrpc2Caster
     {
+        protected FabricConfiguration Configuration { get; }
+
+        public DefaultGrpc2Caster(IOptions<FabricConfiguration> configuration) =>
+            Configuration = configuration.Value;
+
         public virtual IMessage SerializeValueToMessage(object? value)
         {
             if (value is IMessage message)
@@ -170,6 +177,35 @@ namespace Perper.Protocol
             {
                 return default!;
             }
+        }
+
+        public CacheOptions GetCacheOptions(PerperStream stream, PerperStreamOptions options)
+        {
+            return ConvertPersistenceOptions(options.PersistenceOptions) ??
+                new CacheOptions()
+                {
+                    DataRegion = options.Persistent ? Configuration.PersistentStreamDataRegion : Configuration.EphemeralStreamDataRegion
+                };
+        }
+
+        public CacheOptions GetCacheOptions(string stateName, PerperStateOptions? options)
+        {
+            return ConvertPersistenceOptions(options?.PersistenceOptions) ??
+                new CacheOptions()
+                {
+                    DataRegion = Configuration.StateDataRegion
+                };
+        }
+
+        protected virtual CacheOptions? ConvertPersistenceOptions(object? persistenceOptions)
+        {
+            return persistenceOptions switch
+            {
+                //CacheClientConfiguration configuration => new CacheClientConfiguration(configuration),
+                CacheOptions options => new CacheOptions(options),
+                string dataRegion => new CacheOptions() { DataRegion = dataRegion },
+                _ => null,
+            };
         }
     }
 }

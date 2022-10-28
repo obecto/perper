@@ -9,7 +9,6 @@ import com.obecto.perper.model.PerperInstance
 import com.obecto.perper.model.toPerperErrorOrNull
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collect
@@ -22,8 +21,6 @@ import org.apache.ignite.Ignite
 import org.apache.ignite.binary.BinaryObject
 import org.apache.ignite.cache.query.ContinuousQuery
 import java.util.UUID
-import javax.cache.configuration.Factory
-import javax.cache.event.CacheEntryEventFilter
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
@@ -49,35 +46,14 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
     }
 
     override suspend fun getResult(execution: PerperExecution): Pair<Array<Any>, PerperError?>? {
-        val query = ContinuousQuery<String, BinaryObject>()
+        val executionData = executionsCache.getWhenPredicateSuspend(execution.execution) {
+            it == null || it.field<Boolean>("finished")
+        }?.deserialize<ExecutionData>()
 
-        val key = execution.execution
-
-        query.remoteFilterFactory = Factory {
-            CacheEntryEventFilter { event ->
-                event.key == key && (event.eventType.isRemoval || event.value.field<Boolean>("finished"))
-            }
-        }
-
-        val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
-        val queryCursor = executionsCache.query(query) // We start a query first to avoid a race where the execution is completed between us checking and submitting the query
-
-        try {
-            var executionData = executionsCache.getAsync(execution.execution).await()?.deserialize<ExecutionData>()
-
-            if (!(executionData == null || executionData.finished)) {
-                queryChannel.receive()
-                executionData = executionsCache.getAsync(execution.execution).await()?.deserialize<ExecutionData>()
-            }
-
-            if (executionData == null) {
-                return null
-            } else {
-                return Pair(executionData.results ?: emptyArray(), executionData.error.toPerperErrorOrNull())
-            }
-        } finally {
-            queryCursor.close()
-            queryChannel.close()
+        if (executionData == null) {
+            return null
+        } else {
+            return Pair(executionData.results ?: emptyArray(), executionData.error.toPerperErrorOrNull())
         }
     }
 
@@ -99,7 +75,7 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
         executionsCache.removeAsync(execution.execution).await()
     }
 
-    override suspend fun listen(filter: PerperExecutionFilter) = flow<PerperExecutionData?>
+    override fun listen(filter: PerperExecutionFilter) = channelFlow<PerperExecutionData?>
     {
         val query = ContinuousQuery<String, BinaryObject>()
 
@@ -122,10 +98,10 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
             }
         }
 
-        var executionsFlow: Flow<Pair<String, ExecutionData?>?> =
-            executionsCache.iterateQuery(query).map {
-                if (it == null) { it } else { Pair(it.first, it.second?.deserialize<ExecutionData>()) }
-            }
+        var executionsFlow =
+            executionsCache.iterateQuery(query, signalStartOfStream = { send(null) }).map({ pair ->
+                Pair(pair.first, pair.second?.deserialize<ExecutionData>())
+            })
 
         if (filter.reserveAsWorkgroup != null) {
             executionsFlow = reserveExecutions(executionsFlow, filter.reserveAsWorkgroup)
@@ -133,26 +109,22 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
 
         val sentExecutions = HashMap<String, PerperExecutionData>()
         executionsFlow.collect { pair ->
-            if (pair == null) {
-                emit(null)
-            } else {
-                val (key, value) = pair
+            val (key, value) = pair
 
-                if (value != null) {
-                    if (!sentExecutions.containsKey(key)) {
-                        val execution = PerperExecutionData(
-                            instance = PerperInstance(value.agent, value.instance),
-                            delegate = value.delegate,
-                            execution = PerperExecution(key),
-                            arguments = value.parameters ?: emptyArray()
-                        )
-                        sentExecutions.put(key, execution)
-                        emit(execution)
-                    }
-                } else {
-                    val execution = sentExecutions.remove(key)
-                    execution?.cancel()
+            if (value != null) {
+                if (!sentExecutions.containsKey(key)) {
+                    val execution = PerperExecutionData(
+                        instance = PerperInstance(value.agent, value.instance),
+                        delegate = value.delegate,
+                        execution = PerperExecution(key),
+                        arguments = value.parameters ?: emptyArray()
+                    )
+                    sentExecutions.put(key, execution)
+                    send(execution)
                 }
+            } else {
+                val execution = sentExecutions.remove(key)
+                execution?.cancel()
             }
         }
     }
@@ -163,17 +135,15 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
         }
     }
 
-    private fun reserveExecutions(unreservedExecutionsFlow: Flow<Pair<String, ExecutionData?>?>, asWorkgroup: String): Flow<Pair<String, ExecutionData?>?> {
+    private fun reserveExecutions(unreservedExecutionsFlow: Flow<Pair<String, ExecutionData?>>, asWorkgroup: String): Flow<Pair<String, ExecutionData?>> {
         val semaphore = Semaphore(1)
         val reserveJobs = HashMap<String, Job>()
 
         // We use a channelFlow so that we can emit executions from within withLockSuspend,
         // followed by a normal flow so that we can wait for executions to be acknowledged before we release the semaphore
-        val reservedExecutionsFlow = channelFlow<Pair<String, ExecutionData?>?> {
+        val reservedExecutionsFlow = channelFlow<Pair<String, ExecutionData?>> {
             unreservedExecutionsFlow.collect { pair ->
-                if (pair == null) {
-                    send(pair)
-                } else if (pair.second == null) {
+                if (pair.second == null) {
                     reserveJobs.get(pair.first)?.cancel()
                     send(pair)
                 } else {
@@ -208,7 +178,7 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
         return flow {
             reservedExecutionsFlow.collect { pair ->
                 emit(pair)
-                if (pair != null && pair.second != null) {
+                if (pair.second != null) {
                     semaphore.release()
                 }
             }
