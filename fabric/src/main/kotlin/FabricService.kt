@@ -420,11 +420,11 @@ class FabricService(var port: Int = 40400) : JobService() {
                 }
             } finally {
                 withContext(Dispatchers.IO + NonCancellable) {
+                    lockThread.interrupt()
                     synchronized(lock) {
                         finished = true
                         lock.notifyAll()
                     }
-                    lockThread.interrupt()
                     lockThread.join()
                 }
             }
