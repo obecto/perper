@@ -517,15 +517,16 @@ class FabricService(var port: Int = 40400) : JobService() {
             val stride = request.stride
             val localToData = request.localToData
 
+            val streamCache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, Any>()
+
             suspend fun FlowCollector<StreamItemsResponse>.output(key: Long) {
+                log.debug({ "Sending stream item; stream=$stream key=$key value=${streamCache.get(key)} request=${currentCoroutineContext().requestId()}" })
                 emit(
                     StreamItemsResponse.newBuilder().also {
                         it.key = key
                     }.build()
                 )
             }
-
-            val streamCache = ignite.cache<Long, Any>(stream).withKeepBinary<Long, Any>()
 
             if (stride == 0L) {
                 val query = ContinuousQuery<Long, Any>()
