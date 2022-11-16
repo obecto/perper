@@ -109,7 +109,7 @@ namespace Perper.Protocol
 
         public ICacheClient<TK, TV> GetItemsCache<TK, TV>(PerperDictionary dictionary)
         {
-            return GetStateCache<TK, TV>(dictionary.Name);
+            return GetStateCache<TK, TV>(dictionary.Dictionary);
         }
         #endregion Dictionaries
 
@@ -352,12 +352,12 @@ namespace Perper.Protocol
 
         public ICacheClient<int, TV> GetItemsCache<TV>(PerperList list)
         {
-            return GetStateCache<int, TV>(list.Name);
+            return GetStateCache<int, TV>(list.List);
         }
 
         public ICacheClient<string, int> GetConfigurationCache(PerperList list)
         {
-            return Ignite.GetOrCreateCache<string, int>(list.Name);
+            return Ignite.GetOrCreateCache<string, int>(list.List);
         }
         #endregion Lists
 

@@ -1,4 +1,3 @@
-
 using Apache.Ignite.Core.Binary;
 
 namespace Perper.Model

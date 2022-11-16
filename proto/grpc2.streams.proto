@@ -5,9 +5,7 @@ package perper.grpc2;
 import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/empty.proto";
-import "google/protobuf/type.proto";
 import "grpc2.model.proto";
-import "grpc2.proto";
 
 option csharp_namespace = "Perper.Protocol.Protobuf2";
 option go_package = "github.com/obecto/perper/scaler/proto2";

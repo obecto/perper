@@ -41,7 +41,7 @@ internal inline fun IgniteLogger.trace(f: () -> String) {
 }
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-internal suspend fun <V> IgniteFuture<V>.await() = suspendCancellableCoroutine<V> { continuation -> // via https://stackoverflow.com/a/67637691
+internal suspend fun <V> IgniteFuture<V>.await() = suspendCancellableCoroutine<V?> { continuation -> // via https://stackoverflow.com/a/67637691
     listen(
         IgniteInClosure { result ->
             continuation.resume(result.get()) {}
@@ -124,15 +124,58 @@ internal fun <K, V> IgniteCache<K, V>.iterateQuery(cquery: ContinuousQuery<K, V>
     }
 }
 
-internal suspend fun <K, V> IgniteCache<K, V>.optimisticUpdateSuspend(key: K, block: suspend (V?) -> V) {
+internal fun <K, V> IgniteCache<K, V>.iterateQuery(cquery: ScanQuery<K, V>, sortKeysBy: Comparator<in K>? = null) = flow<Pair<K, V>> {
+    val queryCursor = query(cquery)
+    try {
+        val items = if (sortKeysBy == null) { queryCursor } else { queryCursor.sortedWith(compareBy(sortKeysBy, { it.key })) }
+        for (entry in items) {
+            emit(Pair(entry.key, entry.value))
+        }
+    } finally {
+        queryCursor.close()
+    }
+}
+
+internal suspend fun <K, V> IgniteCache<K, V>.optimisticUpdateSuspend(key: K, block: suspend (V?) -> V?) {
     while (true) {
         val value = this.getAsync(key).await()
         val newValue = block(value)
-        if (this.replaceAsync(key, value, newValue).await()) {
+        if (this.replaceOrRemoveSuspend(key, value, newValue)) {
             break
         }
     }
 }
+
+internal suspend fun <K, V> IgniteCache<K, V>.replaceOrRemoveSuspend(key: K, oldValue: V?, newValue: V?) =
+    if (oldValue == null) {
+        if (newValue == null) {
+            !(this.containsKeyAsync(key).await()!!) // removeIfAbsent
+        } else {
+            this.putIfAbsentAsync(key, newValue).await()!!
+        }
+    } else {
+        if (newValue == null) {
+            this.removeAsync(key, oldValue).await()!!
+        } else {
+            this.replaceAsync(key, oldValue, newValue).await()!!
+        }
+    }
+
+internal suspend fun <K, V> IgniteCache<K, V>.putOrRemoveSuspend(key: K, newValue: V?): Boolean {
+    if (newValue == null) {
+        return this.removeAsync(key).await()!!
+    } else {
+        this.putAsync(key, newValue).await()
+        return true
+    }
+}
+
+internal suspend fun <K, V> IgniteCache<K, V>.getAndPutOrRemoveSuspend(key: K, newValue: V?) =
+    if (newValue == null) {
+        this.getAndRemoveAsync(key).await()
+    } else {
+        this.getAndPutAsync(key, newValue).await()
+    }
 
 internal suspend fun <K, V> IgniteCache<K, V>.getWhenPredicateSuspend(key: K, attemptEarlyExit: Boolean = true, localToData: Boolean = false, predicate: (V?) -> Boolean): V? {
     if (attemptEarlyExit) {

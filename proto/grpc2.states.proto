@@ -6,7 +6,6 @@ import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/empty.proto";
 import "grpc2.model.proto";
-import "grpc2.proto";
 
 option csharp_namespace = "Perper.Protocol.Protobuf2";
 option go_package = "github.com/obecto/perper/scaler/proto2";
@@ -22,14 +21,14 @@ service FabricStatesDictionary {
 
   rpc ListItems(StatesDictionaryListItemsRequest) returns (stream StatesDictionaryListItemsResponse) {}
 
-  // rpc CountItems (StatesDictionaryCountItemsRequest) returns (StatesDictionaryCountItemsResponse) {}
+  rpc CountItems(StatesDictionaryCountItemsRequest) returns (StatesDictionaryCountItemsResponse) {}
   rpc QuerySQL(StatesDictionaryQuerySQLRequest) returns (stream StatesDictionaryQuerySQLResponse) {}
 
   rpc Delete(StatesDictionaryDeleteRequest) returns (google.protobuf.Empty) {}
 }
 
 message StatesDictionaryCreateRequest {
-  string dictionary = 1;
+  perper.grpc2.model.PerperDictionary dictionary = 1;
 
   perper.grpc2.model.CacheOptions cache_options = 20;
 }
@@ -47,9 +46,9 @@ message StatesDictionaryCreateRequest {
  * ContainsKey: (nothing)
  */
 message StatesDictionaryOperateRequest {
-  string dictionary = 1;
+  perper.grpc2.model.PerperDictionary dictionary = 1;
 
-  string key = 2;
+  google.protobuf.Any key = 2;
 
   bool get_existing_value = 3;
 
@@ -65,17 +64,25 @@ message StatesDictionaryOperateResponse {
   google.protobuf.Any previous_value = 2;
 }
 
+message StatesDictionaryCountItemsRequest {
+  perper.grpc2.model.PerperDictionary dictionary = 1;
+}
+
+message StatesDictionaryCountItemsResponse {
+  int32 count = 1;
+}
+
 message StatesDictionaryListItemsRequest {
-  string dictionary = 1;
+  perper.grpc2.model.PerperDictionary dictionary = 1;
 }
 
 message StatesDictionaryListItemsResponse {
-  string key = 1;
+  google.protobuf.Any key = 1;
   google.protobuf.Any value = 2;
 }
 
 message StatesDictionaryQuerySQLRequest {
-  string dictionary = 1;
+  perper.grpc2.model.PerperDictionary dictionary = 1;
   string sql = 2;
 }
 
@@ -84,7 +91,7 @@ message StatesDictionaryQuerySQLResponse {
 }
 
 message StatesDictionaryDeleteRequest {
-  string dictionary = 1;
+  perper.grpc2.model.PerperDictionary dictionary = 1;
 
   bool keep_cache = 2;
 }
@@ -95,42 +102,43 @@ service FabricStatesList {
 
 
   rpc Operate(StatesListOperateRequest) returns (StatesListOperateResponse) {}
-  rpc Find(StatesListFindRequest) returns (StatesListFindResponse) {}
+  rpc Locate(StatesListLocateRequest) returns (StatesListLocateResponse) {}
 
   rpc ListItems(StatesListListItemsRequest) returns (stream StatesListListItemsResponse) {}
 
-  // rpc CountItems (StatesDictionaryCountItemsRequest) returns (StatesDictionaryCountItemsResponse) {}
+  rpc CountItems(StatesListCountItemsRequest) returns (StatesListCountItemsResponse) {}
   rpc QuerySQL(StatesListQuerySQLRequest) returns (stream StatesListQuerySQLResponse) {}
 
   rpc Delete(StatesListDeleteRequest) returns (google.protobuf.Empty) {}
 }
 
 message StatesListCreateRequest {
-  string list = 1;
+  perper.grpc2.model.PerperList list = 1;
 
   perper.grpc2.model.CacheOptions cache_options = 20;
 }
 /** StatesListOperateRequest operations guide
- * PushFront: at_front + new_values
- * PushBack: at_back + new_values
+ * Get: index/raw_index + get_values + values_count
+ * PushFront: at_front + insert_values
+ * PushBack: at_back + insert_values
  * PopFront: at_front + values_count + get_values + remove_values
  * PopBack: at_back + values_count + get_values + remove_values
- * Set: index/raw_index + values_count + remove_values + new_values
- * Insert: index/raw_index + new_values
+ * Set: index/raw_index + values_count + remove_values + insert_values*1
+ * Insert: index/raw_index + insert_values
  * Remove: index/raw_index + values_count + remove_values
  */
 message StatesListOperateRequest {
-  string list = 1;
+  perper.grpc2.model.PerperList list = 1;
 
   oneof location {
     bool at_front = 2;
     bool at_back = 3;
     uint32 index = 4;
     uint32 index_backwards = 5;
-    int32 raw_index = 10;
-    int32 raw_index_backwards = 11;
+    int64 raw_index = 10;
+    int64 raw_index_backwards = 11;
   }
-  uint32 values_count = 6;
+  uint64 values_count = 6;
 
   bool get_values = 7;
   bool remove_values = 8;
@@ -141,27 +149,38 @@ message StatesListOperateResponse {
   repeated google.protobuf.Any values = 1;
 }
 
-message StatesListFindRequest {
-  string list = 1;
+message StatesListLocateRequest {
+  perper.grpc2.model.PerperList list = 1;
 
   google.protobuf.Any value = 8;
 }
 
-message StatesListFindResponse {
-  uint32 index = 1;
-  int32 raw_index = 2;
+message StatesListLocateResponse {
+  bool found = 1;
+  uint32 index = 2;
+  int64 raw_index = 3;
+}
+
+message StatesListCountItemsRequest {
+  perper.grpc2.model.PerperList list = 1;
+}
+
+message StatesListCountItemsResponse {
+  uint32 count = 1;
 }
 
 message StatesListListItemsRequest {
-  string list = 1;
+  perper.grpc2.model.PerperList list = 1;
 }
 
 message StatesListListItemsResponse {
+  uint32 index = 1;
+  int64 raw_index = 3;
   google.protobuf.Any value = 2;
 }
 
 message StatesListQuerySQLRequest {
-  string list = 1;
+  perper.grpc2.model.PerperList list = 1;
   string sql = 2;
 }
 
@@ -170,7 +189,7 @@ message StatesListQuerySQLResponse {
 }
 
 message StatesListDeleteRequest {
-  string list = 1;
+  perper.grpc2.model.PerperList list = 1;
 
   bool keep_cache = 2;
 }

@@ -61,10 +61,10 @@ class Grpc1FabricImpl(val ignite: Ignite) : FabricGrpcKt.FabricCoroutineImplBase
     }
 
     private fun Flow<ExecutionsResponse>.logExecutionParameters(): Flow<ExecutionsResponse> {
-        val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions").withKeepBinary<String, BinaryObject>()
         if (!log.isDebugEnabled()) {
             return this
         } else {
+            val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions").withKeepBinary<String, BinaryObject>()
             return onEach { execution ->
                 if (execution.execution == "") {
                     // Pass
@@ -78,15 +78,15 @@ class Grpc1FabricImpl(val ignite: Ignite) : FabricGrpcKt.FabricCoroutineImplBase
         }
     }
 
-    private fun _executionsFilter(request: ExecutionsRequest): (ExecutionData) -> Boolean {
+    private fun _executionsFilter(request: ExecutionsRequest): (BinaryObject) -> Boolean {
         val agent = request.agent
         val instance = if (request.instance != "") request.instance else null
         val delegate = if (request.delegate != "") request.delegate else null
         return { value ->
-            !value.finished &&
-                value.agent == agent &&
-                (instance == null || value.instance == instance) &&
-                (delegate == null || value.delegate == delegate)
+            !value.field<Boolean>("finished") &&
+                value.field<String>("agent") == agent &&
+                (instance == null || value.field<String>("instance") == instance) &&
+                (delegate == null || value.field<String>("delegate") == delegate)
         }
     }
 
@@ -96,10 +96,10 @@ class Grpc1FabricImpl(val ignite: Ignite) : FabricGrpcKt.FabricCoroutineImplBase
         val filterValue = _executionsFilter(request)
         val localToData = request.localToData
 
-        val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
+        val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions").withKeepBinary<String, BinaryObject>()
 
-        val query = ContinuousQuery<String, ExecutionData>()
-        val queryChannel = query.setChannelLocalListener(Channel<Pair<String, Pair<Boolean, ExecutionData>>>(Channel.UNLIMITED)) {
+        val query = ContinuousQuery<String, BinaryObject>()
+        val queryChannel = query.setChannelLocalListener(Channel<Pair<String, Pair<Boolean, BinaryObject>>>(Channel.UNLIMITED)) {
             event ->
             send(Pair(event.key, Pair(event.eventType.isRemoval, event.value)))
         }
@@ -109,15 +109,15 @@ class Grpc1FabricImpl(val ignite: Ignite) : FabricGrpcKt.FabricCoroutineImplBase
             CacheEntryEventFilter { event ->
                 if (event.eventType.isRemoval)
                     true
-                else if (event.isOldValueAvailable && !event.oldValue.finished)
+                else if (event.isOldValueAvailable && !event.oldValue.field<Boolean>("finished"))
                     false
                 else // NOTE: Can probably use a single query for all executions
                     filterValue(event.value)
             }
         }
-        query.initialQuery = ScanQuery<String, ExecutionData>().also {
+        query.initialQuery = ScanQuery<String, BinaryObject>().also {
             it.setLocal(localToData)
-            it.filter = IgniteBiPredicate<String, ExecutionData> { _, value ->
+            it.filter = IgniteBiPredicate<String, BinaryObject> { _, value ->
                 filterValue(value)
             }
         }
@@ -127,11 +127,11 @@ class Grpc1FabricImpl(val ignite: Ignite) : FabricGrpcKt.FabricCoroutineImplBase
         val queryCursor = executionsCache.query(query)
 
         try {
-            suspend fun FlowCollector<ExecutionsResponse>.output(key: String, value: ExecutionData, removed: Boolean) {
+            suspend fun FlowCollector<ExecutionsResponse>.output(key: String, value: BinaryObject, removed: Boolean) {
                 emit(
                     ExecutionsResponse.newBuilder().also {
-                        it.instance = value.instance
-                        it.delegate = value.delegate
+                        it.instance = value.field<String>("instance")
+                        it.delegate = value.field<String>("delegate")
                         it.execution = key
                         it.cancelled = removed
                     }.build()
@@ -168,11 +168,11 @@ class Grpc1FabricImpl(val ignite: Ignite) : FabricGrpcKt.FabricCoroutineImplBase
         val filterValue = _executionsFilter(request)
         val localToData = request.localToData
 
-        val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
+        val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions").withKeepBinary<String, BinaryObject>()
 
-        val query = ScanQuery<String, ExecutionData>().also {
+        val query = ScanQuery<String, BinaryObject>().also {
             it.setLocal(localToData)
-            it.filter = IgniteBiPredicate<String, ExecutionData> { _, value ->
+            it.filter = IgniteBiPredicate<String, BinaryObject> { _, value ->
                 filterValue(value)
             }
         }
@@ -186,8 +186,8 @@ class Grpc1FabricImpl(val ignite: Ignite) : FabricGrpcKt.FabricCoroutineImplBase
                 it.addAllExecutions(
                     queryCursor.map({ entry ->
                         ExecutionsResponse.newBuilder().also {
-                            it.instance = entry.value.instance
-                            it.delegate = entry.value.delegate
+                            it.instance = entry.value.field<String>("instance")
+                            it.delegate = entry.value.field<String>("delegate")
                             it.execution = entry.key
                         }.build()
                     })
@@ -207,7 +207,7 @@ class Grpc1FabricImpl(val ignite: Ignite) : FabricGrpcKt.FabricCoroutineImplBase
     override suspend fun executionFinished(request: ExecutionFinishedRequest): Empty {
         val execution = request.execution
 
-        val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
+        val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions").withKeepBinary<String, BinaryObject>()
 
         val query = ContinuousQuery<String, ExecutionData>()
         val queryChannel = query.setChannelLocalListener(Channel<Unit>(Channel.CONFLATED)) { _ -> send(Unit) }
@@ -225,13 +225,12 @@ class Grpc1FabricImpl(val ignite: Ignite) : FabricGrpcKt.FabricCoroutineImplBase
 
         try {
             val executionData = executionsCache.get(execution)
-            if (!(executionData == null || executionData.finished)) {
+            if (!(executionData == null || executionData.field<Boolean>("finished"))) {
                 queryChannel.receive()
             }
 
             if (log.isDebugEnabled()) {
-                val executionDataBinary = executionsCache.withKeepBinary<String, BinaryObject>().get(execution)
-                log.debug("Execution finished; instance=${executionData?.instance} delegate=${executionData?.delegate} execution=$execution result=${executionDataBinary?.field<Array<Any>>("result")?.joinToString(", ", "[", "]")} request=${currentCoroutineContext().requestId()}")
+                log.debug("Execution finished; instance=${executionData?.field<String>("instance")} delegate=${executionData?.field<String>("delegate")} execution=$execution result=${executionData?.field<Array<Any>>("result")?.joinToString(", ", "[", "]")} request=${currentCoroutineContext().requestId()}")
             }
 
             return Empty.getDefaultInstance()
@@ -301,11 +300,11 @@ class Grpc1FabricImpl(val ignite: Ignite) : FabricGrpcKt.FabricCoroutineImplBase
 
     override fun reserveExecution(request: ReserveExecutionRequest) = flow<Empty> {
         val execution = request.execution
-        val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions")
+        val executionsCache = ignite.getOrCreateCache<String, ExecutionData>("executions").withKeepBinary<String, BinaryObject>()
 
         reserveExecution(execution, request.workGroup) {
             val executionData = executionsCache.get(execution)
-            if (executionData == null || executionData.finished) {
+            if (executionData == null || executionData.field<Boolean>("finished")) {
                 throw CancellationException()
             }
             emit(Empty.getDefaultInstance())

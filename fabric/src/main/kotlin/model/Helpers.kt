@@ -19,6 +19,18 @@ fun PerperStream(name: String): PerperStream {
     }.build()
 }
 
+fun PerperDictionary(dictionary: String): PerperDictionary {
+    return PerperDictionary.newBuilder().also {
+        it.dictionary = dictionary
+    }.build()
+}
+
+fun PerperList(list: String): PerperList {
+    return PerperList.newBuilder().also {
+        it.list = list
+    }.build()
+}
+
 fun PerperError(message: String): PerperError {
     return PerperError.newBuilder().also {
         it.message = message

@@ -188,7 +188,16 @@ namespace Perper.Protocol
                 };
         }
 
-        public CacheOptions GetCacheOptions(string stateName, PerperStateOptions? options)
+        public CacheOptions GetCacheOptions(PerperDictionary dictionary, PerperStateOptions? options)
+        {
+            return ConvertPersistenceOptions(options?.PersistenceOptions) ??
+                new CacheOptions()
+                {
+                    DataRegion = Configuration.StateDataRegion
+                };
+        }
+
+        public CacheOptions GetCacheOptions(PerperList list, PerperStateOptions? options)
         {
             return ConvertPersistenceOptions(options?.PersistenceOptions) ??
                 new CacheOptions()

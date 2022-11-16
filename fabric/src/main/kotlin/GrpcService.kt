@@ -46,8 +46,11 @@ class GrpcService(var port: Int = 40400) : JobService() {
         val server = ServerBuilder.forPort(port).also({
             it.intercept(ExceptionInterceptor())
             it.addService(Grpc1FabricImpl(ignite))
-            it.addService(Grpc2FabricExecutionsImpl(PerperExecutionsIgniteImpl(ignite), DummyPerperProtobufDescriptors()))
-            it.addService(Grpc2FabricStreamsImpl(PerperStreamsIgniteImpl(ignite), DummyPerperProtobufDescriptors()))
+            val grpc2PerperDescriptors = DummyPerperProtobufDescriptors()
+            it.addService(Grpc2FabricExecutionsImpl(PerperExecutionsIgniteImpl(ignite), grpc2PerperDescriptors))
+            it.addService(Grpc2FabricStreamsImpl(PerperStreamsIgniteImpl(ignite), grpc2PerperDescriptors))
+            it.addService(Grpc2FabricStatesListImpl(PerperListsIgniteImpl(ignite), grpc2PerperDescriptors))
+            it.addService(Grpc2FabricStatesDictionaryImpl(PerperDictionariesIgniteImpl(ignite), grpc2PerperDescriptors))
             it.addService(Grpc2FabricProtobufDescriptorsImpl(ignite))
             it.addService(GrpcExternalScalerImpl(ignite))
             it.addService(ProtoReflectionService.newInstance())
@@ -72,6 +75,8 @@ class GrpcService(var port: Int = 40400) : JobService() {
         override fun <ReqT : Any, RespT : Any> interceptCall(call: ServerCall<ReqT, RespT>, headers: Metadata, next: ServerCallHandler<ReqT, RespT>): ServerCall.Listener<ReqT> {
             idx = idx + 1
             log.trace({ "!$idx!${call.methodDescriptor.getFullMethodName()}! $$" })
+            var firstInput: ReqT? = null
+
             val inner = next.startCall(
                 object : ForwardingServerCall.SimpleForwardingServerCall<ReqT, RespT>(call) {
                     override fun sendMessage(message: RespT) {
@@ -89,7 +94,7 @@ class GrpcService(var port: Int = 40400) : JobService() {
                             val newStatus = Status.CANCELLED.withDescription(cause.message).withCause(cause)
                             return super.close(newStatus, trailers)
                         } else if (cause is Throwable) {
-                            log.error("Error in handling GRPC call; call=${call.methodDescriptor.getFullMethodName()} cause=$cause")
+                            log.error("Error in handling GRPC call; call=${call.methodDescriptor.getFullMethodName()} firstInput=$firstInput cause=$cause")
                             cause.printStackTrace()
                             return super.close(status, trailers)
                         }
@@ -99,6 +104,7 @@ class GrpcService(var port: Int = 40400) : JobService() {
             )
             return object : ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(inner) {
                 override fun onMessage(message: ReqT) {
+                    if (firstInput == null) firstInput = message
                     log.trace({ "!$idx!${call.methodDescriptor.getFullMethodName()} <-- $message" })
                     super.onMessage(message)
                 }

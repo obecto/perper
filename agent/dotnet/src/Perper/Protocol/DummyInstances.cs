@@ -5,12 +5,18 @@ using Perper.Model;
 
 namespace Perper.Protocol
 {
-    public partial class FabricService : IPerperAgents
+    public class DummyInstances : IPerperAgents
     {
-        private IPerperExecutions PerperExecutions => this;
-        private IPerperStates PerperStates => this;
+        public DummyInstances(IPerperExecutions perperExecutions, IPerperStates perperStates)
+        {
+            PerperExecutions = perperExecutions;
+            PerperStates = perperStates;
+        }
 
-        (PerperInstance Instance, DelayedCreateFunc Start) IPerperAgents.Create(PerperInstance? parent, string agent)
+        private readonly IPerperExecutions PerperExecutions;
+        private readonly IPerperStates PerperStates;
+
+        public (PerperInstance Instance, DelayedCreateFunc Start) Create(PerperInstance? parent, string agent)
         {
             var (instance, create) = CreateWithoutStarting(parent, agent);
             return (instance, async (arguments) =>
@@ -21,7 +27,7 @@ namespace Perper.Protocol
             );
         }
 
-        (PerperInstance Instance, DelayedCreateFunc<TResult> Start) IPerperAgents.Create<TResult>(PerperInstance? parent, string agent)
+        public (PerperInstance Instance, DelayedCreateFunc<TResult> Start) Create<TResult>(PerperInstance? parent, string agent)
         {
             var (instance, create) = CreateWithoutStarting(parent, agent);
             return (instance, async (arguments) =>
@@ -32,7 +38,7 @@ namespace Perper.Protocol
             );
         }
 
-        private (PerperInstance Instance, Func<Task> Create) CreateWithoutStarting(PerperInstance? parent, string agent)
+        public (PerperInstance Instance, Func<Task> Create) CreateWithoutStarting(PerperInstance? parent, string agent)
         {
             var (execution, start) = PerperExecutions.Create(new PerperInstance("Registry", agent), "Run", null);
             var instance = new PerperInstance(agent, execution.Execution);
@@ -48,7 +54,7 @@ namespace Perper.Protocol
             );
         }
 
-        async Task IPerperAgents.DestroyAsync(PerperInstance instance)
+        public async Task DestroyAsync(PerperInstance instance)
         {
             await PerperExecutions.CallAsync(instance, PerperAgentsExtensions.StopFunctionName).ConfigureAwait(false);
 

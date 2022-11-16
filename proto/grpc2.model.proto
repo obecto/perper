@@ -21,6 +21,14 @@ message PerperExecution {
   string execution = 1;
 }
 
+message PerperDictionary {
+  string dictionary = 1;
+}
+
+message PerperList {
+  string list = 1;
+}
+
 message PerperError {
   string message = 1;
 }

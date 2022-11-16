@@ -1,19 +1,20 @@
-using System.Diagnostics.CodeAnalysis;
+using Apache.Ignite.Core.Binary;
 
 namespace Perper.Model
 {
-    [SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "We want class names to be correct for Ignite's reflection")]
-    [SuppressMessage("Style", "IDE0032:Use auto property", Justification = "We want camelCase field names for Ignite's reflection")]
-    [SuppressMessage("ReSharper", "InconsistentNaming")]
-    [SuppressMessage("ReSharper", "ConvertToAutoProperty")]
-    public class PerperList
+    // Also defined through protobufs
+    public partial class PerperList : IBinarizable
     {
-        private readonly string name;
+        public PerperList(string list) : this() => List = list;
 
-        public PerperList(string name) => this.name = name;
+        void IBinarizable.ReadBinary(IBinaryReader reader)
+        {
+            List = reader.ReadString("name"); // TODO
+        }
 
-        public string Name => name;
-
-        public override string ToString() => $"PerperList({Name})";
+        void IBinarizable.WriteBinary(IBinaryWriter writer)
+        {
+            writer.WriteString("name", List);
+        }
     }
 }
