@@ -1,5 +1,17 @@
 package com.obecto.perper.model
 
+@JvmInline
+value class IgniteAny(val wrappedValue: Any) : org.apache.ignite.binary.Binarylizable {
+    override fun readBinary(reader: org.apache.ignite.binary.BinaryReader) {
+        throw IllegalStateException("IgniteAny should not be read from Ignite")
+    }
+    override fun writeBinary(writer: org.apache.ignite.binary.BinaryWriter) {
+        throw IllegalStateException("IgniteAny should not be stored in Ignite")
+    }
+}
+
+inline fun IgniteAny(wrappedValue: Any?): IgniteAny? = if (wrappedValue != null) IgniteAny(wrappedValue) else null
+
 fun PerperExecution(execution: String): PerperExecution {
     return PerperExecution.newBuilder().also {
         it.execution = execution

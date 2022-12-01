@@ -14,7 +14,7 @@ class PerperExecutionData(
     val instance: PerperInstance,
     val delegate: String,
     val execution: PerperExecution,
-    val arguments: Array<Any>
+    val arguments: List<IgniteAny?>
 ) {
     private val job = Job()
 
@@ -29,11 +29,11 @@ class PerperExecutionData(
 }
 
 interface PerperExecutions {
-    suspend fun create(instance: PerperInstance, delegate: String, arguments: Array<Any>, execution: PerperExecution? = null): PerperExecution
+    suspend fun create(instance: PerperInstance, delegate: String, arguments: List<IgniteAny?>, execution: PerperExecution? = null): PerperExecution
 
-    suspend fun getResult(execution: PerperExecution): Pair<Array<Any>, PerperError?>?
+    suspend fun getResult(execution: PerperExecution): Pair<List<IgniteAny?>, PerperError?>?
 
-    suspend fun complete(execution: PerperExecution, results: Array<Any>, error: PerperError?)
+    suspend fun complete(execution: PerperExecution, results: List<IgniteAny?>, error: PerperError?)
 
     suspend fun delete(execution: PerperExecution)
 

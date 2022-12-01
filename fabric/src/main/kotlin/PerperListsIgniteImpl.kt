@@ -1,5 +1,6 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.model.CacheOptions
+import com.obecto.perper.model.IgniteAny
 import com.obecto.perper.model.PerperList
 import com.obecto.perper.model.PerperListLocation
 import com.obecto.perper.model.PerperListOperation
@@ -38,7 +39,7 @@ class PerperListsIgniteImpl(val ignite: Ignite) : PerperLists {
     // val statesCache = ignite.getOrCreateCache<String, Any>("states")
 
     // TODO: This next two should use just .cache and rely on create having been called, but we are hacking it this way while the C# client has GetInstanceChildrenList
-    fun listCache(list: PerperList) = ignite.getOrCreateCache<Long, Any>(list.cacheName())
+    fun listCache(list: PerperList) = ignite.getOrCreateCache<Long, Any>(list.cacheName()).withKeepBinary<Long, Any>()
     fun listConfigurationCache(list: PerperList) = ignite.getOrCreateCache<String, Long>(list.configurationCacheName())
 
     fun PerperList.cacheName() = list
@@ -61,7 +62,7 @@ class PerperListsIgniteImpl(val ignite: Ignite) : PerperLists {
         return ((configurationCache.getAsync(endRawIndexKey).await() ?: 0) - (configurationCache.getAsync(startRawIndexKey).await() ?: 0)).toInt()
     }
 
-    override suspend fun operateItem(list: PerperList, location: PerperListLocation, operation: PerperListOperation): List<Any>? {
+    override suspend fun operateItem(list: PerperList, location: PerperListLocation, operation: PerperListOperation): List<IgniteAny>? {
         val cache = listCache(list)
         val configurationCache = listConfigurationCache(list)
 
@@ -96,10 +97,10 @@ class PerperListsIgniteImpl(val ignite: Ignite) : PerperLists {
             configurationCache.getAsync(finalRawIndexKey).await() ?: 0
         }
 
-        val shiftQueue = ArrayDeque(operation.insertValues)
+        val shiftQueue = ArrayDeque(operation.insertValues.map({ it.wrappedValue }))
         var valuesToRemove = if (operation.removeValues) { operation.valuesCount } else { 0 }
 
-        val resultsList = if (operation.getValues) { ArrayList<Any>(operation.valuesCount.toInt()) } else { null }
+        val resultsList = if (operation.getValues) { ArrayList<IgniteAny>(operation.valuesCount.toInt()) } else { null }
         var valuesToGet = if (operation.getValues) { operation.valuesCount } else { 0 }
 
         val lengthDifference = valuesToRemove - shiftQueue.size
@@ -116,7 +117,7 @@ class PerperListsIgniteImpl(val ignite: Ignite) : PerperLists {
             if (value != null) {
                 if (resultsList != null && valuesToGet > 0) {
                     valuesToGet -= 1
-                    resultsList.add(value)
+                    resultsList.add(IgniteAny(value))
                 }
 
                 if (valuesToRemove > 0) {
@@ -150,7 +151,7 @@ class PerperListsIgniteImpl(val ignite: Ignite) : PerperLists {
         return resultsList
     }
 
-    override suspend fun locateItem(list: PerperList, value: Any): PerperListLocation? {
+    override suspend fun locateItem(list: PerperList, value: IgniteAny): PerperListLocation? {
         val cache = listCache(list)
         val configurationCache = listConfigurationCache(list)
 
@@ -169,18 +170,18 @@ class PerperListsIgniteImpl(val ignite: Ignite) : PerperLists {
         }
     }
 
-    override fun listItems(list: PerperList) = flow<Pair<PerperListLocation, Any>> {
+    override fun listItems(list: PerperList) = flow<Pair<PerperListLocation, IgniteAny>> {
         val startRawIndex = listConfigurationCache(list).getAsync(startRawIndexKey).await() ?: 0
         listCache(list).iterateQuery(ScanQuery<Long, Any>()).collect { pair ->
-            emit(Pair(PerperListLocation((pair.first - startRawIndex).toInt(), pair.first), pair.second))
+            emit(Pair(PerperListLocation((pair.first - startRawIndex).toInt(), pair.first), IgniteAny(pair.second)))
         }
     }
 
-    override fun sqlQuery(list: PerperList, sql: String) = flow<List<Any?>> {
+    override fun sqlQuery(list: PerperList, sql: String) = flow<List<IgniteAny?>> {
         val queryCursor = listCache(list).query(SqlFieldsQuery(sql))
         try {
             for (row in queryCursor) {
-                emit(row)
+                emit(row.map(::IgniteAny))
             }
         } finally {
             queryCursor.close()

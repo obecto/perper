@@ -22,7 +22,7 @@ private fun String.toNullIfEmpty(): String? = if (this.isEmpty()) { null } else 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class Grpc2FabricStatesDictionaryImpl(
     val perperDictionaries: PerperDictionaries,
-    val perperProtobufDescriptors: PerperProtobufDescriptors
+    val protobufConverter: ProtobufConverter
 ) : FabricStatesDictionaryGrpcKt.FabricStatesDictionaryCoroutineImplBase() {
 
     // val log = ignite.log().getLogger(this)
@@ -38,17 +38,17 @@ class Grpc2FabricStatesDictionaryImpl(
     override suspend fun operate(request: StatesDictionaryOperateRequest): StatesDictionaryOperateResponse {
         val (success, value) = perperDictionaries.operateItem(
             dictionary = request.dictionary,
-            key = perperProtobufDescriptors.unpack(request.key),
+            key = protobufConverter.unpack(request.key)!!,
             operation = PerperDictionaryOperation(
                 getValue = request.getExistingValue,
-                setValue = Pair(request.setNewValue, perperProtobufDescriptors.unpack(request.newValue)),
-                compareValue = Pair(request.compareExistingValue, perperProtobufDescriptors.unpack(request.expectedExistingValue)),
+                setValue = Pair(request.setNewValue, protobufConverter.unpack(request.newValue)),
+                compareValue = Pair(request.compareExistingValue, protobufConverter.unpack(request.expectedExistingValue)),
             )
         )
         return StatesDictionaryOperateResponse.newBuilder().also {
             it.operationSuccessful = success
             if (value != null) {
-                it.previousValue = perperProtobufDescriptors.pack(value)
+                it.previousValue = protobufConverter.pack(value)
             }
         }.build()
     }
@@ -56,8 +56,8 @@ class Grpc2FabricStatesDictionaryImpl(
     override fun listItems(request: StatesDictionaryListItemsRequest): Flow<StatesDictionaryListItemsResponse> {
         return perperDictionaries.listItems(dictionary = request.dictionary).map { item ->
             StatesDictionaryListItemsResponse.newBuilder().also {
-                it.key = perperProtobufDescriptors.pack(item.first)
-                it.value = perperProtobufDescriptors.pack(item.second)
+                it.key = protobufConverter.pack(item.first)
+                it.value = protobufConverter.pack(item.second)
             }.build()
         }
     }
@@ -75,7 +75,7 @@ class Grpc2FabricStatesDictionaryImpl(
             sql = request.sql,
         ).map { values ->
             StatesDictionaryQuerySQLResponse.newBuilder().also {
-                it.addAllSqlResultValues(values.filterNotNull().map { perperProtobufDescriptors.pack(it) })
+                it.addAllSqlResultValues(values.filterNotNull().map { protobufConverter.pack(it) })
             }.build()
         }
     }

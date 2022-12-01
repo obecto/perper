@@ -5,7 +5,7 @@ class ExecutionData(
     var instance: String,
     var delegate: String,
     var finished: Boolean,
-    var parameters: Array<Any>? = null,
-    var results: Array<Any>? = null,
+    var parameters: Array<Any?>? = null,
+    var results: Array<Any?>? = null,
     var error: String? = null
 )

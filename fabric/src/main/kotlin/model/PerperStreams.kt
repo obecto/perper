@@ -13,9 +13,9 @@ interface PerperStreams {
 
     suspend fun waitForListener(stream: PerperStream)
 
-    suspend fun writeItem(stream: PerperStream, item: Any, key: Long? = null)
+    suspend fun writeItem(stream: PerperStream, item: IgniteAny, key: Long? = null)
 
-    fun listenItems(filter: PerperStreamItemFilter): Flow<Pair<Long, Any>>
+    fun listenItems(filter: PerperStreamItemFilter): Flow<Pair<Long, IgniteAny>>
     suspend fun updateListener(stream: PerperStream, listener: String, key: Long?)
 
     suspend fun delete(stream: PerperStream)

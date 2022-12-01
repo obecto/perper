@@ -28,7 +28,7 @@ private fun String.toNullIfEmpty(): String? = if (this.isEmpty()) { null } else 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class Grpc2FabricStatesListImpl(
     val perperLists: PerperLists,
-    val perperProtobufDescriptors: PerperProtobufDescriptors
+    val perperProtobufDescriptors: ProtobufConverter
 ) : FabricStatesListGrpcKt.FabricStatesListCoroutineImplBase() {
 
     // val log = ignite.log().getLogger(this)
@@ -57,7 +57,7 @@ class Grpc2FabricStatesListImpl(
                 valuesCount = request.valuesCount,
                 getValues = request.getValues,
                 removeValues = request.removeValues,
-                insertValues = coroutineScope { request.insertValuesList.map { async { perperProtobufDescriptors.unpack(it) } }.awaitAll() },
+                insertValues = coroutineScope { request.insertValuesList.map { async { perperProtobufDescriptors.unpack(it)!! } }.awaitAll() },
             )
         )
         return StatesListOperateResponse.newBuilder().also {
@@ -68,7 +68,7 @@ class Grpc2FabricStatesListImpl(
     override suspend fun locate(request: StatesListLocateRequest): StatesListLocateResponse {
         val location = perperLists.locateItem(
             list = request.list,
-            value = perperProtobufDescriptors.unpack(request.value)
+            value = perperProtobufDescriptors.unpack(request.value)!!
         )
         return StatesListLocateResponse.newBuilder().also {
             if (location == null) {

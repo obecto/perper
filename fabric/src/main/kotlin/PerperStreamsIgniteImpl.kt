@@ -2,6 +2,7 @@ package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.StreamData
 import com.obecto.perper.fabric.cache.StreamListener
 import com.obecto.perper.model.CacheOptions
+import com.obecto.perper.model.IgniteAny
 import com.obecto.perper.model.PerperStream
 import com.obecto.perper.model.PerperStreamItemFilter
 import com.obecto.perper.model.PerperStreams
@@ -40,7 +41,7 @@ class PerperStreamsIgniteImpl(val ignite: Ignite) : PerperStreams {
 
     val streamsCache = ignite.getOrCreateCache<String, StreamData>("streams")
     val streamListenersCache = ignite.getOrCreateCache<String, StreamListener>("stream-listeners")
-    fun streamCache(stream: PerperStream) = ignite.cache<Long, Any>(stream.cacheName())
+    fun streamCache(stream: PerperStream) = ignite.cache<Long, Any>(stream.cacheName()).withKeepBinary<Long, Any>()
 
     fun PerperStream.cacheName() = stream
     fun streamListenerKey(stream: PerperStream, listener: String) = "${stream.stream}-$listener"
@@ -70,9 +71,9 @@ class PerperStreamsIgniteImpl(val ignite: Ignite) : PerperStreams {
         streamListenersCache.iterateQuery(query, Channel.CONFLATED).first()
     }
 
-    override suspend fun writeItem(stream: PerperStream, item: Any, key: Long?) {
+    override suspend fun writeItem(stream: PerperStream, item: IgniteAny, key: Long?) {
         val keyNonNull = key ?: Ticks.getCurrentTicks()
-        streamCache(stream).putAsync(keyNonNull, item).await()
+        streamCache(stream).putAsync(keyNonNull, item.wrappedValue).await()
     }
 
     override suspend fun delete(stream: PerperStream) {
@@ -81,7 +82,7 @@ class PerperStreamsIgniteImpl(val ignite: Ignite) : PerperStreams {
         }
     }
 
-    override fun listenItems(filter: PerperStreamItemFilter): Flow<Pair<Long, Any>> = flow {
+    override fun listenItems(filter: PerperStreamItemFilter): Flow<Pair<Long, IgniteAny>> = flow {
         val cache = streamCache(filter.stream)
 
         var startKey = filter.stream.startKey
@@ -114,7 +115,7 @@ class PerperStreamsIgniteImpl(val ignite: Ignite) : PerperStreams {
 
                 if (key > lastKey) {
                     lastKey = key
-                    emit(Pair(key, value!!))
+                    emit(Pair(key, IgniteAny(value!!)))
                 }
             }
         } else {
@@ -133,7 +134,7 @@ class PerperStreamsIgniteImpl(val ignite: Ignite) : PerperStreams {
             while (true) {
                 val value = cache.getWhenPredicateSuspend(key, localToData = filter.localToData) { it != null }!!
 
-                emit(Pair(key, value))
+                emit(Pair(key, IgniteAny(value)))
 
                 key += stride
             }

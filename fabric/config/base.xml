@@ -8,14 +8,7 @@
         <property name="binaryConfiguration"><bean class="org.apache.ignite.configuration.BinaryConfiguration">
             <property name="typeConfigurations"><list>
                 <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.AgentType"/>
-                    <property name="enum" value="true"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
                     <property name="typeName" value="com.obecto.perper.fabric.cache.ExecutionData"/>
-                </bean>
-                <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
-                    <property name="typeName" value="com.obecto.perper.fabric.cache.InstanceData"/>
                 </bean>
                 <bean class="org.apache.ignite.binary.BinaryTypeConfiguration">
                     <property name="typeName" value="com.obecto.perper.fabric.cache.StreamListener"/>

@@ -5,7 +5,7 @@ data class PerperListOperation(
     val valuesCount: Long,
     val getValues: Boolean = false,
     val removeValues: Boolean = false,
-    val insertValues: List<Any?> = emptyList(),
+    val insertValues: List<IgniteAny> = emptyList(),
 )
 
 data class PerperListLocation(
@@ -19,13 +19,13 @@ interface PerperLists {
 
     suspend fun countItems(list: PerperList): Int
 
-    suspend fun operateItem(list: PerperList, location: PerperListLocation, operation: PerperListOperation): List<Any>?
+    suspend fun operateItem(list: PerperList, location: PerperListLocation, operation: PerperListOperation): List<IgniteAny>?
 
-    suspend fun locateItem(list: PerperList, value: Any): PerperListLocation?
+    suspend fun locateItem(list: PerperList, value: IgniteAny): PerperListLocation?
 
-    fun listItems(list: PerperList): Flow<Pair<PerperListLocation, Any>>
+    fun listItems(list: PerperList): Flow<Pair<PerperListLocation, IgniteAny>>
 
-    fun sqlQuery(list: PerperList, sql: String): Flow<List<Any?>>
+    fun sqlQuery(list: PerperList, sql: String): Flow<List<IgniteAny?>>
 
     suspend fun deleteItems(list: PerperList)
 

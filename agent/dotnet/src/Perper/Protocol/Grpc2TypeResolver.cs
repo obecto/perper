@@ -120,7 +120,12 @@ namespace Perper.Protocol
                         Cardinality = fieldDescriptor.IsRepeated ?
                         WellKnownTypes.Field.Types.Cardinality.Repeated :
                         WellKnownTypes.Field.Types.Cardinality.Optional,
-                        Packed = fieldDescriptor.IsPacked
+                        Packed = fieldDescriptor.IsRepeated &&
+                            fieldDescriptor.FieldType != FieldType.String &&
+                            fieldDescriptor.FieldType != FieldType.Group &&
+                            fieldDescriptor.FieldType != FieldType.Message &&
+                            fieldDescriptor.FieldType != FieldType.Bytes &&
+                            fieldDescriptor.IsPacked // IsPacked implementation does not check if the field is actually packable
                     };
 
                     if (fieldDescriptor.FieldType == FieldType.Message || fieldDescriptor.FieldType == FieldType.Group)
@@ -188,11 +193,6 @@ namespace Perper.Protocol
 #pragma warning disable CA1054
         public async Task<MessageParser> ResolveType(string typeUrl)
         {
-            if (typeUrl.StartsWith("fabric://", StringComparison.InvariantCulture))
-            {
-                typeUrl = typeUrl["fabric://".Length..];
-            }
-
             return await KnownTypes.GetOrAdd(typeUrl, _ => new Lazy<Task<MessageParser>>(async () =>
             {
                 var response = await FabricProtobufDescriptorsClient.GetAsync(new FabricProtobufDescriptorsGetRequest()

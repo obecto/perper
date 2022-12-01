@@ -1,5 +1,6 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.fabric.cache.ExecutionData
+import com.obecto.perper.model.IgniteAny
 import com.obecto.perper.model.PerperError
 import com.obecto.perper.model.PerperExecution
 import com.obecto.perper.model.PerperExecutionData
@@ -28,7 +29,7 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
     val binary = ignite.binary()
     val log = ignite.log().getLogger(this)
 
-    override suspend fun create(instance: PerperInstance, delegate: String, arguments: Array<Any>, execution: PerperExecution?): PerperExecution {
+    override suspend fun create(instance: PerperInstance, delegate: String, arguments: List<IgniteAny?>, execution: PerperExecution?): PerperExecution {
         val executionNonNull = execution ?: PerperExecution("$delegate-${UUID.randomUUID()}")
         executionsCache.putAsync(
             executionNonNull.execution,
@@ -38,14 +39,14 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
                     instance = instance.instance,
                     delegate = delegate,
                     finished = false,
-                    parameters = arguments
+                    parameters = arguments.map({ it?.wrappedValue }).toTypedArray()
                 )
             )
         ).await()
         return executionNonNull
     }
 
-    override suspend fun getResult(execution: PerperExecution): Pair<Array<Any>, PerperError?>? {
+    override suspend fun getResult(execution: PerperExecution): Pair<List<IgniteAny?>, PerperError?>? {
         val executionData = executionsCache.getWhenPredicateSuspend(execution.execution) {
             it == null || it.field<Boolean>("finished")
         }?.deserialize<ExecutionData>()
@@ -53,17 +54,17 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
         if (executionData == null) {
             return null
         } else {
-            return Pair(executionData.results ?: emptyArray(), executionData.error.toPerperErrorOrNull())
+            return Pair(executionData.results?.map(::IgniteAny) ?: emptyList(), executionData.error.toPerperErrorOrNull())
         }
     }
 
-    override suspend fun complete(execution: PerperExecution, results: Array<Any>, error: PerperError?) {
+    override suspend fun complete(execution: PerperExecution, results: List<IgniteAny?>, error: PerperError?) {
         executionsCache.optimisticUpdateSuspend(execution.execution) { value ->
             if (value == null) {
                 null
             } else {
                 val executionData = value.deserialize<ExecutionData>()
-                executionData.results = results
+                executionData.results = results.map({ it?.wrappedValue }).toTypedArray()
                 executionData.error = error?.message
                 executionData.finished = true
                 binary.toBinary(executionData)
@@ -117,7 +118,7 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
                         instance = PerperInstance(value.agent, value.instance),
                         delegate = value.delegate,
                         execution = PerperExecution(key),
-                        arguments = value.parameters ?: emptyArray()
+                        arguments = value.parameters?.map(::IgniteAny) ?: emptyList()
                     )
                     sentExecutions.put(key, execution)
                     send(execution)

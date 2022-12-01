@@ -1,6 +1,7 @@
 @file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 package com.obecto.perper.fabric
 import com.google.protobuf.Empty
+import com.obecto.perper.model.IgniteAny
 import com.obecto.perper.model.PerperError
 import com.obecto.perper.model.PerperExecutionData
 import com.obecto.perper.model.PerperExecutionFilter
@@ -36,29 +37,29 @@ private fun ExecutionsListenRequest.toFilter() = PerperExecutionFilter(
     localToData = localToData
 )
 
-private suspend fun PerperExecutionData.toListenResponse(perperProtobufDescriptors: PerperProtobufDescriptors, cancelled: Boolean = false) = ExecutionsListenResponse.newBuilder().also {
+private suspend fun PerperExecutionData.toListenResponse(protobufConverter: ProtobufConverter, cancelled: Boolean = false) = ExecutionsListenResponse.newBuilder().also {
     it.execution = execution
     it.instance = instance
     it.delegate = delegate
     if (cancelled) {
         it.deleted = true
     } else {
-        it.addAllArguments(arguments.map({ x -> perperProtobufDescriptors.pack(x) }))
+        it.addAllArguments(arguments.map({ x -> protobufConverter.pack(x) }))
     }
 }.build()
 
-private suspend fun Pair<Array<Any>, PerperError?>?.toGetResultResponse(perperProtobufDescriptors: PerperProtobufDescriptors) = ExecutionsGetResultResponse.newBuilder().also {
+private suspend fun Pair<List<IgniteAny?>, PerperError?>?.toGetResultResponse(protobufConverter: ProtobufConverter) = ExecutionsGetResultResponse.newBuilder().also {
     if (this == null) {
         it.deleted = true
     } else {
-        it.addAllResults(first.map({ x -> perperProtobufDescriptors.pack(x) }))
+        it.addAllResults(first.map({ x -> protobufConverter.pack(x) }))
         if (second != null) it.error = second
     }
 }.build()
 
 private fun Unit.toEmpty() = Empty.getDefaultInstance()
 
-private suspend fun ProducerScope<ExecutionsListenResponse>.sendExecution(execution: PerperExecutionData?, perperProtobufDescriptors: PerperProtobufDescriptors) {
+private suspend fun ProducerScope<ExecutionsListenResponse>.sendExecution(execution: PerperExecutionData?, protobufConverter: ProtobufConverter) {
     if (execution == null) {
         send(
             ExecutionsListenResponse.newBuilder().also {
@@ -66,9 +67,9 @@ private suspend fun ProducerScope<ExecutionsListenResponse>.sendExecution(execut
             }.build()
         )
     } else {
-        send(execution.toListenResponse(perperProtobufDescriptors, false))
+        send(execution.toListenResponse(protobufConverter, false))
         execution.invokeOnCancellation {
-            runBlocking { send(execution.toListenResponse(perperProtobufDescriptors, true)) }
+            runBlocking { send(execution.toListenResponse(protobufConverter, true)) }
         }
     }
 }
@@ -76,7 +77,7 @@ private suspend fun ProducerScope<ExecutionsListenResponse>.sendExecution(execut
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class Grpc2FabricExecutionsImpl(
     val perperExecutions: PerperExecutions,
-    val perperProtobufDescriptors: PerperProtobufDescriptors
+    val protobufConverter: ProtobufConverter
 ) : FabricExecutionsGrpcKt.FabricExecutionsCoroutineImplBase() {
 
     // val log = ignite.log().getLogger(this)
@@ -85,7 +86,7 @@ class Grpc2FabricExecutionsImpl(
         perperExecutions.create(
             instance = request.instance,
             delegate = request.delegate,
-            arguments = request.argumentsList.map({ x -> perperProtobufDescriptors.unpack(x) }).toTypedArray(),
+            arguments = request.argumentsList.map({ x -> protobufConverter.unpack(x) }),
             execution = request.execution!!,
         )
         return Empty.getDefaultInstance()
@@ -94,7 +95,7 @@ class Grpc2FabricExecutionsImpl(
     override fun listen(request: ExecutionsListenRequest) = channelFlow<ExecutionsListenResponse> {
         val executions = perperExecutions.listen(request.toFilter())
         executions.collect { execution ->
-            sendExecution(execution, perperProtobufDescriptors)
+            sendExecution(execution, protobufConverter)
         }
     }
 
@@ -117,7 +118,7 @@ class Grpc2FabricExecutionsImpl(
                     val executions = perperExecutions.listen(request.filter.toFilter().copy(reserveAsWorkgroup = request.workgroup))
                     executions.collect { execution ->
                         if (execution != null) {
-                            sendExecution(execution, perperProtobufDescriptors)
+                            sendExecution(execution, protobufConverter)
                             semaphore.acquire(1) // Acquiring for next iteration
                         }
                     }
@@ -129,14 +130,14 @@ class Grpc2FabricExecutionsImpl(
     override suspend fun complete(request: ExecutionsCompleteRequest): Empty {
         perperExecutions.complete(
             execution = request.execution,
-            results = request.resultsList.map({ x -> perperProtobufDescriptors.unpack(x) }).toTypedArray(),
+            results = request.resultsList.map({ x -> protobufConverter.unpack(x) }),
             error = request.error
         )
         return Empty.getDefaultInstance()
     }
 
     override suspend fun getResult(request: ExecutionsGetResultRequest) =
-        perperExecutions.getResult(execution = request.execution).toGetResultResponse(perperProtobufDescriptors)
+        perperExecutions.getResult(execution = request.execution).toGetResultResponse(protobufConverter)
 
     override suspend fun delete(request: ExecutionsDeleteRequest) = perperExecutions.delete(execution = request.execution).toEmpty()
 }

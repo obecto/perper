@@ -1,6 +1,7 @@
 @file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 package com.obecto.perper.fabric
 import com.google.protobuf.Empty
+import com.obecto.perper.model.IgniteAny
 import com.obecto.perper.model.PerperStreamItemFilter
 import com.obecto.perper.model.PerperStreams
 import com.obecto.perper.protobuf2.FabricStreamsGrpcKt
@@ -25,15 +26,15 @@ private fun StreamsListenItemsRequest.toFilter() = PerperStreamItemFilter(
     localToData = localToData
 )
 
-private suspend fun Pair<Long, Any>.toListenItemsResponse(perperProtobufDescriptors: PerperProtobufDescriptors) = StreamsListenItemsResponse.newBuilder().also {
+private suspend fun Pair<Long, IgniteAny>.toListenItemsResponse(protobufConverter: ProtobufConverter) = StreamsListenItemsResponse.newBuilder().also {
     it.key = first
-    it.value = perperProtobufDescriptors.pack(second)
+    it.value = protobufConverter.pack(second)
 }.build()
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class Grpc2FabricStreamsImpl(
     val perperStreams: PerperStreams,
-    val perperProtobufDescriptors: PerperProtobufDescriptors
+    val protobufConverter: ProtobufConverter
 ) : FabricStreamsGrpcKt.FabricStreamsCoroutineImplBase() {
 
     // val log = ignite.log().getLogger(this)
@@ -49,7 +50,7 @@ class Grpc2FabricStreamsImpl(
 
     override fun listenItems(request: StreamsListenItemsRequest) = flow<StreamsListenItemsResponse> {
         perperStreams.listenItems(request.toFilter()).collect { item ->
-            emit(item.toListenItemsResponse(perperProtobufDescriptors))
+            emit(item.toListenItemsResponse(protobufConverter))
         }
     }
 
@@ -57,7 +58,7 @@ class Grpc2FabricStreamsImpl(
         perperStreams.waitForListener(request.stream).toEmpty()
 
     override suspend fun writeItem(request: StreamsWriteItemRequest) =
-        perperStreams.writeItem(request.stream, request.value, if (request.autoKey) { null } else { request.key }).toEmpty()
+        perperStreams.writeItem(request.stream, protobufConverter.unpack(request.value)!!, if (request.autoKey) { null } else { request.key }).toEmpty()
 
     override suspend fun moveListener(request: StreamsMoveListenerRequest) =
         perperStreams.updateListener(request.stream, request.listenerName, if (request.deleteListener) { null } else { request.reachedKey }).toEmpty()

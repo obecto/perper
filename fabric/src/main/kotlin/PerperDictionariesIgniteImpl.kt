@@ -1,5 +1,6 @@
 package com.obecto.perper.fabric
 import com.obecto.perper.model.CacheOptions
+import com.obecto.perper.model.IgniteAny
 import com.obecto.perper.model.PerperDictionaries
 import com.obecto.perper.model.PerperDictionary
 import com.obecto.perper.model.PerperDictionaryOperation
@@ -33,7 +34,7 @@ class PerperDictionariesIgniteImpl(val ignite: Ignite) : PerperDictionaries {
     val log = ignite.log().getLogger(this)
 
     // val statesCache = ignite.getOrCreateCache<String, Any>("states")
-    fun dictionaryCache(dictionary: PerperDictionary) = ignite.getOrCreateCache<Any, Any>(dictionary.cacheName()) // TODO: This should be just .cache and rely on create having been called, but we are hacking it this way while the C# client has GetInstanceDictionary
+    fun dictionaryCache(dictionary: PerperDictionary) = ignite.getOrCreateCache<Any, Any>(dictionary.cacheName()).withKeepBinary<Any, Any>() // TODO: This should be just .cache and rely on create having been called, but we are hacking it this way while the C# client has GetInstanceDictionary
 
     fun PerperDictionary.cacheName() = dictionary
 
@@ -43,25 +44,25 @@ class PerperDictionariesIgniteImpl(val ignite: Ignite) : PerperDictionaries {
         return dictionaryNonNull
     }
 
-    override suspend fun operateItem(dictionary: PerperDictionary, key: Any, operation: PerperDictionaryOperation): Pair<Boolean, Any?> {
+    override suspend fun operateItem(dictionary: PerperDictionary, key: IgniteAny, operation: PerperDictionaryOperation): Pair<Boolean, IgniteAny?> {
         val cache = dictionaryCache(dictionary)
         if (!operation.getValue) {
             if (!operation.setValue.first) {
                 if (!operation.compareValue.first) {
-                    return Pair(cache.containsKeyAsync(key).await()!!, null)
+                    return Pair(cache.containsKeyAsync(key.wrappedValue).await()!!, null)
                 } else {
-                    return Pair(cache.getAsync(key).await() == operation.compareValue.second, null)
+                    return Pair(cache.getAsync(key.wrappedValue).await() == operation.compareValue.second, null)
                 }
             } else {
                 if (!operation.compareValue.first) {
-                    return Pair(cache.putOrRemoveSuspend(key, operation.setValue.second), null)
+                    return Pair(cache.putOrRemoveSuspend(key.wrappedValue, operation.setValue.second), null)
                 } else {
-                    return Pair(cache.replaceOrRemoveSuspend(key, operation.compareValue.second, operation.setValue.second), null)
+                    return Pair(cache.replaceOrRemoveSuspend(key.wrappedValue, operation.compareValue.second, operation.setValue.second), null)
                 }
             }
         } else {
             if (!operation.setValue.first) {
-                val value = cache.getAsync(key).await()
+                val value = IgniteAny(cache.getAsync(key.wrappedValue).await())
                 if (operation.compareValue.first) {
                     return Pair(operation.compareValue.second == value, value)
                 } else {
@@ -71,19 +72,19 @@ class PerperDictionariesIgniteImpl(val ignite: Ignite) : PerperDictionaries {
                 if (operation.compareValue.first) {
                     if (operation.compareValue.second != null) {
                         while (true) {
-                            val value = cache.getAsync(key).await()
+                            val value = IgniteAny(cache.getAsync(key.wrappedValue).await())
                             if (value != operation.compareValue.second) {
                                 return Pair(false, value)
                             }
-                            if (cache.replaceOrRemoveSuspend(key, value, operation.setValue.second)) {
+                            if (cache.replaceOrRemoveSuspend(key.wrappedValue, value, operation.setValue.second)) {
                                 return Pair(true, value)
                             }
                         }
                     } else {
-                        return Pair(true, cache.getAndPutIfAbsentAsync(key, operation.setValue.second).await()) // TODO: "true" is wrong here
+                        return Pair(true, IgniteAny(cache.getAndPutIfAbsentAsync(key.wrappedValue, operation.setValue.second).await())) // TODO: "true" is wrong here
                     }
                 } else {
-                    return Pair(true, cache.getAndPutOrRemoveSuspend(key, operation.setValue.second))
+                    return Pair(true, IgniteAny(cache.getAndPutOrRemoveSuspend(key.wrappedValue, operation.setValue.second)))
                 }
             }
         }
@@ -93,15 +94,15 @@ class PerperDictionariesIgniteImpl(val ignite: Ignite) : PerperDictionaries {
         return dictionaryCache(dictionary).sizeAsync().await()!!
     }
 
-    override fun listItems(dictionary: PerperDictionary): Flow<Pair<Any, Any>> {
-        return dictionaryCache(dictionary).iterateQuery(ScanQuery<Any, Any>())
+    override fun listItems(dictionary: PerperDictionary): Flow<Pair<IgniteAny, IgniteAny>> {
+        return dictionaryCache(dictionary).iterateQuery(ScanQuery<Any, Any>()).map({ Pair(IgniteAny(it.first), IgniteAny(it.second)) })
     }
 
-    override fun sqlQuery(dictionary: PerperDictionary, sql: String) = flow<List<Any?>> {
+    override fun sqlQuery(dictionary: PerperDictionary, sql: String) = flow<List<IgniteAny?>> {
         val queryCursor = dictionaryCache(dictionary).query(SqlFieldsQuery(sql))
         try {
             for (row in queryCursor) {
-                emit(row)
+                emit(row.map(::IgniteAny))
             }
         } finally {
             queryCursor.close()
