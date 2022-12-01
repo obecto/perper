@@ -6,7 +6,9 @@ using Apache.Ignite.Core;
 using Apache.Ignite.Core.Binary;
 using Apache.Ignite.Core.Client;
 
+using Grpc.Core;
 using Grpc.Net.Client;
+using Grpc.Net.Client.Configuration;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -37,16 +39,22 @@ namespace Perper.Application
                 services.AddSingleton<IGrpc2Caster, DefaultGrpc2Caster>();
 
                 services.AddSingleton<Grpc2TypeResolver>();
-                services.AddSingleton<IPerperAgents, DummyInstances>();
-                services.AddSingleton<IPerperExecutions, Grpc2Executions>();
-                services.AddSingleton<IPerperStates, Grpc2States>();
-                services.AddSingleton<IPerperStreams, Grpc2Streams>();
 
-                //services.AddSingleton<FabricService>();
-                //services.AddSingleton<IPerperAgents, DummyInstances>();
-                //services.AddSingleton<IPerperExecutions>(provider => provider.GetRequiredService<FabricService>());
-                //services.AddSingleton<IPerperStates>(provider => provider.GetRequiredService<FabricService>());
-                //services.AddSingleton<IPerperStreams>(provider => provider.GetRequiredService<FabricService>());
+                if (Environment.GetEnvironmentVariable("USEFABRICSERVICE") == "true")
+                {
+                    services.AddSingleton<FabricService>();
+                    services.AddSingleton<IPerperAgents, DummyInstances>();
+                    services.AddSingleton<IPerperExecutions>(provider => provider.GetRequiredService<FabricService>());
+                    services.AddSingleton<IPerperStates>(provider => provider.GetRequiredService<FabricService>());
+                    services.AddSingleton<IPerperStreams>(provider => provider.GetRequiredService<FabricService>());
+                }
+                else
+                {
+                    services.AddSingleton<IPerperAgents, DummyInstances>();
+                    services.AddSingleton<IPerperExecutions, Grpc2Executions>();
+                    services.AddSingleton<IPerperStates, Grpc2States>();
+                    services.AddSingleton<IPerperStreams, Grpc2Streams>();
+                }
 
                 services.AddSingleton<IPerper, Perper>();
                 services.AddSingleton<PerperListenerFilter>();
@@ -89,6 +97,29 @@ namespace Perper.Application
                         igniteConfiguration.Endpoints.Add(perperOptions.Value.IgniteEndpoint);
                     });
 
+
+                services.AddOptions<GrpcChannelOptions>()
+                    .Configure(grpcChannelOptions =>
+                    {
+                        grpcChannelOptions.ServiceConfig = new()
+                        {
+                            MethodConfigs = {
+                                new ()
+                                {
+                                    Names = { MethodName.Default },
+                                    RetryPolicy = new ()
+                                    {
+                                        MaxAttempts = 5,
+                                        InitialBackoff = TimeSpan.FromSeconds(1),
+                                        MaxBackoff = TimeSpan.FromSeconds(5),
+                                        BackoffMultiplier = 1.5,
+                                        RetryableStatusCodes = { StatusCode.Unavailable }
+                                    }
+                                }
+                            }
+                        };
+                    });
+
                 services.AddSingleton(provider =>
                 {
                     var igniteConfiguration = provider.GetRequiredService<IOptions<IgniteClientConfiguration>>().Value;
@@ -103,8 +134,9 @@ namespace Perper.Application
                 services.AddSingleton(provider =>
                 {
                     AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+                    var grpcChannelOptions = provider.GetRequiredService<IOptions<GrpcChannelOptions>>().Value;
                     var perperConfiguration = provider.GetRequiredService<IOptions<PerperConfiguration>>().Value;
-                    return GrpcChannel.ForAddress(perperConfiguration.FabricEndpoint);
+                    return GrpcChannel.ForAddress(perperConfiguration.FabricEndpoint, grpcChannelOptions);
                 });
             });
         }

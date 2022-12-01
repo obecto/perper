@@ -35,7 +35,7 @@
     <PackageReference Include="Google.Protobuf" Version="3.21.7" />
     <PackageReference Include="System.Threading.Channels" Version="4.7.0" />
     <PackageReference Include="System.Linq.Async" Version="4.1.1" />
-    <PackageReference Include="Grpc.Net.Client" Version="2.32.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.50.0" />
   </ItemGroup>
 
   <ItemGroup>

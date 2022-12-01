@@ -115,7 +115,7 @@ namespace Perper.Protocol
                         ReserveNext = batchSize,
                         WorkGroup = Configuration.Workgroup,
                         Filter = executionsRequest
-                    }).ConfigureAwait(false);
+                    }, cancellationToken).ConfigureAwait(false);
 
                     while (await stream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
                     {
@@ -126,7 +126,7 @@ namespace Perper.Protocol
                             await stream.RequestStream.WriteAsync(new ReservedExecutionsRequest
                             {
                                 ReserveNext = 1, // TODO: With larger batch sizes, send only when the batch is about to run out.
-                            }).ConfigureAwait(false);
+                            }, cancellationToken).ConfigureAwait(false);
                         }
                     }
                 }
