@@ -16,7 +16,6 @@ service FabricStatesDictionary {
   rpc Create(StatesDictionaryCreateRequest) returns (google.protobuf.Empty) {}
   //rpc GetInstanceDictionary () returns () {}
 
-
   rpc Operate(StatesDictionaryOperateRequest) returns (StatesDictionaryOperateResponse) {}
 
   rpc ListItems(StatesDictionaryListItemsRequest) returns (stream StatesDictionaryListItemsResponse) {}
@@ -34,17 +33,17 @@ message StatesDictionaryCreateRequest {
 }
 
 /** StatesDictionaryOperateRequest operations guide:
- * Set/Put: set_new_value + new_value
- * SetIfNotChanged/Replace`3: set_new_value + new_value + compare_existing_value + expected_existing_value
- * SetIfNotExisting/PutIfAbsent: set_new_value + new_value + compare_existing_value
- * SetIfExisting/Replace`2: no matching operation
- * Remove: set_new_value
- * RemoveIfNotChanged/Remove`3: set_new_value + compare_existing_value + expected_existing_value
- * Get: get_existing_value
- * GetAndSet: get_existing_value + set_new_value + new_value
- * GetAnd...: get_existing_value + ...
- * ContainsKey: (nothing)
- */
+   * Set/Put: set_new_value + new_value
+   * SetIfNotChanged/Replace`3: set_new_value + new_value + compare_existing_value + expected_existing_value
+   * SetIfNotExisting/PutIfAbsent: set_new_value + new_value + compare_existing_value
+   * SetIfExisting/Replace`2: no matching operation
+   * Remove: set_new_value
+   * RemoveIfNotChanged/Remove`3: set_new_value + compare_existing_value + expected_existing_value
+   * Get: get_existing_value
+   * GetAndSet: get_existing_value + set_new_value + new_value
+   * GetAnd...: get_existing_value + ...
+   * ContainsKey: (nothing)
+*/
 message StatesDictionaryOperateRequest {
   perper.grpc2_model.PerperDictionary dictionary = 1;
 
@@ -100,7 +99,6 @@ service FabricStatesList {
   rpc Create(StatesListCreateRequest) returns (google.protobuf.Empty) {}
   //rpc GetInstanceChildrenList () returns () {}
 
-
   rpc Operate(StatesListOperateRequest) returns (StatesListOperateResponse) {}
   rpc Locate(StatesListLocateRequest) returns (StatesListLocateResponse) {}
 
@@ -117,16 +115,17 @@ message StatesListCreateRequest {
 
   perper.grpc2_model.CacheOptions cache_options = 20;
 }
+
 /** StatesListOperateRequest operations guide
- * Get: index/raw_index + get_values + values_count
- * PushFront: at_front + insert_values
- * PushBack: at_back + insert_values
- * PopFront: at_front + values_count + get_values + remove_values
- * PopBack: at_back + values_count + get_values + remove_values
- * Set: index/raw_index + values_count + remove_values + insert_values*1
- * Insert: index/raw_index + insert_values
- * Remove: index/raw_index + values_count + remove_values
- */
+   * Get: index/raw_index + get_values + values_count
+   * PushFront: at_front + insert_values
+   * PushBack: at_back + insert_values
+   * PopFront: at_front + values_count + get_values + remove_values
+   * PopBack: at_back + values_count + get_values + remove_values
+   * Set: index/raw_index + values_count + remove_values + insert_values*1
+   * Insert: index/raw_index + insert_values
+   * Remove: index/raw_index + values_count + remove_values
+*/
 message StatesListOperateRequest {
   perper.grpc2_model.PerperList list = 1;
 

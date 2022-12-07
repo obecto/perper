@@ -59,7 +59,6 @@ message StreamsListenItemsRequest {
   bool start_from_latest = 10;
   //string sql_where = 11;
 
-
   bool local_to_data = 101;
 }
 
@@ -80,14 +79,14 @@ message StreamsMoveListenerRequest {
 }
 
 /*
-message QuerySQLStreamItemsRequest {
-  perper.grpc2_model.PerperStream stream = 1;
-  string sql = 2;
-}
-
-message QuerySQLStreamItemsResponse {
-  repeated google.protobuf.Any sql_result_values = 1;
-}
+   message QuerySQLStreamItemsRequest {
+   perper.grpc2_model.PerperStream stream = 1;
+   string sql = 2;
+   }
+   
+   message QuerySQLStreamItemsResponse {
+   repeated google.protobuf.Any sql_result_values = 1;
+   }
 */
 
 message StreamsDeleteRequest {
