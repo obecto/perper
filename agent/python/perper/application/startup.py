@@ -1,7 +1,4 @@
 import traceback
-from pyignite import Client
-from pyignite.utils import is_hinted
-from pyignite.exceptions import ReconnectError
 import grpc
 from ..extensions.context_vars import fabric_service, fabric_execution
 from ..protocol import FabricService, FabricExecution, TaskCollection
@@ -12,7 +9,7 @@ from .context import StartupContext, startup_context, run_init_delegate, registe
 def run_notebook(*, agent="notebook", instance="notebook-Main"):  # It is important that this function is not async, as it sets context
     fabric_service.set(establish_connection())
     startup_context.set(StartupContext(agent, instance, TaskCollection()))
-    fabric_execution.set(FabricExecution(agent, instance, "Main", fabric_service.get().generate_name(agent)))
+    fabric_execution.set(FabricExecution(agent, instance, "Main", fabric_service.get().generate_name(agent), []))
 
 
 async def run(agent, delegates={}, *, use_instances=False, use_deploy_init=False):

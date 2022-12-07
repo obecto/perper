@@ -1,24 +1,24 @@
 import asyncio
+
+from grpc2_model_pb2 import PerperInstance
 from .context_vars import fabric_execution, fabric_service
-from ..model import PerperAgent
 
 startup_function_name = "Start"
 stop_function_name = "Stop"
 fallback_startup_function_name = "Startup"
 
 
-def get_agent():
-    return PerperAgent(fabric_execution.get().agent, fabric_execution.get().instance)
+def get_agent_instance() -> PerperInstance:
+    return PerperInstance(fabric_execution.get().agent, fabric_execution.get().instance)
 
 
 def call(delegate, *parameters):
-    return call_agent(get_agent(), delegate, *parameters)
+    return call_agent(get_agent_instance(), delegate, *parameters)
 
 
 async def start_agent(agent, *parameters):
-    instance = fabric_service.get().generate_name(agent)
-    fabric_service.get().create_instance(instance, agent)
-    model = PerperAgent(agent, instance)
+    
+    model = await fabric_service.get().create_instance(agent)
     result = await call_agent(model, startup_function_name, *parameters)
 
     if result is None:
@@ -27,15 +27,14 @@ async def start_agent(agent, *parameters):
     return (model, result)
 
 
-async def call_agent(agent, delegate, *parameters):
-    execution = fabric_service.get().generate_name(delegate)
-
+async def call_agent(instance: PerperInstance, delegate, *parameters):
+    execution = None
     try:
-        fabric_service.get().create_execution(execution, agent.agent, agent.instance, delegate, parameters)
-        await fabric_service.get().wait_execution_finished(execution)
-        result = fabric_service.get().read_execution_result(execution)
+        execution = await fabric_service.get().create_execution(instance, delegate, parameters)
+        result = await fabric_service.get().read_execution_result(execution)
     finally:
-        fabric_service.get().remove_execution(execution)
+        if execution is not None:
+            await fabric_service.get().remove_execution(execution)
 
     if result is None:
         return None
@@ -45,6 +44,6 @@ async def call_agent(agent, delegate, *parameters):
         return tuple(result)
 
 
-async def destroy_agent(agent):
-    await call_agent(agent, stop_function_name)
-    fabric_service.get().remove_instance(agent.instance)
+async def destroy_agent(instance: PerperInstance):
+    await call_agent(instance, stop_function_name)
+    await fabric_service.get().remove_instance(instance)

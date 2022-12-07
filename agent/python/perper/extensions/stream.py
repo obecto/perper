@@ -2,8 +2,8 @@ import random
 import sys
 import asyncio
 import attr
-from ..model import PerperStream
-from ..protocol.ignite_extensions import create_query_entity, create_query_field
+
+from grpc2_model_pb2 import PerperExecution, PerperInstance, PerperStream
 from .context_vars import fabric_service, fabric_execution
 
 
@@ -15,48 +15,59 @@ def create_blank_stream(*, ephemeral=True, packed=False, index=None):
     return _start_stream("", None, False, ephemeral, packed, _index_to_query_entities(index))
 
 
-def declare_stream(delegate, *, action=False, ephemeral=True, packed=False, index=None):
-    stream = _start_stream(delegate, None, action, ephemeral, packed, _index_to_query_entities(index))
+async def declare_stream(delegate, *, action=False, ephemeral=True, packed=False, index=None):
+    stream = await _start_stream(delegate, None, action, ephemeral, packed, _index_to_query_entities(index))
 
-    def start(*parameters):
-        fabric_service.get().create_execution(stream.stream, fabric_execution.get().agent, fabric_execution.get().instance, delegate, parameters)
+    async def start(*parameters):
+        await fabric_service.get().create_execution(
+            PerperInstance(agent=fabric_execution.get().agent, instance=fabric_execution.get().instance),
+            f"{delegate}-stream",
+            parameters)
 
     return (stream, start)
 
 
 def _index_to_query_entities(index):
-    def convert(i):
-        if isinstance(i, tuple):
-            (type_name, type_fields) = i
-            if isinstance(type_fields, dict):
-                type_fields = type_fields.items()
-            return create_query_entity(
-                value_type_name=type_name, query_fields=[create_query_field(field_name, field_type) for (field_name, field_type) in type_fields]
-            )
-        return i
+    if index is not None:
+        raise NotImplementedError("Querying not implemented yet for GRPC")
 
-    if index is None:
-        return []
-    elif isinstance(index, list):
-        return [convert(i) for i in index]
-    else:
-        return [convert(index)]
+    return None
+    # def convert(i):
+    #     if isinstance(i, tuple):
+    #         (type_name, type_fields) = i
+    #         if isinstance(type_fields, dict):
+    #             type_fields = type_fields.items()
+    #         return create_query_entity(
+    #             value_type_name=type_name, query_fields=[create_query_field(field_name, field_type) for (field_name, field_type) in type_fields]
+    #         )
+    #     return i
+
+    # if index is None:
+    #     return []
+    # elif isinstance(index, list):
+    #     return [convert(i) for i in index]
+    # else:
+    #     return [convert(index)]
 
 
-def _start_stream(delegate, parameters, action, ephemeral, packed, query_entities):
-    stream = fabric_service.get().generate_name(delegate)
+async def _start_stream(delegate, parameters, action, ephemeral, packed, query_entities):
+    stream_base_name = fabric_service.get().generate_name(delegate)
+    stream = PerperStream(stream=stream_base_name, start_key=-1, stride=1)
 
-    fabric_service.get().create_stream(stream, query_entities)
+    await fabric_service.get().create_stream(stream=stream, ephemeral=ephemeral, action=action, options=None, query_entities=query_entities)
 
     if not ephemeral:
-        fabric_service.get().set_stream_listener_position(f"{stream}-persist", stream, fabric_service.get().LISTENER_PERSIST_ALL)
+        await fabric_service.get().set_stream_listener_position(f"{stream_base_name}-persist", stream, fabric_service.get().LISTENER_PERSIST_ALL)
     elif action:
-        fabric_service.get().set_stream_listener_position(f"{stream}-trigger", stream, fabric_service.get().LISTENER_JUST_TRIGGER)
+        await fabric_service.get().set_stream_listener_position(f"{stream_base_name}-trigger", stream, fabric_service.get().LISTENER_JUST_TRIGGER)
 
     if parameters != None:
-        fabric_service.get().create_execution(stream, fabric_execution.get().agent, fabric_execution.get().instance, delegate, parameters)
+        await fabric_service.get().create_execution(
+            PerperInstance(agent=fabric_execution.get().agent, instance=fabric_execution.get().instance),
+            f"{delegate}-stream",
+            parameters)
 
-    return PerperStream(stream=stream, startIndex=-1, stride=1 if packed else 0, localToData=False)
+    return stream
 
 
 def replay_stream(stream, replay=True, replay_from=0):
@@ -78,16 +89,13 @@ async def enumerate_stream(stream):
 
 async def enumerate_stream_with_keys(stream):
     listener = fabric_service.get().generate_name(stream.stream)  # TODO: keep state while iterating
-
-    keys = await fabric_service.get().enumerate_stream_item_keys(stream.stream, stream.startIndex, stream.stride, stream.localToData)
-    fabric_service.get().set_stream_listener_position(listener, stream.stream, fabric_service.get().LISTENER_PERSIST_ALL)
+    stream_with_keys = await fabric_service.get().enumerate_stream_items(stream.stream, stream.startIndex, stream.stride, stream.localToData)
 
     try:
-        async for key in keys:
-            fabric_service.get().set_stream_listener_position(listener, stream.stream, key)
-            yield (key, fabric_service.get().read_stream_item(stream.stream, key))
+        async for (key, value) in stream_with_keys:
+            yield (key, value)
     finally:
-        fabric_service.get().remove_stream_listener(listener)
+        await fabric_service.get().remove_stream_listener(stream, listener)
 
 
 async def query_stream(stream, type_name, sql_condition, *sql_parameters):
@@ -114,6 +122,6 @@ def query_stream_sync(stream, type_name, sql_condition, *sql_parameters):
     return helper(fabric_service.get().query_stream_sql(sql, sql_parameters))
 
 
-def destroy_stream(stream):
-    fabric_service.get().remove_execution(stream.stream)
-    fabric_service.get().remove_stream(stream.stream)
+async def destroy_stream(stream):
+    # TODO Potentially hanging execution?
+    await fabric_service.get().remove_stream(stream)

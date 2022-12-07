@@ -1,4 +1,6 @@
 from contextvars import ContextVar
 
-fabric_service = ContextVar("fabric_service")
-fabric_execution = ContextVar("fabric_execution")
+from agent.python.perper.protocol.fabric_service import FabricExecution, FabricService
+
+fabric_service: ContextVar[FabricService] = ContextVar("fabric_service")
+fabric_execution: ContextVar[FabricExecution] = ContextVar("fabric_execution")

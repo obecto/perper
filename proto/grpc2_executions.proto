@@ -5,7 +5,7 @@ package perper.grpc2;
 import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/empty.proto";
-import "grpc2.model.proto";
+import "grpc2_model.proto";
 import "grpc2.proto";
 
 option csharp_namespace = "Perper.Protocol.Protobuf2";
@@ -36,23 +36,23 @@ service FabricExecutions {
 }
 
 message ExecutionsCreateRequest {
-  perper.grpc2.model.PerperExecution execution = 1;
-  perper.grpc2.model.PerperInstance instance = 2;
+  perper.grpc2_model.PerperExecution execution = 1;
+  perper.grpc2_model.PerperInstance instance = 2;
   string delegate = 3;
 
   repeated google.protobuf.Any arguments = 6;
 }
 
 message ExecutionsListenRequest {
-  perper.grpc2.model.PerperInstance instance_filter = 2;
+  perper.grpc2_model.PerperInstance instance_filter = 2;
   string delegate = 3;
 
   bool local_to_data = 101;
 }
 
 message ExecutionsListenResponse {
-  perper.grpc2.model.PerperExecution execution = 1;
-  perper.grpc2.model.PerperInstance instance = 2;
+  perper.grpc2_model.PerperExecution execution = 1;
+  perper.grpc2_model.PerperInstance instance = 2;
   string delegate = 4;
 
   bool deleted = 5;
@@ -63,7 +63,7 @@ message ExecutionsListenResponse {
 }
 
 message ExecutionsReserveRequest {
-  perper.grpc2.model.PerperExecution execution = 1;
+  perper.grpc2_model.PerperExecution execution = 1;
 
   string workgroup = 10;
 }
@@ -76,14 +76,14 @@ message ExecutionsListenAndReserveRequest {
 }
 
 message ExecutionsCompleteRequest {
-  perper.grpc2.model.PerperExecution execution = 1;
+  perper.grpc2_model.PerperExecution execution = 1;
 
   repeated google.protobuf.Any results = 6;
-  perper.grpc2.model.PerperError error = 7;
+  perper.grpc2_model.PerperError error = 7;
 }
 
 message ExecutionsGetResultRequest {
-  perper.grpc2.model.PerperExecution execution = 1;
+  perper.grpc2_model.PerperExecution execution = 1;
 
   bool wait_for_creation = 5;
 }
@@ -91,11 +91,11 @@ message ExecutionsGetResultRequest {
 message ExecutionsGetResultResponse {
   bool deleted = 5;
   repeated google.protobuf.Any results = 6;
-  perper.grpc2.model.PerperError error = 7;
+  perper.grpc2_model.PerperError error = 7;
 }
 
 message ExecutionsDeleteRequest {
-  perper.grpc2.model.PerperExecution execution = 1;
+  perper.grpc2_model.PerperExecution execution = 1;
 }
 
 service FabricInstances {
@@ -107,11 +107,11 @@ service FabricInstances {
 }
 
 message InstancesCreateAndStartRequest {
-  perper.grpc2.model.PerperInstance instance = 2;
+  perper.grpc2_model.PerperInstance instance = 2;
   repeated google.protobuf.Any arguments = 6;
 }
 
 message InstancesStopAndDeleteRequest {
-  perper.grpc2.model.PerperInstance instance = 2;
+  perper.grpc2_model.PerperInstance instance = 2;
   repeated google.protobuf.Any stop_parameters = 6;
 }

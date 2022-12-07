@@ -5,7 +5,7 @@ package perper.grpc2;
 import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/empty.proto";
-import "grpc2.model.proto";
+import "grpc2_model.proto";
 
 option csharp_namespace = "Perper.Protocol.Protobuf2";
 option go_package = "github.com/obecto/perper/scaler/proto2";
@@ -31,18 +31,18 @@ service FabricStreams {
 }
 
 message StreamsCreateRequest {
-  perper.grpc2.model.PerperStream stream = 1;
+  perper.grpc2_model.PerperStream stream = 1;
 
-  perper.grpc2.model.CacheOptions cache_options = 10;
+  perper.grpc2_model.CacheOptions cache_options = 10;
   bool ephemeral = 11;
 }
 
 message StreamsWaitForListenerRequest {
-  perper.grpc2.model.PerperStream stream = 1;
+  perper.grpc2_model.PerperStream stream = 1;
 }
 
 message StreamsWriteItemRequest {
-  perper.grpc2.model.PerperStream stream = 1;
+  perper.grpc2_model.PerperStream stream = 1;
 
   oneof item_key {
     int64 key = 2;
@@ -52,7 +52,7 @@ message StreamsWriteItemRequest {
 }
 
 message StreamsListenItemsRequest {
-  perper.grpc2.model.PerperStream stream = 1;
+  perper.grpc2_model.PerperStream stream = 1;
 
   string listener_name = 2;
 
@@ -69,7 +69,7 @@ message StreamsListenItemsResponse {
 }
 
 message StreamsMoveListenerRequest {
-  perper.grpc2.model.PerperStream stream = 1;
+  perper.grpc2_model.PerperStream stream = 1;
 
   string listener_name = 2;
 
@@ -81,7 +81,7 @@ message StreamsMoveListenerRequest {
 
 /*
 message QuerySQLStreamItemsRequest {
-  perper.grpc2.model.PerperStream stream = 1;
+  perper.grpc2_model.PerperStream stream = 1;
   string sql = 2;
 }
 
@@ -91,5 +91,5 @@ message QuerySQLStreamItemsResponse {
 */
 
 message StreamsDeleteRequest {
-  perper.grpc2.model.PerperStream stream = 1;
+  perper.grpc2_model.PerperStream stream = 1;
 }
