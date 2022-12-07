@@ -30,9 +30,7 @@ async def start_agent(agent, *parameters):
 async def call_agent(instance: PerperInstance, delegate, *parameters):
     execution = None
     try:
-        execution = await fabric_service.get().create_execution(
-            instance, delegate, parameters
-        )
+        execution = await fabric_service.get().create_execution(instance, delegate, parameters)
         result = await fabric_service.get().read_execution_result(execution)
     finally:
         if execution is not None:

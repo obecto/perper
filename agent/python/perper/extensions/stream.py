@@ -7,26 +7,16 @@ from grpc2_model_pb2 import PerperExecution, PerperInstance, PerperStream
 from .context_vars import fabric_service, fabric_execution
 
 
-def start_stream(
-    delegate, *parameters, action=False, ephemeral=True, packed=False, index=None
-):
-    return _start_stream(
-        delegate, parameters, action, ephemeral, packed, _index_to_query_entities(index)
-    )
+def start_stream(delegate, *parameters, action=False, ephemeral=True, packed=False, index=None):
+    return _start_stream(delegate, parameters, action, ephemeral, packed, _index_to_query_entities(index))
 
 
 def create_blank_stream(*, ephemeral=True, packed=False, index=None):
-    return _start_stream(
-        "", None, False, ephemeral, packed, _index_to_query_entities(index)
-    )
+    return _start_stream("", None, False, ephemeral, packed, _index_to_query_entities(index))
 
 
-async def declare_stream(
-    delegate, *, action=False, ephemeral=True, packed=False, index=None
-):
-    stream = await _start_stream(
-        delegate, None, action, ephemeral, packed, _index_to_query_entities(index)
-    )
+async def declare_stream(delegate, *, action=False, ephemeral=True, packed=False, index=None):
+    stream = await _start_stream(delegate, None, action, ephemeral, packed, _index_to_query_entities(index))
 
     async def start(*parameters):
         await fabric_service.get().create_execution(
@@ -64,9 +54,7 @@ def _index_to_query_entities(index):
     #     return [convert(index)]
 
 
-async def _start_stream(
-    delegate, parameters, action, ephemeral, packed, query_entities
-):
+async def _start_stream(delegate, parameters, action, ephemeral, packed, query_entities):
     stream_base_name = fabric_service.get().generate_name(delegate)
     stream = PerperStream(stream=stream_base_name, start_key=-1, stride=1)
 
@@ -122,12 +110,8 @@ async def enumerate_stream(stream):
 
 
 async def enumerate_stream_with_keys(stream):
-    listener = fabric_service.get().generate_name(
-        stream.stream
-    )  # TODO: keep state while iterating
-    stream_with_keys = await fabric_service.get().enumerate_stream_items(
-        stream.stream, stream.startIndex, stream.stride, stream.localToData
-    )
+    listener = fabric_service.get().generate_name(stream.stream)  # TODO: keep state while iterating
+    stream_with_keys = await fabric_service.get().enumerate_stream_items(stream.stream, stream.startIndex, stream.stride, stream.localToData)
 
     try:
         async for (key, value) in stream_with_keys:
@@ -137,9 +121,7 @@ async def enumerate_stream_with_keys(stream):
 
 
 async def query_stream(stream, type_name, sql_condition, *sql_parameters):
-    iterator = iter(
-        query_stream_sync(stream, type_name, sql_condition, *sql_parameters)
-    )
+    iterator = iter(query_stream_sync(stream, type_name, sql_condition, *sql_parameters))
     loop = asyncio.get_running_loop()  # via https://stackoverflow.com/a/61774972
     DONE = object()
     while True:

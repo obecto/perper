@@ -26,9 +26,7 @@ from .proto import grpc2_streams_pb2
 from grpc2_streams_pb2_grpc import FabricStreamsStub
 
 
-FabricExecution = namedtuple(
-    "Execution", ["agent", "instance", "delegate", "execution", "arguments"]
-)
+FabricExecution = namedtuple("Execution", ["agent", "instance", "delegate", "execution", "arguments"])
 
 
 class factorydict(dict):
@@ -61,11 +59,7 @@ class FabricService:
     @classmethod
     def get_current_ticks(cls):
         dt = datetime.now(timezone.utc)
-        t = (
-            (dt - datetime(1970, 1, 1, tzinfo=timezone.utc))
-            // timedelta(microseconds=1)
-            * 10
-        )
+        t = (dt - datetime(1970, 1, 1, tzinfo=timezone.utc)) // timedelta(microseconds=1) * 10
         return t
 
     @classmethod
@@ -98,9 +92,7 @@ class FabricService:
 
     # EXECUTIONS:
 
-    async def create_execution(
-        self, instance: PerperInstance, delegate, parameters
-    ) -> PerperExecution:
+    async def create_execution(self, instance: PerperInstance, delegate, parameters) -> PerperExecution:
         execution = PerperExecution(execution=self.generate_name(delegate))
 
         execution_create_request = grpc2_executions_pb2.ExecutionsCreateRequest(
@@ -109,70 +101,38 @@ class FabricService:
             delegate=delegate,
             arguments=parameters,
         )
-        await self.fabric_executions_stub.Create(
-            execution_create_request, wait_for_ready=True
-        )
+        await self.fabric_executions_stub.Create(execution_create_request, wait_for_ready=True)
         return execution
 
     async def remove_execution(self, execution: PerperExecution):
-        execution_delete_request = grpc2_executions_pb2.ExecutionsDeleteRequest(
-            execution=execution
-        )
-        await self.fabric_executions_stub.Delete(
-            execution_delete_request, wait_for_ready=True
-        )
+        execution_delete_request = grpc2_executions_pb2.ExecutionsDeleteRequest(execution=execution)
+        await self.fabric_executions_stub.Delete(execution_delete_request, wait_for_ready=True)
 
     async def write_execution_finished(self, execution: PerperExecution):
-        execution_complete_request = grpc2_executions_pb2.ExecutionsCompleteRequest(
-            execution=execution
-        )
-        await self.fabric_executions_stub.Complete(
-            execution_complete_request, wait_for_ready=True
-        )
+        execution_complete_request = grpc2_executions_pb2.ExecutionsCompleteRequest(execution=execution)
+        await self.fabric_executions_stub.Complete(execution_complete_request, wait_for_ready=True)
 
     async def write_execution_result(self, execution: PerperExecution, result):
-        execution_complete_request = grpc2_executions_pb2.ExecutionsCompleteRequest(
-            execution=execution, results=result
-        )
-        await self.fabric_executions_stub.Complete(
-            execution_complete_request, wait_for_ready=True
-        )
+        execution_complete_request = grpc2_executions_pb2.ExecutionsCompleteRequest(execution=execution, results=result)
+        await self.fabric_executions_stub.Complete(execution_complete_request, wait_for_ready=True)
 
-    async def write_execution_error(
-        self, execution: PerperExecution, error: PerperError
-    ):
-        execution_complete_request = grpc2_executions_pb2.ExecutionsCompleteRequest(
-            execution=execution, error=error
-        )
-        await self.fabric_executions_stub.Complete(
-            execution_complete_request, wait_for_ready=True
-        )
+    async def write_execution_error(self, execution: PerperExecution, error: PerperError):
+        execution_complete_request = grpc2_executions_pb2.ExecutionsCompleteRequest(execution=execution, error=error)
+        await self.fabric_executions_stub.Complete(execution_complete_request, wait_for_ready=True)
 
-    async def read_execution_error_and_result(
-        self, execution: PerperExecution
-    ) -> tuple[PerperError, RepeatedCompositeFieldContainer[Any]]:
-        execution_result_request = grpc2_executions_pb2.ExecutionsGetResultRequest(
-            execution=execution
-        )
-        execution_result_response: grpc2_executions_pb2.ExecutionsGetResultResponse = (
-            await self.fabric_executions_stub.GetResult(
-                execution_result_request, wait_for_ready=True
-            )
+    async def read_execution_error_and_result(self, execution: PerperExecution) -> tuple[PerperError, RepeatedCompositeFieldContainer[Any]]:
+        execution_result_request = grpc2_executions_pb2.ExecutionsGetResultRequest(execution=execution)
+        execution_result_response: grpc2_executions_pb2.ExecutionsGetResultResponse = await self.fabric_executions_stub.GetResult(
+            execution_result_request, wait_for_ready=True
         )
         return (execution_result_response.error, execution_result_response.results)
 
-    async def listen_executions(
-        self, instance: PerperInstance, delegate, reserve=True, work_group=""
-    ):
+    async def listen_executions(self, instance: PerperInstance, delegate, reserve=True, work_group=""):
         async def helper():
-            execution_listen_request = grpc2_executions_pb2.ExecutionsListenRequest(
-                instance_filter=instance, delegate=delegate
-            )
+            execution_listen_request = grpc2_executions_pb2.ExecutionsListenRequest(instance_filter=instance, delegate=delegate)
 
             if reserve:
-                execution_stream = self.fabric_executions_stub.ListenAndReserve(
-                    wait_for_ready=True
-                )
+                execution_stream = self.fabric_executions_stub.ListenAndReserve(wait_for_ready=True)
 
                 await execution_stream.write(
                     grpc2_executions_pb2.ExecutionsListenAndReserveRequest(
@@ -185,22 +145,14 @@ class FabricService:
                 async for proto in execution_stream:
                     yield proto
                     if not proto.deleted and proto.execution != "":
-                        await execution_stream.write(
-                            grpc2_executions_pb2.ExecutionsListenAndReserveRequest(
-                                reserve_next=1
-                            )
-                        )
+                        await execution_stream.write(grpc2_executions_pb2.ExecutionsListenAndReserveRequest(reserve_next=1))
             else:
-                async for proto in self.fabric_executions_stub.Listen(
-                    execution_listen_request, wait_for_ready=True
-                ):
+                async for proto in self.fabric_executions_stub.Listen(execution_listen_request, wait_for_ready=True):
                     yield proto
 
         async for proto in helper():
             if proto.deleted:
-                value = self.execution_tasks.setdefault(
-                    proto.execution, FabricService.CANCELLED
-                )
+                value = self.execution_tasks.setdefault(proto.execution, FabricService.CANCELLED)
                 if value is not FabricService.CANCELLED:
                     value.cancel()
                     self.execution_tasks[proto.execution] = FabricService.CANCELLED
@@ -217,15 +169,11 @@ class FabricService:
     # STATE:
 
     async def create_state(self, dictionary: PerperDictionary, options=None):
-        request = grpc2_states_pb2.StatesDictionaryCreateRequest(
-            dictionary=dictionary, cache_options=options
-        )
+        request = grpc2_states_pb2.StatesDictionaryCreateRequest(dictionary=dictionary, cache_options=options)
         await self.fabric_dictionary_stub.Create(request, wait_for_ready=True)
 
     async def clear_state(self, dictionary: PerperDictionary):
-        request = grpc2_states_pb2.StatesDictionaryDeleteRequest(
-            dictionary=dictionary, keep_cache=True
-        )
+        request = grpc2_states_pb2.StatesDictionaryDeleteRequest(dictionary=dictionary, keep_cache=True)
         await self.fabric_dictionary_stub.Delete(request, wait_for_ready=True)
 
     async def destroy_state(self, dictionary: PerperDictionary):
@@ -233,30 +181,18 @@ class FabricService:
         await self.fabric_dictionary_stub.Delete(request, wait_for_ready=True)
 
     async def set_state_value(self, dictionary: PerperDictionary, key, value) -> bool:
-        request = grpc2_states_pb2.StatesDictionaryOperateRequest(
-            dictionary=dictionary, key=key, set_new_value=True, new_value=value
-        )
-        response: grpc2_states_pb2.StatesDictionaryOperateResponse = (
-            await self.fabric_dictionary_stub.Operate(request, wait_for_ready=True)
-        )
+        request = grpc2_states_pb2.StatesDictionaryOperateRequest(dictionary=dictionary, key=key, set_new_value=True, new_value=value)
+        response: grpc2_states_pb2.StatesDictionaryOperateResponse = await self.fabric_dictionary_stub.Operate(request, wait_for_ready=True)
         return response.operation_successful
 
     async def remove_state_value(self, dictionary: PerperDictionary, key) -> bool:
-        request = grpc2_states_pb2.StatesDictionaryOperateRequest(
-            dictionary=dictionary, key=key, set_new_value=True, new_value=None
-        )
-        response: grpc2_states_pb2.StatesDictionaryOperateResponse = (
-            await self.fabric_dictionary_stub.Operate(request, wait_for_ready=True)
-        )
+        request = grpc2_states_pb2.StatesDictionaryOperateRequest(dictionary=dictionary, key=key, set_new_value=True, new_value=None)
+        response: grpc2_states_pb2.StatesDictionaryOperateResponse = await self.fabric_dictionary_stub.Operate(request, wait_for_ready=True)
         return response.operation_successful
 
     async def get_state_value(self, dictionary: PerperDictionary, key, default=None):
-        request = grpc2_states_pb2.StatesDictionaryOperateRequest(
-            dictionary=dictionary, key=key, get_existing_value=True
-        )
-        response: grpc2_states_pb2.StatesDictionaryOperateResponse = (
-            await self.fabric_dictionary_stub.Operate(request, wait_for_ready=True)
-        )
+        request = grpc2_states_pb2.StatesDictionaryOperateRequest(dictionary=dictionary, key=key, get_existing_value=True)
+        response: grpc2_states_pb2.StatesDictionaryOperateResponse = await self.fabric_dictionary_stub.Operate(request, wait_for_ready=True)
         result = response.previous_value
         if result is None:
             return default
@@ -272,9 +208,7 @@ class FabricService:
         options=None,
         query_entities=[],
     ):
-        request = grpc2_streams_pb2.StreamsCreateRequest(
-            stream=stream, ephemeral=ephemeral, cache_options=options
-        )
+        request = grpc2_streams_pb2.StreamsCreateRequest(stream=stream, ephemeral=ephemeral, cache_options=options)
         await self.fabric_streams_stub.Create(request, wait_for_ready=True)
 
         if action:
@@ -283,47 +217,31 @@ class FabricService:
                 listener_name=f"{stream}-trigger",
                 reached_key=self.LISTENER_JUST_TRIGGER,
             )
-            await self.fabric_streams_stub.MoveListener(
-                move_listener_request, wait_for_ready=True
-            )
+            await self.fabric_streams_stub.MoveListener(move_listener_request, wait_for_ready=True)
 
     async def remove_stream(self, stream: PerperStream):
         request = grpc2_streams_pb2.StreamsDeleteRequest(stream=stream)
         await self.fabric_streams_stub.Delete(request, wait_for_ready=True)
 
-    async def set_stream_listener_position(
-        self, listener: str, stream: PerperStream, position: int
-    ):
+    async def set_stream_listener_position(self, listener: str, stream: PerperStream, position: int):
         if not listener:
             listener = self.generate_name(stream.stream)
 
-        move_listener_request = grpc2_streams_pb2.StreamsMoveListenerRequest(
-            stream=stream, listener_name=listener, reached_key=position
-        )
-        await self.fabric_streams_stub.MoveListener(
-            move_listener_request, wait_for_ready=True
-        )
+        move_listener_request = grpc2_streams_pb2.StreamsMoveListenerRequest(stream=stream, listener_name=listener, reached_key=position)
+        await self.fabric_streams_stub.MoveListener(move_listener_request, wait_for_ready=True)
 
     async def remove_stream_listener(self, stream: PerperStream, listener: str):
         if not listener:
             listener = self.generate_name(stream.stream)
 
-        move_listener_request = grpc2_streams_pb2.StreamsMoveListenerRequest(
-            stream=stream, listener_name=listener, delete_listener=True
-        )
-        await self.fabric_streams_stub.MoveListener(
-            move_listener_request, wait_for_ready=True
-        )
+        move_listener_request = grpc2_streams_pb2.StreamsMoveListenerRequest(stream=stream, listener_name=listener, delete_listener=True)
+        await self.fabric_streams_stub.MoveListener(move_listener_request, wait_for_ready=True)
 
     async def write_stream_item(self, stream: PerperStream, key, item):
         if key:
-            request = grpc2_streams_pb2.StreamsWriteItemRequest(
-                stream=stream, key=key, value=item
-            )
+            request = grpc2_streams_pb2.StreamsWriteItemRequest(stream=stream, key=key, value=item)
         else:
-            request = grpc2_streams_pb2.StreamsWriteItemRequest(
-                stream=stream, auto_key=True, value=item
-            )
+            request = grpc2_streams_pb2.StreamsWriteItemRequest(stream=stream, auto_key=True, value=item)
         await self.fabric_streams_stub.WriteItem(request, wait_for_ready=True)
 
     async def enumerate_stream_items(
@@ -337,12 +255,8 @@ class FabricService:
         if not listener:
             listener = self.generate_name(stream.stream)
 
-        move_listener_request = grpc2_streams_pb2.StreamsMoveListenerRequest(
-            stream=stream, listener_name=listener, reached_key=self.LISTENER_PERSIST_ALL
-        )
-        self.fabric_streams_stub.MoveListener(
-            move_listener_request, wait_for_ready=True
-        )
+        move_listener_request = grpc2_streams_pb2.StreamsMoveListenerRequest(stream=stream, listener_name=listener, reached_key=self.LISTENER_PERSIST_ALL)
+        self.fabric_streams_stub.MoveListener(move_listener_request, wait_for_ready=True)
 
         listen_request = grpc2_streams_pb2.StreamsListenItemsRequest(
             stream=stream,
@@ -350,17 +264,13 @@ class FabricService:
             start_from_latest=stream.start_key == -1,
             local_to_data=local_to_data,
         )
-        listen_response = self.fabric_streams_stub.ListenItems(
-            listen_request, wait_for_ready=True
-        )
+        listen_response = self.fabric_streams_stub.ListenItems(listen_request, wait_for_ready=True)
         await listen_response.initial_metadata()
 
         async def helper():
             async for item in listen_response:
                 yield (item.key, item.value)
-                await self.set_stream_listener_position(
-                    listener=listener, stream=stream, position=item.key
-                )
+                await self.set_stream_listener_position(listener=listener, stream=stream, position=item.key)
 
         return helper()
 
@@ -392,9 +302,7 @@ class FabricService:
         if value is FabricService.CANCELLED:
             task.cancel()
         elif value is not task:
-            warnings.warn(
-                f"Multiple tasks set for execution '{execution}'", UserWarning
-            )
+            warnings.warn(f"Multiple tasks set for execution '{execution}'", UserWarning)
 
     # UTILS:
 
@@ -404,9 +312,7 @@ class FabricService:
     async def write_execution_exception(self, execution, exception):
         return await self.write_execution_error(execution, PerperError(str(exception)))
 
-    async def read_execution_result(
-        self, execution
-    ) -> RepeatedCompositeFieldContainer[Any]:
+    async def read_execution_result(self, execution) -> RepeatedCompositeFieldContainer[Any]:
         (error, result) = await self.read_execution_error_and_result(execution)
 
         if error is not None:

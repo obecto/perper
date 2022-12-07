@@ -19,18 +19,12 @@ class BuildProtos(setuptools.Command):
     def run(self):
         base_python_path = "perper/protocol/proto/"
         base_proto_path = "../../proto"
-        proto_files = [
-            "{}/{}".format(base_proto_path, f)
-            for f in os.listdir(base_proto_path)
-            if f.endswith(".proto")
-        ]
+        proto_files = ["{}/{}".format(base_proto_path, f) for f in os.listdir(base_proto_path) if f.endswith(".proto")]
 
         from grpc_tools import protoc
 
         package_root = os.path.dirname(os.path.abspath(__file__))
-        well_known_protos_include = pkg_resources.resource_filename(
-            "grpc_tools", "_proto"
-        )
+        well_known_protos_include = pkg_resources.resource_filename("grpc_tools", "_proto")
         for proto_file in proto_files:
             proto_file = os.path.join(package_root, proto_file)
             python_path = os.path.join(package_root, base_python_path)
