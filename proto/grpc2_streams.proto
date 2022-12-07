@@ -59,6 +59,7 @@ message StreamsListenItemsRequest {
   bool start_from_latest = 10;
   //string sql_where = 11;
 
+
   bool local_to_data = 101;
 }
 

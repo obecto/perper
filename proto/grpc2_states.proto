@@ -16,6 +16,7 @@ service FabricStatesDictionary {
   rpc Create(StatesDictionaryCreateRequest) returns (google.protobuf.Empty) {}
   //rpc GetInstanceDictionary () returns () {}
 
+
   rpc Operate(StatesDictionaryOperateRequest) returns (StatesDictionaryOperateResponse) {}
 
   rpc ListItems(StatesDictionaryListItemsRequest) returns (stream StatesDictionaryListItemsResponse) {}
@@ -98,6 +99,7 @@ message StatesDictionaryDeleteRequest {
 service FabricStatesList {
   rpc Create(StatesListCreateRequest) returns (google.protobuf.Empty) {}
   //rpc GetInstanceChildrenList () returns () {}
+
 
   rpc Operate(StatesListOperateRequest) returns (StatesListOperateResponse) {}
   rpc Locate(StatesListLocateRequest) returns (StatesListLocateResponse) {}
