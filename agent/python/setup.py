@@ -54,13 +54,17 @@ class BuildProtos(setuptools.Command):
                 ),
             )
 
-            with open(grpc_generated_path, "r") as grpc_generated_file:
-                grpc_content = grpc_generated_file.read()
+            self.fix_imports_in_generated_file(grpc_generated_path)
+            self.fix_imports_in_generated_file(re.sub("_grpc.py", ".py", grpc_generated_path))
 
-            grpc_content = re.sub("(?m)^(import.*_pb2)", "from . \\1", grpc_content)
+    def fix_imports_in_generated_file(self, grpc_generated_path):
+        with open(grpc_generated_path, "r") as grpc_generated_file:
+            grpc_content = grpc_generated_file.read()
 
-            with open(grpc_generated_path, "w") as grpc_generated_file:
-                grpc_generated_file.write(grpc_content)
+        grpc_content = re.sub("(?m)^(import.*_pb2)", "from . \\1", grpc_content)
+
+        with open(grpc_generated_path, "w") as grpc_generated_file:
+            grpc_generated_file.write(grpc_content)
 
 
 with open("README.md") as f:

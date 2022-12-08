@@ -22,3 +22,5 @@ venv
 samples/PythonNotebook/jupyter_command.bat
 /cli/perper.exe
 /packages
+
+/agent/python/perper/protocol/proto

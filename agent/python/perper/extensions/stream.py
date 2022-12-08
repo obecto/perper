@@ -3,16 +3,16 @@ import sys
 import asyncio
 import attr
 
-from grpc2_model_pb2 import PerperExecution, PerperInstance, PerperStream
+from ..protocol.proto.grpc2_model_pb2 import PerperExecution, PerperInstance, PerperStream
 from .context_vars import fabric_service, fabric_execution
 
 
-def start_stream(delegate, *parameters, action=False, ephemeral=True, packed=False, index=None):
-    return _start_stream(delegate, parameters, action, ephemeral, packed, _index_to_query_entities(index))
+async def start_stream(delegate, *parameters, action=False, ephemeral=True, packed=False, index=None):
+    return await _start_stream(delegate, parameters, action, ephemeral, packed, _index_to_query_entities(index))
 
 
-def create_blank_stream(*, ephemeral=True, packed=False, index=None):
-    return _start_stream("", None, False, ephemeral, packed, _index_to_query_entities(index))
+async def create_blank_stream(*, ephemeral=True, packed=False, index=None):
+    return await _start_stream("", None, False, ephemeral, packed, _index_to_query_entities(index))
 
 
 async def declare_stream(delegate, *, action=False, ephemeral=True, packed=False, index=None):

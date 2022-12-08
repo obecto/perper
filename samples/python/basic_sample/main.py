@@ -73,15 +73,15 @@ async def init():
     message_count = 28
     batch_count = 10
 
-    generator = perper.start_stream("Generator", message_count)
-    processor = perper.start_stream("Processor", generator, batch_count)
-    _ = perper.start_stream("Consumer", processor, action=True)
+    generator = await perper.start_stream("Generator", message_count)
+    processor = await perper.start_stream("Processor", generator, batch_count)
+    _ = await perper.start_stream("Consumer", processor, action=True)
 
     # Cyclic streams
-    (node1_stream, node1_start) = perper.declare_stream("Node1")
-    (node2_stream, node2_start) = perper.declare_stream("Node2", action=True)
-    node1_start(node2_stream)
-    node2_start(node1_stream)
+    (node1_stream, node1_start) = await perper.declare_stream("Node1")
+    (node2_stream, node2_start) = await perper.declare_stream("Node2", action=True)
+    await node1_start(node2_stream)
+    await node2_start(node1_stream)
 
     # Calls
     randomNumber1 = await perper.call("GetRandomNumber", 1, 100)

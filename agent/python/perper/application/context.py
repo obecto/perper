@@ -4,7 +4,7 @@ import backoff
 from collections import namedtuple
 from collections.abc import AsyncIterable, Awaitable
 
-from grpc2_model_pb2 import PerperInstance
+from ..protocol.proto.grpc2_model_pb2  import PerperInstance
 from ..extensions.context_vars import fabric_service, fabric_execution
 from ..protocol import FabricService, FabricExecution, TaskCollection
 from contextvars import ContextVar

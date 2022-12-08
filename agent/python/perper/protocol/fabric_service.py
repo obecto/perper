@@ -10,10 +10,9 @@ from collections import defaultdict, namedtuple
 from google.protobuf.internal.containers import RepeatedCompositeFieldContainer
 
 from .task_collection import TaskCollection
-from .proto import fabric_pb2_grpc
 from .proto import grpc2_executions_pb2
-from grpc2_executions_pb2_grpc import FabricExecutionsStub
-from grpc2_model_pb2 import (
+from .proto.grpc2_executions_pb2_grpc import FabricExecutionsStub
+from .proto.grpc2_model_pb2 import (
     PerperInstance,
     PerperDictionary,
     PerperExecution,
@@ -21,9 +20,9 @@ from grpc2_model_pb2 import (
     PerperError,
 )
 from .proto import grpc2_states_pb2
-from grpc2_states_pb2_grpc import FabricStatesDictionaryStub, FabricStatesListStub
+from .proto.grpc2_states_pb2_grpc import FabricStatesDictionaryStub, FabricStatesListStub
 from .proto import grpc2_streams_pb2
-from grpc2_streams_pb2_grpc import FabricStreamsStub
+from .proto.grpc2_streams_pb2_grpc import FabricStreamsStub
 
 
 FabricExecution = namedtuple("Execution", ["agent", "instance", "delegate", "execution", "arguments"])
@@ -48,7 +47,6 @@ class FabricService:
         self.task_collection = TaskCollection()
 
         self.grpc_channel = grpc_channel
-        self.fabric_stub = fabric_pb2_grpc.FabricStub(self.grpc_channel)
         self.fabric_executions_stub = FabricExecutionsStub(self.grpc_channel)
         self.fabric_dictionary_stub = FabricStatesDictionaryStub(self.grpc_channel)
         self.fabric_streams_stub = FabricStreamsStub(self.grpc_channel)

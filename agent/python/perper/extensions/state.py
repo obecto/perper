@@ -1,4 +1,4 @@
-from grpc2_model_pb2 import PerperDictionary
+from ..protocol.proto.grpc2_model_pb2 import PerperDictionary
 from .context_vars import fabric_execution, fabric_service
 
 

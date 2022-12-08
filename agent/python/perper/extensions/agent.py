@@ -1,6 +1,5 @@
 import asyncio
-
-from grpc2_model_pb2 import PerperInstance
+from ..protocol.proto.grpc2_model_pb2 import PerperInstance
 from .context_vars import fabric_execution, fabric_service
 
 startup_function_name = "Start"
@@ -9,11 +8,11 @@ fallback_startup_function_name = "Startup"
 
 
 def get_agent_instance() -> PerperInstance:
-    return PerperInstance(fabric_execution.get().agent, fabric_execution.get().instance)
+    return PerperInstance(agent=fabric_execution.get().agent, instance=fabric_execution.get().instance)
 
 
-def call(delegate, *parameters):
-    return call_agent(get_agent_instance(), delegate, *parameters)
+async def call(delegate, *parameters):
+    return await call_agent(get_agent_instance(), delegate, *parameters)
 
 
 async def start_agent(agent, *parameters):
