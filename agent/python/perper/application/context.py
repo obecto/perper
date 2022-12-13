@@ -60,6 +60,7 @@ def register_delegate(delegate: str, function: Callable, is_init=False):
 async def process_execution(execution: FabricExecution, function: Callable, is_init=False):
     try:
         fabric_execution.set(execution)
+        print(execution.arguments)
 
         result = function(*execution.arguments)
 

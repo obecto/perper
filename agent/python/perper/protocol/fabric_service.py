@@ -4,10 +4,12 @@ import time
 import asyncio
 import grpc
 import warnings
-from typing import Any
+
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict, namedtuple
 from google.protobuf.internal.containers import RepeatedCompositeFieldContainer
+from google.protobuf.any_pb2 import Any
+from google.protobuf.wrappers_pb2 import Int32Value, StringValue
 
 from .task_collection import TaskCollection
 from .proto import grpc2_executions_pb2
@@ -92,12 +94,27 @@ class FabricService:
 
     async def create_execution(self, instance: PerperInstance, delegate, parameters) -> PerperExecution:
         execution = PerperExecution(execution=self.generate_name(delegate))
+        print(parameters)
+        packed_parameters = []
 
+        for parameter in parameters:
+            print(parameter)
+            if isinstance(parameter, str):
+                parameter = StringValue(value=parameter)
+            
+            if isinstance(parameter, int):
+                parameter = Int32Value(value=parameter)
+
+            packed_parameter = Any()
+            packed_parameter.Pack(parameter)
+            packed_parameters.append(packed_parameter)
+
+        print(packed_parameters)
         execution_create_request = grpc2_executions_pb2.ExecutionsCreateRequest(
             execution=execution,
             instance=instance,
             delegate=delegate,
-            arguments=parameters,
+            arguments=packed_parameters,
         )
         await self.fabric_executions_stub.Create(execution_create_request, wait_for_ready=True)
         return execution
@@ -118,12 +135,26 @@ class FabricService:
         execution_complete_request = grpc2_executions_pb2.ExecutionsCompleteRequest(execution=execution, error=error)
         await self.fabric_executions_stub.Complete(execution_complete_request, wait_for_ready=True)
 
-    async def read_execution_error_and_result(self, execution: PerperExecution) -> tuple[PerperError, RepeatedCompositeFieldContainer[Any]]:
+    async def read_execution_error_and_result(self, execution: PerperExecution):
         execution_result_request = grpc2_executions_pb2.ExecutionsGetResultRequest(execution=execution)
         execution_result_response: grpc2_executions_pb2.ExecutionsGetResultResponse = await self.fabric_executions_stub.GetResult(
             execution_result_request, wait_for_ready=True
         )
-        return (execution_result_response.error, execution_result_response.results)
+
+        unpacked_messages = []
+
+        for message in execution_result_response.results:
+            print(message)
+            print(message.TypeName)
+            any_message = Any()
+            any_message.CopyFrom(message)
+            unpacked_message = None
+            any_message.Unpack(unpacked_message)
+            unpacked_messages.append(unpacked_message)
+
+        print(unpacked_messages)
+
+        return (execution_result_response.error, unpacked_messages)
 
     async def listen_executions(self, instance: PerperInstance, delegate, reserve=True, work_group=""):
         async def helper():
@@ -155,12 +186,24 @@ class FabricService:
                     value.cancel()
                     self.execution_tasks[proto.execution] = FabricService.CANCELLED
             elif proto.execution != "":
+                unpacked_messages = []
+
+                for message in proto.arguments:
+                    print(message)
+                    any_message = Any()
+                    any_message.CopyFrom(message)
+                    print(any_message.TypeName())
+                    unpacked_message = Int32Value()
+                    any_message.Unpack(unpacked_message)
+                    unpacked_messages.append(unpacked_message.value)
+
+                print(unpacked_messages)
                 execution = FabricExecution(
                     instance.agent,
                     proto.instance,
                     proto.delegate,
                     proto.execution,
-                    proto.arguments,
+                    unpacked_messages,
                 )
                 yield execution
 
@@ -302,15 +345,20 @@ class FabricService:
         elif value is not task:
             warnings.warn(f"Multiple tasks set for execution '{execution}'", UserWarning)
 
+    # DESCRIPTORS
+
+    # async def register_descriptor():
+    #     return;
+
     # UTILS:
 
     async def write_stream_item_realtime(self, stream, item):
-        await self.write_stream_item(stream, self.get_current_ticks(), item)
+        await self.write_stream_item(stream=stream, key=self.get_current_ticks(), item=item)
 
     async def write_execution_exception(self, execution, exception):
-        return await self.write_execution_error(execution, PerperError(str(exception)))
+        return await self.write_execution_error(execution=execution, error=PerperError(message=str(exception)))
 
-    async def read_execution_result(self, execution) -> RepeatedCompositeFieldContainer[Any]:
+    async def read_execution_result(self, execution):
         (error, result) = await self.read_execution_error_and_result(execution)
 
         if error is not None:
