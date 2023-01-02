@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
 
+using Obecto.Perper.Examples.AddressBook;
+
 using Perper.Extensions;
 using Perper.Model;
 
@@ -40,6 +42,20 @@ namespace BasicSample.Calls
 
             await PerperContext.CallAsync("DoSomething", "123").ConfigureAwait(false);
             await PerperContext.CallAsync("DoSomethingAsync", "456").ConfigureAwait(false);
+
+            // TODO: For when support is added for passing proto messages as params
+            //var person = new Person
+            //{
+            //    Name = "John Doe",
+            //    Id = 1234,
+            //    Email = "jdoe@example.com",
+            //    Phones =
+            //    {
+            //        new Person.Types.PhoneNumber { Number = "555-4321" }
+            //    }
+            //};
+
+            //await PerperContext.CallAsync("TestProto", person).ConfigureAwait(false);
 
         }
     }

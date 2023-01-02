@@ -1,8 +1,7 @@
 import asyncio
 import random
 import perper
-from pyignite.datatypes import IntObject
-
+import addressbook_pb2
 
 async def node1(other):
     yield 1
@@ -53,7 +52,7 @@ async def do_something_async(message):
 
 
 def get_random_number(a, b):
-    return (random.randint(a, b), IntObject)
+    return (random.randint(a, b))
 
 
 async def get_random_number_async(a, b):
@@ -66,6 +65,14 @@ def get_two_random_numbers(a, b):
 
 def count_params(a, *args):
     return a + len(args)
+
+
+# TODO: For when support for protobuf messages is added
+def test_proto(person):
+    print(person)
+    addressbook = addressbook_pb2.AddressBook()
+    addressbook.people.append(person)
+    return addressbook
 
 
 async def init():
@@ -99,6 +106,18 @@ async def init():
     await perper.call("DoSomething", "123")
     await perper.call("DoSomethingAsync", "456")
 
+    # TODO: Same as test_proto() above
+    # person = addressbook_pb2.Person()
+    # person.id = 1234
+    # person.name = "John Doe"
+    # person.email = "jdoe@example.com"
+    # phone = person.phones.add()
+    # phone.number = "555-4321"
+    # #phone.type = addressbook_pb2.Person.HOME
+
+    # addressbook = await perper.call("TestProto", person)
+    # print(f"TestProto - Address book: {addressbook}")
+
 
 asyncio.run(
     perper.run(
@@ -116,6 +135,8 @@ asyncio.run(
             "Consumer": consumer,
             "Node1": node1,
             "Node2": node2,
+            # TODO: Same as test_proto() above
+            # "TestProto": test_proto,
         },
         use_deploy_init=True,
     )
