@@ -1,0 +1,16 @@
+# /proto/buf.yaml
+version: v1beta1
+build:
+  roots:
+    - ./proto
+lint:
+  use:
+    - MINIMAL
+  except:
+    - FIELD_LOWER_SNAKE_CASE
+    - PACKAGE_DIRECTORY_MATCH
+    - PACKAGE_SAME_DIRECTORY
+    - IMPORT_NO_WEAK
+    - IMPORT_NO_PUBLIC
+    - PACKAGE_LOWER_SNAKE_CASE
+    - PACKAGE_DEFINED

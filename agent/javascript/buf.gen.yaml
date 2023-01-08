@@ -1,0 +1,13 @@
+
+version: v1
+plugins:
+  - remote: buf.build/stephenh/plugins/ts-proto
+    out: perper/protocol/proto
+    opt:
+      - esModuleInterop=true
+      - emitImportedFiles=true
+      - forceLong=number
+      - env=both
+      - outputClientImpl=grpc-web
+      - fileSuffix=_pb2
+      
