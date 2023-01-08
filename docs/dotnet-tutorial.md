@@ -398,4 +398,4 @@ If you feel like playing around with the sample further, here is a list of thing
 
 ## Closing note
 
-Thank you for following this tutorial; I hope it was useful in figuring out the basics of using Perper through C#! If you want to read more in-depth documentation, feel free to check out the [Architecture](./arciitecture.md) page. Or, if you just want to dive into using the framework, feel free to check out the Reference (currently nonexistent, but the classes in the [`Perper.Extensions`](../agent/dotnet/src/Perper/Extensions/) namespace should be a good place to start)!
+Thank you for following this tutorial; I hope it was useful in figuring out the basics of using Perper through C#! If you want to read more in-depth documentation, feel free to check out the [Architecture](./architecture.md) page. Or, if you just want to dive into using the framework, feel free to check out the Reference (currently nonexistent, but the classes in the [`Perper.Extensions`](../agent/dotnet/src/Perper/Extensions/) namespace should be a good place to start)!
