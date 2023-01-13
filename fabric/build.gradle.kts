@@ -8,6 +8,7 @@ val grpcKotlinVersion = "0.2.0"
 val protobufVersion = "3.21.7"
 val coroutinesVersion = "1.5.2"
 val slf4jVersion = "1.7.28"
+val otelVersion = "1.20.1"
 
 plugins {
     id("org.gradle.application")
@@ -40,6 +41,10 @@ dependencies {
     implementation("org.apache.commons:commons-lang3:3.11")
     implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3")
     testImplementation("junit:junit:4.12")
+    implementation("io.opentelemetry:opentelemetry-api:$otelVersion")
+    implementation("io.opentelemetry:opentelemetry-sdk:$otelVersion")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp:$otelVersion")
+    implementation("io.opentelemetry:opentelemetry-semconv:$otelVersion-alpha")
 }
 
 val compileKotlin: KotlinCompile by tasks

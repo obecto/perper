@@ -8,6 +8,20 @@ import com.obecto.perper.model.PerperExecutionFilter
 import com.obecto.perper.model.PerperExecutions
 import com.obecto.perper.model.PerperInstance
 import com.obecto.perper.model.toPerperErrorOrNull
+import io.opentelemetry.api.OpenTelemetry
+import io.opentelemetry.api.common.Attributes
+import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator
+import io.opentelemetry.api.trace.Span
+import io.opentelemetry.context.propagation.ContextPropagators
+import io.opentelemetry.exporter.otlp.metrics.OtlpGrpcMetricExporter
+import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter
+import io.opentelemetry.sdk.OpenTelemetrySdk
+import io.opentelemetry.sdk.metrics.SdkMeterProvider
+import io.opentelemetry.sdk.metrics.export.PeriodicMetricReader
+import io.opentelemetry.sdk.resources.Resource
+import io.opentelemetry.sdk.trace.SdkTracerProvider
+import io.opentelemetry.sdk.trace.export.BatchSpanProcessor
+import io.opentelemetry.semconv.resource.attributes.ResourceAttributes
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +43,27 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
     val binary = ignite.binary()
     val log = ignite.log().getLogger(this)
 
+    val resource = Resource.getDefault()
+        .merge(Resource.create(Attributes.of(ResourceAttributes.SERVICE_NAME, "perper-executions")))
+
+    val sdkTracerProvider = SdkTracerProvider.builder()
+        .addSpanProcessor(BatchSpanProcessor.builder(OtlpGrpcSpanExporter.builder().build()).build())
+        .setResource(resource)
+        .build()
+
+    val sdkMeterProvider = SdkMeterProvider.builder()
+        .registerMetricReader(PeriodicMetricReader.builder(OtlpGrpcMetricExporter.builder().build()).build())
+        .setResource(resource)
+        .build()
+
+    val openTelemetry = OpenTelemetrySdk.builder()
+        .setTracerProvider(sdkTracerProvider)
+        .setMeterProvider(sdkMeterProvider)
+        .setPropagators(ContextPropagators.create(W3CTraceContextPropagator.getInstance()))
+        .buildAndRegisterGlobal()
+    
+    val tracer = openTelemetry.getTracer("io.opentelemetry.contrib.perper");
+    
     override suspend fun create(instance: PerperInstance, delegate: String, arguments: List<IgniteAny?>, execution: PerperExecution?): PerperExecution {
         val executionNonNull = execution ?: PerperExecution("$delegate-${UUID.randomUUID()}")
         executionsCache.putAsync(
@@ -109,6 +144,7 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
         }
 
         val sentExecutions = HashMap<String, PerperExecutionData>()
+        val executionsSpan = HashMap<String, Span>()
         executionsFlow.collect { pair ->
             val (key, value) = pair
 
@@ -122,10 +158,16 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
                     )
                     sentExecutions.put(key, execution)
                     send(execution)
+
+                    val span = tracer.spanBuilder(value.delegate).startSpan()
+                    executionsSpan.put(key, span)
                 }
             } else {
                 val execution = sentExecutions.remove(key)
                 execution?.cancel()
+
+                val span = executionsSpan.remove(key)
+                span?.end()
             }
         }
     }
