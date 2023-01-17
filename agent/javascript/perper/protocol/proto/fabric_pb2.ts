@@ -831,7 +831,7 @@ interface UnaryMethodDefinitionishR extends grpc.UnaryMethodDefinition<any, any>
 
 type UnaryMethodDefinitionish = UnaryMethodDefinitionishR;
 
-interface Rpc {
+export interface Rpc {
   unary<T extends UnaryMethodDefinitionish>(
     methodDesc: T,
     request: any,
@@ -844,9 +844,9 @@ interface Rpc {
   ): Observable<any>;
 }
 
-export class GrpcWebImpl {
+export class GrpcWebImpl{
   private host: string;
-  private options: {
+  public options: {
     transport?: grpc.TransportFactory;
     streamingTransport?: grpc.TransportFactory;
     debug?: boolean;
