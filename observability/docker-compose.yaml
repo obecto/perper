@@ -8,7 +8,7 @@ services:
     ports:
       - "4317:4317" # otlp grpc
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:r78-c57394a-amd64
     command: [ "-config.file=/etc/tempo.yaml" ]
     volumes:
       - ./tempo.yaml:/etc/tempo.yaml

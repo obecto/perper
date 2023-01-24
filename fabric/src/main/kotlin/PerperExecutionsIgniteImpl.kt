@@ -8,10 +8,9 @@ import com.obecto.perper.model.PerperExecutionFilter
 import com.obecto.perper.model.PerperExecutions
 import com.obecto.perper.model.PerperInstance
 import com.obecto.perper.model.toPerperErrorOrNull
-import io.opentelemetry.api.OpenTelemetry
 import io.opentelemetry.api.common.Attributes
-import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator
 import io.opentelemetry.api.trace.Span
+import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator
 import io.opentelemetry.context.propagation.ContextPropagators
 import io.opentelemetry.exporter.otlp.metrics.OtlpGrpcMetricExporter
 import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter
@@ -61,9 +60,9 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
         .setMeterProvider(sdkMeterProvider)
         .setPropagators(ContextPropagators.create(W3CTraceContextPropagator.getInstance()))
         .buildAndRegisterGlobal()
-    
-    val tracer = openTelemetry.getTracer("io.opentelemetry.contrib.perper");
-    
+
+    val tracer = openTelemetry.getTracer("io.opentelemetry.contrib.perper")
+
     override suspend fun create(instance: PerperInstance, delegate: String, arguments: List<IgniteAny?>, execution: PerperExecution?): PerperExecution {
         val executionNonNull = execution ?: PerperExecution("$delegate-${UUID.randomUUID()}")
         executionsCache.putAsync(
