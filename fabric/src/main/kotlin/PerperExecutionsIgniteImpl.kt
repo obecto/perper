@@ -159,6 +159,7 @@ class PerperExecutionsIgniteImpl(val ignite: Ignite) : PerperExecutions {
                     send(execution)
 
                     val span = tracer.spanBuilder(value.delegate).startSpan()
+                    span.setAttribute("perper.instance", value.instance)
                     executionsSpan.put(key, span)
                 }
             } else {
